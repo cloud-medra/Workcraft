@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+@keyframes progress {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+
+.animate-progress-bar {
+  animation: progress 3s linear forwards;
+  transform-origin: right;
+}
+
+.bg-pattern {
+  background-image: url('/pattern.jpg');
+  background-repeat: repeat;
+  background-size: 200px;
+  background-position: center;
+}
