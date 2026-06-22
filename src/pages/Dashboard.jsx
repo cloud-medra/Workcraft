@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, Settings, LayoutDashboard, Home } from 'lucide-react';
+import { 
+  LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, 
+  Settings, LayoutDashboard, Home, ShieldCheck, Menu 
+} from 'lucide-react';
 import { MODULES } from '../config/modulesConfig.jsx';
 import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
 import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
@@ -26,16 +29,17 @@ import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaborator
 import ImportarOrden from '../components/modulos/laboratorio/ImportarOrden';
 import AuditoriaFactura from '../components/modulos/laboratorio/auditoriaFactura/AuditoriaFacturas';
 import ControlFacturas from '../components/modulos/laboratorio/controlFacturas/ControlFacturas';
-
 import CargaDatos from '../components/modulos/documentos/CargaDatos';
 import DashboardFinanciero from '../components/modulos/documentos/DashboardFinanciero';
+import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
+import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeModule, setActiveModule] = useState(null);
   const [activeView, setActiveView] = useState('dashboard');
-
   const menuRef = useRef(null);
 
   const [userData, setUserData] = useState({
@@ -52,11 +56,9 @@ const Dashboard = () => {
         setIsMenuOpen(false);
       }
     };
-
     if (isMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
-
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
@@ -82,11 +84,10 @@ const Dashboard = () => {
     '/laboratorio/importarOrden': <ImportarOrden />,
     '/laboratorio/auditoriaFactura': <AuditoriaFactura />,
     '/laboratorio/controlFactura': <ControlFacturas />,
-    
     '/documentos/carga': <CargaDatos />,
     '/documentos/DashboardFinanciero': <DashboardFinanciero />,
-
-
+    'privacidad': <PoliticasPrivacidad />,
+    'terminos': <TerminosServicio />,
     'perfil': <Perfil userData={userData} />,
     'ajustes': <Ajustes />,
     'dashboard': (
@@ -129,17 +130,31 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <aside className="w-48 bg-[#2383C2] text-white hidden md:flex flex-col shadow-xl">
-        <div className="p-4 text-lg font-bold border-b border-white/10 tracking-tight">Cloud - Medra</div>
+    <div className="min-h-screen flex bg-gray-50 overflow-hidden">
+      <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-48'} bg-[#2383C2] text-white hidden md:flex flex-col shadow-xl h-screen sticky top-0 [transition:width_0.4s_cubic-bezier(0.25,1,0.5,1)] will-change-[width]`}>
+        <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden">
+          <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+            Cloud - Medra
+          </span>
+          <button 
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+            className={`p-1.5 rounded-lg hover:bg-white/10 transition flex-shrink-0 ${isSidebarCollapsed ? 'mx-auto' : ''}`}
+            title={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+          >
+            <Menu size={18} />
+          </button>
+        </div>
 
-        <nav className="flex-1 p-2 text-xs">
+        <nav className="flex-1 p-2 text-xs overflow-y-auto overflow-x-hidden space-y-1 select-none">
           <div className="mb-2">
             <button
               onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
-              className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/10 transition"
+              className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}
             >
-              <Home size={16} /> Inicio
+              <Home size={16} className="flex-shrink-0" /> 
+              <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                Inicio
+              </span>
             </button>
             <div className="border-t border-white/10 my-2"></div>
           </div>
@@ -147,33 +162,94 @@ const Dashboard = () => {
           {!activeModule ? (
             <div className="space-y-1">
               {modulosPermitidos.map((key) => (
-                <button key={key} onClick={() => setActiveModule(key)} className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white/10 transition">
-                  <div className="flex items-center gap-2">{MODULES[key].icon} {MODULES[key].label}</div>
-                  <ChevronRight size={14} />
+                <button 
+                  key={key} 
+                  onClick={() => setActiveModule(key)} 
+                  className={`w-full flex items-center rounded-lg hover:bg-white/10 transition-all p-2 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
+                  title={isSidebarCollapsed ? MODULES[key].label : ""}
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="flex-shrink-0">{MODULES[key].icon}</div>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                      {MODULES[key].label}
+                    </span>
+                  </div>
+                  {!isSidebarCollapsed && <ChevronRight size={14} className="flex-shrink-0 opacity-60 ml-1" />}
                 </button>
               ))}
             </div>
           ) : (
-            <div>
-              <button onClick={() => setActiveModule(null)} className="flex items-center gap-1 mb-4 text-[10px] text-white/60 hover:text-white transition p-1">
-                <ArrowLeft size={12} /> Volver a módulos
+            <div className="space-y-1">
+              <button 
+                onClick={() => setActiveModule(null)} 
+                className={`flex items-center mb-4 text-[10px] text-white/60 hover:text-white transition-colors p-1 w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-1'}`}
+                title="Volver a módulos"
+              >
+                <ArrowLeft size={12} className="flex-shrink-0" /> 
+                <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                  Volver a módulos
+                </span>
               </button>
-              <div className="px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50">{MODULES[activeModule].label}</div>
+              
+              <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+                {MODULES[activeModule].label}
+              </div>
+
               {MODULES[activeModule].subItems?.map((sub, idx) => {
                 if (!userData.permisos[activeModule]?.includes(sub.path)) return null;
                 return (
-                  <button key={idx} onClick={() => setActiveView(sub.path)} className={`w-full flex items-center gap-2 p-2 rounded-lg transition ${activeView === sub.path ? 'bg-white/20' : 'hover:bg-white/10'}`}>
-                    {sub.icon} {sub.label}
+                  <button 
+                    key={idx} 
+                    onClick={() => setActiveView(sub.path)} 
+                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                    title={isSidebarCollapsed ? sub.label : ""}
+                  >
+                    <div className="flex-shrink-0">{sub.icon}</div>
+                    <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                      {sub.label}
+                    </span>
                   </button>
                 );
               })}
             </div>
           )}
         </nav>
+
+        <div className="p-2 m-2 bg-white/5 rounded-xl border border-white/10 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
+          {!isSidebarCollapsed ? (
+            <div className="transition-all duration-300 opacity-100 flex flex-col gap-2">
+              <div className="flex flex-col gap-1 border-b border-white/5 pb-1.5">
+                <button 
+                  onClick={() => { setActiveView('privacidad'); setActiveModule(null); }}
+                  className="hover:text-white transition-colors text-left flex items-center gap-1.5"
+                >
+                  <ShieldCheck size={12} className="opacity-70 flex-shrink-0" /> Política de Privacidad
+                </button>
+                <button 
+                  onClick={() => { setActiveView('terminos'); setActiveModule(null); }}
+                  className="hover:text-white transition-colors text-left pl-[18px]"
+                >
+                  Términos de Servicio
+                </button>
+              </div>
+              <div className="flex justify-between items-center text-[9px] text-white/40 font-mono px-0.5">
+                <span>Versión</span>
+                <span>v1.0.0</span>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="flex justify-center items-center text-[9px] text-white/40 font-mono py-1 cursor-help opacity-100 transition-all duration-300 animate-fadeIn"
+              title="Versión 1.0.0 — Políticas disponibles en menú expandido"
+            >
+              <span>v1.0</span>
+            </div>
+          )}
+        </div>
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden gap-2">
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-100">
+        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500"></span> ¡Bienvenido {userData.nombreCompleto?.toUpperCase()}!
