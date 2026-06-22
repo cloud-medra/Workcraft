@@ -80,13 +80,13 @@ const Facturas = () => {
         if (!existe.empty) { omitidos++; continue; }
 
         const detalles = Array.from(xmlDoc.getElementsByTagName("Detalle")).map(d => ({
-          nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent ?? "",
-          codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent ?? "N/A",
-          nombre: d.getElementsByTagName("NmbItem")[0]?.textContent ?? "",
-          cantidad: d.getElementsByTagName("QtyItem")[0]?.textContent ?? "0",
-          monto: d.getElementsByTagName("MontoItem")[0]?.textContent ?? "0",
-          unidad: d.getElementsByTagName("UnmdItem")[0]?.textContent ?? "Un", 
-          precio: d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0"   
+          nroLin:   d.getElementsByTagName("NroLinDet")[0]?.textContent ?? "",
+          codigo:   d.getElementsByTagName("VlrCodigo")[0]?.textContent ?? "N/A",
+          nombre:   d.getElementsByTagName("NmbItem")[0]?.textContent ?? "",
+          cantidad: String(parseFloat(d.getElementsByTagName("QtyItem")[0]?.textContent ?? "0")),  // ✅ "2.0000" → "2"
+          unidad:   d.getElementsByTagName("UnmdItem")[0]?.textContent ?? "Un",
+          precio:   d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0",                      // ✅ precio unitario
+          monto:    d.getElementsByTagName("MontoItem")[0]?.textContent ?? "0"                     // ✅ monto total de línea (para referencia)
         }));
 
         await setDoc(doc(db, COL_BASE, anio), { active: "true" }, { merge: true });

@@ -48,7 +48,9 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
                 <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase">Cód.</th>
                 <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase">Descripción</th>
                 <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase text-center">Cant.</th>
-                <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase text-right">Monto</th>
+                <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase text-center">Unidad</th>
+                <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase text-right">P. Unitario</th>
+                <th className="pb-3 text-[11px] font-bold text-gray-400 uppercase text-right">Total Línea</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -57,6 +59,8 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
                   <td className="py-4 text-xs font-mono text-gray-500">{item.codigo || '-'}</td>
                   <td className="py-4 text-sm text-gray-700">{item.nombre}</td>
                   <td className="py-4 text-sm text-center text-gray-600">{item.cantidad}</td>
+                  <td className="py-4 text-sm text-center text-gray-500">{item.unidad || '-'}</td>
+                  <td className="py-4 text-sm text-right text-gray-700">${parseInt(item.precio).toLocaleString()}</td>
                   <td className="py-4 text-sm text-right font-bold text-gray-800">${parseInt(item.monto).toLocaleString()}</td>
                 </tr>
               ))}

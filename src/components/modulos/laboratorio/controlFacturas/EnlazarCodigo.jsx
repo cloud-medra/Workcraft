@@ -50,7 +50,6 @@ const EnlazarCodigo = () => {
         });
         const items = Object.values(mapaItems);
         setDetalleItems(items);
-        // ✅ Activar enlazado si cualquier item tiene codigoMaestro guardado (incluso 'NO ENCONTRADO')
         setEnlazado(items.some(item => item.codigoMaestro !== undefined && item.codigoMaestro !== null || item.codigoMaestro === 'NO ENCONTRADO'));
         setVistaActual('detalle');
         setCargando(false);
@@ -86,20 +85,19 @@ const EnlazarCodigo = () => {
 
                 if (!match) {
                     hayFaltantes = true;
-                    // ✅ Guardar en Firestore aunque no haya match
                     const nuevosDatos = {
                         codigoMaestro: 'NO ENCONTRADO',
                         precioMaestro: 0,
                         diferencia: 'Pendiente cálculo',
+                        // ✅ item.precio ya es PrcItem (unitario), no dividir
                         precioUnitarioFactura: parseFloat(item.precio) || 0
                     };
                     batch.set(doc(db, "laboratorio_conciliaciones_items", item.id), nuevosDatos, { merge: true });
                     return { ...item, ...nuevosDatos };
                 }
 
-                const cantidad = parseFloat(item.cantidad) || 1;
-                const precioFactura = parseFloat(item.precio) || 0;
-                const precioUnit = precioFactura / cantidad;
+                // ✅ item.precio ya es PrcItem (precio unitario), no hay que dividir por cantidad
+                const precioUnit = parseFloat(item.precio) || 0;
                 const dif = precioUnit - match.precioMaestro;
 
                 const nuevosDatos = {
@@ -222,15 +220,12 @@ const EnlazarCodigo = () => {
                                     </td>
                                     {enlazado && (
                                         <>
-                                            {/* Cod. Maestro */}
                                             <td className={`p-3 border-b border-r border-gray-200 font-mono ${item.codigoMaestro === 'NO ENCONTRADO' ? 'text-red-500' : 'text-green-700'}`}>
                                                 {item.codigoMaestro || 'N/A'}
                                             </td>
-                                            {/* Precio Maestro */}
                                             <td className="p-3 border-b border-r border-gray-200 font-bold text-green-700">
                                                 {item.codigoMaestro === 'NO ENCONTRADO' ? '-' : `$${Math.round(item.precioMaestro ?? 0).toLocaleString()}`}
                                             </td>
-                                            {/* Diferencia */}
                                             <td className={`p-3 border-b border-gray-200 font-bold ${item.diferencia === 'Pendiente cálculo'
                                                     ? 'text-gray-400 italic'
                                                     : (item.diferencia ?? 0) < 0 ? 'text-red-600' : 'text-blue-600'
