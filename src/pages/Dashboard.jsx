@@ -185,7 +185,7 @@ const Dashboard = () => {
           </div>
 
           <div className="relative" ref={menuRef}>
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="w-9 h-9 rounded-full bg-[#0E5B6D] text-white flex items-center justify-center font-bold text-sm shadow-md">
+            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="w-9 h-9 rounded-full bg-[#2383C2] text-white flex items-center justify-center font-bold text-sm shadow-md">
               {userData.nombreCompleto?.charAt(0).toUpperCase()}
             </button>
             {isMenuOpen && (
