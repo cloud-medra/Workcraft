@@ -163,6 +163,26 @@ const EnlazarOrden = () => {
         }
     };
 
+    const handleVolverPaso2 = async () => {
+        const folio = String(ordenActual?.folio).trim();
+        if (!folio) return;
+        setCargando(true);
+        try {
+            await setDoc(
+                doc(db, "laboratorio_conciliaciones", folio),
+                { estado: "Control Iniciado", fechaActualizacion: new Date() },
+                { merge: true }
+            );
+            setOrdenes(prev => prev.filter(o => String(o.folio) !== folio));
+            setVistaActual('lista');
+            showToast("Folio enviado de vuelta al Paso 2", "success");
+        } catch (error) {
+            showToast("Error: " + error.message, "error");
+        } finally {
+            setCargando(false);
+        }
+    };
+
     // Helper color estado
     const colorEstado = (estado) => {
         if (estado === 'Listo para Ingresar') return 'bg-green-100 text-green-700';
@@ -196,6 +216,12 @@ const EnlazarOrden = () => {
                                 {ordenActual.estado}
                             </span>
                         )}
+                        <button
+                            onClick={handleVolverPaso2}
+                            className="bg-orange-500 text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-orange-700"
+                        >
+                            <ArrowLeft size={12} /> VOLVER A PASO 2
+                        </button>
                         <button onClick={abrirModalEnlace} className="bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
                             <CheckCircle size={12} /> {ordenEnlazada ? 'ACTUALIZAR ORDEN' : 'ENLAZAR ORDEN'}
                         </button>
