@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, FileText, Download, FileType } from 'lucide-react';
+import { X, FileText, Download, FileType, Calendar, User, Hash, ShieldCheck } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -82,69 +82,149 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-          <div className="flex items-center gap-2">
-            <FileText className="text-[#0E5B6D]" size={20} />
-            <h3 className="font-bold text-gray-700">Detalle Guía: {guia.folio}</h3>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all duration-300 animate-fadeIn">
+      <div className="bg-white w-full max-w-5xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[85vh] border border-slate-100">
+        
+        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#0E5B6D]/10 rounded-lg text-[#0E5B6D]">
+              <FileText size={20} className="stroke-[2.5]" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Documento de Consignación</span>
+              <h3 className="font-bold text-slate-800 text-lg leading-tight">Detalle Guía: Folio {guia.folio}</h3>
+            </div>
           </div>
-          <div className="flex gap-2">
+          
+          <div className="flex items-center gap-2">
             {hasPermission(PATH_VISTA, "modal_detalles", "btn_exportar_excel") && (
-              <button onClick={descargarExcel} className="bg-green-600 text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-green-700 transition-all">
-                <Download size={12} /> Excel
+              <button 
+                onClick={descargarExcel} 
+                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all duration-200"
+              >
+                <Download size={14} className="stroke-[2.5]" /> Exportar Excel
               </button>
             )}
             {hasPermission(PATH_VISTA, "modal_detalles", "btn_exportar_pdf") && (
-              <button onClick={verPDF} className="bg-red-600 text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-red-700 transition-all">
-                <FileType size={12} /> PDF
+              <button 
+                onClick={verPDF} 
+                className="bg-rose-50 text-rose-700 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all duration-200"
+              >
+                <FileType size={14} className="stroke-[2.5]" /> Vista PDF
               </button>
             )}
-            <button onClick={onClose} className="text-gray-500 hover:text-red-500 ml-2 transition-colors"><X size={20} /></button>
+            <div className="w-[1px] h-6 bg-slate-200 mx-1" />
+            <button 
+              onClick={onClose} 
+              className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+            >
+              <X size={18} className="stroke-[2.5]" />
+            </button>
           </div>
         </div>
 
-        <div className="p-6 overflow-y-auto">
-          <div className="grid grid-cols-2 gap-4 mb-6 text-[13px] p-4 bg-gray-50 rounded-lg border border-gray-100">
-            <div>
-              <p className="text-gray-400 uppercase font-bold text-[10px]">Razón Social</p>
-              <p className="font-semibold text-gray-700">{guia.rznSoc}</p>
+        <div className="p-6 overflow-y-auto flex-grow space-y-6">
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
+              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+                <ShieldCheck size={16} />
+              </div>
+              <div>
+                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Razón Social</p>
+                <p className="font-bold text-slate-700 text-[13px] mt-0.5 break-words line-clamp-2" title={guia.rznSoc}>
+                  {guia.rznSoc}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-400 uppercase font-bold text-[10px]">Folio Referencia</p>
-              <p className="font-semibold text-gray-700">{guia.folioRef}</p>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
+              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+                <Hash size={16} />
+              </div>
+              <div>
+                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Folio Referencia</p>
+                <p className="font-mono font-bold text-slate-700 text-[14px] mt-0.5">
+                  {guia.folioRef || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
+              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+                <Calendar size={16} />
+              </div>
+              <div>
+                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Fecha de Emisión</p>
+                <p className="font-bold text-slate-700 text-[13px] mt-0.5">
+                  {guia.fchEmis || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
+              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+                <User size={16} />
+              </div>
+              <div>
+                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Gestor de Carga</p>
+                <p className="font-bold text-slate-700 text-[13px] mt-0.5 truncate" title={guia.registradoPor}>
+                  {guia.registradoPor || "Sistema"}
+                </p>
+              </div>
             </div>
           </div>
 
-          <table className="w-full text-[12px] border-collapse border border-gray-200">
-            <thead className="bg-gray-100 text-gray-600 uppercase font-bold">
-              <tr>
-                <th className="p-3 text-left border-b border-r border-gray-200">Nro</th>
-                <th className="p-3 text-left border-b border-r border-gray-200">Ítem</th>
-                <th className="p-3 text-left border-b border-r border-gray-200">Código</th>
-                <th className="p-3 text-left border-b border-r border-gray-200">Descripción (Lote)</th>
-                <th className="p-3 text-center border-b border-r border-gray-200">Cant.</th>
-                <th className="p-3 text-center border-b border-gray-200">Fch. Venc.</th>
-              </tr>
-            </thead>
-            <tbody>
-              {guia.detalles?.map((item, idx) => (
-                <tr key={idx} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                  <td className="p-3 text-gray-500 border-r border-gray-200">{item.nroLin}</td>
-                  <td className="p-3 font-medium text-gray-700 border-r border-gray-200">{item.nombre}</td>
-                  <td className="p-3 font-mono text-gray-500 border-r border-gray-200">{item.codigo}</td>
-                  <td className="p-3 font-bold text-[#0E5B6D] border-r border-gray-200">{item.dscItem || "-"}</td>
-                  <td className="p-3 text-center font-bold border-r border-gray-200">{item.cantidad}</td>
-                  <td className="p-3 text-center text-gray-600">{item.fchVenc || "N/A"}</td>
+          <div className="rounded-xl border border-slate-200/80 overflow-hidden shadow-sm">
+            <table className="w-full text-[12px] border-collapse">
+              <thead>
+                <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                  <th className="p-3.5 text-center w-14">Nro</th>
+                  <th className="p-3.5 text-left">Ítem / Descripción</th>
+                  <th className="p-3.5 text-left w-40">Código</th>
+                  <th className="p-3.5 text-left w-48">Descripción (Lote)</th>
+                  <th className="p-3.5 text-center w-24">Cantidad</th>
+                  <th className="p-3.5 text-center w-32">Fch. Venc.</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {guia.detalles?.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/80 odd:bg-white even:bg-slate-50/30 transition-colors duration-150">
+                    <td className="p-3.5 text-center font-medium text-slate-400">{item.nroLin}</td>
+                    <td className="p-3.5 font-semibold text-slate-700 max-w-xs truncate" title={item.nombre}>
+                      {item.nombre}
+                    </td>
+                    <td className="p-3.5 font-mono text-slate-500 font-medium">{item.codigo}</td>
+                    <td className="p-3.5 font-bold text-[#0E5B6D]">{item.dscItem || "-"}</td>
+                    <td className="p-3.5 text-center">
+                      <span className="inline-block bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md font-bold text-[12px] min-w-[36px]">
+                        {item.cantidad}
+                      </span>
+                    </td>
+                    <td className="p-3.5 text-center text-slate-500 font-medium">
+                      {item.fchVenc ? (
+                        <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-100">
+                          {item.fchVenc}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="p-3 border-t border-gray-200 bg-gray-50 text-[11px] text-gray-500 text-right">
-          Registrado por: <span className="font-bold">{guia.registradoPor}</span>
+        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-[11px] text-slate-400 font-medium">
+          <div>Consignación Control Center v2.1</div>
+          <div className="flex items-center gap-1">
+            <span>ID Registro:</span>
+            <span className="font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">{guia.id || 'N/A'}</span>
+          </div>
         </div>
+
       </div>
     </div>
   );

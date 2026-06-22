@@ -29,12 +29,12 @@ const Guias = () => {
   const PATH_VISTA = "/consignacion/guias";
 
   useEffect(() => {
-    const cargarAnios = async () => {
-      const snap = await getDocs(collection(db, "consignacion_guias"));
-      const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+    const q = collection(db, "consignacion_guias");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const anios = snapshot.docs.map(d => d.id).sort((a, b) => b - a);
       setAniosDisponibles(anios);
-    };
-    cargarAnios();
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -42,12 +42,12 @@ const Guias = () => {
       setMesesDisponibles([]);
       return;
     }
-    const cargarMeses = async () => {
-      const snap = await getDocs(collection(db, "consignacion_guias", filtroAnio, "meses"));
-      const meses = snap.docs.map(d => d.id);
+    const q = collection(db, "consignacion_guias", filtroAnio, "meses");
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const meses = snapshot.docs.map(d => d.id);
       setMesesDisponibles(meses);
-    };
-    cargarMeses();
+    });
+    return () => unsubscribe();
   }, [filtroAnio]);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ const Guias = () => {
     const rows = guia.detalles
       .filter(item => !omitirCodigos.includes(item.codigo))
       .map(item => {
-        const cantidadLimpia = item.cantidad ? item.cantidad.split('.')[0] : "";
+        const cantidadLimpia = item.cantidad || "";
         const codigoLimpio = item.codigo ? item.codigo.split(' ')[0] : "";
         return `${guia.folio}\t${codigoLimpio}\t${cantidadLimpia}\t${item.dscItem || ""}\t${item.fchVenc || ""}`;
       })
@@ -91,6 +91,9 @@ const Guias = () => {
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
     let omitidos = 0;
+    let ultimoAnioCargado = "";
+    let ultimoMesCargado = "";
+
     try {
       for (const file of acceptedFiles) {
         const text = await file.text();
@@ -116,14 +119,19 @@ const Guias = () => {
           continue;
         }
 
-        const detalles = Array.from(xmlDoc.getElementsByTagName("Detalle")).map(d => ({
-          nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent,
-          codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent,
-          nombre: d.getElementsByTagName("NmbItem")[0]?.textContent,
-          dscItem: d.getElementsByTagName("DscItem")[0]?.textContent || "",
-          cantidad: d.getElementsByTagName("QtyItem")[0]?.textContent,
-          fchVenc: d.getElementsByTagName("FchVencim")[0]?.textContent || null
-        }));
+        const detalles = Array.from(xmlDoc.getElementsByTagName("Detalle")).map(d => {
+          const rawCantidad = d.getElementsByTagName("QtyItem")[0]?.textContent || "";
+          const cantidadLimpia = rawCantidad.includes('.') ? rawCantidad.split('.')[0] : rawCantidad;
+
+          return {
+            nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent,
+            codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent,
+            nombre: d.getElementsByTagName("NmbItem")[0]?.textContent,
+            dscItem: d.getElementsByTagName("DscItem")[0]?.textContent || "",
+            cantidad: cantidadLimpia,
+            fchVenc: d.getElementsByTagName("FchVencim")[0]?.textContent || null
+          };
+        });
 
         await setDoc(doc(db, "consignacion_guias", anio), { active: "true" }, { merge: true });
         await setDoc(doc(db, "consignacion_guias", anio, "meses", nombreMes), { active: "true" }, { merge: true });
@@ -134,10 +142,25 @@ const Guias = () => {
           registradoPor: userData?.nombreCompleto || 'Usuario',
           fechaRegistro: new Date()
         });
+
+        ultimoAnioCargado = anio;
+        ultimoMesCargado = nombreMes;
       }
 
-      if (omitidos > 0) showToast(`Importación finalizada. ${omitidos} archivos omitidos (duplicados).`, "warning");
-      else showToast("Importación masiva completada", "success");
+      if (omitidos === acceptedFiles.length) {
+        showToast("Todos los archivos ya existían en la base de datos.", "warning");
+      } else {
+        if (omitidos > 0) {
+          showToast(`Importación finalizada. ${omitidos} archivos omitidos por duplicado.`, "warning");
+        } else {
+          showToast("Importación masiva completada con éxito", "success");
+        }
+
+        if (ultimoAnioCargado && ultimoMesCargado) {
+          setFiltroAnio(ultimoAnioCargado);
+          setFiltroMes(ultimoMesCargado);
+        }
+      }
 
       setShowModal(false);
     } catch (error) {
@@ -164,9 +187,9 @@ const Guias = () => {
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px] transition-all duration-500">
           <div className="bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-white/50 flex flex-col items-center gap-5 min-w-[280px]">
-            <Spinner size="md" color="#0E5B6D" />
+            <Spinner size="md" color="#2383C2" />
             <div className="text-center">
-              <h3 className="text-[#0E5B6D] font-bold text-[15px] tracking-tight">Procesando archivos</h3>
+              <h3 className="text-[#2383C2] font-bold text-[15px] tracking-tight">Procesando archivos</h3>
               <p className="text-gray-500 text-[11px] font-medium mt-1 uppercase tracking-widest">No cierre esta ventana</p>
             </div>
           </div>
@@ -174,9 +197,9 @@ const Guias = () => {
       )}
 
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <Package size={16} className="text-[#0E5B6D]" /> GESTIÓN DE GUÍAS
+        <Package size={16} className="text-[#2383C2]" /> GESTIÓN DE GUÍAS
         {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar_xml") && (
-          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#369BCE]">
             <Upload size={12} /> Importar XML
           </button>
         )}
@@ -198,8 +221,13 @@ const Guias = () => {
           )}
           {hasPermission(PATH_VISTA, "filtros_busqueda", "input_buscar") && (
             <div className="relative flex-grow max-w-sm">
-              <Search className="absolute left-2 top-2 text-gray-400" size={14} />
-              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 rounded text-[12px] outline-none" placeholder="Buscar por Folio o Ref..." />
+              <Search className="absolute left-2.5 top-2.5 text-gray-400" size={13} />
+              <input 
+                value={busqueda} 
+                onChange={e => setBusqueda(e.target.value)} 
+                className="w-full h-8 pl-8 pr-2 bg-white border border-gray-300 rounded text-[12px] outline-none transition-all duration-200 focus:border-[#2383C2] focus:ring-2 focus:ring-[#2383C2]/20 focus:shadow-[0_0_8px_rgba(35,131,194,0.2)]" 
+                placeholder="Buscar por Folio o Ref..." 
+              />
             </div>
           )}
         </div>
@@ -219,30 +247,38 @@ const Guias = () => {
               </tr>
             </thead>
             <tbody>
-              {guiasFiltradas.map((g) => (
-                <tr key={g.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors duration-150">
-                  <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-700">{g.folio}</td>
-                  <td className="p-3 border-b border-r border-gray-200 text-gray-600">{g.fchEmis}</td>
-                  <td className="p-3 border-b border-r border-gray-200 text-gray-600">{g.folioRef}</td>
-                  <td className="p-3 border-b border-r border-gray-200 text-gray-600 truncate max-w-[200px]">{g.rznSoc}</td>
-                  <td className={`p-3 border-b border-r border-gray-200 font-bold ${g.estadoRegistro === 'Ingresado' ? 'text-green-600' : 'text-gray-400'}`}>
-                    {g.estadoRegistro || 'Pendiente'}
-                  </td>
-                  <td className="p-3 border-b border-gray-200 text-center">
-                    <div className="flex justify-center gap-3">
-                      {hasPermission(PATH_VISTA, "tabla_guias", "action_copiar") && (
-                        <button onClick={() => handleCopy(g)} className="text-blue-500 hover:text-blue-700 transition-colors"><Copy size={15} /></button>
-                      )}
-                      {hasPermission(PATH_VISTA, "tabla_guias", "action_ver_detalle") && (
-                        <button onClick={() => setGuiaSeleccionada(g)} className="text-green-600 hover:text-green-800 transition-colors"><Eye size={15} /></button>
-                      )}
-                      {hasPermission(PATH_VISTA, "tabla_guias", "action_eliminar") && (
-                        <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 transition-colors"><Trash2 size={15} /></button>
-                      )}
-                    </div>
+              {guiasFiltradas.length > 0 ? (
+                guiasFiltradas.map((g) => (
+                  <tr key={g.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors duration-150">
+                    <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-700">{g.folio}</td>
+                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">{g.fchEmis}</td>
+                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">{g.folioRef}</td>
+                    <td className="p-3 border-b border-r border-gray-200 text-gray-600 truncate max-w-[200px]">{g.rznSoc}</td>
+                    <td className={`p-3 border-b border-r border-gray-200 font-bold ${g.estadoRegistro === 'Ingresado' ? 'text-green-600' : 'text-gray-400'}`}>
+                      {g.estadoRegistro || 'Pendiente'}
+                    </td>
+                    <td className="p-3 border-b border-gray-200 text-center">
+                      <div className="flex justify-center gap-3">
+                        {hasPermission(PATH_VISTA, "tabla_guias", "action_copiar") && (
+                          <button onClick={() => handleCopy(g)} className="text-blue-500 hover:text-blue-700 transition-colors"><Copy size={15} /></button>
+                        )}
+                        {hasPermission(PATH_VISTA, "tabla_guias", "action_ver_detalle") && (
+                          <button onClick={() => setGuiaSeleccionada(g)} className="text-green-600 hover:text-green-800 transition-colors"><Eye size={15} /></button>
+                        )}
+                        {hasPermission(PATH_VISTA, "tabla_guias", "action_eliminar") && (
+                          <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 transition-colors"><Trash2 size={15} /></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="p-8 text-center text-gray-400 font-medium">
+                    {!filtroAnio || !filtroMes ? "Selecciona un año y un mes para visualizar las guías." : "No se encontraron guías para este periodo."}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -256,17 +292,56 @@ const Guias = () => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="font-bold text-gray-700">Importar Documentos XML</h3>
-              <button onClick={() => setShowModal(false)}><X size={20} /></button>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all duration-300">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden border border-slate-100">
+
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-blue-50 text-[#2383C2] rounded-lg">
+                  <Upload size={18} className="stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-[15px]">Importar Documentos XML</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Carga masiva a base de datos de consignación</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X size={18} className="stroke-[2.5]" />
+              </button>
             </div>
-            <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition ${isDragActive ? 'border-[#0E5B6D] bg-blue-50' : 'border-gray-300'}`}>
-              <input {...getInputProps()} />
-              <FileText size={40} className="mx-auto text-gray-400 mb-4" />
-              <p className="text-[13px] text-gray-500">Arrastra archivos aquí o haz clic para seleccionar</p>
+
+            <div className="p-6">
+              <div
+                {...getRootProps()}
+                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-200 outline-none flex flex-col items-center justify-center min-h-[220px] ${isDragActive
+                    ? 'border-[#2383C2] bg-blue-50/50 scale-[0.99]'
+                    : 'border-slate-200 bg-slate-50/30 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
+              >
+                <input {...getInputProps()} />
+                <div className={`p-4 rounded-full mb-4 transition-transform duration-200 ${isDragActive ? 'bg-blue-100 text-[#2383C2] scale-110' : 'bg-white text-slate-400 border border-slate-100 shadow-sm'
+                  }`}>
+                  <FileText size={32} className="stroke-[1.8]" />
+                </div>
+                <h4 className="text-[14px] font-bold text-slate-700 mb-1">
+                  {isDragActive ? "¡Suelta los archivos aquí!" : "Arrastra tus archivos XML"}
+                </h4>
+                <p className="text-[12px] text-slate-400 max-w-[280px] leading-relaxed">
+                  O haz clic para <span className="text-[#2383C2] font-semibold underline">explorar tu equipo</span>. Solo se admiten extensiones .xml
+                </p>
+              </div>
             </div>
+
+            <div className="px-6 py-3.5 bg-slate-50/80 border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400 font-medium">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verificación de duplicados activa
+              </span>
+              <span>Procesamiento inmediato</span>
+            </div>
+
           </div>
         </div>
       )}
