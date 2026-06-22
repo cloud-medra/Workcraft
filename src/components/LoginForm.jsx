@@ -86,7 +86,6 @@ const LoginForm = () => {
               <label className="block text-sm font-medium mb-1">Usuario o Correo</label>
               <div className="flex items-center">
                 <Mail className="absolute ml-3 text-gray-400" size={20} />
-                {/* CLASES CAMBIADAS AQUÍ: border-gray-200 y focus:ring-1 */}
                 <input 
                   {...register("email")} 
                   className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-1 focus:ring-[#2383C2] focus:border-[#2383C2] outline-none transition-all" 
@@ -100,7 +99,6 @@ const LoginForm = () => {
               <label className="block text-sm font-medium mb-1">Contraseña</label>
               <div className="flex items-center">
                 <Lock className="absolute ml-3 text-gray-400" size={20} />
-                {/* CLASES CAMBIADAS AQUÍ: border-gray-200 y focus:ring-1 */}
                 <input
                   {...register("password")}
                   type="password"
@@ -119,7 +117,7 @@ const LoginForm = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#2383C2] text-white p-3 rounded-xl font-bold hover:bg-[#006666] transition-all duration-200 mt-4 flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full bg-[#2383C2] text-white p-3 rounded-xl font-bold hover:bg-[#369BCE] transition-all duration-200 mt-4 flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {loading ? (
                 <>

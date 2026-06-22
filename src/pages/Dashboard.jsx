@@ -130,7 +130,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex bg-gray-50">
-      <aside className="w-48 bg-[#0E5B6D] text-white hidden md:flex flex-col shadow-xl">
+      <aside className="w-48 bg-[#2383C2] text-white hidden md:flex flex-col shadow-xl">
         <div className="p-4 text-lg font-bold border-b border-white/10 tracking-tight">Cloud - Medra</div>
 
         <nav className="flex-1 p-2 text-xs">
