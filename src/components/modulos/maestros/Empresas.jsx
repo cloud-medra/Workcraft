@@ -130,7 +130,7 @@ const Empresas = () => {
 
           {((!editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_registrar")) ||
             (editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_actualizar"))) && (
-              <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#3b4a6b] hover:bg-[#2d3a56]'} text-white`}>
+              <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} text-white`}>
                 {editingId ? <><Save size={14} /> Actualizar</> : <><Plus size={14} /> Registrar</>}
               </button>
             )}

@@ -92,7 +92,7 @@ const Margen = () => {
               <Calculator className="text-[#0E5B6D]" /> Configuración de Márgenes
             </h2>
             {hasPermission(PATH_VISTA, "panel_superior", "btn_guardar") && (
-              <button onClick={guardarCambios} className="bg-[#3b4a6b] text-white px-4 py-2 rounded text-[12px] font-bold flex items-center gap-2 hover:bg-[#2d3a56]">
+              <button onClick={guardarCambios} className="bg-[#2383C2] text-white px-4 py-2 rounded text-[12px] font-bold flex items-center gap-2 hover:bg-[#369BCE]">
                 <Save size={14} /> Guardar Cambios
               </button>
             )}

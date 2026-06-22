@@ -155,7 +155,7 @@ const Codigos = () => {
 
           {((!editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_registrar")) ||
             (editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_actualizar"))) && (
-              <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 ${editingId ? 'bg-amber-600' : 'bg-[#3b4a6b]'} text-white`}>
+              <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 ${editingId ? 'bg-amber-600' : 'bg-[#2383C2]'} text-white`}>
                 {editingId ? <><Save size={14} /> Actualizar</> : <><Plus size={14} /> Registrar</>}
               </button>
             )}

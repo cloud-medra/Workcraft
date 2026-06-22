@@ -299,7 +299,7 @@ const CrearUsuario = () => {
             </div>
           )}
           <div className="flex gap-2">
-            <button type="submit" disabled={loading} className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 text-white transition ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#3b4a6b] hover:bg-[#2d3a56]'} disabled:opacity-50`}>
+            <button type="submit" disabled={loading} className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 text-white transition ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} disabled:opacity-50`}>
               {loading ? <><Loader2 className="animate-spin" size={14} /> Procesando...</> : editingId ? <><Save size={14} /> Actualizar</> : <><Plus size={14} /> Registrar</>}
             </button>
             {editingId && (

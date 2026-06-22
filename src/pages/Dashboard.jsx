@@ -27,7 +27,6 @@ import IngresoFacturas from '../components/modulos/laboratorio/IngresoFacturas';
 import ResumenLaboratorio from '../components/modulos/laboratorio/ResumenLaboratorio';
 import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaboratorio';
 import ImportarOrden from '../components/modulos/laboratorio/ImportarOrden';
-import AuditoriaFactura from '../components/modulos/laboratorio/auditoriaFactura/AuditoriaFacturas';
 import ControlFacturas from '../components/modulos/laboratorio/controlFacturas/ControlFacturas';
 import CargaDatos from '../components/modulos/documentos/CargaDatos';
 import DashboardFinanciero from '../components/modulos/documentos/DashboardFinanciero';
@@ -82,7 +81,6 @@ const Dashboard = () => {
     '/laboratorio/resumenLaboratorio': <ResumenLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/importarOrden': <ImportarOrden />,
-    '/laboratorio/auditoriaFactura': <AuditoriaFactura />,
     '/laboratorio/controlFactura': <ControlFacturas />,
     '/documentos/carga': <CargaDatos />,
     '/documentos/DashboardFinanciero': <DashboardFinanciero />,
