@@ -68,7 +68,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
           <p className="text-[10px] text-gray-400 italic">Documento procesado automáticamente.</p>
           <button
             onClick={onClose}
-            className="bg-[#2383C2] hover:bg-[#0a4856] text-white px-8 py-2.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-[#2383C2]/20"
+            className="bg-[#2383C2] hover:bg-[#369BCE] text-white px-8 py-2.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-[#2383C2]/20"
           >
             Cerrar Detalles
           </button>

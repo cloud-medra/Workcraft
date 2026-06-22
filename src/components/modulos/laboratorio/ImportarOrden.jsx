@@ -195,7 +195,7 @@ const ImportarOrden = () => {
             {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar") && (
               <button
                 onClick={() => setShowModal(true)}
-                className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]"
+                className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#369BCE]"
               >
                 <Upload size={12} /> Importar Excel
               </button>

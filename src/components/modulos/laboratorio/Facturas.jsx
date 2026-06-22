@@ -149,7 +149,7 @@ const Facturas = () => {
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
         <FileText size={16} className="text-[#2383C2]" /> GESTIÓN DE FACTURAS
         {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar_xml") && (
-          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#369BCE]">
             <Upload size={12} /> Importar XML
           </button>
         )}
