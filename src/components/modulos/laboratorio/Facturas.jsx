@@ -80,32 +80,41 @@ const Facturas = () => {
         if (!existe.empty) { omitidos++; continue; }
 
         const detalles = Array.from(xmlDoc.getElementsByTagName("Detalle")).map(d => ({
-          nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent,
-          codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent,
-          nombre: d.getElementsByTagName("NmbItem")[0]?.textContent,
-          cantidad: d.getElementsByTagName("QtyItem")[0]?.textContent,
-          monto: d.getElementsByTagName("MontoItem")[0]?.textContent,
-          unidad: d.getElementsByTagName("UnmdItem")[0]?.textContent,
-          precio: d.getElementsByTagName("PrcItem")[0]?.textContent
+          nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent ?? "",
+          codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent ?? "N/A",
+          nombre: d.getElementsByTagName("NmbItem")[0]?.textContent ?? "",
+          cantidad: d.getElementsByTagName("QtyItem")[0]?.textContent ?? "0",
+          monto: d.getElementsByTagName("MontoItem")[0]?.textContent ?? "0",
+          unidad: d.getElementsByTagName("UnmdItem")[0]?.textContent ?? "Un", 
+          precio: d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0"   
         }));
 
         await setDoc(doc(db, COL_BASE, anio), { active: "true" }, { merge: true });
         await setDoc(doc(db, COL_BASE, anio, "meses", nombreMes), { active: "true" }, { merge: true });
 
-        if (!aniosDisponibles.includes(anio)) setAniosDisponibles(prev => [anio, ...prev].sort((a, b) => b - a));
-        if (!mesesDisponibles.includes(nombreMes)) setMesesDisponibles(prev => [...prev, nombreMes]);
+        // Corrección con Set para evitar duplicaciones asíncronas de Años
+        setAniosDisponibles(prev => {
+          const nuevoSet = new Set([...prev, anio]);
+          return Array.from(nuevoSet).sort((a, b) => b - a);
+        });
+
+        // Corrección con Set para evitar duplicaciones asíncronas de Meses
+        setMesesDisponibles(prev => {
+          const nuevoSet = new Set([...prev, nombreMes]);
+          return Array.from(nuevoSet);
+        });
 
         await addDoc(colRef, {
-          folio,
-          folioRef,
-          fchEmis,
+          folio: folio ?? "",
+          folioRef: folioRef ?? "N/A",
+          fchEmis: fchEmis ?? "",
           rznSoc: xmlDoc.getElementsByTagName("RznSoc")[0]?.textContent || "Sin Razón Social",
-          total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent, // Monto Neto corregido
+          total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent ?? "0",
           xmlOriginal: text,
           detalles,
           estado: "Pendiente",
-          fechaIngreso: null,
-          ocIngresada: null,
+          fechaIngreso: null, 
+          ocIngresada: null,  
           registradoPor: userData?.nombreCompleto || 'Usuario',
           fechaRegistro: new Date()
         });
@@ -122,7 +131,7 @@ const Facturas = () => {
     } finally {
       setCargando(false);
     }
-  }, [userData, showToast, aniosDisponibles, mesesDisponibles]);
+  }, [userData, showToast]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'application/xml': ['.xml'] } });
 
@@ -158,11 +167,11 @@ const Facturas = () => {
       <div className="bg-gray-50 p-3 flex flex-wrap gap-2 items-center border-b border-gray-200">
         <select value={filtroAnio} onChange={(e) => { setFiltroAnio(e.target.value); setFiltroMes(""); }} className="h-8 border border-gray-300 rounded text-[12px] px-2 outline-none">
           <option value="">Año</option>
-          {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
+          {aniosDisponibles.map((a, idx) => <option key={`anio-${a}-${idx}`} value={a}>{a}</option>)}
         </select>
         <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} className="h-8 border border-gray-300 rounded text-[12px] px-2 outline-none capitalize">
           <option value="">Mes</option>
-          {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
+          {mesesDisponibles.map((m, idx) => <option key={`mes-${m}-${idx}`} value={m}>{m}</option>)}
         </select>
         <div className="relative flex-grow max-w-sm">
           <Search className="absolute left-2 top-2 text-gray-400" size={14} />
