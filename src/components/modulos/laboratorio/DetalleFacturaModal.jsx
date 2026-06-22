@@ -11,7 +11,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
         <div className="flex justify-between items-center px-8 py-6 border-b border-gray-200 bg-white">
           <div>
             <h3 className="text-xl font-extrabold text-gray-800 flex items-center gap-2">
-              <FileText className="text-[#0E5B6D]" size={24} />
+              <FileText className="text-[#2383C2]" size={24} />
               Factura Electrónica
             </h3>
             <p className="text-sm text-gray-500 mt-1">Detalle de registro contable</p>
@@ -36,7 +36,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
         </div>
 
         <div className="px-8 py-4 border-b border-gray-100 flex items-center gap-3">
-          <Building2 size={16} className="text-[#0E5B6D]" />
+          <Building2 size={16} className="text-[#2383C2]" />
           <span className="text-xs font-bold text-gray-400 uppercase">Receptor:</span>
           <span className="text-sm font-semibold text-gray-800">{factura.rznSoc}</span>
         </div>
@@ -68,7 +68,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
           <p className="text-[10px] text-gray-400 italic">Documento procesado automáticamente.</p>
           <button
             onClick={onClose}
-            className="bg-[#0E5B6D] hover:bg-[#0a4856] text-white px-8 py-2.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-[#0E5B6D]/20"
+            className="bg-[#2383C2] hover:bg-[#0a4856] text-white px-8 py-2.5 rounded-lg text-xs font-bold transition-all shadow-lg shadow-[#2383C2]/20"
           >
             Cerrar Detalles
           </button>

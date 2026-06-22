@@ -111,21 +111,21 @@ const SolicitudExcel = () => {
         <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0 relative">
             {cargando && (
                 <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
-                    <Spinner size="md" color="#0E5B6D" />
+                    <Spinner size="md" color="#2383C2" />
                 </div>
             )}
 
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <h2 className="text-[14px] font-bold text-gray-700 flex items-center gap-2">
                     {vistaActual === 'detalle' && (
-                        <button onClick={() => setVistaActual('lista')} className="text-[#0E5B6D] hover:bg-gray-100 p-1 rounded">
+                        <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 p-1 rounded">
                             <ArrowLeft size={16} />
                         </button>
                     )}
                     {vistaActual === 'lista' ? 'SOLICITUDES PARA EXCEL' : `DETALLE FOLIO: ${ordenActual?.folio}`}
                 </h2>
                 {vistaActual === 'lista' && ordenes.length > 0 && (
-                    <button onClick={exportarExcel} className="flex items-center gap-2 px-3 py-1.5 bg-[#0E5B6D] text-white text-[11px] font-bold rounded hover:bg-[#0b4a58] transition-colors">
+                    <button onClick={exportarExcel} className="flex items-center gap-2 px-3 py-1.5 bg-[#2383C2] text-white text-[11px] font-bold rounded hover:bg-[#0b4a58] transition-colors">
                         <Download size={14} /> EXPORTAR EXCEL
                     </button>
                 )}
@@ -161,17 +161,17 @@ const SolicitudExcel = () => {
                     <tbody>
                         {vistaActual === 'lista' ? (
                             ordenes.map(o => (
-                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors cursor-pointer">
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">{o.folio}</td>
+                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors cursor-pointer">
+                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{o.folio}</td>
                                     <td className="p-3 border-b border-r border-gray-200 text-gray-600">{o.rznSoc}</td>
                                     <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Number(o.total || 0).toLocaleString()}</td>
                                     <td className="p-3 border-b border-r border-gray-200"><span className={`px-2 py-1 rounded text-[10px] font-bold ${colorEstado(o.estado)}`}>{o.estado}</span></td>
-                                    <td className="p-3 border-b border-gray-200"><button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#0E5B6D]"><Eye size={16} /></button></td>
+                                    <td className="p-3 border-b border-gray-200"><button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2]"><Eye size={16} /></button></td>
                                 </tr>
                             ))
                         ) : (
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
+                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
                                     <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
                                     <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">{item.nombre || item.descripcion}</td>
                                     <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>

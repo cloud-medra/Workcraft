@@ -140,16 +140,16 @@ const Facturas = () => {
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
           <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
-            <Spinner size="md" color="#0E5B6D" />
-            <h3 className="text-[#0E5B6D] font-bold text-[15px]">Procesando XML...</h3>
+            <Spinner size="md" color="#2383C2" />
+            <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando XML...</h3>
           </div>
         </div>
       )}
 
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <FileText size={16} className="text-[#0E5B6D]" /> GESTIÓN DE FACTURAS
+        <FileText size={16} className="text-[#2383C2]" /> GESTIÓN DE FACTURAS
         {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar_xml") && (
-          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
             <Upload size={12} /> Importar XML
           </button>
         )}
@@ -187,7 +187,7 @@ const Facturas = () => {
           </thead>
           <tbody>
             {facturasFiltradas.map((f) => (
-              <tr key={f.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
+              <tr key={f.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
                 <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-700">{f.folio}</td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-600">{f.fchEmis}</td>
                 <td className="p-3 border-b border-r border-gray-200 font-medium text-gray-500">{f.folioRef}</td>
@@ -199,7 +199,7 @@ const Facturas = () => {
                   </span>
                 </td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-600 text-[11px]">{f.fechaIngreso || '-'}</td>
-                <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">{f.ocIngresada || '-'}</td>
+                <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{f.ocIngresada || '-'}</td>
                 <td className="p-3 border-b border-gray-200 text-center">
                   <div className="flex justify-center gap-3">
                     <button onClick={() => setFacturaSeleccionada(f)} className="text-green-600 hover:text-green-800"><Eye size={15} /></button>
@@ -219,8 +219,8 @@ const Facturas = () => {
           <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#0E5B6D]/10 rounded-lg">
-                  <Upload size={18} className="text-[#0E5B6D]" />
+                <div className="p-2 bg-[#2383C2]/10 rounded-lg">
+                  <Upload size={18} className="text-[#2383C2]" />
                 </div>
                 <h3 className="font-bold text-gray-800">Importar Documentos XML</h3>
               </div>
@@ -229,7 +229,7 @@ const Facturas = () => {
               </button>
             </div>
             <div className="p-8">
-              <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-4 ${isDragActive ? "border-[#0E5B6D] bg-[#0E5B6D]/5" : "border-gray-200 hover:border-[#0E5B6D]/50 hover:bg-gray-50"}`}>
+              <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-4 ${isDragActive ? "border-[#2383C2] bg-[#2383C2]/5" : "border-gray-200 hover:border-[#2383C2]/50 hover:bg-gray-50"}`}>
                 <input {...getInputProps()} />
                 <div className="bg-gray-100 p-4 rounded-full">
                   <FileText size={32} className="text-gray-400" />

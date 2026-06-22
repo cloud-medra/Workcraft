@@ -249,8 +249,8 @@ const CargaDatos = () => {
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
           <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
-            <Spinner size="md" color="#0E5B6D" />
-            <h3 className="text-[#0E5B6D] font-bold">Procesando...</h3>
+            <Spinner size="md" color="#2383C2" />
+            <h3 className="text-[#2383C2] font-bold">Procesando...</h3>
           </div>
         </div>
       )}
@@ -258,8 +258,8 @@ const CargaDatos = () => {
       {vista === 'tabla' ? (
         <>
           <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-            <Folder size={16} className="text-[#0E5B6D]" /> GESTIÓN DE DATOS (EXCEL)
-            <button onClick={() => setShowModal(true)} className="ml-auto bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+            <Folder size={16} className="text-[#2383C2]" /> GESTIÓN DE DATOS (EXCEL)
+            <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
               <Upload size={12} /> Importar Excel
             </button>
           </h2>
@@ -315,12 +315,12 @@ const CargaDatos = () => {
         </>
       ) : (
         <div className="p-6 h-full overflow-auto">
-          <button onClick={() => setVista('tabla')} className="text-[#0E5B6D] font-bold mb-4 flex items-center gap-1 text-[12px] hover:underline">
+          <button onClick={() => setVista('tabla')} className="text-[#2383C2] font-bold mb-4 flex items-center gap-1 text-[12px] hover:underline">
             &larr; Volver a la tabla
           </button>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
-              <h3 className="text-[11px] font-bold text-[#0E5B6D] uppercase mb-3 border-b border-gray-100 pb-1">
+              <h3 className="text-[11px] font-bold text-[#2383C2] uppercase mb-3 border-b border-gray-100 pb-1">
                 Detalle de Admisión
               </h3>
               <div className="grid grid-cols-2 gap-4">
@@ -350,7 +350,7 @@ const CargaDatos = () => {
             <div className="bg-white p-4 rounded border border-gray-200 shadow-sm flex flex-col gap-4 text-[11px]">
 
               <div>
-                <h3 className="text-[11px] font-bold text-[#0E5B6D] uppercase mb-2 border-b border-gray-100 pb-1">
+                <h3 className="text-[11px] font-bold text-[#2383C2] uppercase mb-2 border-b border-gray-100 pb-1">
                   Resumen General Monto OC
                 </h3>
 
@@ -382,7 +382,7 @@ const CargaDatos = () => {
               </div>
 
               <div className="flex-grow flex flex-col min-h-[120px]">
-                <h3 className="text-[11px] font-bold text-[#0E5B6D] uppercase mb-1.5 border-b border-gray-100 pb-1">
+                <h3 className="text-[11px] font-bold text-[#2383C2] uppercase mb-1.5 border-b border-gray-100 pb-1">
                   Monto OC por Proveedor
                 </h3>
 
@@ -426,8 +426,8 @@ const CargaDatos = () => {
             {cargandoDetalle && (
               <div className="absolute top-10 left-0 right-0 z-10 flex justify-center bg-white/80 pt-4">
                 <div className="flex flex-col items-center gap-2">
-                  <Spinner size="sm" color="#0E5B6D" />
-                  <span className="text-[10px] text-[#0E5B6D] font-bold">Cargando registros...</span>
+                  <Spinner size="sm" color="#2383C2" />
+                  <span className="text-[10px] text-[#2383C2] font-bold">Cargando registros...</span>
                 </div>
               </div>
             )}

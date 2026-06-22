@@ -263,22 +263,22 @@ const CrearUsuario = () => {
   return (
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0">
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <User size={16} className="text-[#0E5B6D]" /> {editingId ? "EDITAR USUARIO Y PERMISOS" : "REGISTRO Y CONTROL DE USUARIOS"}
+        <User size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR USUARIO Y PERMISOS" : "REGISTRO Y CONTROL DE USUARIOS"}
       </h2>
 
       <form onSubmit={handleGuardar} className="p-4 flex flex-col gap-4 border-b border-gray-200 bg-gray-50/50">
         <div className="flex flex-wrap items-end gap-4">
           <div className="w-[220px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nombre Completo</label>
-            <input required value={formData.nombreCompleto} onChange={e => setFormData({ ...formData, nombreCompleto: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D] bg-white" placeholder="Ej: Juan Pérez" />
+            <input required value={formData.nombreCompleto} onChange={e => setFormData({ ...formData, nombreCompleto: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2] bg-white" placeholder="Ej: Juan Pérez" />
           </div>
           <div className="w-[180px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nombre de Usuario</label>
-            <input required value={formData.nombreUsuario} onChange={e => setFormData({ ...formData, nombreUsuario: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D] bg-white" placeholder="Ej: jperez" />
+            <input required value={formData.nombreUsuario} onChange={e => setFormData({ ...formData, nombreUsuario: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2] bg-white" placeholder="Ej: jperez" />
           </div>
           <div className="w-[220px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Email</label>
-            <input required type="email" disabled={!!editingId} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D] bg-white disabled:bg-gray-100 disabled:text-gray-400" placeholder="Ej: juan@medra.cl" />
+            <input required type="email" disabled={!!editingId} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2] bg-white disabled:bg-gray-100 disabled:text-gray-400" placeholder="Ej: juan@medra.cl" />
           </div>
           <div className="w-[140px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Rol</label>
@@ -310,12 +310,12 @@ const CrearUsuario = () => {
 
         <div className="border-t border-gray-200 pt-3 mt-1">
           <span className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1.5 mb-2">
-            <ShieldCheck size={14} className="text-[#0E5B6D]" /> 1. Accesos a Módulos y Pantallas Básicas
+            <ShieldCheck size={14} className="text-[#2383C2]" /> 1. Accesos a Módulos y Pantallas Básicas
           </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
             {Object.keys(MODULES).map((mKey) => (
               <div key={mKey} className="bg-white p-2 rounded border border-gray-200 shadow-sm flex flex-col">
-                <span className="block text-[10px] font-black text-[#0E5B6D] border-b border-gray-100 pb-1 mb-2 uppercase truncate">{MODULES[mKey].label}</span>
+                <span className="block text-[10px] font-black text-[#2383C2] border-b border-gray-100 pb-1 mb-2 uppercase truncate">{MODULES[mKey].label}</span>
                 <div className="space-y-1 max-h-[140px] overflow-y-auto pr-1">
                   {MODULES[mKey].subItems?.map((sub) => {
                     const esModuloUsuarios = sub.path === '/configuracion/crear-usuario';
@@ -329,7 +329,7 @@ const CrearUsuario = () => {
                         <label className={`flex items-start gap-1.5 text-[10px] flex-grow truncate ${estaBloqueadoPorRol ? 'text-gray-400 font-medium cursor-not-allowed' : 'text-gray-600 cursor-pointer'}`}>
                           <input
                             type="checkbox"
-                            className="w-3 h-3 mt-0.5 accent-[#0E5B6D] rounded border-gray-300 flex-shrink-0 disabled:opacity-50"
+                            className="w-3 h-3 mt-0.5 accent-[#2383C2] rounded border-gray-300 flex-shrink-0 disabled:opacity-50"
                             checked={estaMarcado}
                             disabled={estaBloqueadoPorRol}
                             onChange={() => toggleSubItem(mKey, sub.path)}
@@ -340,7 +340,7 @@ const CrearUsuario = () => {
                         </label>
 
                         {estaMarcado && tieneEstructuraGranular && editingId && (
-                          <button type="button" onClick={() => setVistaActivaGranular(vistaActivaGranular === sub.path ? null : sub.path)} className={`p-0.5 rounded ml-1 transition-colors ${vistaActivaGranular === sub.path ? 'bg-[#0E5B6D] text-white' : 'text-gray-400 hover:text-[#0E5B6D]'}`} title="Configurar control granular (Secciones y Datos)">
+                          <button type="button" onClick={() => setVistaActivaGranular(vistaActivaGranular === sub.path ? null : sub.path)} className={`p-0.5 rounded ml-1 transition-colors ${vistaActivaGranular === sub.path ? 'bg-[#2383C2] text-white' : 'text-gray-400 hover:text-[#2383C2]'}`} title="Configurar control granular (Secciones y Datos)">
                             <LayoutGrid size={12} />
                           </button>
                         )}
@@ -357,7 +357,7 @@ const CrearUsuario = () => {
       <div className="bg-gray-50 p-3 flex justify-between items-center border-b border-gray-200">
         <div className="relative w-72">
           <Search className="absolute left-2 top-2 text-gray-400" size={14} />
-          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 rounded text-[12px] outline-none bg-white focus:border-[#0E5B6D]" placeholder="Buscar por nombre, usuario o email..." />
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 rounded text-[12px] outline-none bg-white focus:border-[#2383C2]" placeholder="Buscar por nombre, usuario o email..." />
         </div>
       </div>
 
@@ -377,7 +377,7 @@ const CrearUsuario = () => {
           </thead>
           <tbody>
             {usuariosFiltrados.map((u, index) => (
-              <tr key={u.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50/80 transition-colors">
+              <tr key={u.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 transition-colors">
                 <td className="p-3 border-b border-r border-gray-200 text-gray-500 font-bold">{index + 1}</td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-700 font-medium">{u.nombreCompleto}</td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-600">{u.nombreUsuario}</td>
@@ -405,7 +405,7 @@ const CrearUsuario = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
           <div className="bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden">
             <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
-              <span className="text-[13px] font-bold text-[#0E5B6D] uppercase flex items-center gap-2">
+              <span className="text-[13px] font-bold text-[#2383C2] uppercase flex items-center gap-2">
                 <LayoutGrid size={16} /> 2. Control Granular Avanzado: <span className="underline font-black text-gray-800">{COMPONENT_MAPS[vistaActivaGranular].label}</span>
               </span>
               <button type="button" onClick={() => setVistaActivaGranular(null)} className="text-gray-400 hover:text-gray-600 bg-gray-200/50 hover:bg-gray-200 p-1 rounded-full transition">
@@ -456,7 +456,7 @@ const CrearUsuario = () => {
             </div>
 
             <div className="p-3 bg-gray-50 border-t border-gray-200 flex justify-end">
-              <button type="button" onClick={() => setVistaActivaGranular(null)} className="px-4 h-8 bg-[#0E5B6D] text-white font-bold text-[12px] rounded hover:bg-[#0b4857] transition shadow-sm">
+              <button type="button" onClick={() => setVistaActivaGranular(null)} className="px-4 h-8 bg-[#2383C2] text-white font-bold text-[12px] rounded hover:bg-[#0b4857] transition shadow-sm">
                 Listo, Guardar Cambios Temporales
               </button>
             </div>

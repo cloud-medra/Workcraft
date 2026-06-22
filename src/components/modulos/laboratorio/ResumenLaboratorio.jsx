@@ -38,7 +38,7 @@ const ResumenLaboratorio = () => {
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
         <h2 className="text-[14px] font-bold text-gray-700 flex items-center gap-2">
-          <BarChart3 size={16} className="text-[#0E5B6D]" /> RESUMEN FINANCIERO
+          <BarChart3 size={16} className="text-[#2383C2]" /> RESUMEN FINANCIERO
         </h2>
         <select
           value={filtroAnio}
@@ -61,9 +61,9 @@ const ResumenLaboratorio = () => {
           </thead>
           <tbody>
             {resumen.map((r) => (
-              <tr key={r.mes} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors uppercase">
+              <tr key={r.mes} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors uppercase">
                 <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-700">{r.mes}</td>
-                <td className="p-3 border-b border-r border-gray-200 font-medium text-[#0E5B6D]">{formatCLP(r.totalActa)}</td>
+                <td className="p-3 border-b border-r border-gray-200 font-medium text-[#2383C2]">{formatCLP(r.totalActa)}</td>
                 <td className="p-3 border-b border-r border-gray-200 font-medium text-amber-600">{formatCLP(r.totalSalida)}</td>
                 <td className="p-3 border-b border-gray-200 text-gray-400">
                   {r.ultimaActualizacion?.toDate().toLocaleDateString()}

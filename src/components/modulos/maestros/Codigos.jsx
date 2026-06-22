@@ -117,13 +117,13 @@ const Codigos = () => {
     return matchBusqueda && matchFiltro;
   });
 
-  const inputClass = "w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D] transition-colors";
+  const inputClass = "w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2] transition-colors";
   const descClass = `${inputClass} ${!formData.descripcion ? 'border-red-500' : ''}`;
 
   return (
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0">
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <Barcode size={16} className="text-[#0E5B6D]" /> {editingId ? "EDITAR CÓDIGO" : "REGISTRO DE CÓDIGOS"}
+        <Barcode size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR CÓDIGO" : "REGISTRO DE CÓDIGOS"}
       </h2>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
@@ -181,7 +181,7 @@ const Codigos = () => {
             </div>
           )}
           {hasPermission(PATH_VISTA, "barra_filtros", "btn_toggle_sin_codigo") && (
-            <button onClick={() => setFiltroSinCodigo(!filtroSinCodigo)} className={`mt-4 flex items-center gap-2 px-3 h-8 rounded text-[11px] font-bold ${filtroSinCodigo ? 'bg-[#0E5B6D] text-white' : 'bg-gray-200 text-gray-700'}`}>
+            <button onClick={() => setFiltroSinCodigo(!filtroSinCodigo)} className={`mt-4 flex items-center gap-2 px-3 h-8 rounded text-[11px] font-bold ${filtroSinCodigo ? 'bg-[#2383C2] text-white' : 'bg-gray-200 text-gray-700'}`}>
               <Filter size={14} /> {filtroSinCodigo ? 'MOSTRANDO SIN CÓDIGO' : 'FILTRAR SIN CÓDIGO'}
             </button>
           )}
@@ -211,12 +211,12 @@ const Codigos = () => {
             </thead>
             <tbody>
               {codigosFiltrados.map(c => (
-                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50">
+                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50">
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_referencia") && <td className="p-3 border-b border-r border-gray-200">{c.referencia}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_detalle") && <td className="p-3 border-b border-r border-gray-200">{c.detalle}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && <td className="p-3 border-b border-r border-gray-200 font-bold">$ {formatMiles(c.precioCosto)}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_empresa") && <td className="p-3 border-b border-r border-gray-200">{c.empresa}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">{c.codigo || '-'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{c.codigo || '-'}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_descripcion") && <td className="p-3 border-b border-r border-gray-200">{c.descripcion}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_tipo_atributo") && (
                     <>

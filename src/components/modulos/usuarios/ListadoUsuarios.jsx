@@ -42,7 +42,7 @@ const ListadoUsuarios = () => {
   return (
     <div className="max-w-5xl">
       <h3 className="text-2xl font-bold mb-6 text-gray-800 flex items-center gap-2">
-        <User className="text-[#0E5B6D]" /> Listado de Usuarios
+        <User className="text-[#2383C2]" /> Listado de Usuarios
       </h3>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -71,12 +71,12 @@ const ListadoUsuarios = () => {
                   <td className="p-4 font-bold text-gray-800">{u.nombreCompleto}</td>
                   <td className="p-4">
                     <span className="flex items-center gap-1 text-gray-500 font-medium">
-                      <AtSign size={14} className="text-[#0E5B6D]" /> {u.nombreUsuario}
+                      <AtSign size={14} className="text-[#2383C2]" /> {u.nombreUsuario}
                     </span>
                   </td>
                   <td className="p-4 text-gray-600">{u.email}</td>
                   <td className="p-4">
-                    <span className="px-2 py-1 rounded-full bg-[#0E5B6D]/10 text-[#0E5B6D] text-[10px] font-bold uppercase tracking-wider border border-[#0E5B6D]/20">
+                    <span className="px-2 py-1 rounded-full bg-[#2383C2]/10 text-[#2383C2] text-[10px] font-bold uppercase tracking-wider border border-[#2383C2]/20">
                       {u.rol}
                     </span>
                   </td>

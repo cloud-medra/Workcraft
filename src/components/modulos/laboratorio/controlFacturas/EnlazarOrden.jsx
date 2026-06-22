@@ -176,15 +176,15 @@ const EnlazarOrden = () => {
             {cargando && (
                 <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
                     <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
-                        <Spinner size="md" color="#0E5B6D" />
-                        <h3 className="text-[#0E5B6D] font-bold text-[15px]">Procesando...</h3>
+                        <Spinner size="md" color="#2383C2" />
+                        <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando...</h3>
                     </div>
                 </div>
             )}
 
             <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
                 {vistaActual === 'detalle' && (
-                    <button onClick={() => setVistaActual('lista')} className="text-[#0E5B6D] hover:bg-gray-100 p-1 rounded">
+                    <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 p-1 rounded">
                         <ArrowLeft size={16} />
                     </button>
                 )}
@@ -196,7 +196,7 @@ const EnlazarOrden = () => {
                                 {ordenActual.estado}
                             </span>
                         )}
-                        <button onClick={abrirModalEnlace} className="bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+                        <button onClick={abrirModalEnlace} className="bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
                             <CheckCircle size={12} /> {ordenEnlazada ? 'ACTUALIZAR ORDEN' : 'ENLAZAR ORDEN'}
                         </button>
                     </div>
@@ -237,8 +237,8 @@ const EnlazarOrden = () => {
                     <tbody>
                         {vistaActual === 'lista' ? (
                             ordenes.map(o => (
-                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">{o.folio}</td>
+                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
+                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{o.folio}</td>
                                     <td className="p-3 border-b border-r border-gray-200 text-gray-600">{o.rznSoc}</td>
                                     <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Number(o.total || 0).toLocaleString()}</td>
                                     <td className="p-3 border-b border-r border-gray-200">
@@ -247,13 +247,13 @@ const EnlazarOrden = () => {
                                         </span>
                                     </td>
                                     <td className="p-3 border-b border-gray-200">
-                                        <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#0E5B6D]"><Eye size={16} /></button>
+                                        <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2]"><Eye size={16} /></button>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
+                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
                                     <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
                                     <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">{item.nombre || item.descripcion}</td>
                                     <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>
@@ -286,15 +286,15 @@ const EnlazarOrden = () => {
                             </button>
                         </div>
                         <div className="p-4 grid grid-cols-2 gap-3 border-b border-gray-100 bg-white">
-                            <select onChange={(e) => setFiltroAnioBase(e.target.value)} className="w-full border border-gray-200 px-3 py-2 rounded-lg text-[12px] outline-none focus:border-[#0E5B6D] transition-colors">
+                            <select onChange={(e) => setFiltroAnioBase(e.target.value)} className="w-full border border-gray-200 px-3 py-2 rounded-lg text-[12px] outline-none focus:border-[#2383C2] transition-colors">
                                 <option value="">Año</option>
                                 {aniosBase.map(a => <option key={a} value={a}>{a}</option>)}
                             </select>
-                            <select onChange={(e) => setFiltroMesBase(e.target.value)} className="w-full border border-gray-200 px-3 py-2 rounded-lg text-[12px] capitalize outline-none focus:border-[#0E5B6D] transition-colors">
+                            <select onChange={(e) => setFiltroMesBase(e.target.value)} className="w-full border border-gray-200 px-3 py-2 rounded-lg text-[12px] capitalize outline-none focus:border-[#2383C2] transition-colors">
                                 <option value="">Mes</option>
                                 {mesesBase.map(m => <option key={m} value={m}>{m}</option>)}
                             </select>
-                            <button onClick={buscarOrdenesEnBase} className="col-span-2 bg-[#0E5B6D] text-white py-2 rounded-lg text-[12px] font-bold hover:bg-[#0a4856] transition-all">
+                            <button onClick={buscarOrdenesEnBase} className="col-span-2 bg-[#2383C2] text-white py-2 rounded-lg text-[12px] font-bold hover:bg-[#0a4856] transition-all">
                                 BUSCAR ÓRDENES
                             </button>
                         </div>
@@ -312,15 +312,15 @@ const EnlazarOrden = () => {
                                         {ordenesEncontradas.map((o) => (
                                             <tr key={o.id} onClick={() => handleSeleccionarOrden(o)} className="group hover:bg-[#F8FAFB] cursor-pointer transition-all duration-200">
                                                 <td className="px-6 py-4 text-[13px] font-semibold text-gray-700">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded font-mono text-[11px] text-gray-500 group-hover:bg-[#0E5B6D] group-hover:text-white transition-colors">
+                                                    <span className="bg-gray-100 px-2 py-0.5 rounded font-mono text-[11px] text-gray-500 group-hover:bg-[#2383C2] group-hover:text-white transition-colors">
                                                         {o["Nro.Orden"]}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-[13px] text-gray-600 font-medium group-hover:text-[#0E5B6D] transition-colors">
+                                                <td className="px-6 py-4 text-[13px] text-gray-600 font-medium group-hover:text-[#2383C2] transition-colors">
                                                     {o["Proveedor"]}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">
-                                                    <span className="inline-flex items-center text-[11px] font-bold text-[#0E5B6D] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <span className="inline-flex items-center text-[11px] font-bold text-[#2383C2] opacity-0 group-hover:opacity-100 transition-opacity">
                                                         SELECCIONAR →
                                                     </span>
                                                 </td>

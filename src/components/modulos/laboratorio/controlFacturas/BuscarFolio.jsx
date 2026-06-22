@@ -111,14 +111,14 @@ const BuscarFolio = () => {
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0 relative">
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
-          <Spinner size="md" color="#0E5B6D" />
+          <Spinner size="md" color="#2383C2" />
         </div>
       )}
 
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <FileCheck size={16} className="text-[#0E5B6D]" /> PROCESAR FACTURAS
+        <FileCheck size={16} className="text-[#2383C2]" /> PROCESAR FACTURAS
         {buffer.length > 0 && (
-          <button onClick={handleGuardarMasivo} className="ml-auto bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+          <button onClick={handleGuardarMasivo} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
             <Save size={12} /> Guardar {buffer.length} registros
           </button>
         )}
@@ -137,7 +137,7 @@ const BuscarFolio = () => {
           <Search className="absolute left-2 top-2 text-gray-400" size={14} />
           <input value={folioBusqueda} onChange={e => setFolioBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 rounded text-[12px] outline-none" placeholder="Buscar por Folio..." />
         </div>
-        <button onClick={handleBuscarFolio} className="h-8 px-4 bg-[#0E5B6D] text-white rounded text-[12px] font-bold hover:bg-[#0a4856]">BUSCAR</button>
+        <button onClick={handleBuscarFolio} className="h-8 px-4 bg-[#2383C2] text-white rounded text-[12px] font-bold hover:bg-[#0a4856]">BUSCAR</button>
       </div>
 
       <div className="flex-grow overflow-auto">
@@ -168,15 +168,15 @@ const BuscarFolio = () => {
                   <div className="flex justify-center gap-2">
                     <button onClick={() => setFacturaEncontrada(null)} className="text-red-500 font-bold hover:underline">Eliminar</button>
                     {!facturaEncontrada.yaRegistrado && (
-                      <button onClick={handleAnadirAlBuffer} className="text-[#0E5B6D] font-bold hover:underline">Añadir</button>
+                      <button onClick={handleAnadirAlBuffer} className="text-[#2383C2] font-bold hover:underline">Añadir</button>
                     )}
                   </div>
                 </td>
               </tr>
             )}
             {buffer.map((f, i) => (
-              <tr key={i} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
-                <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">{f.folio}</td>
+              <tr key={i} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
+                <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{f.folio}</td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-600">{f.fchEmis}</td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-600">{f.rznSoc}</td>
                 <td className="p-3 border-b border-r border-gray-200 text-gray-600">{f.detalles?.length || 0}</td>

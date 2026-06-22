@@ -48,19 +48,19 @@ const CambiarPasswordSeguro = () => {
         <div>
           <label className="block text-sm font-bold text-gray-700">Contraseña Actual</label>
           <input type="password" value={passwordActual} onChange={(e) => setPasswordActual(e.target.value)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-[#0E5B6D] outline-none" required />
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-[#2383C2] outline-none" required />
         </div>
 
         <div>
           <label className="block text-sm font-bold text-gray-700">Nueva Contraseña</label>
           <input type="password" value={nuevaPassword} onChange={(e) => setNuevaPassword(e.target.value)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-[#0E5B6D] outline-none" required />
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-[#2383C2] outline-none" required />
         </div>
 
         <div>
           <label className="block text-sm font-bold text-gray-700">Confirmar Contraseña</label>
           <input type="password" value={confirmarPassword} onChange={(e) => setConfirmarPassword(e.target.value)}
-            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-[#0E5B6D] outline-none" required />
+            className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-[#2383C2] outline-none" required />
         </div>
 
         <div className="text-xs space-y-1 text-gray-500">
@@ -69,7 +69,7 @@ const CambiarPasswordSeguro = () => {
           <p className={tieneNumero ? 'text-green-600' : ''}>• Al menos un número</p>
         </div>
 
-        <button type="submit" className="w-full bg-[#0E5B6D] text-white py-2 rounded-lg font-bold hover:bg-[#0a4a58] transition">
+        <button type="submit" className="w-full bg-[#2383C2] text-white py-2 rounded-lg font-bold hover:bg-[#0a4a58] transition">
           Actualizar Contraseña
         </button>
 

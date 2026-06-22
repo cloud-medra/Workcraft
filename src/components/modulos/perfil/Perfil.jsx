@@ -9,7 +9,7 @@ const Perfil = ({ userData }) => {
       <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-4">
 
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg border">
-          <User className="text-[#0E5B6D]" />
+          <User className="text-[#2383C2]" />
           <div>
             <p className="text-xs text-gray-400 uppercase font-bold">Nombre Completo</p>
             <p className="font-semibold text-gray-700">{userData.nombreCompleto || 'No disponible'}</p>
@@ -17,7 +17,7 @@ const Perfil = ({ userData }) => {
         </div>
 
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg border">
-          <AtSign className="text-[#0E5B6D]" />
+          <AtSign className="text-[#2383C2]" />
           <div>
             <p className="text-xs text-gray-400 uppercase font-bold">Nombre de Usuario</p>
             <p className="font-semibold text-gray-700">{userData.nombreUsuario || 'No disponible'}</p>
@@ -25,7 +25,7 @@ const Perfil = ({ userData }) => {
         </div>
 
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg border">
-          <Mail className="text-[#0E5B6D]" />
+          <Mail className="text-[#2383C2]" />
           <div>
             <p className="text-xs text-gray-400 uppercase font-bold">Email</p>
             <p className="font-semibold text-gray-700">{userData.email || 'No disponible'}</p>
@@ -33,7 +33,7 @@ const Perfil = ({ userData }) => {
         </div>
 
         <div className="flex items-center gap-4 p-4 bg-white rounded-lg border">
-          <Shield className="text-[#0E5B6D]" />
+          <Shield className="text-[#2383C2]" />
           <div>
             <p className="text-xs text-gray-400 uppercase font-bold">Rol</p>
             <p className="font-semibold text-gray-700 capitalize">{userData.rol || 'No asignado'}</p>

@@ -53,12 +53,12 @@ const ResumenFacturas = () => {
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden relative">
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
-          <Spinner size="md" color="#0E5B6D" />
+          <Spinner size="md" color="#2383C2" />
         </div>
       )}
 
       <h2 className="text-[14px] font-bold text-gray-700 p-4 border-b border-gray-200 flex items-center gap-2">
-        <FileText size={16} className="text-[#0E5B6D]" /> RESUMEN FACTURAS INGRESADAS
+        <FileText size={16} className="text-[#2383C2]" /> RESUMEN FACTURAS INGRESADAS
       </h2>
 
       <div className="bg-gray-50 p-3 flex gap-2 items-center border-b border-gray-200">
@@ -70,7 +70,7 @@ const ResumenFacturas = () => {
           <option value="">Mes</option>
           {["01","02","03","04","05","06","07","08","09","10","11","12"].map(m => <option key={m} value={m}>{m}</option>)}
         </select>
-        <button onClick={fetchResumen} className="h-8 px-4 bg-[#0E5B6D] text-white rounded text-[12px] font-bold hover:bg-[#0a4856]">
+        <button onClick={fetchResumen} className="h-8 px-4 bg-[#2383C2] text-white rounded text-[12px] font-bold hover:bg-[#0a4856]">
           CONSULTAR
         </button>
       </div>
@@ -89,7 +89,7 @@ const ResumenFacturas = () => {
           <tbody>
             {resumenes.map((f, i) => (
               <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="p-3 font-bold text-[#0E5B6D]">{f.folio}</td>
+                <td className="p-3 font-bold text-[#2383C2]">{f.folio}</td>
                 <td className="p-3">{f.fchEmis}</td>
                 <td className="p-3">{f.rznSoc}</td>
                 <td className="p-3 font-bold text-gray-800">${Number(f.total || 0).toLocaleString()}</td>

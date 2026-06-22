@@ -133,7 +133,7 @@ const GestorDocumentos = ({ firestorePath, storagePath, documentosExistentes = [
                   disabled={descargandoId !== null}
                   className="p-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-md shadow-xs"
                 >
-                  {descargandoId === docObj.idStorage ? <Loader2 size={12} className="animate-spin text-[#0E5B6D]" /> : <Eye size={12} />}
+                  {descargandoId === docObj.idStorage ? <Loader2 size={12} className="animate-spin text-[#2383C2]" /> : <Eye size={12} />}
                 </button>
                 {hasPermission(RUTA, 'gestor_documentos', 'cargaDatos_gestor_eliminar') && (
                   <button onClick={() => handleEliminarDocumento(docObj)} className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-md">
@@ -155,11 +155,11 @@ const GestorDocumentos = ({ firestorePath, storagePath, documentosExistentes = [
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); procesarArchivos(Array.from(e.dataTransfer.files)); }}
-          className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${isDragging ? 'border-[#0E5B6D] bg-[#0E5B6D]/5 scale-[0.99]' : 'border-slate-200 bg-slate-50/50 hover:border-[#0E5B6D]'
+          className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${isDragging ? 'border-[#2383C2] bg-[#2383C2]/5 scale-[0.99]' : 'border-slate-200 bg-slate-50/50 hover:border-[#2383C2]'
             }`}
         >
           <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-center">
-            <UploadCloud size={36} className={`mb-1 ${isDragging ? 'text-[#0E5B6D]' : 'text-slate-400'}`} />
+            <UploadCloud size={36} className={`mb-1 ${isDragging ? 'text-[#2383C2]' : 'text-slate-400'}`} />
             <span className="text-[13px] font-bold text-slate-700">Arrastra todos los archivos PDF juntos aquí</span>
             <span className="text-[11px] text-slate-400 mt-0.5">Soporta informes y Órdenes de Compra en masa</span>
             <input type="file" multiple accept="application/pdf" className="hidden" onChange={(e) => procesarArchivos(Array.from(e.target.files))} />
@@ -172,17 +172,17 @@ const GestorDocumentos = ({ firestorePath, storagePath, documentosExistentes = [
           {Object.values(archivosCargando).map((item, idx) => (
             <div key={idx} className="flex items-center justify-between text-[11px] bg-white p-2 rounded-lg border border-slate-100">
               <div className="flex items-center gap-2 overflow-hidden w-3/4">
-                <Loader2 size={12} className="animate-spin text-[#0E5B6D] flex-shrink-0" />
+                <Loader2 size={12} className="animate-spin text-[#2383C2] flex-shrink-0" />
                 <span className="truncate text-slate-600 font-medium">{item.nombre}</span>
               </div>
-              <span className="font-bold text-[#0E5B6D] text-[10px]">{item.progreso}%</span>
+              <span className="font-bold text-[#2383C2] text-[10px]">{item.progreso}%</span>
             </div>
           ))}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {renderLista(docsClinicos, "Expediente / Informes Clínicos", ClipboardList, "text-[#0E5B6D]")}
+        {renderLista(docsClinicos, "Expediente / Informes Clínicos", ClipboardList, "text-[#2383C2]")}
         {renderLista(docsOC, "Órdenes de Compra (OC)", ShoppingBag, "text-amber-500")}
       </div>
     </div>

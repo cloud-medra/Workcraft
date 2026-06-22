@@ -164,8 +164,8 @@ const ImportarOrden = () => {
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
           <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
-            <Spinner size="md" color="#0E5B6D" />
-            <h3 className="text-[#0E5B6D] font-bold text-[15px]">Procesando...</h3>
+            <Spinner size="md" color="#2383C2" />
+            <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando...</h3>
           </div>
         </div>
       )}
@@ -175,12 +175,12 @@ const ImportarOrden = () => {
           <>
             <button
               onClick={() => setOrdenSeleccionada(null)}
-              className="hover:text-[#0E5B6D] transition-colors"
+              className="hover:text-[#2383C2] transition-colors"
             >
               <ArrowLeft size={16} />
             </button>
             <div className="flex flex-col">
-              <span className="text-[#0E5B6D]">ORDEN N° {ordenSeleccionada.id}</span>
+              <span className="text-[#2383C2]">ORDEN N° {ordenSeleccionada.id}</span>
               <div className="flex gap-4 text-[11px] font-normal text-gray-500 mt-0.5">
                 <span>📅 {ordenSeleccionada["F.Orden"]}</span>
                 <span>🏢 {ordenSeleccionada["Proveedor"]}</span>
@@ -190,12 +190,12 @@ const ImportarOrden = () => {
           </>
         ) : (
           <>
-            <FileSpreadsheet size={16} className="text-[#0E5B6D]" />
+            <FileSpreadsheet size={16} className="text-[#2383C2]" />
             GESTIÓN DE ÓRDENES
             {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar") && (
               <button
                 onClick={() => setShowModal(true)}
-                className="ml-auto bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]"
+                className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]"
               >
                 <Upload size={12} /> Importar Excel
               </button>
@@ -251,7 +251,7 @@ const ImportarOrden = () => {
                 o["Proveedor"]?.toLowerCase().includes(busqueda.toLowerCase()) ||
                 o["Rut proveedor"]?.toLowerCase().includes(busqueda.toLowerCase())
               ).map((o) => (
-                <tr key={o.id} onDoubleClick={() => setOrdenSeleccionada(o)} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors cursor-pointer">
+                <tr key={o.id} onDoubleClick={() => setOrdenSeleccionada(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors cursor-pointer">
                   <td className="p-3 border-b border-r border-gray-200 font-bold">{o["Nro.Orden"]}</td>
                   <td className="p-3 border-b border-r border-gray-200">{o["F.Orden"]}</td>
                   <td className="p-3 border-b border-r border-gray-200">{o["Rut proveedor"]}</td>
@@ -259,7 +259,7 @@ const ImportarOrden = () => {
                   <td className="p-3 border-b border-r border-gray-200">{o.totalItems}</td>
                   <td className="p-3 border-b border-r border-gray-200">${o.totalOrden?.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td className="p-3 border-b border-gray-200 text-center">
-                    <Eye size={15} className="text-gray-400 hover:text-[#0E5B6D] transition-colors inline-block cursor-pointer" onClick={() => setOrdenSeleccionada(o)} />
+                    <Eye size={15} className="text-gray-400 hover:text-[#2383C2] transition-colors inline-block cursor-pointer" onClick={() => setOrdenSeleccionada(o)} />
                   </td>
                 </tr>
               ))
@@ -282,8 +282,8 @@ const ImportarOrden = () => {
 
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#0E5B6D]/10 rounded-lg">
-                  <Upload size={18} className="text-[#0E5B6D]" />
+                <div className="p-2 bg-[#2383C2]/10 rounded-lg">
+                  <Upload size={18} className="text-[#2383C2]" />
                 </div>
                 <h3 className="font-bold text-gray-800">Importar Orden Excel</h3>
               </div>
@@ -295,7 +295,7 @@ const ImportarOrden = () => {
             <div className="p-8">
               <div
                 {...getRootProps()}
-                className="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-4 border-gray-200 hover:border-[#0E5B6D]/50 hover:bg-gray-50"
+                className="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-4 border-gray-200 hover:border-[#2383C2]/50 hover:bg-gray-50"
               >
                 <input {...getInputProps()} />
                 <div className="bg-gray-100 p-4 rounded-full">

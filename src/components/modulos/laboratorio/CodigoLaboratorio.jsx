@@ -94,7 +94,7 @@ const CodigoLaboratorio = () => {
       )}
 
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <Package size={16} className="text-[#0E5B6D]" /> {editingId ? "EDITAR CÓDIGO" : "GESTIÓN DE CÓDIGOS"}
+        <Package size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR CÓDIGO" : "GESTIÓN DE CÓDIGOS"}
       </h2>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
@@ -105,23 +105,23 @@ const CodigoLaboratorio = () => {
               required
               value={formData.referencia}
               onChange={e => setFormData({ ...formData, referencia: e.target.value.toUpperCase() })}
-              className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D] uppercase"
+              className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2] uppercase"
             />
           </div>
           <div className="w-[150px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Código</label>
-            <input required value={formData.codigo} onChange={e => setFormData({ ...formData, codigo: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D]" />
+            <input required value={formData.codigo} onChange={e => setFormData({ ...formData, codigo: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2]" />
           </div>
           <div className="w-[150px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Precio</label>
-            <input type="number" required value={formData.precio} onChange={e => setFormData({ ...formData, precio: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D]" />
+            <input type="number" required value={formData.precio} onChange={e => setFormData({ ...formData, precio: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2]" />
           </div>
           <div className="flex-1 min-w-[200px]">
             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descripción</label>
             <input
               value={formData.descripcion}
               onChange={e => setFormData({ ...formData, descripcion: e.target.value.toUpperCase() })}
-              className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D] uppercase"
+              className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2] uppercase"
             />
           </div>
 
@@ -160,11 +160,11 @@ const CodigoLaboratorio = () => {
             </thead>
             <tbody>
               {codigosFiltrados.map((c) => (
-                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
+                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
                   <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-700">{c.referencia}</td>
                   <td className="p-3 border-b border-r border-gray-200">{c.codigo}</td>
                   <td className="p-3 border-b border-r border-gray-200 text-gray-600">{c.descripcion}</td>
-                  <td className="p-3 border-b border-r border-gray-200 font-medium text-[#0E5B6D]">$ {Number(c.precio).toLocaleString('es-CL')}</td>
+                  <td className="p-3 border-b border-r border-gray-200 font-medium text-[#2383C2]">$ {Number(c.precio).toLocaleString('es-CL')}</td>
                   <td className="p-3 border-b border-gray-200 text-center">
                     <div className="flex justify-center gap-3">
                       <button onClick={() => { setEditingId(c.id); setFormData(c); }} className="text-blue-600 hover:text-blue-800"><Pencil size={15} /></button>

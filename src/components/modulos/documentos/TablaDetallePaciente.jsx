@@ -9,8 +9,8 @@ const TablaDetallePaciente = ({ registrosDetalle, cargandoDetalle, hasPermission
       {cargandoDetalle && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/80">
           <div className="flex flex-col items-center gap-2">
-            <Spinner size="sm" color="#0E5B6D" />
-            <span className="text-[10px] text-[#0E5B6D] font-bold">Cargando registros...</span>
+            <Spinner size="sm" color="#2383C2" />
+            <span className="text-[10px] text-[#2383C2] font-bold">Cargando registros...</span>
           </div>
         </div>
       )}
@@ -41,7 +41,7 @@ const TablaDetallePaciente = ({ registrosDetalle, cargandoDetalle, hasPermission
               {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_precios') && <td className="p-3 text-gray-600">${reg.PRECIO_U?.toLocaleString()}</td>}
               {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_precios') && <td className="p-3 text-gray-700 font-bold">${reg.OC_MONTO?.toLocaleString()}</td>}
 
-              <td className="p-3 text-[#0E5B6D] font-mono font-bold">{reg.OC}</td>
+              <td className="p-3 text-[#2383C2] font-mono font-bold">{reg.OC}</td>
               <td className="p-3">
                 <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${reg.ESTADO === 'COMPLETO' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
                   }`}>

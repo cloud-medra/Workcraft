@@ -99,7 +99,7 @@ const Empresas = () => {
   return (
     <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0">
       <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
-        <Building2 size={16} className="text-[#0E5B6D]" /> {editingId ? "EDITAR EMPRESA" : "REGISTRO DE EMPRESAS"}
+        <Building2 size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR EMPRESA" : "REGISTRO DE EMPRESAS"}
       </h2>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
@@ -107,14 +107,14 @@ const Empresas = () => {
           {hasPermission(PATH_VISTA, "formulario_registro", "input_nombre") && (
             <div className="w-[300px]">
               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nombre Empresa</label>
-              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D]" placeholder="Ej: Laboratorio X" />
+              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2]" placeholder="Ej: Laboratorio X" />
             </div>
           )}
 
           {hasPermission(PATH_VISTA, "formulario_registro", "input_rut") && (
             <div className="w-[200px]">
               <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">RUT</label>
-              <input required value={formData.rut} onChange={e => setFormData({ ...formData, rut: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#0E5B6D]" placeholder="Ej: 123456789" />
+              <input required value={formData.rut} onChange={e => setFormData({ ...formData, rut: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2]" placeholder="Ej: 123456789" />
             </div>
           )}
 
@@ -170,7 +170,7 @@ const Empresas = () => {
             </thead>
             <tbody>
               {empresasFiltradas.map((e, index) => (
-                <tr key={e.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50">
+                <tr key={e.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50">
                   <td className="p-3 border-b border-r border-gray-200 text-gray-500 font-bold">{index + 1}</td>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="p-3 border-b border-r border-gray-200 text-gray-700 font-medium">{e.nombre}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <td className="p-3 border-b border-r border-gray-200 text-gray-600">{e.rut}</td>}

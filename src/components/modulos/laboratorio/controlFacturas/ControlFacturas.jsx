@@ -30,12 +30,12 @@ const ControlFacturas = () => {
                         onClick={() => setActiveTab(tab.id)}
                         className={`relative flex items-center gap-2 px-6 py-4 text-[11px] font-bold tracking-wider transition-all duration-300 ease-in-out
                             ${activeTab === tab.id
-                                ? 'text-[#0E5B6D] bg-gray-50'
+                                ? 'text-[#2383C2] bg-gray-50'
                                 : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50/50'
                             }`}
                     >
                         {activeTab === tab.id && (
-                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#0E5B6D]" />
+                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#2383C2]" />
                         )}
                         {tab.icon}
                         {tab.label}

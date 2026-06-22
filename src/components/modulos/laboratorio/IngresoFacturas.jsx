@@ -139,7 +139,7 @@ const IngresoFacturas = () => {
     }
   };
 
-  const inputClass = "w-full h-8 px-2 border border-gray-300 rounded text-[11px] outline-none focus:border-[#0E5B6D]";
+  const inputClass = "w-full h-8 px-2 border border-gray-300 rounded text-[11px] outline-none focus:border-[#2383C2]";
   const labelClass = "block text-[9px] font-bold text-gray-500 uppercase mb-1";
 
   return (
@@ -151,7 +151,7 @@ const IngresoFacturas = () => {
       )}
 
       <h2 className="text-[14px] font-bold text-gray-700 p-4 border-b border-gray-200 flex items-center gap-2">
-        <Receipt size={16} className="text-[#0E5B6D]" /> {editingId ? "EDITAR FACTURA" : "INGRESO DE FACTURAS"}
+        <Receipt size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR FACTURA" : "INGRESO DE FACTURAS"}
       </h2>
 
       <form onSubmit={handleGuardar} className="p-4 flex items-end gap-2 border-b border-gray-200 bg-gray-50">
@@ -179,7 +179,7 @@ const IngresoFacturas = () => {
           </div>
         ))}
 
-        <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 whitespace-nowrap shrink-0 ${editingId ? 'bg-amber-600' : 'bg-[#0E5B6D]'} text-white`}>
+        <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 whitespace-nowrap shrink-0 ${editingId ? 'bg-amber-600' : 'bg-[#2383C2]'} text-white`}>
           {editingId ? <><Save size={14} /> Actualizar</> : <><Plus size={14} /> Registrar</>}
         </button>
       </form>
@@ -195,14 +195,14 @@ const IngresoFacturas = () => {
           </thead>
           <tbody>
             {facturas.map(f => (
-              <tr key={f.id} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
+              <tr key={f.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
                 <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-700">{f.folio}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.orden}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.acta}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.salida}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.fechaActa}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.fechaSalida}</td>
-                <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">$ {formatMiles(f.montoFactura)}</td>
+                <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">$ {formatMiles(f.montoFactura)}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.ocFactura}</td>
                 <td className="p-3 border-b border-r border-gray-200">{f.empresa}</td>
                 <td className="p-3 border-b border-gray-200 text-center">

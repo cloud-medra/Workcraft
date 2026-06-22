@@ -68,7 +68,7 @@ const DashboardFinanciero = () => {
 
   if (cargandoAnios || cargandoDatos) return (
     <div className="flex flex-col items-center justify-center h-full gap-4 text-gray-400">
-      <div className="w-10 h-10 border-4 border-t-[#0E5B6D] border-gray-200 rounded-full animate-spin"></div>
+      <div className="w-10 h-10 border-4 border-t-[#2383C2] border-gray-200 rounded-full animate-spin"></div>
       <p className="text-[12px] font-medium uppercase tracking-widest">Sincronizando Período {anioFiltro}...</p>
     </div>
   );
@@ -78,7 +78,7 @@ const DashboardFinanciero = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            <BarChart3 className="text-[#0E5B6D]" size={28} />
+            <BarChart3 className="text-[#2383C2]" size={28} />
             Dashboard Financiero
           </h1>
         </div>
@@ -91,11 +91,11 @@ const DashboardFinanciero = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:border-[#0E5B6D] transition-colors">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:border-[#2383C2] transition-colors">
           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><DollarSign size={80} className="text-slate-900" /></div>
           <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total General Bruto</p>
           <h3 className="text-2xl font-black text-slate-800">{formatCur(datosAnio?.total)}</h3>
-          <div className="mt-4 flex items-center gap-2 text-[#0E5B6D] text-[12px] font-bold"><TrendingUp size={14} /> Flujo de Caja Estimado</div>
+          <div className="mt-4 flex items-center gap-2 text-[#2383C2] text-[12px] font-bold"><TrendingUp size={14} /> Flujo de Caja Estimado</div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:border-green-500 transition-colors">
@@ -115,7 +115,7 @@ const DashboardFinanciero = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h4 className="font-bold text-slate-700 flex items-center gap-2 text-[14px]"><Calendar size={18} className="text-[#0E5B6D]" /> Evolución Mensual</h4></div>
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h4 className="font-bold text-slate-700 flex items-center gap-2 text-[14px]"><Calendar size={18} className="text-[#2383C2]" /> Evolución Mensual</h4></div>
           <table className="w-full text-left text-[12px]">
             <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
               <tr><th className="p-4">Mes</th><th className="p-4 text-right">Facturado</th><th className="p-4 text-right text-amber-600">Pendiente</th><th className="p-4 text-right bg-slate-100 text-slate-800 font-black">Total</th></tr>
@@ -134,7 +134,7 @@ const DashboardFinanciero = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h4 className="font-bold text-slate-700 flex items-center gap-2 text-[14px]"><Building2 size={18} className="text-[#0E5B6D]" /> Resumen de Cuentas por Proveedor</h4></div>
+          <div className="p-5 border-b border-slate-100 bg-slate-50/50"><h4 className="font-bold text-slate-700 flex items-center gap-2 text-[14px]"><Building2 size={18} className="text-[#2383C2]" /> Resumen de Cuentas por Proveedor</h4></div>
           <table className="w-full text-left text-[12px]">
             <thead className="bg-slate-50 text-slate-500 font-bold uppercase border-b border-slate-200">
               <tr><th className="p-4">Empresa</th><th className="p-4 text-right">Facturado</th><th className="p-4 text-right">Pendiente</th><th className="p-4 text-right bg-slate-100 text-slate-800">Total</th></tr>

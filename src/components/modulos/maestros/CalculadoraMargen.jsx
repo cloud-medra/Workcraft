@@ -39,7 +39,7 @@ const CalculadoraMargen = () => {
     return { margen, monto: montoMargen, total: precioNum + montoMargen };
   };
 
-  if (loading) return <div className="p-6 flex items-center justify-center"><Loader2 className="animate-spin text-[#0E5B6D]" /></div>;
+  if (loading) return <div className="p-6 flex items-center justify-center"><Loader2 className="animate-spin text-[#2383C2]" /></div>;
 
   const resConsig = precio ? calcularConsignacion(precio) : null;
 
@@ -55,7 +55,7 @@ const CalculadoraMargen = () => {
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
               placeholder="Ingrese precio base..."
-              className="w-64 p-2 border rounded mb-6 outline-none focus:border-[#0E5B6D]"
+              className="w-64 p-2 border rounded mb-6 outline-none focus:border-[#2383C2]"
             />
           )}
         </>

@@ -8,7 +8,7 @@ const ResumenFinanciero = ({ estadisticasDetalle, hasPermission }) => {
 
       {hasPermission(RUTA, 'resumen_financiero', 'cargaDatos_resumen_totales') && (
         <div>
-          <h3 className="text-[11px] font-bold text-[#0E5B6D] uppercase mb-2 border-b border-gray-100 pb-1">
+          <h3 className="text-[11px] font-bold text-[#2383C2] uppercase mb-2 border-b border-gray-100 pb-1">
             Resumen General Monto OC
           </h3>
           <div className="grid grid-cols-3 gap-2 mb-3 text-center">
@@ -41,7 +41,7 @@ const ResumenFinanciero = ({ estadisticasDetalle, hasPermission }) => {
 
       {hasPermission(RUTA, 'resumen_financiero', 'cargaDatos_resumen_tablaProveedores') && (
         <div className="flex-grow flex flex-col min-h-[120px]">
-          <h3 className="text-[11px] font-bold text-[#0E5B6D] uppercase mb-1.5 border-b border-gray-100 pb-1">
+          <h3 className="text-[11px] font-bold text-[#2383C2] uppercase mb-1.5 border-b border-gray-100 pb-1">
             Monto OC por Proveedor
           </h3>
           <div className="overflow-auto max-h-[140px] border border-gray-100 rounded">

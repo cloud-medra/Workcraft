@@ -143,21 +143,21 @@ const EnlazarCodigo = () => {
             {cargando && (
                 <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
                     <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
-                        <Spinner size="md" color="#0E5B6D" />
-                        <h3 className="text-[#0E5B6D] font-bold text-[15px]">Procesando...</h3>
+                        <Spinner size="md" color="#2383C2" />
+                        <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando...</h3>
                     </div>
                 </div>
             )}
 
             <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
                 {vistaActual === 'detalle' && (
-                    <button onClick={() => setVistaActual('lista')} className="text-[#0E5B6D] hover:bg-gray-100 p-1 rounded">
+                    <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 p-1 rounded">
                         <ArrowLeft size={16} />
                     </button>
                 )}
                 {vistaActual === 'lista' ? 'HISTORIAL DE CONCILIACIONES' : `DETALLE FOLIO: ${conciliacionActual?.folio}`}
                 {vistaActual === 'detalle' && (
-                    <button onClick={handleEnlazarCodigos} className="ml-auto bg-[#0E5B6D] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+                    <button onClick={handleEnlazarCodigos} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
                         <CheckCircle size={12} /> {enlazado ? 'ACTUALIZAR CÓDIGOS' : 'ENLAZAR CÓDIGOS'}
                     </button>
                 )}
@@ -195,8 +195,8 @@ const EnlazarCodigo = () => {
                     <tbody>
                         {vistaActual === 'lista' ? (
                             listaConciliaciones.map((f, i) => (
-                                <tr key={`${f.id}-${i}`} onDoubleClick={() => handleDobleClick(f)} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#0E5B6D]">{f.folio}</td>
+                                <tr key={`${f.id}-${i}`} onDoubleClick={() => handleDobleClick(f)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
+                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{f.folio}</td>
                                     <td className="p-3 border-b border-r border-gray-200 text-gray-600">{f.rznSoc}</td>
                                     <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Number(f.total || 0).toLocaleString()}</td>
                                     <td className="p-3 border-b border-r border-gray-200">
@@ -205,7 +205,7 @@ const EnlazarCodigo = () => {
                                         </span>
                                     </td>
                                     <td className="p-3 border-b border-gray-200">
-                                        <button onClick={() => handleDobleClick(f)} className="text-gray-400 hover:text-[#0E5B6D] transition-colors" title="Visualizar">
+                                        <button onClick={() => handleDobleClick(f)} className="text-gray-400 hover:text-[#2383C2] transition-colors" title="Visualizar">
                                             <Eye size={16} />
                                         </button>
                                     </td>
@@ -213,7 +213,7 @@ const EnlazarCodigo = () => {
                             ))
                         ) : (
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id || 'item'}-${i}`} className="border-l-4 border-transparent hover:border-[#0E5B6D] hover:bg-gray-50 transition-colors">
+                                <tr key={`${item.id || 'item'}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
                                     <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
                                     <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">{item.nombre || item.descripcion}</td>
                                     <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>

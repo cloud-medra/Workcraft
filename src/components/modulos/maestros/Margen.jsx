@@ -80,7 +80,7 @@ const Margen = () => {
     }
   };
 
-  if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-[#0E5B6D]" /></div>;
+  if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-[#2383C2]" /></div>;
 
   return (
     <div className="w-full h-full p-6 bg-gray-50 overflow-auto">
