@@ -86,7 +86,12 @@ const LoginForm = () => {
               <label className="block text-sm font-medium mb-1">Usuario o Correo</label>
               <div className="flex items-center">
                 <Mail className="absolute ml-3 text-gray-400" size={20} />
-                <input {...register("email")} className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#008080] outline-none" placeholder="ejemplo@medra.cl" />
+                {/* CLASES CAMBIADAS AQUÍ: border-gray-200 y focus:ring-1 */}
+                <input 
+                  {...register("email")} 
+                  className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-1 focus:ring-[#2383C2] focus:border-[#2383C2] outline-none transition-all" 
+                  placeholder="ejemplo@medra.cl" 
+                />
               </div>
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
             </div>
@@ -95,10 +100,11 @@ const LoginForm = () => {
               <label className="block text-sm font-medium mb-1">Contraseña</label>
               <div className="flex items-center">
                 <Lock className="absolute ml-3 text-gray-400" size={20} />
+                {/* CLASES CAMBIADAS AQUÍ: border-gray-200 y focus:ring-1 */}
                 <input
                   {...register("password")}
                   type="password"
-                  className="w-full p-3 pl-10 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#008080] outline-none"
+                  className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-1 focus:ring-[#2383C2] focus:border-[#2383C2] outline-none transition-all"
                   placeholder="********"
                   onKeyUp={(e) => setCapsLockOn(e.getModifierState('CapsLock'))}
                 />
@@ -113,7 +119,7 @@ const LoginForm = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#008080] text-white p-3 rounded-xl font-bold hover:bg-[#006666] transition-all duration-200 mt-4 flex items-center justify-center gap-2 disabled:opacity-70"
+              className="w-full bg-[#2383C2] text-white p-3 rounded-xl font-bold hover:bg-[#006666] transition-all duration-200 mt-4 flex items-center justify-center gap-2 disabled:opacity-70"
             >
               {loading ? (
                 <>
@@ -127,7 +133,7 @@ const LoginForm = () => {
           </form>
         </div>
 
-        <div className="hidden md:flex w-1/2 bg-[#008080] p-12 text-white flex-col justify-between relative overflow-hidden">
+        <div className="hidden md:flex w-1/2 bg-[#208DD0] p-12 text-white flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 z-0 pointer-events-none">
             <div className="absolute -top-10 -right-10 w-full h-full bg-white/5 rounded-bl-full"></div>
             <div className="absolute top-6 right-6 grid grid-cols-4 gap-3 opacity-30">
