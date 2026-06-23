@@ -4,7 +4,7 @@ import { auth, db } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { 
-  LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, 
+  LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
   Settings, LayoutDashboard, Home, ShieldCheck, Menu 
 } from 'lucide-react';
 import { MODULES } from '../config/modulesConfig.jsx';
@@ -216,7 +216,7 @@ const Dashboard = () => {
         <div className="p-2 m-2 bg-white/5 rounded-xl border border-white/10 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
           {!isSidebarCollapsed ? (
             <div className="transition-all duration-300 opacity-100 flex flex-col gap-2">
-              <div className="flex flex-col gap-1 border-b border-white/5 pb-1.5">
+              <div className="flex flex-col gap-1.5 border-b border-white/5 pb-1.5">
                 <button 
                   onClick={() => { setActiveView('privacidad'); setActiveModule(null); }}
                   className="hover:text-white transition-colors text-left flex items-center gap-1.5"
@@ -225,9 +225,9 @@ const Dashboard = () => {
                 </button>
                 <button 
                   onClick={() => { setActiveView('terminos'); setActiveModule(null); }}
-                  className="hover:text-white transition-colors text-left pl-[18px]"
+                  className="hover:text-white transition-colors text-left flex items-center gap-1.5"
                 >
-                  Términos de Servicio
+                  <FileText size={12} className="opacity-70 flex-shrink-0" /> Términos de Servicio
                 </button>
               </div>
               <div className="flex justify-between items-center text-[9px] text-white/40 font-mono px-0.5">
