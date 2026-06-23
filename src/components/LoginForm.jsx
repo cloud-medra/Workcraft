@@ -6,7 +6,7 @@ import { loginSchema } from '../schemas/loginSchema';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-import { ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import loginIllustration from '../assets/login.svg';
 
 const LoginForm = () => {
@@ -14,10 +14,19 @@ const LoginForm = () => {
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [loginError, setLoginError] = useState('');
+  const [shakeError, setShakeError] = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(loginSchema)
   });
+
+  const triggerShake = (message) => {
+    setLoginError(message);
+    setShakeError(false);
+    requestAnimationFrame(() => setShakeError(true));
+    setTimeout(() => setShakeError(false), 600);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -42,6 +51,7 @@ const LoginForm = () => {
 
   const onSubmit = async (data) => {
     setLoading(true);
+    setLoginError('');
     try {
       const emailLimpio = data.email.trim();
       const userCredential = await signInWithEmailAndPassword(auth, emailLimpio, data.password);
@@ -56,10 +66,10 @@ const LoginForm = () => {
           navigate('/dashboard', { replace: true });
         }
       } else {
-        alert("Tu usuario no tiene un perfil configurado en la base de datos.");
+        triggerShake("Tu usuario no tiene un perfil configurado en la base de datos.");
       }
     } catch (error) {
-      alert("Correo o contraseña incorrectos.");
+      triggerShake("Correo o contraseña incorrectos.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +85,7 @@ const LoginForm = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="bg-white rounded-3xl shadow-2xl flex w-full max-w-4xl overflow-hidden min-h-[500px]">
+      <div className={`bg-white rounded-3xl shadow-2xl flex w-full max-w-4xl overflow-hidden min-h-[500px] ${shakeError ? 'shake-error' : ''}`}>
 
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
           <h2 className="text-2xl font-bold mb-2">Iniciar Sesión</h2>
@@ -86,10 +96,10 @@ const LoginForm = () => {
               <label className="block text-sm font-medium mb-1">Usuario o Correo</label>
               <div className="flex items-center">
                 <Mail className="absolute ml-3 text-gray-400" size={20} />
-                <input 
-                  {...register("email")} 
-                  className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-1 focus:ring-[#2383C2] focus:border-[#2383C2] outline-none transition-all" 
-                  placeholder="ejemplo@medra.cl" 
+                <input
+                  {...register("email")}
+                  className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-1 focus:ring-[#2383C2] focus:border-[#2383C2] outline-none transition-all"
+                  placeholder="ejemplo@medra.cl"
                 />
               </div>
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
@@ -113,6 +123,13 @@ const LoginForm = () => {
                 </p>
               )}
             </div>
+
+            {loginError && (
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
+                <AlertCircle size={16} className="shrink-0" />
+                <span>{loginError}</span>
+              </div>
+            )}
 
             <button
               type="submit"
