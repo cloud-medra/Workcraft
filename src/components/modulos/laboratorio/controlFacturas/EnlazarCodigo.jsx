@@ -3,7 +3,7 @@ import { collection, getDocs, query, where, doc, setDoc, writeBatch } from 'fire
 import { db } from '../../../../firebaseConfig';
 import { ArrowLeft, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
-import { useModal } from '../../../../context/ModalContext'; // ✅ Importado tu hook de modal
+import { useModal } from '../../../../context/ModalContext';
 import Spinner from '../../../ui/Spinner';
 
 const EnlazarCodigo = () => {
@@ -14,8 +14,12 @@ const EnlazarCodigo = () => {
     const [conciliacionActual, setConciliacionActual] = useState(null);
     const [enlazado, setEnlazado] = useState(false);
 
+    // ✅ Nuevos estados para anulación con observación
+    const [observacionEditando, setObservacionEditando] = useState(null);
+    const [observacionTexto, setObservacionTexto] = useState('');
+
     const { showToast } = useToast();
-    const { confirmAction } = useModal(); // ✅ Desestructurado confirmAction
+    const { confirmAction } = useModal();
 
     useEffect(() => { cargarLista(); }, []);
 
@@ -57,13 +61,9 @@ const EnlazarCodigo = () => {
         setCargando(false);
     };
 
-    // ✅ Modificado para usar tu Modal personalizado
     const handleEliminarConciliacion = (e, conciliacion) => {
-        e.stopPropagation(); // Previene el doble click de la fila
-        
+        e.stopPropagation();
         const folioStr = String(conciliacion.folio);
-
-        // Pasamos título, mensaje y el callback de ejecución al contexto del modal
         confirmAction(
             "¿Eliminar Conciliación?",
             `¿Estás completamente seguro de que deseas eliminar el Folio ${folioStr}? Esta acción borrará la conciliación y todos sus ítems de forma irreversible.`,
@@ -71,25 +71,13 @@ const EnlazarCodigo = () => {
                 setCargando(true);
                 try {
                     const batch = writeBatch(db);
-
-                    // 1. Buscar y preparar eliminación de los ítems del folio
                     const qItems = query(collection(db, "laboratorio_conciliaciones_items"), where("folio", "==", conciliacion.folio));
                     const snapItems = await getDocs(qItems);
-                    
-                    snapItems.docs.forEach(docSnap => {
-                        batch.delete(docSnap.ref);
-                    });
-
-                    // 2. Preparar eliminación de la conciliación principal
+                    snapItems.docs.forEach(docSnap => { batch.delete(docSnap.ref); });
                     const docConciliacionRef = doc(db, "laboratorio_conciliaciones", folioStr);
                     batch.delete(docConciliacionRef);
-
-                    // 3. Confirmar lote en Firestore
                     await batch.commit();
-
-                    // 4. Filtrar del estado local
                     setListaConciliaciones(prev => prev.filter(item => String(item.folio) !== folioStr));
-                    
                     showToast(`Folio ${folioStr} eliminado correctamente.`, "success");
                 } catch (error) {
                     console.error("❌ Error al eliminar conciliación:", error);
@@ -103,12 +91,10 @@ const EnlazarCodigo = () => {
 
     const handleEnlazarCodigos = async () => {
         const folio = String(conciliacionActual?.folio).trim();
-
         if (!folio || detalleItems.length === 0) {
             showToast("Error: No hay datos para enlazar.", "error");
             return;
         }
-
         setCargando(true);
         try {
             const snapCodigos = await getDocs(collection(db, "laboratorio_codigos"));
@@ -127,8 +113,11 @@ const EnlazarCodigo = () => {
 
             const itemsActualizados = detalleItems.map(item => {
                 if (!item.codigo) return null;
-                const match = mapaCodigos[item.codigo];
 
+                // ✅ Si el ítem ya fue anulado, no sobreescribir su estado
+                if (item.anulado) return item;
+
+                const match = mapaCodigos[item.codigo];
                 if (!match) {
                     hayFaltantes = true;
                     const nuevosDatos = {
@@ -143,14 +132,12 @@ const EnlazarCodigo = () => {
 
                 const precioUnit = parseFloat(item.precio) || 0;
                 const dif = precioUnit - match.precioMaestro;
-
                 const nuevosDatos = {
                     precioUnitarioFactura: precioUnit,
                     codigoMaestro: match.codigoMaestro,
                     precioMaestro: match.precioMaestro,
                     diferencia: dif
                 };
-
                 batch.set(doc(db, "laboratorio_conciliaciones_items", item.id), nuevosDatos, { merge: true });
                 return { ...item, ...nuevosDatos };
             }).filter(Boolean);
@@ -158,7 +145,6 @@ const EnlazarCodigo = () => {
             await batch.commit();
 
             const nuevoEstado = hayFaltantes ? "Códigos no registrados" : "Procesar en Orden";
-
             await setDoc(doc(db, "laboratorio_conciliaciones", folio), {
                 estado: nuevoEstado,
                 fechaEnlace: new Date()
@@ -179,6 +165,60 @@ const EnlazarCodigo = () => {
             setCargando(false);
         }
     };
+
+    // ✅ Nueva función: guardar observación y anular el ítem
+    const handleGuardarObservacion = async (item) => {
+        if (!observacionTexto.trim()) return showToast("Ingresa una observación", "warning");
+        setCargando(true);
+        try {
+            const nuevosDatos = {
+                observacion: observacionTexto.trim(),
+                anulado: true,
+                codigoMaestro: 'ANULADO'
+            };
+            await setDoc(
+                doc(db, "laboratorio_conciliaciones_items", item.id),
+                nuevosDatos,
+                { merge: true }
+            );
+
+            const itemsActualizados = detalleItems.map(i =>
+                i.id === item.id ? { ...i, ...nuevosDatos } : i
+            );
+            setDetalleItems(itemsActualizados);
+
+            // ✅ Verificar si todos los ítems están resueltos (enlazados o anulados)
+            const todosResueltos = itemsActualizados.every(
+                i => i.codigoMaestro && i.codigoMaestro !== 'NO ENCONTRADO'
+            );
+
+            if (todosResueltos) {
+                const folio = String(conciliacionActual.folio);
+                await setDoc(
+                    doc(db, "laboratorio_conciliaciones", folio),
+                    { estado: "Procesar en Orden", fechaActualizacion: new Date() },
+                    { merge: true }
+                );
+                setConciliacionActual(prev => ({ ...prev, estado: "Procesar en Orden" }));
+                setListaConciliaciones(prev =>
+                    prev.map(i => String(i.folio) === folio ? { ...i, estado: "Procesar en Orden" } : i)
+                );
+                showToast("Ítem anulado. Estado cambiado a Procesar en Orden ✅", "success");
+            } else {
+                showToast("Observación guardada. Ítem anulado.", "success");
+            }
+
+            setObservacionEditando(null);
+            setObservacionTexto('');
+        } catch (error) {
+            showToast("Error al guardar: " + error.message, "error");
+        } finally {
+            setCargando(false);
+        }
+    };
+
+    // ✅ Columnas totales del detalle para el colspan de la fila de observación
+    const colSpanDetalle = enlazado ? 7 : 4;
 
     return (
         <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0 relative">
@@ -259,33 +299,114 @@ const EnlazarCodigo = () => {
                                 </tr>
                             ))
                         ) : (
+                            // ✅ React.Fragment para poder agregar la fila de observación inline
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id || 'item'}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">{item.nombre || item.descripcion}</td>
-                                    <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">
-                                        ${Math.round(item.precioUnitarioFactura ?? item.precio ?? 0).toLocaleString()}
-                                    </td>
-                                    {enlazado && (
-                                        <>
-                                            <td className={`p-3 border-b border-r border-gray-200 font-mono ${item.codigoMaestro === 'NO ENCONTRADO' ? 'text-red-500' : 'text-green-700'}`}>
-                                                {item.codigoMaestro || 'N/A'}
-                                            </td>
-                                            <td className="p-3 border-b border-r border-gray-200 font-bold text-green-700">
-                                                {item.codigoMaestro === 'NO ENCONTRADO' ? '-' : `$${Math.round(item.precioMaestro ?? 0).toLocaleString()}`}
-                                            </td>
-                                            <td className={`p-3 border-b border-gray-200 font-bold ${item.diferencia === 'Pendiente cálculo'
-                                                    ? 'text-gray-400 italic'
-                                                    : (item.diferencia ?? 0) < 0 ? 'text-red-600' : 'text-blue-600'
+                                <React.Fragment key={`${item.id || 'item'}-${i}`}>
+                                    <tr className={`border-l-4 transition-colors ${
+                                        item.anulado
+                                            ? 'border-gray-300 bg-gray-50 opacity-70'
+                                            : 'border-transparent hover:border-[#2383C2] hover:bg-gray-50'
+                                    }`}>
+                                        <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
+                                        <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">
+                                            <span className={item.anulado ? 'line-through text-gray-400' : ''}>
+                                                {item.nombre || item.descripcion}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>
+                                        <td className="p-3 border-b border-r border-gray-200 text-gray-600">
+                                            ${Math.round(item.precioUnitarioFactura ?? item.precio ?? 0).toLocaleString()}
+                                        </td>
+                                        {enlazado && (
+                                            <>
+                                                <td className={`p-3 border-b border-r border-gray-200 font-mono ${
+                                                    item.codigoMaestro === 'NO ENCONTRADO' ? 'text-red-500' :
+                                                    item.codigoMaestro === 'ANULADO' ? 'text-gray-400' :
+                                                    'text-green-700'
                                                 }`}>
-                                                {item.diferencia === 'Pendiente cálculo'
-                                                    ? 'Pendiente cálculo'
-                                                    : `$${Math.round(item.diferencia ?? 0).toLocaleString()}`}
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className={item.anulado ? 'line-through' : ''}>
+                                                            {item.codigoMaestro || 'N/A'}
+                                                        </span>
+
+                                                        {/* ✅ Botón Anular: solo si es NO ENCONTRADO y no está anulado */}
+                                                        {item.codigoMaestro === 'NO ENCONTRADO' && !item.anulado && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setObservacionEditando(item.id);
+                                                                    setObservacionTexto(item.observacion || '');
+                                                                }}
+                                                                className="text-[10px] text-orange-600 border border-orange-300 rounded px-1.5 py-0.5 hover:bg-orange-50 font-bold whitespace-nowrap"
+                                                                title="Anular ítem con observación"
+                                                            >
+                                                                Anular
+                                                            </button>
+                                                        )}
+
+                                                        {/* ✅ Mostrar observación resumida si ya está anulado */}
+                                                        {item.anulado && item.observacion && (
+                                                            <span
+                                                                className="text-[10px] text-gray-400 italic truncate max-w-[120px]"
+                                                                title={item.observacion}
+                                                            >
+                                                                ({item.observacion})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="p-3 border-b border-r border-gray-200 font-bold text-green-700">
+                                                    {item.codigoMaestro === 'NO ENCONTRADO' || item.codigoMaestro === 'ANULADO'
+                                                        ? '-'
+                                                        : `$${Math.round(item.precioMaestro ?? 0).toLocaleString()}`}
+                                                </td>
+                                                <td className={`p-3 border-b border-gray-200 font-bold ${
+                                                    item.anulado ? 'text-gray-400 italic' :
+                                                    item.diferencia === 'Pendiente cálculo' ? 'text-gray-400 italic' :
+                                                    (item.diferencia ?? 0) < 0 ? 'text-red-600' : 'text-blue-600'
+                                                }`}>
+                                                    {item.anulado
+                                                        ? 'Anulado'
+                                                        : item.diferencia === 'Pendiente cálculo'
+                                                            ? 'Pendiente cálculo'
+                                                            : `$${Math.round(item.diferencia ?? 0).toLocaleString()}`}
+                                                </td>
+                                            </>
+                                        )}
+                                    </tr>
+
+                                    {/* ✅ Fila expandida de observación inline */}
+                                    {observacionEditando === item.id && (
+                                        <tr className="bg-orange-50 border-l-4 border-orange-400">
+                                            <td colSpan={colSpanDetalle} className="px-3 py-2 border-b border-orange-200">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[11px] font-bold text-orange-600 whitespace-nowrap">
+                                                        Motivo de anulación:
+                                                    </span>
+                                                    <input
+                                                        autoFocus
+                                                        value={observacionTexto}
+                                                        onChange={e => setObservacionTexto(e.target.value)}
+                                                        onKeyDown={e => e.key === 'Enter' && handleGuardarObservacion(item)}
+                                                        className="flex-grow h-7 border border-orange-300 rounded text-[12px] px-2 outline-none focus:border-orange-500 bg-white"
+                                                        placeholder="Ej: Solicitar nota de crédito por ingreso incorrecto..."
+                                                    />
+                                                    <button
+                                                        onClick={() => handleGuardarObservacion(item)}
+                                                        className="h-7 px-3 bg-orange-500 text-white rounded text-[11px] font-bold hover:bg-orange-600 whitespace-nowrap"
+                                                    >
+                                                        Confirmar
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setObservacionEditando(null); setObservacionTexto(''); }}
+                                                        className="h-7 px-2 text-gray-500 hover:text-gray-700 text-[11px] whitespace-nowrap"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                </div>
                                             </td>
-                                        </>
+                                        </tr>
                                     )}
-                                </tr>
+                                </React.Fragment>
                             ))
                         )}
                     </tbody>
