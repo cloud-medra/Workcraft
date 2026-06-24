@@ -97,7 +97,7 @@ const EnlazarOrden = () => {
     };
 
     const handleSeleccionarOrden = async (ordenSeleccionada) => {
-        setCargandoModal(true); // 👈 activa spinner del modal
+        setCargandoModal(true);
         try {
             const q = query(collection(db, "laboratorio_ordenes", filtroAnioBase, "meses", filtroMesBase, "ordenes", ordenSeleccionada.id, "documentos"));
             const snap = await getDocs(q);
@@ -108,13 +108,10 @@ const EnlazarOrden = () => {
 
             const detalleConciliado = detalleItems.map(itemFactura => {
                 const match = itemsOrden.find(i => String(i["Cod.Artículo"]) === String(itemFactura.codigoMaestro));
-
-                // ✅ Redondear a entero para evitar diferencias por decimales
                 const precioMaestro = Math.round(itemFactura.precioMaestro || 0);
                 const precioOrden = Math.round(parseFloat(match?.["P.Unitario"] || 0));
                 const diferencia = precioMaestro - precioOrden;
 
-                // ✅ Solo hay diferencia real si es mayor a 0 en enteros
                 if (diferencia !== 0) hayDiferencias = true;
 
                 const nuevosDatos = {
@@ -136,7 +133,6 @@ const EnlazarOrden = () => {
 
             await batch.commit();
 
-            // ✅ Estado según si hay diferencias
             const nuevoEstado = hayDiferencias ? "Iniciar Solicitud" : "Listo para Ingresar";
             const folio = String(ordenActual?.folio).trim();
 
@@ -146,7 +142,6 @@ const EnlazarOrden = () => {
                 nroOrdenEnlazada: ordenSeleccionada.id
             }, { merge: true });
 
-            // Actualizar lista local
             setOrdenes(prev => prev.map(o =>
                 String(o.folio) === folio ? { ...o, estado: nuevoEstado } : o
             ));
@@ -159,7 +154,7 @@ const EnlazarOrden = () => {
             console.error("Error al cruzar información:", error);
             showToast("Error: " + error.message, "error");
         } finally {
-            setCargandoModal(false); // 👈 siempre apaga el spinner
+            setCargandoModal(false);
         }
     };
 
@@ -183,7 +178,6 @@ const EnlazarOrden = () => {
         }
     };
 
-    // Helper color estado
     const colorEstado = (estado) => {
         if (estado === 'Listo para Ingresar') return 'bg-green-100 text-green-700';
         if (estado === 'Iniciar Solicitud') return 'bg-orange-100 text-orange-700';
@@ -306,7 +300,6 @@ const EnlazarOrden = () => {
                 <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white w-full max-w-[480px] rounded-2xl border border-gray-200/80 overflow-hidden flex flex-col max-h-[85vh] shadow-xl">
 
-                        {/* Header */}
                         <div className="px-6 pt-5 pb-4 flex justify-between items-start border-b border-gray-100">
                             <div>
                                 <h3 className="text-[14px] font-medium text-gray-900 leading-tight">Enlazar orden de compra</h3>
@@ -320,7 +313,6 @@ const EnlazarOrden = () => {
                             </button>
                         </div>
 
-                        {/* Filtros */}
                         <div className="px-6 py-4 flex flex-col gap-3 border-b border-gray-100">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="flex flex-col gap-1.5">
@@ -353,10 +345,8 @@ const EnlazarOrden = () => {
                             </button>
                         </div>
 
-                        {/* Resultados */}
                         <div className="overflow-auto flex-grow relative">
 
-                            {/* Spinner overlay dentro del modal */}
                             {cargandoModal && (
                                 <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px] gap-3">
                                     <Spinner size="sm" color="#2383C2" />

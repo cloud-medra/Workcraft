@@ -90,9 +90,10 @@ const BuscarFolio = () => {
         );
         if (f.detalles) {
           for (const item of f.detalles) {
-            if (!item.codigo) continue; // ✅ Ignorar items sin código
+            if (!item.codigo) continue; 
+            const codigoSanitizado = String(item.codigo).replace(/\//g, "_");
             await setDoc(
-              doc(db, "laboratorio_conciliaciones_items", `${f.folio}_${item.codigo}`),
+              doc(db, "laboratorio_conciliaciones_items", `${f.folio}_${codigoSanitizado}`),
               cleanData({ ...item, folio: f.folio, proveedor: f.rznSoc, fechaFactura: f.fchEmis })
             );
           }

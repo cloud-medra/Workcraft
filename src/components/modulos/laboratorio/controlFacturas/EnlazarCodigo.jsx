@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { collection, getDocs, query, where, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { ArrowLeft, CheckCircle, Eye } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
+import { useModal } from '../../../../context/ModalContext'; // ✅ Importado tu hook de modal
 import Spinner from '../../../ui/Spinner';
 
 const EnlazarCodigo = () => {
@@ -14,6 +15,7 @@ const EnlazarCodigo = () => {
     const [enlazado, setEnlazado] = useState(false);
 
     const { showToast } = useToast();
+    const { confirmAction } = useModal(); // ✅ Desestructurado confirmAction
 
     useEffect(() => { cargarLista(); }, []);
 
@@ -55,6 +57,50 @@ const EnlazarCodigo = () => {
         setCargando(false);
     };
 
+    // ✅ Modificado para usar tu Modal personalizado
+    const handleEliminarConciliacion = (e, conciliacion) => {
+        e.stopPropagation(); // Previene el doble click de la fila
+        
+        const folioStr = String(conciliacion.folio);
+
+        // Pasamos título, mensaje y el callback de ejecución al contexto del modal
+        confirmAction(
+            "¿Eliminar Conciliación?",
+            `¿Estás completamente seguro de que deseas eliminar el Folio ${folioStr}? Esta acción borrará la conciliación y todos sus ítems de forma irreversible.`,
+            async () => {
+                setCargando(true);
+                try {
+                    const batch = writeBatch(db);
+
+                    // 1. Buscar y preparar eliminación de los ítems del folio
+                    const qItems = query(collection(db, "laboratorio_conciliaciones_items"), where("folio", "==", conciliacion.folio));
+                    const snapItems = await getDocs(qItems);
+                    
+                    snapItems.docs.forEach(docSnap => {
+                        batch.delete(docSnap.ref);
+                    });
+
+                    // 2. Preparar eliminación de la conciliación principal
+                    const docConciliacionRef = doc(db, "laboratorio_conciliaciones", folioStr);
+                    batch.delete(docConciliacionRef);
+
+                    // 3. Confirmar lote en Firestore
+                    await batch.commit();
+
+                    // 4. Filtrar del estado local
+                    setListaConciliaciones(prev => prev.filter(item => String(item.folio) !== folioStr));
+                    
+                    showToast(`Folio ${folioStr} eliminado correctamente.`, "success");
+                } catch (error) {
+                    console.error("❌ Error al eliminar conciliación:", error);
+                    showToast("Error al eliminar: " + error.message, "error");
+                } finally {
+                    setCargando(false);
+                }
+            }
+        );
+    };
+
     const handleEnlazarCodigos = async () => {
         const folio = String(conciliacionActual?.folio).trim();
 
@@ -89,14 +135,12 @@ const EnlazarCodigo = () => {
                         codigoMaestro: 'NO ENCONTRADO',
                         precioMaestro: 0,
                         diferencia: 'Pendiente cálculo',
-                        // ✅ item.precio ya es PrcItem (unitario), no dividir
                         precioUnitarioFactura: parseFloat(item.precio) || 0
                     };
                     batch.set(doc(db, "laboratorio_conciliaciones_items", item.id), nuevosDatos, { merge: true });
                     return { ...item, ...nuevosDatos };
                 }
 
-                // ✅ item.precio ya es PrcItem (precio unitario), no hay que dividir por cantidad
                 const precioUnit = parseFloat(item.precio) || 0;
                 const dif = precioUnit - match.precioMaestro;
 
@@ -171,7 +215,7 @@ const EnlazarCodigo = () => {
                                     <th className="p-3 border-b border-r border-gray-200">Proveedor</th>
                                     <th className="p-3 border-b border-r border-gray-200">Total</th>
                                     <th className="p-3 border-b border-r border-gray-200">Estado</th>
-                                    <th className="p-3 border-b border-gray-200">Acciones</th>
+                                    <th className="p-3 border-b border-gray-200 text-center">Acciones</th>
                                 </>
                             ) : (
                                 <>
@@ -202,10 +246,15 @@ const EnlazarCodigo = () => {
                                             {f.estado || 'Iniciar'}
                                         </span>
                                     </td>
-                                    <td className="p-3 border-b border-gray-200">
-                                        <button onClick={() => handleDobleClick(f)} className="text-gray-400 hover:text-[#2383C2] transition-colors" title="Visualizar">
-                                            <Eye size={16} />
-                                        </button>
+                                    <td className="p-3 border-b border-gray-200 text-center">
+                                        <div className="flex items-center justify-center gap-3">
+                                            <button onClick={() => handleDobleClick(f)} className="text-gray-400 hover:text-[#2383C2] transition-colors" title="Visualizar">
+                                                <Eye size={16} />
+                                            </button>
+                                            <button onClick={(e) => handleEliminarConciliacion(e, f)} className="text-gray-400 hover:text-red-500 transition-colors" title="Eliminar Conciliación">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
