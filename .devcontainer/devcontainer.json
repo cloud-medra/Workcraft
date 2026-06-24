@@ -1,0 +1,16 @@
+cat << 'EOF' > .devcontainer/devcontainer.json
+{
+  "name": "Entorno de Desarrollo",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "github.codespaces",
+        "github.github-vscode-theme",
+        "github.vscode-pull-request-github",
+        "ms-ceintl.vscode-language-pack-es",
+        "vue.volar"
+      ]
+    }
+  }
+}
+EOF
