@@ -32,6 +32,7 @@ import CargaDatos from '../components/modulos/documentos/CargaDatos';
 import DashboardFinanciero from '../components/modulos/documentos/DashboardFinanciero';
 import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/legales/TerminosServicio';
+import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -63,7 +64,9 @@ const Dashboard = () => {
     };
   }, [isMenuOpen]);
 
+  // CORREGIDO: Eliminada la clave estática duplicada inferior para que tome ResumenGeneral correctamente
   const VIEW_MAP = {
+    'dashboard': <ResumenGeneral userData={userData} />,
     '/usuarios/crear': <CrearUsuario />,
     '/usuarios/listado': <ListadoUsuarios />,
     '/maestros/medicos': <Medicos />,
@@ -87,13 +90,7 @@ const Dashboard = () => {
     'privacidad': <PoliticasPrivacidad />,
     'terminos': <TerminosServicio />,
     'perfil': <Perfil userData={userData} />,
-    'ajustes': <Ajustes />,
-    'dashboard': (
-      <div className="flex flex-col items-center justify-center h-full text-gray-400">
-        <LayoutDashboard size={48} className="mb-4 opacity-50" />
-        <p>Selecciona una opción del menú para comenzar.</p>
-      </div>
-    )
+    'ajustes': <Ajustes />
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
