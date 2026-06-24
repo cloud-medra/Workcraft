@@ -65,13 +65,13 @@ export const MODULES = {
     label: 'Laboratorio',
     icon: <Microscope size={18} />,
     subItems: [
-      { label: 'Empresas', path: '/laboratorio/empresas', icon: <Building2 size={14} /> },
-      { label: 'Facturas', path: '/laboratorio/facturas', icon: <Receipt size={14} /> },
+      { label: 'Registro Empresas', path: '/laboratorio/empresas', icon: <Building2 size={14} /> },
+      { label: 'Importar Facturas', path: '/laboratorio/facturas', icon: <Receipt size={14} /> },
+      { label: 'Importar Orden', path: '/laboratorio/importarOrden', icon: <ClipboardList size={14} /> },
       { label: 'Ingreso Facturas', path: '/laboratorio/ingresoFacturas', icon: <FilePlus2 size={14} /> },
       { label: 'Resumen Laboratorio', path: '/laboratorio/resumenLaboratorio', icon: <FileBarChart size={14} /> },
-      { label: 'Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
-      { label: 'Ordenes', path: '/laboratorio/importarOrden', icon: <ClipboardList size={14} /> },
-      { label: 'Control', path: '/laboratorio/controlFactura', icon: <ClipboardCheck size={14} /> }
+      { label: 'Maestro Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
+      { label: 'Control Facturas', path: '/laboratorio/controlFactura', icon: <ClipboardCheck size={14} /> }
     ]
   },
 
