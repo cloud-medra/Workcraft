@@ -9,6 +9,7 @@ const EnlazarOrden = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [detalleItems, setDetalleItems] = useState([]);
     const [cargando, setCargando] = useState(false);
+    const [cargandoModal, setCargandoModal] = useState(false);
     const [vistaActual, setVistaActual] = useState('lista');
     const [ordenActual, setOrdenActual] = useState(null);
     const [ordenEnlazada, setOrdenEnlazada] = useState(false);
@@ -96,7 +97,7 @@ const EnlazarOrden = () => {
     };
 
     const handleSeleccionarOrden = async (ordenSeleccionada) => {
-        setCargando(true);
+        setCargandoModal(true); // 👈 activa spinner del modal
         try {
             const q = query(collection(db, "laboratorio_ordenes", filtroAnioBase, "meses", filtroMesBase, "ordenes", ordenSeleccionada.id, "documentos"));
             const snap = await getDocs(q);
@@ -153,13 +154,12 @@ const EnlazarOrden = () => {
             setDetalleItems(detalleConciliado);
             setOrdenEnlazada(true);
             setShowModalEnlace(false);
-
             showToast(`Orden enlazada: ${nuevoEstado}`, "success");
         } catch (error) {
             console.error("Error al cruzar información:", error);
             showToast("Error: " + error.message, "error");
         } finally {
-            setCargando(false);
+            setCargandoModal(false); // 👈 siempre apaga el spinner
         }
     };
 
@@ -303,51 +303,94 @@ const EnlazarOrden = () => {
             </div>
 
             {showModalEnlace && (
-                <div className="fixed inset-0 bg-gray-900/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-gray-200">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
-                            <h3 className="font-bold text-gray-700 text-[14px] uppercase tracking-wider">Seleccionar Orden</h3>
-                            <button onClick={() => setShowModalEnlace(false)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
-                                <X size={20} />
+                <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-[480px] rounded-2xl border border-gray-200/80 overflow-hidden flex flex-col max-h-[85vh] shadow-xl">
+
+                        {/* Header */}
+                        <div className="px-6 pt-5 pb-4 flex justify-between items-start border-b border-gray-100">
+                            <div>
+                                <h3 className="text-[14px] font-medium text-gray-900 leading-tight">Enlazar orden de compra</h3>
+                                <p className="text-[12px] text-gray-400 mt-0.5">Seleccione el período y busque la orden a vincular</p>
+                            </div>
+                            <button
+                                onClick={() => setShowModalEnlace(false)}
+                                className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors p-1.5 rounded-lg mt-[-2px] ml-4"
+                            >
+                                <X size={16} />
                             </button>
                         </div>
-                        <div className="p-4 grid grid-cols-2 gap-3 border-b border-gray-100 bg-white">
-                            <select onChange={(e) => setFiltroAnioBase(e.target.value)} className="w-full border border-gray-200 px-3 py-2 rounded-lg text-[12px] outline-none focus:border-[#2383C2] transition-colors">
-                                <option value="">Año</option>
-                                {aniosBase.map(a => <option key={a} value={a}>{a}</option>)}
-                            </select>
-                            <select onChange={(e) => setFiltroMesBase(e.target.value)} className="w-full border border-gray-200 px-3 py-2 rounded-lg text-[12px] capitalize outline-none focus:border-[#2383C2] transition-colors">
-                                <option value="">Mes</option>
-                                {mesesBase.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                            <button onClick={buscarOrdenesEnBase} className="col-span-2 bg-[#2383C2] text-white py-2 rounded-lg text-[12px] font-bold hover:bg-[#0a4856] transition-all">
-                                BUSCAR ÓRDENES
+
+                        {/* Filtros */}
+                        <div className="px-6 py-4 flex flex-col gap-3 border-b border-gray-100">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Año</span>
+                                    <select
+                                        onChange={(e) => setFiltroAnioBase(e.target.value)}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-[13px] text-gray-700 outline-none focus:border-[#2383C2] focus:bg-white transition-colors"
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        {aniosBase.map(a => <option key={a} value={a}>{a}</option>)}
+                                    </select>
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Mes</span>
+                                    <select
+                                        onChange={(e) => setFiltroMesBase(e.target.value)}
+                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-[13px] text-gray-700 capitalize outline-none focus:border-[#2383C2] focus:bg-white transition-colors"
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        {mesesBase.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <button
+                                onClick={buscarOrdenesEnBase}
+                                className="w-full bg-[#2383C2] hover:bg-[#1a6da0] text-white py-2.5 rounded-lg text-[12px] font-medium flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <Search size={13} />
+                                Buscar órdenes
                             </button>
                         </div>
-                        <div className="overflow-auto flex-grow bg-white">
+
+                        {/* Resultados */}
+                        <div className="overflow-auto flex-grow relative">
+
+                            {/* Spinner overlay dentro del modal */}
+                            {cargandoModal && (
+                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px] gap-3">
+                                    <Spinner size="sm" color="#2383C2" />
+                                    <p className="text-[12px] text-gray-500 font-medium">Enlazando orden...</p>
+                                </div>
+                            )}
+
                             {ordenesEncontradas.length > 0 ? (
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="sticky top-0 z-10 bg-white border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-[0.05em]">Nro. Orden</th>
-                                            <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-[0.05em]">Proveedor</th>
-                                            <th className="px-6 py-3.5 text-[11px] font-bold text-gray-400 uppercase tracking-[0.05em] text-right">Acción</th>
+                                    <thead className="sticky top-0 z-10">
+                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                            <th className="px-6 py-3 text-[10px] font-medium text-gray-400 uppercase tracking-widest">Nro. orden</th>
+                                            <th className="px-6 py-3 text-[10px] font-medium text-gray-400 uppercase tracking-widest">Proveedor</th>
+                                            <th className="px-6 py-3"></th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
+                                    <tbody>
                                         {ordenesEncontradas.map((o) => (
-                                            <tr key={o.id} onClick={() => handleSeleccionarOrden(o)} className="group hover:bg-[#F8FAFB] cursor-pointer transition-all duration-200">
-                                                <td className="px-6 py-4 text-[13px] font-semibold text-gray-700">
-                                                    <span className="bg-gray-100 px-2 py-0.5 rounded font-mono text-[11px] text-gray-500 group-hover:bg-[#2383C2] group-hover:text-white transition-colors">
+                                            <tr
+                                                key={o.id}
+                                                onClick={() => handleSeleccionarOrden(o)}
+                                                className="group cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                                            >
+                                                <td className="px-6 py-3.5">
+                                                    <span className="font-mono text-[11px] px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100">
                                                         {o["Nro.Orden"]}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-[13px] text-gray-600 font-medium group-hover:text-[#2383C2] transition-colors">
+                                                <td className="px-6 py-3.5 text-[13px] text-gray-500">
                                                     {o["Proveedor"]}
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className="inline-flex items-center text-[11px] font-bold text-[#2383C2] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        SELECCIONAR →
+                                                <td className="px-6 py-3.5 text-right">
+                                                    <span className="text-[#2383C2] opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <ArrowLeft size={14} className="rotate-180" />
                                                     </span>
                                                 </td>
                                             </tr>
@@ -355,14 +398,18 @@ const EnlazarOrden = () => {
                                     </tbody>
                                 </table>
                             ) : (
-                                <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
-                                    <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
-                                        <Search size={20} className="text-gray-300" />
+                                <div className="flex flex-col items-center justify-center h-56 gap-3 text-gray-400">
+                                    <div className="w-11 h-11 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
+                                        <Search size={16} className="text-gray-300" />
                                     </div>
-                                    <p className="text-[12px] font-medium text-gray-500">No se encontraron resultados</p>
+                                    <div className="text-center">
+                                        <p className="text-[13px] text-gray-500 font-medium">Sin resultados</p>
+                                        <p className="text-[11px] text-gray-400 mt-0.5">Seleccione año y mes, luego busque</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
+
                     </div>
                 </div>
             )}
@@ -371,3 +418,4 @@ const EnlazarOrden = () => {
 };
 
 export default EnlazarOrden;
+
