@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { db } from "../../../firebaseConfig";
+import { db, firebaseConfig } from "../../../firebaseConfig";
 import { MODULES } from '../../../config/modulesConfig.jsx';
 import { COMPONENT_MAPS } from '../../../config/componentMaps.jsx';
 import { enviarCredenciales } from '../../../services/emailService';
@@ -190,6 +190,7 @@ const CrearUsuario = () => {
         );
         const uid = userCredential.user.uid;
         await secondaryAuth.signOut();
+        await deleteApp(secondaryApp);
 
         const dataToSave = {
           ...payload,
