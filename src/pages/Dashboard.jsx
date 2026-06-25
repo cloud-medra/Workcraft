@@ -11,7 +11,7 @@ import { MODULES } from '../config/modulesConfig.jsx';
 import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
 import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
 import Perfil from '../components/modulos/perfil/Perfil';
-import Ajustes from '../components/modulos/ajustes/Ajustes';
+import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
 import Medicos from '../components/modulos/maestros/Medicos';
 import Empresas from '../components/modulos/maestros/Empresas';
 import Codigos from '../components/modulos/maestros/Codigos';
@@ -132,7 +132,7 @@ const Dashboard = () => {
     'privacidad': <PoliticasPrivacidad />,
     'terminos': <TerminosServicio />,
     'perfil': <Perfil userData={userData} />,
-    'ajustes': <Ajustes />
+    'password': <CambiarPasswordSeguro />,
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
@@ -155,7 +155,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
 
-<aside className={`${isSidebarCollapsed ? 'w-16' : 'w-48'} bg-[#2383C2] dark:bg-gray-800 text-white transition-colors duration-300 hidden md:flex flex-col shadow-xl h-screen sticky top-0 [transition:width_0.4s_cubic-bezier(0.25,1,0.5,1)] will-change-[width]`}>
+      <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-48'} bg-[#2383C2] dark:bg-gray-800 text-white transition-colors duration-300 hidden md:flex flex-col shadow-xl h-screen sticky top-0 [transition:width_0.4s_cubic-bezier(0.25,1,0.5,1)] will-change-[width]`}>
 
         <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden">
           <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
@@ -303,7 +303,7 @@ const Dashboard = () => {
                   <UserCircle size={16} /> Mi Perfil
                 </button>
                 <button
-                  onClick={() => { /* Lógica cambiar contraseña aquí */ }}
+                  onClick={() => { setActiveView('password'); setIsMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <Shield size={16} /> Cambiar Contraseña
@@ -316,10 +316,10 @@ const Dashboard = () => {
                   {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
                 </button>
                 <button
-                  onClick={() => { setActiveView('ajustes'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
                 >
-                  <Settings size={16} /> Ajustes
+                  <Settings size={16} /> Ajustes Generales
                 </button>
                 <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
                 <button
