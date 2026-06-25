@@ -110,33 +110,38 @@ const GestorDocumentos = ({ firestorePath, storagePath, documentosExistentes = [
   };
 
   const renderLista = (lista, titulo, Icono, colorSg) => (
-    <div className="flex-1 bg-slate-50/50 border border-slate-100 rounded-2xl p-4">
-      <h4 className="text-[12px] font-bold text-slate-600 flex items-center gap-1.5 mb-3 border-b border-slate-200/60 pb-1.5">
+    <div className="flex-1 bg-slate-50/50 dark:bg-gray-900/40 border border-slate-100 dark:border-gray-700 rounded-2xl p-4">
+      <h4 className="text-[12px] font-bold text-slate-600 dark:text-gray-300 flex items-center gap-1.5 mb-3 border-b border-slate-200/60 dark:border-gray-700 pb-1.5">
         <Icono size={14} className={colorSg} /> {titulo} ({lista.length})
       </h4>
       <div className="space-y-1.5 max-h-[250px] overflow-auto pr-1">
         {lista.length === 0 ? (
-          <p className="text-[11px] text-slate-400 italic py-2 text-center">No hay archivos o no posees permisos de lectura.</p>
+          <p className="text-[11px] text-slate-400 dark:text-gray-500 italic py-2 text-center">No hay archivos o no posees permisos de lectura.</p>
         ) : (
           lista.map((docObj, idx) => (
-            <div key={idx} className="flex items-center justify-between p-2 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 transition-all group/item">
+            <div key={idx} className="flex items-center justify-between p-2 rounded-xl border border-slate-100 dark:border-gray-700/60 bg-white dark:bg-gray-800 hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all group/item">
               <div className="flex items-center gap-2 overflow-hidden w-[82%]">
-                <div className="p-1.5 rounded-lg bg-red-50 text-red-500 flex-shrink-0"><FileText size={13} /></div>
+                <div className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-500 dark:text-red-400 flex-shrink-0">
+                  <FileText size={13} />
+                </div>
                 <div className="flex flex-col overflow-hidden">
-                  <span className="text-[11px] font-medium text-slate-700 truncate" title={docObj.nombre}>{docObj.nombre}</span>
-                  <span className="text-[9px] text-slate-400">Por {docObj.subidoPor}</span>
+                  <span className="text-[11px] font-medium text-slate-700 dark:text-gray-200 truncate" title={docObj.nombre}>{docObj.nombre}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-gray-500">Por {docObj.subidoPor}</span>
                 </div>
               </div>
               <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
                 <button
                   onClick={() => handleVerDocumentoSeguro(docObj)}
                   disabled={descargandoId !== null}
-                  className="p-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-md shadow-xs"
+                  className="p-1 bg-white dark:bg-gray-700 hover:bg-slate-100 dark:hover:bg-gray-600 border border-slate-200 dark:border-gray-600 text-slate-600 dark:text-gray-300 rounded-md shadow-xs"
                 >
-                  {descargandoId === docObj.idStorage ? <Loader2 size={12} className="animate-spin text-[#2383C2]" /> : <Eye size={12} />}
+                  {descargandoId === docObj.idStorage ? <Loader2 size={12} className="animate-spin text-[#2383C2] dark:text-[#369BCE]" /> : <Eye size={12} />}
                 </button>
                 {hasPermission(RUTA, 'gestor_documentos', 'cargaDatos_gestor_eliminar') && (
-                  <button onClick={() => handleEliminarDocumento(docObj)} className="p-1 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-md">
+                  <button 
+                    onClick={() => handleEliminarDocumento(docObj)} 
+                    className="p-1 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded-md"
+                  >
                     <Trash2 size={12} />
                   </button>
                 )}
@@ -155,35 +160,38 @@ const GestorDocumentos = ({ firestorePath, storagePath, documentosExistentes = [
           onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => { e.preventDefault(); setIsDragging(false); procesarArchivos(Array.from(e.dataTransfer.files)); }}
-          className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${isDragging ? 'border-[#2383C2] bg-[#2383C2]/5 scale-[0.99]' : 'border-slate-200 bg-slate-50/50 hover:border-[#2383C2]'
-            }`}
+          className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all ${
+            isDragging 
+              ? 'border-[#2383C2] dark:border-[#369BCE] bg-[#2383C2]/5 dark:bg-[#369BCE]/5 scale-[0.99]' 
+              : 'border-slate-200 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/20 hover:border-[#2383C2] dark:hover:border-[#369BCE]'
+          }`}
         >
           <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer text-center">
-            <UploadCloud size={36} className={`mb-1 ${isDragging ? 'text-[#2383C2]' : 'text-slate-400'}`} />
-            <span className="text-[13px] font-bold text-slate-700">Arrastra todos los archivos PDF juntos aquí</span>
-            <span className="text-[11px] text-slate-400 mt-0.5">Soporta informes y Órdenes de Compra en masa</span>
+            <UploadCloud size={36} className={`mb-1 ${isDragging ? 'text-[#2383C2] dark:text-[#369BCE]' : 'text-slate-400 dark:text-gray-500'}`} />
+            <span className="text-[13px] font-bold text-slate-700 dark:text-gray-200">Arrastra todos los archivos PDF juntos aquí</span>
+            <span className="text-[11px] text-slate-400 dark:text-gray-500 mt-0.5">Soporta informes y Órdenes de Compra en masa</span>
             <input type="file" multiple accept="application/pdf" className="hidden" onChange={(e) => procesarArchivos(Array.from(e.target.files))} />
           </label>
         </div>
       )}
 
       {Object.keys(archivosCargando).length > 0 && (
-        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+        <div className="p-3 bg-slate-50 dark:bg-gray-900/60 rounded-xl border border-slate-200 dark:border-gray-700 space-y-1.5">
           {Object.values(archivosCargando).map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between text-[11px] bg-white p-2 rounded-lg border border-slate-100">
+            <div key={idx} className="flex items-center justify-between text-[11px] bg-white dark:bg-gray-800 p-2 rounded-lg border border-slate-100 dark:border-gray-700">
               <div className="flex items-center gap-2 overflow-hidden w-3/4">
-                <Loader2 size={12} className="animate-spin text-[#2383C2] flex-shrink-0" />
-                <span className="truncate text-slate-600 font-medium">{item.nombre}</span>
+                <Loader2 size={12} className="animate-spin text-[#2383C2] dark:text-[#369BCE] flex-shrink-0" />
+                <span className="truncate text-slate-600 dark:text-gray-300 font-medium">{item.nombre}</span>
               </div>
-              <span className="font-bold text-[#2383C2] text-[10px]">{item.progreso}%</span>
+              <span className="font-bold text-[#2383C2] dark:text-[#369BCE] text-[10px]">{item.progreso}%</span>
             </div>
           ))}
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {renderLista(docsClinicos, "Expediente / Informes Clínicos", ClipboardList, "text-[#2383C2]")}
-        {renderLista(docsOC, "Órdenes de Compra (OC)", ShoppingBag, "text-amber-500")}
+        {renderLista(docsClinicos, "Expediente / Informes Clínicos", ClipboardList, "text-[#2383C2] dark:text-[#369BCE]")}
+        {renderLista(docsOC, "Órdenes de Compra (OC)", ShoppingBag, "text-amber-500 dark:text-amber-400")}
       </div>
     </div>
   );

@@ -39,7 +39,7 @@ const VisualizadorTemporal = () => {
         });
       }
       setGuias((prev) => [...prev, ...nuevasGuias]);
-      showToast("Archivos processedos temporalmente", "success");
+      showToast("Archivos procesados temporalmente", "success");
     } catch (error) {
       console.error(error);
       showToast("Error al procesar archivos", "error");
@@ -58,41 +58,52 @@ const VisualizadorTemporal = () => {
   }
 
   return (
-    <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-      <h2 className="text-[14px] font-bold text-gray-700 p-4 border-b border-gray-200 flex items-center gap-2">
-        <Package size={16} className="text-[#0E5B6D]" /> VISUALIZADOR TEMPORAL (NO GUARDADO)
+    <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+        <Package size={16} className="text-[#2383C2]" /> VISUALIZADOR TEMPORAL (NO GUARDADO)
       </h2>
 
       {hasPermission(PATH_VISTA, "visualizador_temporal", "zona_dropzone") && (
-        <div {...getRootProps()} className={`m-4 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${isDragActive ? 'border-[#0E5B6D] bg-blue-50' : 'border-gray-300'}`}>
+        <div 
+          {...getRootProps()} 
+          className={`m-4 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 outline-none ${
+            isDragActive 
+              ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/20' 
+              : 'border-gray-300 dark:border-gray-600 bg-gray-50/30 dark:bg-gray-900/10 hover:bg-gray-50 dark:hover:bg-gray-900/30'
+          }`}
+        >
           <input {...getInputProps()} />
-          <Upload className="mx-auto text-gray-400 mb-2" size={24} />
-          <p className="text-[13px] text-gray-500">Arrastra archivos XML aquí para ver su contenido</p>
+          <Upload className="mx-auto text-gray-400 dark:text-gray-500 mb-2" size={24} />
+          <p className="text-[13px] text-gray-500 dark:text-gray-400">
+            Arrastra archivos XML aquí para ver su contenido u <span className="text-[#2383C2] font-semibold underline">explora el equipo</span>
+          </p>
         </div>
       )}
 
       <div className="flex-grow overflow-auto">
         <table className="w-full text-left text-[12px] border-collapse">
-          <thead className="bg-gray-100 sticky top-0">
-            <tr className="text-gray-600 uppercase font-bold text-[11px]">
-              <th className="p-3 border-b border-r border-gray-200">Folio</th>
-              <th className="p-3 border-b border-r border-gray-200">Fch. Emisión</th>
-              <th className="p-3 border-b border-r border-gray-200">Folio Ref</th>
-              <th className="p-3 border-b border-gray-200">Primer Ítem</th>
+          <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 text-gray-600 dark:text-gray-300 uppercase font-bold text-[11px] z-10">
+            <tr>
+              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
+              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Fch. Emisión</th>
+              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio Ref</th>
+              <th className="p-3 border-b border-gray-200 dark:border-gray-700">Primer Ítem</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="text-gray-700 dark:text-gray-300">
             {guias.map((g) => (
-              <tr key={g.id} className="hover:bg-gray-50 border-b border-gray-200">
-                <td className="p-3 font-bold text-gray-700">{g.folio}</td>
-                <td className="p-3 text-gray-600">{g.fchEmis}</td>
-                <td className="p-3 text-gray-600">{g.folioRef}</td>
-                <td className="p-3 text-gray-600 italic">{g.primerItem}</td>
+              <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 border-b border-gray-200 dark:border-gray-700/80 transition-colors duration-150">
+                <td className="p-3 font-bold text-gray-800 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700">{g.folio}</td>
+                <td className="p-3 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{g.fchEmis}</td>
+                <td className="p-3 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{g.folioRef}</td>
+                <td className="p-3 text-gray-600 dark:text-gray-400 italic max-w-xs truncate" title={g.primerItem}>{g.primerItem}</td>
               </tr>
             ))}
             {guias.length === 0 && (
               <tr>
-                <td colSpan="4" className="p-10 text-center text-gray-400 italic">No hay archivos cargados</td>
+                <td colSpan="4" className="p-10 text-center text-gray-400 dark:text-gray-500 font-medium italic">
+                  No hay archivos cargados en el buffer temporal.
+                </td>
               </tr>
             )}
           </tbody>
@@ -102,7 +113,7 @@ const VisualizadorTemporal = () => {
       {guias.length > 0 && hasPermission(PATH_VISTA, "visualizador_temporal", "btn_limpiar") && (
         <button
           onClick={() => setGuias([])}
-          className="m-4 bg-red-50 text-red-600 py-2 rounded text-[12px] font-bold hover:bg-red-100 transition-colors"
+          className="m-4 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 py-2 rounded text-[12px] font-bold hover:bg-red-100 dark:hover:bg-red-950/40 border border-red-100 dark:border-red-900/30 transition-colors"
         >
           Limpiar Tabla
         </button>

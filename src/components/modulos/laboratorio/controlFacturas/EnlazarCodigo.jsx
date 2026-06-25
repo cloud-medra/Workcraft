@@ -221,77 +221,77 @@ const EnlazarCodigo = () => {
     const colSpanDetalle = enlazado ? 7 : 4;
 
     return (
-        <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0 relative">
+        <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative transition-colors">
             {cargando && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
-                    <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 dark:bg-gray-900/40 backdrop-blur-[2px]">
+                    <div className="bg-white/90 dark:bg-gray-800/95 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5 border dark:border-gray-700">
                         <Spinner size="md" color="#2383C2" />
-                        <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando...</h3>
+                        <h3 className="text-[#2383C2] dark:text-[#369BCE] font-bold text-[15px]">Procesando...</h3>
                     </div>
                 </div>
             )}
 
-            <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
+            <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 {vistaActual === 'detalle' && (
-                    <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 p-1 rounded">
+                    <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] dark:text-[#369BCE] hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded transition-colors">
                         <ArrowLeft size={16} />
                     </button>
                 )}
                 {vistaActual === 'lista' ? 'HISTORIAL DE CONCILIACIONES' : `DETALLE FOLIO: ${conciliacionActual?.folio}`}
                 {vistaActual === 'detalle' && (
-                    <button onClick={handleEnlazarCodigos} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+                    <button onClick={handleEnlazarCodigos} className="ml-auto bg-[#2383C2] hover:bg-[#1d6b9e] dark:bg-[#369BCE] dark:hover:bg-[#2882B0] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 transition-colors">
                         <CheckCircle size={12} /> {enlazado ? 'ACTUALIZAR CÓDIGOS' : 'ENLAZAR CÓDIGOS'}
                     </button>
                 )}
             </h2>
 
-            <div className="flex-grow overflow-auto">
+            <div className="flex-grow overflow-auto bg-white dark:bg-gray-800">
                 <table className="w-full text-left text-[12px] border-collapse">
-                    <thead className="bg-gray-100 sticky top-0">
-                        <tr className="text-gray-600 uppercase font-bold text-[11px]">
+                    <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10 text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                        <tr>
                             {vistaActual === 'lista' ? (
                                 <>
-                                    <th className="p-3 border-b border-r border-gray-200">Folio</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Proveedor</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Total</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Estado</th>
-                                    <th className="p-3 border-b border-gray-200 text-center">Acciones</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Proveedor</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
+                                    <th className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
                                 </>
                             ) : (
                                 <>
-                                    <th className="p-3 border-b border-r border-gray-200">Referencia</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Descripción</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Cant.</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Precio Unit.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Cant.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Precio Unit.</th>
                                     {enlazado && (
                                         <>
-                                            <th className="p-3 border-b border-r border-gray-200 bg-green-50 text-green-700">Cod. Maestro</th>
-                                            <th className="p-3 border-b border-r border-gray-200 bg-green-50 text-green-700">Precio M.</th>
-                                            <th className="p-3 border-b border-gray-200 bg-green-50 text-green-700">Dif.</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">Cod. Maestro</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">Precio M.</th>
+                                            <th className="p-3 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400">Dif.</th>
                                         </>
                                     )}
                                 </>
                             )}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                         {vistaActual === 'lista' ? (
                             listaConciliaciones.map((f, i) => (
-                                <tr key={`${f.id}-${i}`} onDoubleClick={() => handleDobleClick(f)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{f.folio}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">{f.rznSoc}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Number(f.total || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-b border-r border-gray-200">
-                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${f.estado === 'Procesar en Orden' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                <tr key={`${f.id}-${i}`} onDoubleClick={() => handleDobleClick(f)} className="border-l-4 border-transparent hover:border-[#2383C2] dark:hover:border-[#369BCE] hover:bg-gray-50 dark:hover:bg-gray-700/30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-[#2383C2] dark:text-[#369BCE]">{f.folio}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{f.rznSoc}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Number(f.total || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${f.estado === 'Procesar en Orden' ? 'bg-green-100 text-green-700 dark:bg-green-950/60 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-400'}`}>
                                             {f.estado || 'Iniciar'}
                                         </span>
                                     </td>
-                                    <td className="p-3 border-b border-gray-200 text-center">
+                                    <td className="p-3 text-center">
                                         <div className="flex items-center justify-center gap-3">
-                                            <button onClick={() => handleDobleClick(f)} className="text-gray-400 hover:text-[#2383C2] transition-colors" title="Visualizar">
+                                            <button onClick={() => handleDobleClick(f)} className="text-gray-400 dark:text-gray-500 hover:text-[#2383C2] dark:hover:text-[#369BCE] transition-colors" title="Visualizar">
                                                 <Eye size={16} />
                                             </button>
-                                            <button onClick={(e) => handleEliminarConciliacion(e, f)} className="text-gray-400 hover:text-red-500 transition-colors" title="Eliminar Conciliación">
+                                            <button onClick={(e) => handleEliminarConciliacion(e, f)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors" title="Eliminar Conciliación">
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
@@ -299,54 +299,51 @@ const EnlazarCodigo = () => {
                                 </tr>
                             ))
                         ) : (
-                            // ✅ React.Fragment para poder agregar la fila de observación inline
                             detalleItems.map((item, i) => (
                                 <React.Fragment key={`${item.id || 'item'}-${i}`}>
-                                    <tr className={`border-l-4 transition-colors ${
+                                    <tr className={`border-l-4 border-b border-gray-200 dark:border-gray-700 transition-colors ${
                                         item.anulado
-                                            ? 'border-gray-300 bg-gray-50 opacity-70'
-                                            : 'border-transparent hover:border-[#2383C2] hover:bg-gray-50'
+                                            ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 opacity-60'
+                                            : 'border-transparent hover:border-[#2383C2] dark:hover:border-[#369BCE] hover:bg-gray-50 dark:hover:bg-gray-700/30 bg-white dark:bg-gray-800'
                                     }`}>
-                                        <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
-                                        <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">
-                                            <span className={item.anulado ? 'line-through text-gray-400' : ''}>
+                                        <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-mono text-gray-600 dark:text-gray-400">{item.codigo}</td>
+                                        <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">
+                                            <span className={item.anulado ? 'line-through text-gray-400 dark:text-gray-500' : ''}>
                                                 {item.nombre || item.descripcion}
                                             </span>
                                         </td>
-                                        <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>
-                                        <td className="p-3 border-b border-r border-gray-200 text-gray-600">
+                                        <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300">{item.cantidad}</td>
+                                        <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
                                             ${Math.round(item.precioUnitarioFactura ?? item.precio ?? 0).toLocaleString()}
                                         </td>
                                         {enlazado && (
                                             <>
-                                                <td className={`p-3 border-b border-r border-gray-200 font-mono ${
-                                                    item.codigoMaestro === 'NO ENCONTRADO' ? 'text-red-500' :
-                                                    item.codigoMaestro === 'ANULADO' ? 'text-gray-400' :
-                                                    'text-green-700'
+                                                <td className={`p-3 border-r border-gray-200 dark:border-gray-700 font-mono ${
+                                                    item.codigoMaestro === 'NO ENCONTRADO' ? 'text-red-500 dark:text-red-400' :
+                                                    item.codigoMaestro === 'ANULADO' ? 'text-gray-400 dark:text-gray-500' :
+                                                    'text-green-700 dark:text-green-400'
                                                 }`}>
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <span className={item.anulado ? 'line-through' : ''}>
                                                             {item.codigoMaestro || 'N/A'}
                                                         </span>
 
-                                                        {/* ✅ Botón Anular: solo si es NO ENCONTRADO y no está anulado */}
                                                         {item.codigoMaestro === 'NO ENCONTRADO' && !item.anulado && (
                                                             <button
                                                                 onClick={() => {
                                                                     setObservacionEditando(item.id);
                                                                     setObservacionTexto(item.observacion || '');
                                                                 }}
-                                                                className="text-[10px] text-orange-600 border border-orange-300 rounded px-1.5 py-0.5 hover:bg-orange-50 font-bold whitespace-nowrap"
+                                                                className="text-[10px] text-orange-600 dark:text-orange-400 border border-orange-300 dark:border-orange-800 rounded px-1.5 py-0.5 hover:bg-orange-50 dark:hover:bg-orange-950/40 font-bold whitespace-nowrap transition-colors"
                                                                 title="Anular ítem con observación"
                                                             >
                                                                 Anular
                                                             </button>
                                                         )}
 
-                                                        {/* ✅ Mostrar observación resumida si ya está anulado */}
                                                         {item.anulado && item.observacion && (
                                                             <span
-                                                                className="text-[10px] text-gray-400 italic truncate max-w-[120px]"
+                                                                className="text-[10px] text-gray-400 dark:text-gray-500 italic truncate max-w-[120px]"
                                                                 title={item.observacion}
                                                             >
                                                                 ({item.observacion})
@@ -354,15 +351,15 @@ const EnlazarCodigo = () => {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="p-3 border-b border-r border-gray-200 font-bold text-green-700">
+                                                <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-green-700 dark:text-green-400">
                                                     {item.codigoMaestro === 'NO ENCONTRADO' || item.codigoMaestro === 'ANULADO'
                                                         ? '-'
                                                         : `$${Math.round(item.precioMaestro ?? 0).toLocaleString()}`}
                                                 </td>
-                                                <td className={`p-3 border-b border-gray-200 font-bold ${
-                                                    item.anulado ? 'text-gray-400 italic' :
-                                                    item.diferencia === 'Pendiente cálculo' ? 'text-gray-400 italic' :
-                                                    (item.diferencia ?? 0) < 0 ? 'text-red-600' : 'text-blue-600'
+                                                <td className={`p-3 font-bold ${
+                                                    item.anulado ? 'text-gray-400 dark:text-gray-500 italic' :
+                                                    item.diferencia === 'Pendiente cálculo' ? 'text-gray-400 dark:text-gray-500 italic' :
+                                                    (item.diferencia ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'
                                                 }`}>
                                                     {item.anulado
                                                         ? 'Anulado'
@@ -374,12 +371,12 @@ const EnlazarCodigo = () => {
                                         )}
                                     </tr>
 
-                                    {/* ✅ Fila expandida de observación inline */}
+                                    {/* ✅ Fila expandida de observación inline con adaptación Dark Mode */}
                                     {observacionEditando === item.id && (
-                                        <tr className="bg-orange-50 border-l-4 border-orange-400">
-                                            <td colSpan={colSpanDetalle} className="px-3 py-2 border-b border-orange-200">
+                                        <tr className="bg-orange-50/60 dark:bg-orange-950/20 border-l-4 border-orange-400 border-b border-orange-200 dark:border-orange-900/60 transition-colors">
+                                            <td colSpan={colSpanDetalle} className="px-3 py-2">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-[11px] font-bold text-orange-600 whitespace-nowrap">
+                                                    <span className="text-[11px] font-bold text-orange-700 dark:text-orange-400 whitespace-nowrap">
                                                         Motivo de anulación:
                                                     </span>
                                                     <input
@@ -387,18 +384,18 @@ const EnlazarCodigo = () => {
                                                         value={observacionTexto}
                                                         onChange={e => setObservacionTexto(e.target.value)}
                                                         onKeyDown={e => e.key === 'Enter' && handleGuardarObservacion(item)}
-                                                        className="flex-grow h-7 border border-orange-300 rounded text-[12px] px-2 outline-none focus:border-orange-500 bg-white"
+                                                        className="flex-grow h-7 border border-orange-300 dark:border-orange-800 rounded text-[12px] px-2 outline-none focus:border-orange-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
                                                         placeholder="Ej: Solicitar nota de crédito por ingreso incorrecto..."
                                                     />
                                                     <button
                                                         onClick={() => handleGuardarObservacion(item)}
-                                                        className="h-7 px-3 bg-orange-500 text-white rounded text-[11px] font-bold hover:bg-orange-600 whitespace-nowrap"
+                                                        className="h-7 px-3 bg-orange-500 dark:bg-orange-600 text-white rounded text-[11px] font-bold hover:bg-orange-600 dark:hover:bg-orange-700 whitespace-nowrap transition-colors"
                                                     >
                                                         Confirmar
                                                     </button>
                                                     <button
                                                         onClick={() => { setObservacionEditando(null); setObservacionTexto(''); }}
-                                                        className="h-7 px-2 text-gray-500 hover:text-gray-700 text-[11px] whitespace-nowrap"
+                                                        className="h-7 px-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-[11px] whitespace-nowrap transition-colors"
                                                     >
                                                         Cancelar
                                                     </button>

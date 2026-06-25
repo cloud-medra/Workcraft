@@ -82,17 +82,17 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-4 transition-all duration-300 animate-fadeIn">
-      <div className="bg-white w-full max-w-5xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[85vh] border border-slate-100">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/40 dark:bg-black/60 backdrop-blur-md p-4 transition-all duration-300 animate-fadeIn">
+      <div className="bg-white dark:bg-gray-800 w-full max-w-5xl rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[85vh] border border-slate-100 dark:border-gray-700">
         
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/70">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex justify-between items-center bg-slate-50/70 dark:bg-gray-900/40">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#0E5B6D]/10 rounded-lg text-[#0E5B6D]">
+            <div className="p-2 bg-[#0E5B6D]/10 dark:bg-[#0E5B6D]/20 rounded-lg text-[#0E5B6D] dark:text-[#2383C2]">
               <FileText size={20} className="stroke-[2.5]" />
             </div>
             <div>
-              <span className="text-[11px] font-bold text-slate-400 tracking-wider uppercase">Documento de Consignación</span>
-              <h3 className="font-bold text-slate-800 text-lg leading-tight">Detalle Guía: Folio {guia.folio}</h3>
+              <span className="text-[11px] font-bold text-slate-400 dark:text-gray-400 tracking-wider uppercase">Documento de Consignación</span>
+              <h3 className="font-bold text-slate-800 dark:text-gray-100 text-lg leading-tight">Detalle Guía: Folio {guia.folio}</h3>
             </div>
           </div>
           
@@ -100,7 +100,7 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
             {hasPermission(PATH_VISTA, "modal_detalles", "btn_exportar_excel") && (
               <button 
                 onClick={descargarExcel} 
-                className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all duration-200"
+                className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all duration-200"
               >
                 <Download size={14} className="stroke-[2.5]" /> Exportar Excel
               </button>
@@ -108,15 +108,15 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
             {hasPermission(PATH_VISTA, "modal_detalles", "btn_exportar_pdf") && (
               <button 
                 onClick={verPDF} 
-                className="bg-rose-50 text-rose-700 hover:bg-rose-100 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all duration-200"
+                className="bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 px-3 py-1.5 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all duration-200"
               >
                 <FileType size={14} className="stroke-[2.5]" /> Vista PDF
               </button>
             )}
-            <div className="w-[1px] h-6 bg-slate-200 mx-1" />
+            <div className="w-[1px] h-6 bg-slate-200 dark:bg-gray-700 mx-1" />
             <button 
               onClick={onClose} 
-              className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+              className="text-slate-400 dark:text-gray-400 hover:text-slate-600 dark:hover:text-gray-200 p-1.5 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200"
             >
               <X size={18} className="stroke-[2.5]" />
             </button>
@@ -126,59 +126,59 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
         <div className="p-6 overflow-y-auto flex-grow space-y-6">
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
-              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+            <div className="p-4 bg-slate-50 dark:bg-gray-900/30 rounded-xl border border-slate-100 dark:border-gray-700/60 flex items-start gap-3">
+              <div className="p-2 bg-white dark:bg-gray-900 rounded-lg text-slate-400 dark:text-gray-500 border border-slate-100 dark:border-gray-700 shadow-sm">
                 <ShieldCheck size={16} />
               </div>
               <div>
-                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Razón Social</p>
-                <p className="font-bold text-slate-700 text-[13px] mt-0.5 break-words line-clamp-2" title={guia.rznSoc}>
+                <p className="text-slate-400 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider">Razón Social</p>
+                <p className="font-bold text-slate-700 dark:text-gray-200 text-[13px] mt-0.5 break-words line-clamp-2" title={guia.rznSoc}>
                   {guia.rznSoc}
                 </p>
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
-              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+            <div className="p-4 bg-slate-50 dark:bg-gray-900/30 rounded-xl border border-slate-100 dark:border-gray-700/60 flex items-start gap-3">
+              <div className="p-2 bg-white dark:bg-gray-900 rounded-lg text-slate-400 dark:text-gray-500 border border-slate-100 dark:border-gray-700 shadow-sm">
                 <Hash size={16} />
               </div>
               <div>
-                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Folio Referencia</p>
-                <p className="font-mono font-bold text-slate-700 text-[14px] mt-0.5">
+                <p className="text-slate-400 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider">Folio Referencia</p>
+                <p className="font-mono font-bold text-slate-700 dark:text-gray-200 text-[14px] mt-0.5">
                   {guia.folioRef || "N/A"}
                 </p>
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
-              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+            <div className="p-4 bg-slate-50 dark:bg-gray-900/30 rounded-xl border border-slate-100 dark:border-gray-700/60 flex items-start gap-3">
+              <div className="p-2 bg-white dark:bg-gray-900 rounded-lg text-slate-400 dark:text-gray-500 border border-slate-100 dark:border-gray-700 shadow-sm">
                 <Calendar size={16} />
               </div>
               <div>
-                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Fecha de Emisión</p>
-                <p className="font-bold text-slate-700 text-[13px] mt-0.5">
+                <p className="text-slate-400 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider">Fecha de Emisión</p>
+                <p className="font-bold text-slate-700 dark:text-gray-200 text-[13px] mt-0.5">
                   {guia.fchEmis || "N/A"}
                 </p>
               </div>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-start gap-3">
-              <div className="p-2 bg-white rounded-lg text-slate-400 border border-slate-100 shadow-sm">
+            <div className="p-4 bg-slate-50 dark:bg-gray-900/30 rounded-xl border border-slate-100 dark:border-gray-700/60 flex items-start gap-3">
+              <div className="p-2 bg-white dark:bg-gray-900 rounded-lg text-slate-400 dark:text-gray-500 border border-slate-100 dark:border-gray-700 shadow-sm">
                 <User size={16} />
               </div>
               <div>
-                <p className="text-slate-400 uppercase font-bold text-[10px] tracking-wider">Gestor de Carga</p>
-                <p className="font-bold text-slate-700 text-[13px] mt-0.5 truncate" title={guia.registradoPor}>
+                <p className="text-slate-400 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider">Gestor de Carga</p>
+                <p className="font-bold text-slate-700 dark:text-gray-200 text-[13px] mt-0.5 truncate" title={guia.registradoPor}>
                   {guia.registradoPor || "Sistema"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200/80 overflow-hidden shadow-sm">
+          <div className="rounded-xl border border-slate-200/80 dark:border-gray-700 overflow-hidden shadow-sm">
             <table className="w-full text-[12px] border-collapse">
               <thead>
-                <tr className="bg-slate-100 text-slate-600 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200">
+                <tr className="bg-slate-100 dark:bg-gray-900 text-slate-600 dark:text-gray-300 font-bold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-gray-700">
                   <th className="p-3.5 text-center w-14">Nro</th>
                   <th className="p-3.5 text-left">Ítem / Descripción</th>
                   <th className="p-3.5 text-left w-40">Código</th>
@@ -187,27 +187,27 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
                   <th className="p-3.5 text-center w-32">Fch. Venc.</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-gray-700/50">
                 {guia.detalles?.map((item, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50/80 odd:bg-white even:bg-slate-50/30 transition-colors duration-150">
-                    <td className="p-3.5 text-center font-medium text-slate-400">{item.nroLin}</td>
-                    <td className="p-3.5 font-semibold text-slate-700 max-w-xs truncate" title={item.nombre}>
+                  <tr key={idx} className="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 odd:bg-white dark:odd:bg-gray-800 even:bg-slate-50/30 dark:even:bg-gray-900/10 transition-colors duration-150">
+                    <td className="p-3.5 text-center font-medium text-slate-400 dark:text-gray-500">{item.nroLin}</td>
+                    <td className="p-3.5 font-semibold text-slate-700 dark:text-gray-200 max-w-xs truncate" title={item.nombre}>
                       {item.nombre}
                     </td>
-                    <td className="p-3.5 font-mono text-slate-500 font-medium">{item.codigo}</td>
-                    <td className="p-3.5 font-bold text-[#0E5B6D]">{item.dscItem || "-"}</td>
+                    <td className="p-3.5 font-mono text-slate-500 dark:text-gray-400 font-medium">{item.codigo}</td>
+                    <td className="p-3.5 font-bold text-[#0E5B6D] dark:text-[#369BCE]">{item.dscItem || "-"}</td>
                     <td className="p-3.5 text-center">
-                      <span className="inline-block bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md font-bold text-[12px] min-w-[36px]">
+                      <span className="inline-block bg-slate-100 dark:bg-gray-900 text-slate-800 dark:text-gray-200 px-2.5 py-1 rounded-md font-bold text-[12px] min-w-[36px]">
                         {item.cantidad}
                       </span>
                     </td>
-                    <td className="p-3.5 text-center text-slate-500 font-medium">
+                    <td className="p-3.5 text-center text-slate-500 dark:text-gray-400 font-medium">
                       {item.fchVenc ? (
-                        <span className="bg-amber-50 text-amber-800 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-100">
+                        <span className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-400 px-2 py-0.5 rounded text-[11px] font-semibold border border-amber-100 dark:border-amber-900/50">
                           {item.fchVenc}
                         </span>
                       ) : (
-                        <span className="text-slate-300">—</span>
+                        <span className="text-slate-300 dark:text-gray-600">—</span>
                       )}
                     </td>
                   </tr>
@@ -217,11 +217,11 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
           </div>
         </div>
 
-        <div className="px-6 py-3 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-[11px] text-slate-400 font-medium">
+        <div className="px-6 py-3 border-t border-slate-100 dark:border-gray-700 bg-slate-50/50 dark:bg-gray-900/40 flex justify-between items-center text-[11px] text-slate-400 dark:text-gray-400 font-medium">
           <div>Consignación Control Center v2.1</div>
           <div className="flex items-center gap-1">
             <span>ID Registro:</span>
-            <span className="font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">{guia.id || 'N/A'}</span>
+            <span className="font-mono bg-slate-100 dark:bg-gray-900 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-bold">{guia.id || 'N/A'}</span>
           </div>
         </div>
 
