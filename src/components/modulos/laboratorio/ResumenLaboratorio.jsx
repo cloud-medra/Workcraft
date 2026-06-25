@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { BarChart3 } from 'lucide-react';
+import { useGranularPermission } from '../../../hooks/useGranularPermission';
 
 const ResumenLaboratorio = () => {
   const [resumen, setResumen] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [filtroAnio, setFiltroAnio] = useState(new Date().getFullYear().toString());
 
+  const { hasPermission } = useGranularPermission();
+  const PATH_VISTA = "/laboratorio/resumenLaboratorio";
   const COL_RESUMEN = "laboratorio_resumen_financiero";
 
   // Cargar años disponibles
@@ -40,34 +43,39 @@ const ResumenLaboratorio = () => {
         <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
           <BarChart3 size={16} className="text-[#2383C2] dark:text-[#369BCE]" /> RESUMEN FINANCIERO
         </h2>
-        <select
-          value={filtroAnio}
-          onChange={(e) => setFiltroAnio(e.target.value)}
-          className="h-8 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded text-[12px] px-2 outline-none dark:[color-scheme:dark]"
-        >
-          {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
+        
+        {hasPermission(PATH_VISTA, "filtros", "select_anio") && (
+          <select
+            value={filtroAnio}
+            onChange={(e) => setFiltroAnio(e.target.value)}
+            className="h-8 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded text-[12px] px-2 outline-none dark:[color-scheme:dark]"
+          >
+            {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="flex-grow overflow-auto bg-white dark:bg-gray-800">
         <table className="w-full text-left text-[11px] border-collapse">
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10 text-gray-600 dark:text-gray-400 uppercase font-bold">
             <tr>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Mes</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total Acta</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total Salida</th>
-              <th className="p-3 border-b border-gray-200 dark:border-gray-700">Última Actualización</th>
+              {hasPermission(PATH_VISTA, "tabla", "col_mes") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Mes</th>}
+              {hasPermission(PATH_VISTA, "tabla", "col_total_acta") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total Acta</th>}
+              {hasPermission(PATH_VISTA, "tabla", "col_total_salida") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total Salida</th>}
+              {hasPermission(PATH_VISTA, "tabla", "col_fecha_actualizacion") && <th className="p-3 border-b border-gray-200 dark:border-gray-700">Última Actualización</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
             {resumen.map((r) => (
               <tr key={r.mes} className="border-l-4 border-transparent hover:border-[#2383C2] dark:hover:border-[#369BCE] hover:bg-gray-50 dark:hover:bg-gray-700/30 border-b border-gray-200 dark:border-gray-700 transition-colors uppercase">
-                <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-700 dark:text-gray-200">{r.mes}</td>
-                <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-medium text-[#2383C2] dark:text-[#369BCE]">{formatCLP(r.totalActa)}</td>
-                <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-medium text-amber-600 dark:text-amber-500">{formatCLP(r.totalSalida)}</td>
-                <td className="p-3 text-gray-400 dark:text-gray-500">
-                  {r.ultimaActualizacion?.toDate().toLocaleDateString()}
-                </td>
+                {hasPermission(PATH_VISTA, "tabla", "col_mes") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-700 dark:text-gray-200">{r.mes}</td>}
+                {hasPermission(PATH_VISTA, "tabla", "col_total_acta") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-medium text-[#2383C2] dark:text-[#369BCE]">{formatCLP(r.totalActa)}</td>}
+                {hasPermission(PATH_VISTA, "tabla", "col_total_salida") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-medium text-amber-600 dark:text-amber-500">{formatCLP(r.totalSalida)}</td>}
+                {hasPermission(PATH_VISTA, "tabla", "col_fecha_actualizacion") && (
+                  <td className="p-3 text-gray-400 dark:text-gray-500">
+                    {r.ultimaActualizacion?.toDate ? r.ultimaActualizacion.toDate().toLocaleDateString() : ""}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

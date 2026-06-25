@@ -210,7 +210,9 @@ const Facturas = () => {
                 <td className="p-3 text-center">
                   <div className="flex justify-center gap-3">
                     <button onClick={() => setFacturaSeleccionada(f)} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors"><Eye size={15} /></button>
-                    <button onClick={() => handleDelete(f.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"><Trash2 size={15} /></button>
+                    {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
+                        <button onClick={() => handleDelete(f.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"><Trash2 size={15} /></button>
+                    )}
                   </div>
                 </td>
               </tr>

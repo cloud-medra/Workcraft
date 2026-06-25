@@ -10,7 +10,7 @@ const VisualizadorTemporal = () => {
   const { showToast } = useToast();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/consignacion/guias";
+  const PATH_VISTA = "/consignacion/vistaRapida";
 
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
@@ -84,19 +84,19 @@ const VisualizadorTemporal = () => {
         <table className="w-full text-left text-[12px] border-collapse">
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 text-gray-600 dark:text-gray-300 uppercase font-bold text-[11px] z-10">
             <tr>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Fch. Emisión</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio Ref</th>
-              <th className="p-3 border-b border-gray-200 dark:border-gray-700">Primer Ítem</th>
+              {hasPermission(PATH_VISTA, "tabla_datos", "col_folio") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>}
+              {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Fch. Emisión</th>}
+              {hasPermission(PATH_VISTA, "tabla_datos", "col_ref") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio Ref</th>}
+              {hasPermission(PATH_VISTA, "tabla_datos", "col_item") && <th className="p-3 border-b border-gray-200 dark:border-gray-700">Primer Ítem</th>}
             </tr>
           </thead>
           <tbody className="text-gray-700 dark:text-gray-300">
             {guias.map((g) => (
               <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40 border-b border-gray-200 dark:border-gray-700/80 transition-colors duration-150">
-                <td className="p-3 font-bold text-gray-800 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700">{g.folio}</td>
-                <td className="p-3 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{g.fchEmis}</td>
-                <td className="p-3 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{g.folioRef}</td>
-                <td className="p-3 text-gray-600 dark:text-gray-400 italic max-w-xs truncate" title={g.primerItem}>{g.primerItem}</td>
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_folio") && <td className="p-3 font-bold text-gray-800 dark:text-gray-100 border-r border-gray-200 dark:border-gray-700">{g.folio}</td>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="p-3 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{g.fchEmis}</td>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_ref") && <td className="p-3 text-gray-600 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700">{g.folioRef}</td>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_item") && <td className="p-3 text-gray-600 dark:text-gray-400 italic max-w-xs truncate" title={g.primerItem}>{g.primerItem}</td>}
               </tr>
             ))}
             {guias.length === 0 && (

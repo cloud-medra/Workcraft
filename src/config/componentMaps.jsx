@@ -251,6 +251,163 @@ export const COMPONENT_MAPS = {
     }
   },
 
+  "/laboratorio/facturas": {
+    label: "Importación de Facturas",
+    sections: {
+      "cabecera_acciones": {
+        elements: { "btn_importar_xml": { label: "Botón: Importar XML" } }
+      },
+      "tabla_facturas": {
+        elements: {
+          "col_folio": { label: "Col: Folio" },
+          "col_emision": { label: "Col: Emisión" },
+          "col_ref": { label: "Col: Ref" },
+          "col_razon": { label: "Col: Razón Social" },
+          "col_total": { label: "Col: Total" },
+          "col_estado": { label: "Col: Estado" },
+          "col_acciones": { label: "Col: Acciones" },
+          "btn_eliminar": { label: "Botón: Eliminar" }
+        }
+      }
+    }
+  },
+
+  "/laboratorio/importarOrden": {
+    label: "Importar Ordenes (ImportarOrden.jsx)",
+    sections: {
+      "cabecera_acciones": {
+        label: "Sección: Cabecera y Acciones",
+        elements: {
+          "btn_importar": { label: "Acción: Botón Importar Excel" }
+        }
+      },
+      "filtros_busqueda": {
+        label: "Sección: Filtros y Búsqueda",
+        elements: {
+          "filtro_anio": { label: "Selector: Año" },
+          "filtro_mes": { label: "Selector: Mes" },
+          "input_buscar": { label: "Barra de Búsqueda" }
+        }
+      },
+      "tabla_ordenes": {
+        label: "Sección: Tabla Principal (Lista de Órdenes)",
+        elements: {
+          "col_nro_orden": { label: "Columna: Nro. Orden" },
+          "col_fecha": { label: "Columna: Fecha Orden" },
+          "col_rut": { label: "Columna: Rut Proveedor" },
+          "col_proveedor": { label: "Columna: Proveedor" },
+          "col_items": { label: "Columna: Items" },
+          "col_total": { label: "Columna: Total" },
+          "action_ver_detalle": { label: "Operación: Acción Ver (Ojo)" }
+        }
+      },
+      "tabla_detalles": {
+        label: "Sección: Tabla de Detalles (Detalle de Orden)",
+        elements: {
+          "col_articulo": { label: "Columna Detalle: Artículo" },
+          "col_cantidad": { label: "Columna Detalle: Cantidad" },
+          "col_precio": { label: "Columna Detalle: Precio" }
+        }
+      }
+    }
+  },
+
+  "/laboratorio/ingresoFacturas": {
+    label: "Ingreso de Facturas",
+    sections: {
+      "formulario_ingreso": {
+        label: "Sección: Formulario",
+        "elements": {
+          "folio": { label: "Input: Folio" },
+          "orden": { label: "Input: Orden" },
+          "acta": { label: "Input: Acta" },
+          "salida": { label: "Input: Salida" },
+          "fechaActa": { label: "Input: F. Acta" }, // Cambiado de f_acta
+          "fechaSalida": { label: "Input: F. Salida" }, // Cambiado de f_salida
+          "montoFactura": { label: "Input: Monto" }, // Cambiado de monto
+          "ocFactura": { label: "Input: OC" }, // Cambiado de oc
+          "empresa": { label: "Input: Empresa" },
+          "btn_accion": { label: "Botón: Registrar/Actualizar" }
+        }
+      },
+      "tabla_facturas": {
+        label: "Sección: Tabla",
+        elements: {
+          "col_folio": { label: "Col: Folio" },
+          "col_orden": { label: "Col: Orden" },
+          "col_acta": { label: "Col: Acta" },
+          "col_salida": { label: "Col: Salida" },
+          "col_f_acta": { label: "Col: F. Acta" },
+          "col_f_salida": { label: "Col: F. Salida" },
+          "col_monto": { label: "Col: Monto" },
+          "col_oc": { label: "Col: OC" },
+          "col_empresa": { label: "Col: Empresa" },
+          "col_accion": { label: "Col: Acción" }
+        }
+      }
+    }
+  },
+
+  "/laboratorio/resumenLaboratorio": {
+    label: "Resumen Laboratorio",
+    sections: {
+      "filtros": {
+        label: "Sección: Filtros",
+        elements: {
+          "select_anio": { label: "Selector: Año" }
+        }
+      },
+      "tabla": {
+        label: "Sección: Tabla",
+        elements: {
+          "col_mes": { label: "Col: Mes" },
+          "col_total_acta": { label: "Col: Total Acta" },
+          "col_total_salida": { label: "Col: Total Salida" },
+          "col_fecha_actualizacion": { label: "Col: Última Actualización" }
+        }
+      }
+    }
+  },
+
+  "/laboratorio/codigoLaboratorio": {
+    label: "Maestro Códigos",
+    sections: {
+      "formulario": {
+        label: "Formulario de Registro",
+        elements: {
+          "ver_seccion": { label: "Visible: Sección completa" },
+          "input_referencia": { label: "Input: Referencia" },
+          "input_codigo": { label: "Input: Código" },
+          "input_precio": { label: "Input: Precio" },
+          "input_descripcion": { label: "Input: Descripción" },
+          "btn_registrar": { label: "Acción: Registrar / Actualizar" },
+          "btn_cancelar": { label: "Acción: Cancelar edición" }
+        }
+      },
+      "tabla": {
+        label: "Tabla de Datos",
+        elements: {
+          "barra_busqueda": { label: "Visible: Buscador" },
+          "ver_tabla": { label: "Visible: Tabla completa" },
+          "col_referencia": { label: "Columna: Referencia" },
+          "col_codigo": { label: "Columna: Código" },
+          "col_descripcion": { label: "Columna: Descripción" },
+          "col_precio": { label: "Columna: Precio" },
+          "col_acciones": { label: "Columna: Acciones" },
+          "btn_editar": { label: "Acción: Botón Editar" },
+          "btn_eliminar": { label: "Acción: Botón Eliminar" }
+        }
+      }
+    }
+  },
+
+
+
+
+
+
+
+
   "/consignacion/guias": {
     label: "Gestión de Guías (Consignación)",
     sections: {
@@ -292,6 +449,44 @@ export const COMPONENT_MAPS = {
       }
     }
   },
+
+  "/consignacion/vistaRapida": {
+    label: "Visualizador Temporal de Guías",
+    sections: {
+      "visualizador_temporal": {
+        label: "Sección: Buffer de Carga XML",
+        elements: {
+          "zona_dropzone": { label: "Componente: Zona de arrastre de archivos XML" },
+          "btn_limpiar": { label: "Acción: Botón Limpiar registros de la tabla" }
+        }
+      },
+      "tabla_datos": {
+        label: "Sección: Tabla de Resultados",
+        elements: {
+          "col_folio": { label: "Columna: Folio" },
+          "col_fecha": { label: "Columna: Fch. Emisión" },
+          "col_ref": { label: "Columna: Folio Ref" },
+          "col_item": { label: "Columna: Primer Ítem" }
+        }
+      }
+    }
+  },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   "/documentos/carga": {
     label: "Gestión de Carga de Datos (CargaDatos.jsx)",
