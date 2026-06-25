@@ -44,8 +44,10 @@ const CalculadoraMargen = () => {
   const resConsig = precio ? calcularConsignacion(precio) : null;
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-sm">
-      <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><Calculator /> Calculadora de Márgenes</h2>
+    <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-transparent dark:border-gray-700">
+      <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-800 dark:text-gray-100">
+        <Calculator className="text-[#2383C2]" /> Calculadora de Márgenes
+      </h2>
 
       {hasPermission(PATH_VISTA, "zona_ingreso") && (
         <>
@@ -55,52 +57,54 @@ const CalculadoraMargen = () => {
               value={precio}
               onChange={(e) => setPrecio(e.target.value)}
               placeholder="Ingrese precio base..."
-              className="w-64 p-2 border rounded mb-6 outline-none focus:border-[#2383C2]"
+              className="w-64 p-2 border border-gray-300 dark:border-gray-600 rounded mb-6 outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
             />
           )}
         </>
       )}
 
       {precio && hasPermission(PATH_VISTA, "tabla_simulacion") && (
-        <table className="w-full text-[12px] border-collapse">
-          <thead>
-            <tr className="bg-gray-100 uppercase">
-              <th className="p-2 border">Tipo</th>
-              <th className="p-2 border">Previsión</th>
-              <th className="p-2 border">Margen (%)</th>
-              <th className="p-2 border">Valor Margen</th>
-              <th className="p-2 border">Precio Final</th>
-            </tr>
-          </thead>
-          <tbody>
-            {hasPermission(PATH_VISTA, "tabla_simulacion", "fila_consignacion") && resConsig && (
-              <tr className="bg-amber-50">
-                <td className="p-2 border font-bold">Consignación</td>
-                <td className="p-2 border">TODAS</td>
-                <td className="p-2 border">{resConsig.margen}%</td>
-                <td className="p-2 border">${resConsig.monto.toLocaleString()}</td>
-                <td className="p-2 border font-bold">${resConsig.total.toLocaleString()}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12px] border-collapse border border-gray-200 dark:border-gray-700">
+            <thead>
+              <tr className="bg-gray-100 dark:bg-gray-900 uppercase text-gray-700 dark:text-gray-300 font-bold">
+                <th className="p-2 border border-gray-200 dark:border-gray-700 text-left">Tipo</th>
+                <th className="p-2 border border-gray-200 dark:border-gray-700 text-left">Previsión</th>
+                <th className="p-2 border border-gray-200 dark:border-gray-700 text-left">Margen (%)</th>
+                <th className="p-2 border border-gray-200 dark:border-gray-700 text-left">Valor Margen</th>
+                <th className="p-2 border border-gray-200 dark:border-gray-700 text-left">Precio Final</th>
               </tr>
-            )}
+            </thead>
+            <tbody className="text-gray-700 dark:text-gray-200">
+              {hasPermission(PATH_VISTA, "tabla_simulacion", "fila_consignacion") && resConsig && (
+                <tr className="bg-amber-50 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300 border-b border-gray-200 dark:border-gray-700">
+                  <td className="p-2 border border-gray-200 dark:border-gray-700 font-bold">Consignación</td>
+                  <td className="p-2 border border-gray-200 dark:border-gray-700">TODAS</td>
+                  <td className="p-2 border border-gray-200 dark:border-gray-700">{resConsig.margen}%</td>
+                  <td className="p-2 border border-gray-200 dark:border-gray-700">${resConsig.monto.toLocaleString()}</td>
+                  <td className="p-2 border border-gray-200 dark:border-gray-700 font-bold">${resConsig.total.toLocaleString()}</td>
+                </tr>
+              )}
 
-            {hasPermission(PATH_VISTA, "tabla_simulacion", "filas_implantes") && (
-              <>
-                {previsiones.map(prev => {
-                  const res = calcularImplante(precio, prev);
-                  return (
-                    <tr key={prev} className="hover:bg-gray-50">
-                      <td className="p-2 border text-gray-500">Implante</td>
-                      <td className="p-2 border">{prev}</td>
-                      <td className="p-2 border">{res.margen}%</td>
-                      <td className="p-2 border">${res.monto.toLocaleString()}</td>
-                      <td className="p-2 border font-bold">${res.total.toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </>
-            )}
-          </tbody>
-        </table>
+              {hasPermission(PATH_VISTA, "tabla_simulacion", "filas_implantes") && (
+                <>
+                  {previsiones.map(prev => {
+                    const res = calcularImplante(precio, prev);
+                    return (
+                      <tr key={prev} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors">
+                        <td className="p-2 border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400">Implante</td>
+                        <td className="p-2 border border-gray-200 dark:border-gray-700 font-medium">{prev}</td>
+                        <td className="p-2 border border-gray-200 dark:border-gray-700">{res.margen}%</td>
+                        <td className="p-2 border border-gray-200 dark:border-gray-700">${res.monto.toLocaleString()}</td>
+                        <td className="p-2 border border-gray-200 dark:border-gray-700 font-bold text-gray-900 dark:text-gray-100">${res.total.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

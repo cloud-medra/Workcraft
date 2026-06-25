@@ -82,24 +82,24 @@ const Convenios = () => {
   );
 
   return (
-    <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0">
-      <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
+    <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0">
+      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-100 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
         <Handshake size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR CONVENIO" : "REGISTRO DE CONVENIOS"}
       </h2>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
-        <form onSubmit={handleGuardar} className="p-4 flex flex-wrap items-end gap-4 border-b border-gray-200">
+        <form onSubmit={handleGuardar} className="p-4 flex flex-wrap items-end gap-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
           {hasPermission(PATH_VISTA, "formulario_registro", "input_nombre") && (
             <div className="w-[300px]">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nombre del Convenio</label>
-              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none focus:border-[#2383C2]" />
+              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Nombre del Convenio</label>
+              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" />
             </div>
           )}
 
           {editingId && hasPermission(PATH_VISTA, "formulario_registro", "select_estado") && (
             <div className="w-[120px]">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Estado</label>
-              <select value={formData.estado} onChange={e => setFormData({ ...formData, estado: e.target.value })} className="w-full h-8 px-2 border border-gray-300 rounded text-[12px] outline-none">
+              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Estado</label>
+              <select value={formData.estado} onChange={e => setFormData({ ...formData, estado: e.target.value })} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
                 <option value="ACTIVO">ACTIVO</option>
                 <option value="INACTIVO">INACTIVO</option>
               </select>
@@ -108,13 +108,13 @@ const Convenios = () => {
 
           {((!editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_registrar")) ||
             (editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_actualizar"))) && (
-              <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} text-white`}>
+              <button type="submit" className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} text-white transition`}>
                 {editingId ? <><Save size={14} /> Actualizar</> : <><Plus size={14} /> Registrar</>}
               </button>
             )}
 
           {editingId && (
-            <button type="button" onClick={() => { setEditingId(null); setFormData({ nombre: '', estado: 'ACTIVO' }) }} className="h-8 px-4 bg-gray-200 rounded font-bold text-[12px] text-gray-600 flex items-center gap-2">
+            <button type="button" onClick={() => { setEditingId(null); setFormData({ nombre: '', estado: 'ACTIVO' }) }} className="h-8 px-4 bg-gray-200 dark:bg-gray-700 rounded font-bold text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
               <X size={14} /> Cancelar
             </button>
           )}
@@ -122,11 +122,11 @@ const Convenios = () => {
       )}
 
       {hasPermission(PATH_VISTA, "barra_busqueda") && (
-        <div className="bg-gray-50 p-3 flex justify-between items-center border-b border-gray-200">
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
           {hasPermission(PATH_VISTA, "barra_busqueda", "input_buscar") && (
             <div className="relative w-72">
-              <Search className="absolute left-2 top-2 text-gray-400" size={14} />
-              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 rounded text-[12px] outline-none" placeholder="Buscar convenio..." />
+              <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={14} />
+              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]" placeholder="Buscar convenio..." />
             </div>
           )}
         </div>
@@ -135,38 +135,38 @@ const Convenios = () => {
       {hasPermission(PATH_VISTA, "tabla_datos") && (
         <div className="flex-grow overflow-auto">
           <table className="w-full text-left text-[12px] border-collapse">
-            <thead className="bg-gray-100 sticky top-0">
-              <tr className="text-gray-600 uppercase font-bold text-[11px]">
-                <th className="p-3 border-b border-r border-gray-200 w-10">#</th>
-                {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <th className="p-3 border-b border-r border-gray-200">Nombre</th>}
-                {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && <th className="p-3 border-b border-r border-gray-200">Estado</th>}
-                {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <th className="p-3 border-b border-r border-gray-200">Registrado por</th>}
-                {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <th className="p-3 border-b border-r border-gray-200">Fecha</th>}
-                <th className="p-3 border-b border-gray-200 text-center">Acciones</th>
+            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+              <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-10">#</th>
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Nombre</th>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Registrado por</th>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Fecha</th>}
+                <th className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {conveniosFiltrados.map((c, index) => (
-                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50">
-                  <td className="p-3 border-b border-r border-gray-200 text-gray-500 font-bold">{index + 1}</td>
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="p-3 border-b border-r border-gray-200 text-gray-700 font-medium">{c.nombre}</td>}
+                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold">{index + 1}</td>
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{c.nombre}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && (
-                    <td className="p-3 border-b border-r border-gray-200">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${c.estado === 'INACTIVO' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${c.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
                         {c.estado || 'ACTIVO'}
                       </span>
                     </td>
                   )}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <td className="p-3 border-b border-r border-gray-200 text-gray-500">{c.registradoPor || 'N/A'}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="p-3 border-b border-r border-gray-200 text-gray-500">{formatearFecha(c.fechaRegistro)}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{c.registradoPor || 'N/A'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(c.fechaRegistro)}</td>}
 
-                  <td className="p-3 border-b border-gray-200 text-center">
+                  <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
                     <div className="flex justify-center gap-3">
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_editar") && (
-                        <button onClick={() => iniciarEdicion(c)} className="text-blue-600 hover:text-blue-800"><Pencil size={15} /></button>
+                        <button onClick={() => iniciarEdicion(c)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"><Pencil size={15} /></button>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_eliminar") && (
-                        <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700"><Trash2 size={15} /></button>
+                        <button onClick={() => handleDelete(c.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"><Trash2 size={15} /></button>
                       )}
                     </div>
                   </td>

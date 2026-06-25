@@ -83,16 +83,16 @@ const Margen = () => {
   if (loading) return <div className="p-10 flex justify-center"><Loader2 className="animate-spin text-[#2383C2]" /></div>;
 
   return (
-    <div className="w-full h-full p-6 bg-gray-50 overflow-auto">
+    <div className="w-full h-full p-6 bg-gray-50 dark:bg-gray-900 overflow-auto">
       <div className="max-w-4xl mx-auto space-y-6">
 
         {hasPermission(PATH_VISTA, "panel_superior") && (
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <Calculator className="text-[#0E5B6D]" /> Configuración de Márgenes
+            <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+              <Calculator className="text-[#0E5B6D] dark:text-[#29a7c0]" /> Configuración de Márgenes
             </h2>
             {hasPermission(PATH_VISTA, "panel_superior", "btn_guardar") && (
-              <button onClick={guardarCambios} className="bg-[#2383C2] text-white px-4 py-2 rounded text-[12px] font-bold flex items-center gap-2 hover:bg-[#369BCE]">
+              <button onClick={guardarCambios} className="bg-[#2383C2] text-white px-4 py-2 rounded text-[12px] font-bold flex items-center gap-2 hover:bg-[#369BCE] transition">
                 <Save size={14} /> Guardar Cambios
               </button>
             )}
@@ -100,9 +100,9 @@ const Margen = () => {
         )}
 
         {hasPermission(PATH_VISTA, "seccion_consignacion") && (
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-700 uppercase text-[12px]">
-              <Percent size={16} className="text-amber-600" /> Consignación (Rangos Precio)
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-300 uppercase text-[12px]">
+              <Percent size={16} className="text-amber-600 dark:text-amber-500" /> Consignación (Rangos Precio)
             </h3>
             <div className="space-y-2">
               {(config.consignacion || []).map((r, i) => {
@@ -114,7 +114,9 @@ const Margen = () => {
                       value={r.hasta}
                       readOnly={!canEditRanges}
                       onChange={(e) => handleConsignacionChange(i, 'hasta', e.target.value)}
-                      className={`w-full border p-2 rounded text-[12px] ${!canEditRanges ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                      className={`w-full border p-2 rounded text-[12px] bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] ${
+                        !canEditRanges ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700' : ''
+                      }`}
                       placeholder="Hasta ($)"
                     />
                     <input
@@ -122,7 +124,9 @@ const Margen = () => {
                       value={r.margen}
                       readOnly={!canEditRanges}
                       onChange={(e) => handleConsignacionChange(i, 'margen', e.target.value)}
-                      className={`w-full border p-2 rounded text-[12px] ${!canEditRanges ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                      className={`w-full border p-2 rounded text-[12px] bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] ${
+                        !canEditRanges ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700' : ''
+                      }`}
                       placeholder="Margen (%)"
                     />
                   </div>
@@ -133,22 +137,24 @@ const Margen = () => {
         )}
 
         {hasPermission(PATH_VISTA, "seccion_implantes") && (
-          <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-700 uppercase text-[12px]">
-              <ShieldCheck size={16} className="text-blue-600" /> Implantes (Por Previsión)
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-700 dark:text-gray-300 uppercase text-[12px]">
+              <ShieldCheck size={16} className="text-blue-600 dark:text-blue-400" /> Implantes (Por Previsión)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {listaPrevisiones.map((nombre) => {
                 const canEditImplantes = hasPermission(PATH_VISTA, "seccion_implantes", "inputs_previsiones");
                 return (
-                  <div key={nombre} className="flex justify-between items-center p-3 border rounded hover:bg-gray-50">
-                    <span className="font-bold text-[12px] text-gray-700">{nombre}</span>
+                  <div key={nombre} className="flex justify-between items-center p-3 border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <span className="font-bold text-[12px] text-gray-700 dark:text-gray-200">{nombre}</span>
                     <input
                       type="number"
                       value={(config.implantes && config.implantes[nombre] !== undefined) ? config.implantes[nombre] : 30}
                       readOnly={!canEditImplantes}
                       onChange={(e) => handleImplanteChange(nombre, e.target.value)}
-                      className={`w-16 border rounded p-1 text-center text-[12px] ${!canEditImplantes ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                      className={`w-16 border rounded p-1 text-center text-[12px] bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] ${
+                        !canEditImplantes ? 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700' : ''
+                      }`}
                     />
                   </div>
                 );
