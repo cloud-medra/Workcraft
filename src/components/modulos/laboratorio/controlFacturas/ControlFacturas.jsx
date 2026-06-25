@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FileText, ClipboardList, BarChart3, Settings, FileSpreadsheet, HelpCircle, CheckSquare } from 'lucide-react'; 
+import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import BuscarFolio from './BuscarFolio';
 import EnlazarCodigo from './EnlazarCodigo';
 import EnlazarOrden from './EnlazarOrden';
@@ -9,17 +10,35 @@ import ResumenFacturas from './ResumenFacturas';
 import AyudaContextos from './AyudaContextos';
 
 const ControlFacturas = () => {
-    const [activeTab, setActiveTab] = useState('procesar');
+    const { hasPermission } = useGranularPermission();
+    const PATH_VISTA = "/laboratorio/controlFactura";
 
-    const tabs = [
-        { id: 'procesar', label: 'INGRESO DE FOLIOS', icon: <FileText size={16} /> },
-        { id: 'gestion', label: 'ENLAZAR CÓDIGOS', icon: <ClipboardList size={16} /> },
-        { id: 'ordenes', label: 'ENLAZAR ORDENES', icon: <Settings size={16} /> },
-        { id: 'excel', label: 'SOLICITUD EXCEL', icon: <FileSpreadsheet size={16} /> },
-        { id: 'listas', label: 'FACTURAS LISTAS', icon: <CheckSquare size={16} /> },
-        { id: 'resumen', label: 'RESUMEN FACTURAS', icon: <BarChart3 size={16} /> },
-        { id: 'ayuda', label: 'AYUDA Y CONTEXTOS', icon: <HelpCircle size={16} /> },
+    const allTabs = [
+        { id: 'procesar', label: 'INGRESO DE FOLIOS', icon: <FileText size={16} />, perm: 'tab_procesar' },
+        { id: 'gestion', label: 'ENLAZAR CÓDIGOS', icon: <ClipboardList size={16} />, perm: 'tab_gestion' },
+        { id: 'ordenes', label: 'ENLAZAR ORDENES', icon: <Settings size={16} />, perm: 'tab_ordenes' },
+        { id: 'excel', label: 'SOLICITUD EXCEL', icon: <FileSpreadsheet size={16} />, perm: 'tab_excel' },
+        { id: 'listas', label: 'FACTURAS LISTAS', icon: <CheckSquare size={16} />, perm: 'tab_listas' },
+        { id: 'resumen', label: 'RESUMEN FACTURAS', icon: <BarChart3 size={16} />, perm: 'tab_resumen' },
+        { id: 'ayuda', label: 'AYUDA Y CONTEXTOS', icon: <HelpCircle size={16} />, perm: 'tab_ayuda' },
     ];
+
+    // Filtramos las pestañas según los permisos
+    const tabs = useMemo(() => 
+        allTabs.filter(t => hasPermission(PATH_VISTA, "navegacion", t.perm)), 
+        [hasPermission]
+    );
+
+    const [activeTab, setActiveTab] = useState(tabs[0]?.id || '');
+
+    // Si la pestaña activa no está disponible, redirigir a la primera permitida
+    useEffect(() => {
+        if (tabs.length > 0 && !tabs.find(t => t.id === activeTab)) {
+            setActiveTab(tabs[0].id);
+        }
+    }, [tabs, activeTab]);
+
+    if (tabs.length === 0) return <div className="p-4 text-center text-gray-500">No tienes permisos para acceder a esta sección.</div>;
 
     return (
         <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden transition-colors">

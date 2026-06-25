@@ -417,6 +417,23 @@ export const COMPONENT_MAPS = {
     }
   },
 
+  "/laboratorio/controlFactura": {
+    label: "Control de Facturas",
+    sections: {
+      "navegacion": {
+        elements: {
+          "tab_procesar": { label: "Pestaña: Ingreso de Folios" },
+          "tab_gestion": { label: "Pestaña: Enlazar Códigos" },
+          "tab_ordenes": { label: "Pestaña: Enlazar Ordenes" },
+          "tab_excel": { label: "Pestaña: Solicitud Excel" },
+          "tab_listas": { label: "Pestaña: Facturas Listas" },
+          "tab_resumen": { label: "Pestaña: Resumen" },
+          "tab_ayuda": { label: "Pestaña: Ayuda" }
+        }
+      }
+    }
+  },
+
 
 
 
