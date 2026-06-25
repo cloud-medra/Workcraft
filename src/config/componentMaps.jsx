@@ -257,6 +257,13 @@ export const COMPONENT_MAPS = {
       "cabecera_acciones": {
         elements: { "btn_importar_xml": { label: "Botón: Importar XML" } }
       },
+      "filtros_busqueda": {
+        elements: {
+          "select_anio": { label: "Filtro: Año" },
+          "select_mes": { label: "Filtro: Mes" },
+          "input_busqueda": { label: "Input: Búsqueda" }
+        }
+      },
       "tabla_facturas": {
         elements: {
           "col_folio": { label: "Col: Folio" },
@@ -265,7 +272,10 @@ export const COMPONENT_MAPS = {
           "col_razon": { label: "Col: Razón Social" },
           "col_total": { label: "Col: Total" },
           "col_estado": { label: "Col: Estado" },
+          "col_f_ingreso": { label: "Col: F. Ingreso" },
+          "col_oc_ingresada": { label: "Col: OC Ingresada" },
           "col_acciones": { label: "Col: Acciones" },
+          "btn_ver": { label: "Botón: Ver detalle" },
           "btn_eliminar": { label: "Botón: Eliminar" }
         }
       }
@@ -384,10 +394,16 @@ export const COMPONENT_MAPS = {
           "btn_cancelar": { label: "Acción: Cancelar edición" }
         }
       },
+      "busqueda": { // Nueva sección separada
+        label: "Buscador",
+        elements: {
+          "barra_busqueda": { label: "Visible: Contenedor buscador" },
+          "input_busqueda": { label: "Input: Campo búsqueda" }
+        }
+      },
       "tabla": {
         label: "Tabla de Datos",
         elements: {
-          "barra_busqueda": { label: "Visible: Buscador" },
           "ver_tabla": { label: "Visible: Tabla completa" },
           "col_referencia": { label: "Columna: Referencia" },
           "col_codigo": { label: "Columna: Código" },

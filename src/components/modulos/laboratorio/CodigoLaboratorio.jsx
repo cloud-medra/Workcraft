@@ -138,12 +138,19 @@ const CodigoLaboratorio = () => {
         </form>
       )}
 
-      {hasPermission(PATH_VISTA, "tabla", "barra_busqueda") && (
+      {hasPermission(PATH_VISTA, "busqueda", "barra_busqueda") && (
         <div className="bg-gray-50 dark:bg-gray-900/40 p-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-          <div className="relative w-72">
-            <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={14} />
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded text-[12px] text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none" placeholder="Buscar..." />
-          </div>
+          {hasPermission(PATH_VISTA, "busqueda", "input_busqueda") && (
+            <div className="relative w-72">
+              <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={14} />
+              <input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                className="..."
+                placeholder="Buscar..."
+              />
+            </div>
+          )}
         </div>
       )}
 
