@@ -151,7 +151,6 @@ const EnlazarOrden = () => {
             setShowModalEnlace(false);
             showToast(`Orden enlazada: ${nuevoEstado}`, "success");
         } catch (error) {
-            console.error("Error al cruzar información:", error);
             showToast("Error: " + error.message, "error");
         } finally {
             setCargandoModal(false);
@@ -179,26 +178,26 @@ const EnlazarOrden = () => {
     };
 
     const colorEstado = (estado) => {
-        if (estado === 'Listo para Ingresar') return 'bg-green-100 text-green-700';
-        if (estado === 'Iniciar Solicitud') return 'bg-orange-100 text-orange-700';
-        if (estado === 'Procesar en Orden') return 'bg-blue-100 text-blue-700';
-        return 'bg-gray-100 text-gray-600';
+        if (estado === 'Listo para Ingresar') return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
+        if (estado === 'Iniciar Solicitud') return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400';
+        if (estado === 'Procesar en Orden') return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300';
     };
 
     return (
-        <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0 relative">
+        <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative transition-colors">
             {cargando && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
-                    <div className="bg-white/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
+                    <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5 border dark:border-gray-700">
                         <Spinner size="md" color="#2383C2" />
                         <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando...</h3>
                     </div>
                 </div>
             )}
 
-            <h2 className="text-[14px] font-bold text-gray-700 p-4 flex items-center gap-2 border-b border-gray-200">
+            <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
                 {vistaActual === 'detalle' && (
-                    <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 p-1 rounded">
+                    <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded transition-colors">
                         <ArrowLeft size={16} />
                     </button>
                 )}
@@ -212,11 +211,11 @@ const EnlazarOrden = () => {
                         )}
                         <button
                             onClick={handleVolverPaso2}
-                            className="bg-orange-500 text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-orange-700"
+                            className="bg-orange-500 text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-orange-700 transition-colors"
                         >
                             <ArrowLeft size={12} /> VOLVER A PASO 2
                         </button>
-                        <button onClick={abrirModalEnlace} className="bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#0a4856]">
+                        <button onClick={abrirModalEnlace} className="bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#1a6da0] transition-colors">
                             <CheckCircle size={12} /> {ordenEnlazada ? 'ACTUALIZAR ORDEN' : 'ENLAZAR ORDEN'}
                         </button>
                     </div>
@@ -225,66 +224,66 @@ const EnlazarOrden = () => {
 
             <div className="flex-grow overflow-auto">
                 <table className="w-full text-left text-[12px] border-collapse">
-                    <thead className="bg-gray-100 sticky top-0">
-                        <tr className="text-gray-600 uppercase font-bold text-[11px]">
+                    <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+                        <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
                             {vistaActual === 'lista' ? (
                                 <>
-                                    <th className="p-3 border-b border-r border-gray-200">Folio</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Proveedor</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Total</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Estado</th>
-                                    <th className="p-3 border-b border-gray-200">Acciones</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Proveedor</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
+                                    <th className="p-3 border-b border-gray-200 dark:border-gray-700">Acciones</th>
                                 </>
                             ) : (
                                 <>
-                                    <th className="p-3 border-b border-r border-gray-200">Referencia</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Descripción</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Cant.</th>
-                                    <th className="p-3 border-b border-r border-gray-200">Precio Unit.</th>
-                                    <th className="p-3 border-b border-r border-gray-200 bg-green-50 text-green-700">Cod. Maestro</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Cant.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Precio Unit.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">Cod. Maestro</th>
                                     {ordenEnlazada && (
                                         <>
-                                            <th className="p-3 border-b border-r border-gray-200 bg-blue-50 text-blue-700">Art. OC</th>
-                                            <th className="p-3 border-b border-r border-gray-200 bg-blue-50 text-blue-700">Cant. OC</th>
-                                            <th className="p-3 border-b border-r border-gray-200 bg-blue-50 text-blue-700">Precio OC</th>
-                                            <th className="p-3 border-b border-gray-200 bg-red-50 text-red-700">Dif. OC</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Art. OC</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Cant. OC</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Precio OC</th>
+                                            <th className="p-3 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">Dif. OC</th>
                                         </>
                                     )}
                                 </>
                             )}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {vistaActual === 'lista' ? (
                             ordenes.map(o => (
-                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{o.folio}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">{o.rznSoc}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Number(o.total || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-b border-r border-gray-200">
+                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-[#2383C2]">{o.folio}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{o.rznSoc}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Number(o.total || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700">
                                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${colorEstado(o.estado)}`}>
                                             {o.estado || 'Pendiente'}
                                         </span>
                                     </td>
-                                    <td className="p-3 border-b border-gray-200">
+                                    <td className="p-3">
                                         <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2]"><Eye size={16} /></button>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">{item.nombre || item.descripcion}</td>
-                                    <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Math.round(item.precioUnitarioFactura || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 font-mono text-green-700">{item.codigoMaestro}</td>
+                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-mono text-gray-600 dark:text-gray-400">{item.codigo}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{item.nombre || item.descripcion}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{item.cantidad}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Math.round(item.precioUnitarioFactura || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-mono text-green-700 dark:text-green-400">{item.codigoMaestro}</td>
                                     {ordenEnlazada && (
                                         <>
-                                            <td className="p-3 border-b border-r border-gray-200 text-blue-700">{item.articuloOrden}</td>
-                                            <td className="p-3 border-b border-r border-gray-200 text-blue-700">{item.cantidadOrden}</td>
-                                            <td className="p-3 border-b border-r border-gray-200 text-blue-700">${Number(item.precioOrden || 0).toLocaleString()}</td>
-                                            <td className={`p-3 border-b border-gray-200 font-bold ${(item.diferenciaOrden || 0) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-blue-700 dark:text-blue-400">{item.articuloOrden}</td>
+                                            <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-blue-700 dark:text-blue-400">{item.cantidadOrden}</td>
+                                            <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-blue-700 dark:text-blue-400">${Number(item.precioOrden || 0).toLocaleString()}</td>
+                                            <td className={`p-3 font-bold ${(item.diferenciaOrden || 0) !== 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                                 {(item.diferenciaOrden || 0) === 0 ? 'Sin diferencia' : `$${Number(item.diferenciaOrden || 0).toLocaleString()}`}
                                             </td>
                                         </>
@@ -297,109 +296,73 @@ const EnlazarOrden = () => {
             </div>
 
             {showModalEnlace && (
-                <div className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white w-full max-w-[480px] rounded-2xl border border-gray-200/80 overflow-hidden flex flex-col max-h-[85vh] shadow-xl">
-
-                        <div className="px-6 pt-5 pb-4 flex justify-between items-start border-b border-gray-100">
+                <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-[480px] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="px-6 pt-5 pb-4 flex justify-between items-start border-b border-gray-100 dark:border-gray-700">
                             <div>
-                                <h3 className="text-[14px] font-medium text-gray-900 leading-tight">Enlazar orden de compra</h3>
+                                <h3 className="text-[14px] font-medium text-gray-900 dark:text-white leading-tight">Enlazar orden de compra</h3>
                                 <p className="text-[12px] text-gray-400 mt-0.5">Seleccione el período y busque la orden a vincular</p>
                             </div>
-                            <button
-                                onClick={() => setShowModalEnlace(false)}
-                                className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors p-1.5 rounded-lg mt-[-2px] ml-4"
-                            >
+                            <button onClick={() => setShowModalEnlace(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors p-1.5 rounded-lg">
                                 <X size={16} />
                             </button>
                         </div>
 
-                        <div className="px-6 py-4 flex flex-col gap-3 border-b border-gray-100">
+                        <div className="px-6 py-4 flex flex-col gap-3 border-b border-gray-100 dark:border-gray-700">
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Año</span>
-                                    <select
-                                        onChange={(e) => setFiltroAnioBase(e.target.value)}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-[13px] text-gray-700 outline-none focus:border-[#2383C2] focus:bg-white transition-colors"
-                                    >
+                                    <select onChange={(e) => setFiltroAnioBase(e.target.value)} className="w-full border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded-lg text-[13px] text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2]">
                                         <option value="">Seleccionar</option>
                                         {aniosBase.map(a => <option key={a} value={a}>{a}</option>)}
                                     </select>
                                 </div>
                                 <div className="flex flex-col gap-1.5">
                                     <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Mes</span>
-                                    <select
-                                        onChange={(e) => setFiltroMesBase(e.target.value)}
-                                        className="w-full border border-gray-200 bg-gray-50 px-3 py-2 rounded-lg text-[13px] text-gray-700 capitalize outline-none focus:border-[#2383C2] focus:bg-white transition-colors"
-                                    >
+                                    <select onChange={(e) => setFiltroMesBase(e.target.value)} className="w-full border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded-lg text-[13px] text-gray-700 dark:text-gray-200 capitalize outline-none focus:border-[#2383C2]">
                                         <option value="">Seleccionar</option>
                                         {mesesBase.map(m => <option key={m} value={m}>{m}</option>)}
                                     </select>
                                 </div>
                             </div>
-                            <button
-                                onClick={buscarOrdenesEnBase}
-                                className="w-full bg-[#2383C2] hover:bg-[#1a6da0] text-white py-2.5 rounded-lg text-[12px] font-medium flex items-center justify-center gap-2 transition-colors"
-                            >
-                                <Search size={13} />
-                                Buscar órdenes
+                            <button onClick={buscarOrdenesEnBase} className="w-full bg-[#2383C2] hover:bg-[#1a6da0] text-white py-2.5 rounded-lg text-[12px] font-medium flex items-center justify-center gap-2 transition-colors">
+                                <Search size={13} /> Buscar órdenes
                             </button>
                         </div>
 
                         <div className="overflow-auto flex-grow relative">
-
                             {cargandoModal && (
-                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-[2px] gap-3">
+                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] gap-3">
                                     <Spinner size="sm" color="#2383C2" />
-                                    <p className="text-[12px] text-gray-500 font-medium">Enlazando orden...</p>
+                                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">Enlazando orden...</p>
                                 </div>
                             )}
-
                             {ordenesEncontradas.length > 0 ? (
                                 <table className="w-full text-left border-collapse">
-                                    <thead className="sticky top-0 z-10">
-                                        <tr className="bg-gray-50 border-b border-gray-100">
-                                            <th className="px-6 py-3 text-[10px] font-medium text-gray-400 uppercase tracking-widest">Nro. orden</th>
-                                            <th className="px-6 py-3 text-[10px] font-medium text-gray-400 uppercase tracking-widest">Proveedor</th>
+                                    <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900">
+                                        <tr>
+                                            <th className="px-6 py-3 text-[10px] font-medium text-gray-400 uppercase">Nro. orden</th>
+                                            <th className="px-6 py-3 text-[10px] font-medium text-gray-400 uppercase">Proveedor</th>
                                             <th className="px-6 py-3"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {ordenesEncontradas.map((o) => (
-                                            <tr
-                                                key={o.id}
-                                                onClick={() => handleSeleccionarOrden(o)}
-                                                className="group cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
-                                            >
-                                                <td className="px-6 py-3.5">
-                                                    <span className="font-mono text-[11px] px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-100">
-                                                        {o["Nro.Orden"]}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-3.5 text-[13px] text-gray-500">
-                                                    {o["Proveedor"]}
-                                                </td>
-                                                <td className="px-6 py-3.5 text-right">
-                                                    <span className="text-[#2383C2] opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <ArrowLeft size={14} className="rotate-180" />
-                                                    </span>
-                                                </td>
+                                            <tr key={o.id} onClick={() => handleSeleccionarOrden(o)} className="group cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors border-b border-gray-100 dark:border-gray-700">
+                                                <td className="px-6 py-3.5"><span className="font-mono text-[11px] px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">{o["Nro.Orden"]}</span></td>
+                                                <td className="px-6 py-3.5 text-[13px] text-gray-500 dark:text-gray-300">{o["Proveedor"]}</td>
+                                                <td className="px-6 py-3.5 text-right text-[#2383C2] opacity-0 group-hover:opacity-100"><ArrowLeft size={14} className="rotate-180" /></td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-56 gap-3 text-gray-400">
-                                    <div className="w-11 h-11 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center">
-                                        <Search size={16} className="text-gray-300" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-[13px] text-gray-500 font-medium">Sin resultados</p>
-                                        <p className="text-[11px] text-gray-400 mt-0.5">Seleccione año y mes, luego busque</p>
-                                    </div>
+                                    <div className="w-11 h-11 rounded-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center"><Search size={16} /></div>
+                                    <div className="text-center"><p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">Sin resultados</p></div>
                                 </div>
                             )}
                         </div>
-
                     </div>
                 </div>
             )}
@@ -408,4 +371,3 @@ const EnlazarOrden = () => {
 };
 
 export default EnlazarOrden;
-

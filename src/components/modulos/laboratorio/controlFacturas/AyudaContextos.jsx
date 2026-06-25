@@ -34,28 +34,30 @@ const AyudaContextos = () => {
     ];
 
     return (
-        <div className="p-8 bg-gray-50/50 min-h-full">
+        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-full transition-colors">
             <div className="max-w-4xl mx-auto">
                 <div className="mb-8">
-                    <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Manual de Operaciones</h1>
-                    <p className="text-gray-500 mt-2 text-sm">Guía de referencia rápida para el flujo de conciliación de facturas.</p>
+                    <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100 tracking-tight">Manual de Operaciones</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Guía de referencia rápida para el flujo de conciliación de facturas.</p>
                 </div>
 
                 <div className="space-y-4">
                     {steps.map((step, idx) => (
-                        <div key={idx} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={idx} className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-start gap-4">
-                                <div className="mt-1 p-2 bg-[#2383C2]/10 rounded-lg">{step.icon}</div>
+                                <div className="mt-1 p-2 bg-[#2383C2]/10 dark:bg-[#2383C2]/20 rounded-lg">{step.icon}</div>
                                 <div className="flex-1">
-                                    <h3 className="text-[15px] font-bold text-gray-800">{step.title}</h3>
-                                    <p className="text-[13px] text-gray-600 mt-1 leading-relaxed">{step.desc}</p>
+                                    <h3 className="text-[15px] font-bold text-gray-800 dark:text-gray-100">{step.title}</h3>
+                                    <p className="text-[13px] text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">{step.desc}</p>
                                     
                                     {step.items && (
                                         <div className="mt-4 space-y-2">
                                             {step.items.map((item, i) => (
                                                 <div key={i} className="flex gap-2 text-[13px]">
                                                     <ChevronRight size={16} className="text-[#2383C2] shrink-0" />
-                                                    <p className="text-gray-600"><span className="font-semibold text-gray-800">{item.label}</span> {item.text}</p>
+                                                    <p className="text-gray-600 dark:text-gray-400">
+                                                        <span className="font-semibold text-gray-800 dark:text-gray-200">{item.label}</span> {item.text}
+                                                    </p>
                                                 </div>
                                             ))}
                                         </div>

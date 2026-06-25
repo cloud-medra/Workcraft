@@ -13,10 +13,9 @@ const FacturasListas = () => {
     const [ordenActual, setOrdenActual] = useState(null);
     const { showToast } = useToast();
 
-    // Reutilizamos tu lógica de colores para consistencia
     const colorEstado = (estado) => {
-        if (estado === 'Listo para Ingresar') return 'bg-green-100 text-green-700';
-        return 'bg-gray-100 text-gray-600';
+        if (estado === 'Listo para Ingresar') return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400';
     };
 
     useEffect(() => { cargarFacturasListas(); }, []);
@@ -48,17 +47,17 @@ const FacturasListas = () => {
     };
 
     return (
-        <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden p-0 relative">
+        <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative">
             {cargando && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 backdrop-blur-[2px]">
+                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 dark:bg-gray-900/50 backdrop-blur-[2px]">
                     <Spinner size="md" color="#2383C2" />
                 </div>
             )}
 
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-[14px] font-bold text-gray-700 flex items-center gap-2">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+                <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
                     {vistaActual === 'detalle' && (
-                        <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 p-1 rounded">
+                        <button onClick={() => setVistaActual('lista')} className="text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded">
                             <ArrowLeft size={16} />
                         </button>
                     )}
@@ -68,38 +67,40 @@ const FacturasListas = () => {
 
             <div className="flex-grow overflow-auto">
                 <table className="w-full text-left text-[12px] border-collapse">
-                    <thead className="bg-gray-100 sticky top-0">
-                        {vistaActual === 'lista' ? (
-                            <tr className="text-gray-600 uppercase font-bold text-[11px]">
-                                <th className="p-3 border-b border-r border-gray-200">Folio</th>
-                                <th className="p-3 border-b border-r border-gray-200">Proveedor</th>
-                                <th className="p-3 border-b border-r border-gray-200">Total</th>
-                                <th className="p-3 border-b border-r border-gray-200">Estado</th>
-                                <th className="p-3 border-b border-gray-200">Acciones</th>
-                            </tr>
-                        ) : (
-                            <tr className="text-gray-600 uppercase font-bold text-[11px]">
-                                <th className="p-3 border-b border-r border-gray-200">Referencia</th>
-                                <th className="p-3 border-b border-r border-gray-200">Descripción</th>
-                                <th className="p-3 border-b border-r border-gray-200">Cant.</th>
-                                <th className="p-3 border-b border-r border-gray-200">Precio Unit.</th>
-                                <th className="p-3 border-b border-gray-200">Dif. OC</th>
-                            </tr>
-                        )}
+                    <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0">
+                        <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                            {vistaActual === 'lista' ? (
+                                <>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Proveedor</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
+                                    <th className="p-3 border-b border-gray-200 dark:border-gray-700">Acciones</th>
+                                </>
+                            ) : (
+                                <>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Cant.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Precio Unit.</th>
+                                    <th className="p-3 border-b border-gray-200 dark:border-gray-700">Dif. OC</th>
+                                </>
+                            )}
+                        </tr>
                     </thead>
-                    <tbody>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {vistaActual === 'lista' ? (
                             ordenes.map(o => (
-                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors cursor-pointer">
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-[#2383C2]">{o.folio}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">{o.rznSoc}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Number(o.total || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-b border-r border-gray-200">
+                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer">
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 font-bold text-[#2383C2]">{o.folio}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{o.rznSoc}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Number(o.total || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700">
                                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${colorEstado(o.estado)}`}>
                                             {o.estado}
                                         </span>
                                     </td>
-                                    <td className="p-3 border-b border-gray-200">
+                                    <td className="p-3 border-b border-gray-200 dark:border-gray-700">
                                         <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2]">
                                             <Eye size={16} />
                                         </button>
@@ -108,12 +109,12 @@ const FacturasListas = () => {
                             ))
                         ) : (
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 transition-colors">
-                                    <td className="p-3 border-b border-r border-gray-200 font-mono text-gray-600">{item.codigo}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 font-bold text-gray-800">{item.nombre || item.descripcion}</td>
-                                    <td className="p-3 border-b border-r border-gray-200">{item.cantidad}</td>
-                                    <td className="p-3 border-b border-r border-gray-200 text-gray-600">${Math.round(item.precioUnitarioFactura || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-b border-gray-200 text-red-600 font-bold">{item.diferenciaOrden ? `$${item.diferenciaOrden}` : 'Sin dif.'}</td>
+                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 font-mono text-gray-600 dark:text-gray-400">{item.codigo}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{item.nombre || item.descripcion}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{item.cantidad}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Math.round(item.precioUnitarioFactura || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-red-600 dark:text-red-400 font-bold">{item.diferenciaOrden ? `$${item.diferenciaOrden}` : 'Sin dif.'}</td>
                                 </tr>
                             ))
                         )}
