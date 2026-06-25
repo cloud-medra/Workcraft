@@ -21,6 +21,9 @@ import Margen from '../components/modulos/maestros/Margen';
 import CalculadoraMargen from "../components/modulos/maestros/CalculadoraMargen";
 import Guias from '../components/modulos/consignacion/Guias';
 import VistaRapida from '../components/modulos/consignacion/VistaRapida';
+import SolicitudIngresos from '../components/modulos/consignacion/SolicitudIngresos';
+
+
 import EmpresasLaboratorio from '../components/modulos/laboratorio/Empresas';
 import Facturas from '../components/modulos/laboratorio/Facturas';
 import IngresoFacturas from '../components/modulos/laboratorio/IngresoFacturas';
@@ -33,6 +36,15 @@ import DashboardFinanciero from '../components/modulos/documentos/DashboardFinan
 import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
+
+// Vistas especiales que no vienen de MODULES
+const SPECIAL_VIEWS = {
+  dashboard: { label: 'Inicio', icon: <Home size={13} /> },
+  perfil: { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
+  password: { label: 'Cambiar Contraseña', icon: <Shield size={13} /> },
+  privacidad: { label: 'Política de Privacidad', icon: <ShieldCheck size={13} /> },
+  terminos: { label: 'Términos de Servicio', icon: <FileText size={13} /> },
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -63,10 +75,8 @@ const Dashboard = () => {
   const toggleModoPantalla = async () => {
     const newDark = !isDarkMode;
     const nuevoModo = newDark ? 'oscuro' : 'claro';
-
     setIsDarkMode(newDark);
     applyDarkMode(newDark);
-
     try {
       const userRef = doc(db, "usuarios", auth.currentUser.uid);
       await updateDoc(userRef, { modoPantalla: nuevoModo });
@@ -94,7 +104,6 @@ const Dashboard = () => {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserData(data);
-
             const esModoOscuro = data.modoPantalla === 'oscuro';
             setIsDarkMode(esModoOscuro);
             applyDarkMode(esModoOscuro);
@@ -106,6 +115,39 @@ const Dashboard = () => {
     };
     fetchUserData();
   }, []);
+
+  // ─── Breadcrumb ───────────────────────────────────────────────────────────────
+  // Devuelve { moduloLabel, moduloIcon, vistaLabel, vistaIcon } según activeView
+  const getBreadcrumb = () => {
+    // Vistas especiales (no vienen de MODULES)
+    if (SPECIAL_VIEWS[activeView]) {
+      return {
+        moduloLabel: null,
+        moduloIcon: null,
+        vistaLabel: SPECIAL_VIEWS[activeView].label,
+        vistaIcon: SPECIAL_VIEWS[activeView].icon,
+      };
+    }
+
+    // Buscar en MODULES cuál módulo contiene activeView como subItem
+    for (const mKey of Object.keys(MODULES)) {
+      const modulo = MODULES[mKey];
+      const subItem = modulo.subItems?.find(s => s.path === activeView);
+      if (subItem) {
+        return {
+          moduloLabel: modulo.label,
+          moduloIcon: modulo.icon,
+          vistaLabel: subItem.label,
+          vistaIcon: subItem.icon ?? null,
+        };
+      }
+    }
+
+    return { moduloLabel: null, moduloIcon: null, vistaLabel: activeView, vistaIcon: null };
+  };
+
+  const breadcrumb = getBreadcrumb();
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} />,
@@ -120,6 +162,10 @@ const Dashboard = () => {
     '/maestros/calculadora': <CalculadoraMargen />,
     '/consignacion/guias': <Guias />,
     '/consignacion/vistaRapida': <VistaRapida />,
+    '/consignacion/solicitudIngresos': <SolicitudIngresos />,
+
+
+
     '/laboratorio/empresas': <EmpresasLaboratorio />,
     '/laboratorio/facturas': <Facturas />,
     '/laboratorio/ingresoFacturas': <IngresoFacturas />,
@@ -264,7 +310,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div
-              className="flex justify-center items-center text-[9px] text-white/40 font-mono py-1 cursor-help opacity-100 transition-all duration-300 animate-fadeIn"
+              className="flex justify-center items-center text-[9px] text-white/40 font-mono py-1 cursor-help opacity-100 transition-all duration-300"
               title="Versión 1.0.0 — Políticas disponibles en menú expandido"
             >
               <span>v1.0</span>
@@ -274,18 +320,64 @@ const Dashboard = () => {
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden gap-2">
+
+        {/* ── Header con Breadcrumb ── */}
         <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
-          <div className="flex items-center gap-4">
-            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2">
+
+          {/* Todo en una sola fila: bienvenida + separador + breadcrumb + separador + fecha */}
+          <div className="flex items-center gap-3 min-w-0">
+
+            {/* Bienvenida */}
+            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2 flex-shrink-0">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
               ¡Bienvenido {userData.nombreCompleto?.toUpperCase()}!
             </h2>
-            <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+
+            <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
+
+            {/* Fecha */}
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 flex-shrink-0">
               <Calendar size={14} /> {fechaActual}
             </p>
+            <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
+
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-1.5 text-[12px] font-medium text-gray-700 dark:text-gray-200 truncate">
+              <button
+                onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
+                className="flex items-center gap-1 text-[#2383C2] hover:text-[#1a6aa0] dark:text-blue-400 dark:hover:text-blue-300 transition-colors font-semibold flex-shrink-0"
+              >
+                <Home size={13} />
+                <span>Inicio</span>
+              </button>
+
+              {breadcrumb.moduloLabel && (
+                <>
+                  <ChevronRight size={13} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <span className="text-gray-500 dark:text-gray-400 flex items-center gap-1 flex-shrink-0">
+                    {breadcrumb.moduloIcon && <span className="opacity-70">{breadcrumb.moduloIcon}</span>}
+                    {breadcrumb.moduloLabel}
+                  </span>
+                </>
+              )}
+
+              {activeView !== 'dashboard' && (
+                <>
+                  <ChevronRight size={13} className="text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <span className="text-gray-800 dark:text-gray-100 font-semibold flex items-center gap-1 truncate">
+                    {breadcrumb.vistaIcon && <span className="opacity-80">{breadcrumb.vistaIcon}</span>}
+                    {breadcrumb.vistaLabel}
+                  </span>
+                </>
+              )}
+            </nav>
+
+
+
+
           </div>
 
+          {/* Avatar + menú */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
