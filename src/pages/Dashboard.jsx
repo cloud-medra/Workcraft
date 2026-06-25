@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { 
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import {
   LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
-  Settings, LayoutDashboard, Home, ShieldCheck, Menu 
+  Settings, LayoutDashboard, Home, ShieldCheck, Menu, Shield, Moon, Sun
 } from 'lucide-react';
 import { MODULES } from '../config/modulesConfig.jsx';
 import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
@@ -40,6 +40,8 @@ const Dashboard = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeModule, setActiveModule] = useState(null);
   const [activeView, setActiveView] = useState('dashboard');
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   const menuRef = useRef(null);
 
   const [userData, setUserData] = useState({
@@ -50,21 +52,61 @@ const Dashboard = () => {
     permisos: {}
   });
 
+  const applyDarkMode = (enabled) => {
+    if (enabled) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  const toggleModoPantalla = async () => {
+    const newDark = !isDarkMode;
+    const nuevoModo = newDark ? 'oscuro' : 'claro';
+
+    setIsDarkMode(newDark);
+    applyDarkMode(newDark);
+
+    try {
+      const userRef = doc(db, "usuarios", auth.currentUser.uid);
+      await updateDoc(userRef, { modoPantalla: nuevoModo });
+    } catch (error) {
+      console.error("Error al guardar preferencia:", error);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsMenuOpen(false);
       }
     };
-    if (isMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    if (isMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen]);
 
-  // CORREGIDO: Eliminada la clave estática duplicada inferior para que tome ResumenGeneral correctamente
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (auth.currentUser) {
+        try {
+          const docRef = doc(db, "usuarios", auth.currentUser.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserData(data);
+
+            const esModoOscuro = data.modoPantalla === 'oscuro';
+            setIsDarkMode(esModoOscuro);
+            applyDarkMode(esModoOscuro);
+          }
+        } catch (error) {
+          console.error("Error al cargar datos:", error);
+        }
+      }
+    };
+    fetchUserData();
+  }, []);
+
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} />,
     '/usuarios/crear': <CrearUsuario />,
@@ -97,43 +139,31 @@ const Dashboard = () => {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (auth.currentUser) {
-        try {
-          const docRef = doc(db, "usuarios", auth.currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) setUserData(docSnap.data());
-        } catch (error) {
-          console.error("Error al cargar datos:", error);
-        }
-      }
-    };
-    fetchUserData();
-  }, []);
-
-  const modulosPermitidos = Object.keys(MODULES).filter((mKey) => {
-    const subItemsPermitidos = userData.permisos[mKey] || [];
-    return subItemsPermitidos.length > 0;
-  });
+  const modulosPermitidos = Object.keys(MODULES).filter(
+    (mKey) => (userData.permisos[mKey] || []).length > 0
+  );
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
       navigate('/');
-    } catch (error) { console.error("Error al cerrar sesión:", error); }
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
   };
 
   return (
-    <div className="min-h-screen flex bg-gray-50 overflow-hidden">
-      <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-48'} bg-[#2383C2] text-white hidden md:flex flex-col shadow-xl h-screen sticky top-0 [transition:width_0.4s_cubic-bezier(0.25,1,0.5,1)] will-change-[width]`}>
+    <div className="min-h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
+
+<aside className={`${isSidebarCollapsed ? 'w-16' : 'w-48'} bg-[#2383C2] dark:bg-gray-800 text-white transition-colors duration-300 hidden md:flex flex-col shadow-xl h-screen sticky top-0 [transition:width_0.4s_cubic-bezier(0.25,1,0.5,1)] will-change-[width]`}>
+
         <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden">
           <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
             Cloud - Medra
           </span>
-          <button 
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
-            className={`p-1.5 rounded-lg hover:bg-white/10 transition flex-shrink-0 ${isSidebarCollapsed ? 'mx-auto' : ''}`}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className={`p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-gray-800 transition flex-shrink-0 ${isSidebarCollapsed ? 'mx-auto' : ''}`}
             title={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
             <Menu size={18} />
@@ -146,7 +176,7 @@ const Dashboard = () => {
               onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
               className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}
             >
-              <Home size={16} className="flex-shrink-0" /> 
+              <Home size={16} className="flex-shrink-0" />
               <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
                 Inicio
               </span>
@@ -157,9 +187,9 @@ const Dashboard = () => {
           {!activeModule ? (
             <div className="space-y-1">
               {modulosPermitidos.map((key) => (
-                <button 
-                  key={key} 
-                  onClick={() => setActiveModule(key)} 
+                <button
+                  key={key}
+                  onClick={() => setActiveModule(key)}
                   className={`w-full flex items-center rounded-lg hover:bg-white/10 transition-all p-2 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
                   title={isSidebarCollapsed ? MODULES[key].label : ""}
                 >
@@ -175,17 +205,17 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-1">
-              <button 
-                onClick={() => setActiveModule(null)} 
+              <button
+                onClick={() => setActiveModule(null)}
                 className={`flex items-center mb-4 text-[10px] text-white/60 hover:text-white transition-colors p-1 w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-1'}`}
                 title="Volver a módulos"
               >
-                <ArrowLeft size={12} className="flex-shrink-0" /> 
+                <ArrowLeft size={12} className="flex-shrink-0" />
                 <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
                   Volver a módulos
                 </span>
               </button>
-              
+
               <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
                 {MODULES[activeModule].label}
               </div>
@@ -193,9 +223,9 @@ const Dashboard = () => {
               {MODULES[activeModule].subItems?.map((sub, idx) => {
                 if (!userData.permisos[activeModule]?.includes(sub.path)) return null;
                 return (
-                  <button 
-                    key={idx} 
-                    onClick={() => setActiveView(sub.path)} 
+                  <button
+                    key={idx}
+                    onClick={() => setActiveView(sub.path)}
                     className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
                     title={isSidebarCollapsed ? sub.label : ""}
                   >
@@ -210,17 +240,17 @@ const Dashboard = () => {
           )}
         </nav>
 
-        <div className="p-2 m-2 bg-white/5 rounded-xl border border-white/10 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
+        <div className="p-2 m-2 bg-white/5 dark:bg-black/20 rounded-xl border border-white/10 dark:border-gray-800 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
           {!isSidebarCollapsed ? (
             <div className="transition-all duration-300 opacity-100 flex flex-col gap-2">
               <div className="flex flex-col gap-1.5 border-b border-white/5 pb-1.5">
-                <button 
+                <button
                   onClick={() => { setActiveView('privacidad'); setActiveModule(null); }}
                   className="hover:text-white transition-colors text-left flex items-center gap-1.5"
                 >
                   <ShieldCheck size={12} className="opacity-70 flex-shrink-0" /> Política de Privacidad
                 </button>
-                <button 
+                <button
                   onClick={() => { setActiveView('terminos'); setActiveModule(null); }}
                   className="hover:text-white transition-colors text-left flex items-center gap-1.5"
                 >
@@ -233,7 +263,7 @@ const Dashboard = () => {
               </div>
             </div>
           ) : (
-            <div 
+            <div
               className="flex justify-center items-center text-[9px] text-white/40 font-mono py-1 cursor-help opacity-100 transition-all duration-300 animate-fadeIn"
               title="Versión 1.0.0 — Políticas disponibles en menú expandido"
             >
@@ -244,37 +274,60 @@ const Dashboard = () => {
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden gap-2">
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-6 border-b border-gray-100 flex-shrink-0">
+        <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span> ¡Bienvenido {userData.nombreCompleto?.toUpperCase()}!
+            <h2 className="text-sm font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              ¡Bienvenido {userData.nombreCompleto?.toUpperCase()}!
             </h2>
-            <div className="h-4 w-[1px] bg-gray-300"></div>
-            <p className="text-xs text-gray-500 flex items-center gap-2">
+            <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
               <Calendar size={14} /> {fechaActual}
             </p>
           </div>
 
           <div className="relative" ref={menuRef}>
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="w-9 h-9 rounded-full bg-[#2383C2] text-white flex items-center justify-center font-bold text-sm shadow-md">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="w-9 h-9 rounded-full bg-[#2383C2] text-white flex items-center justify-center font-bold text-sm shadow-md"
+            >
               {userData.nombreCompleto?.charAt(0).toUpperCase()}
             </button>
+
             {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-50">
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-2 z-50 text-gray-700 dark:text-gray-200">
                 <button
-                  onClick={() => { setActiveView('perfil'); setIsMenuOpen(false); setActiveModule(null); }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => { setActiveView('perfil'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <UserCircle size={16} /> Mi Perfil
                 </button>
                 <button
-                  onClick={() => { setActiveView('ajustes'); setIsMenuOpen(false); setActiveModule(null); }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => { /* Lógica cambiar contraseña aquí */ }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <Shield size={16} /> Cambiar Contraseña
+                </button>
+                <button
+                  onClick={toggleModoPantalla}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                  {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
+                </button>
+                <button
+                  onClick={() => { setActiveView('ajustes'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <Settings size={16} /> Ajustes
                 </button>
-                <div className="border-t border-gray-100 my-1"></div>
-                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"><LogOut size={16} /> Cerrar Sesión</button>
+                <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
+                >
+                  <LogOut size={16} /> Cerrar Sesión
+                </button>
               </div>
             )}
           </div>
@@ -282,7 +335,11 @@ const Dashboard = () => {
 
         <main className="flex-grow p-3 overflow-y-auto">
           <div className="h-full">
-            {VIEW_MAP[activeView] || <div className="text-center text-gray-500">Vista no configurada</div>}
+            {VIEW_MAP[activeView] || (
+              <div className="text-center text-gray-500 dark:text-gray-400">
+                Vista no configurada
+              </div>
+            )}
           </div>
         </main>
       </div>

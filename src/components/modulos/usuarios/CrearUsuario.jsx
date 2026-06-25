@@ -19,7 +19,8 @@ const CrearUsuario = () => {
     rol: 'usuario',
     estado: 'ACTIVO',
     permisos: {},
-    permisosGranulares: {}
+    permisosGranulares: {},
+    modoPantalla: 'claro'
   });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -196,6 +197,7 @@ const CrearUsuario = () => {
           ...payload,
           email: formData.email.trim(),
           estado: 'ACTIVO',
+          modoPantalla: 'claro',
           passwordChanged: false,
           createdAt: new Date().toISOString()
         };
@@ -243,7 +245,8 @@ const CrearUsuario = () => {
       rol: u.rol || 'usuario',
       estado: u.estado || 'ACTIVO',
       permisos: u.permisos || {},
-      permisosGranulares: u.permisosGranulares || {}
+      permisosGranulares: u.permisosGranulares || {},
+      modoPantalla: u.modoPantalla || 'claro'
     });
     setVistaActivaGranular(null);
   };

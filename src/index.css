@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @keyframes progress {
   from {
     width: 100%;
@@ -23,14 +25,20 @@
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  15%       { transform: translateX(-8px); }
-  30%       { transform: translateX(8px); }
-  45%       { transform: translateX(-6px); }
-  60%       { transform: translateX(6px); }
-  75%       { transform: translateX(-3px); }
-  90%       { transform: translateX(3px); }
+  15%        { transform: translateX(-8px); }
+  30%        { transform: translateX(8px); }
+  45%        { transform: translateX(-6px); }
+  60%        { transform: translateX(6px); }
+  75%        { transform: translateX(-3px); }
+  90%        { transform: translateX(3px); }
 }
 
 .shake-error {
   animation: shake 0.55s cubic-bezier(.36, .07, .19, .97) both;
+}
+
+@layer base {
+  body {
+    @apply transition-colors duration-300;
+  }
 }
