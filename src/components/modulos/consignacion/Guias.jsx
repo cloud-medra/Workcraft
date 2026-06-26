@@ -196,7 +196,7 @@ const Guias = () => {
         </div>
       )}
 
-      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-100 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
         <Package size={16} className="text-[#2383C2]" /> GESTIÓN DE GUÍAS
         {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar_xml") && (
           <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 hover:bg-[#369BCE] transition-colors">
@@ -206,15 +206,15 @@ const Guias = () => {
       </h2>
 
       {hasPermission(PATH_VISTA, "filtros_busqueda") && (
-        <div className="bg-gray-50 dark:bg-gray-900/50 p-3 flex flex-wrap gap-2 items-center border-b border-gray-200 dark:border-gray-700">
+        <div className="bg-gray-50 dark:bg-gray-800/50 p-3 flex flex-wrap gap-2 items-center border-b border-gray-200 dark:border-gray-700">
           {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
-            <select value={filtroAnio} onChange={(e) => { setFiltroAnio(e.target.value); setFiltroMes(""); }} className="h-8 border border-gray-300 dark:border-gray-600 rounded text-[12px] px-2 outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]">
+            <select value={filtroAnio} onChange={(e) => { setFiltroAnio(e.target.value); setFiltroMes(""); }} className="h-8 border border-gray-300 dark:border-gray-600 rounded text-[12px] px-2 outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]">
               <option value="" className="dark:bg-gray-900">Seleccionar año</option>
               {aniosDisponibles.map(a => <option key={a} value={a} className="dark:bg-gray-900">{a}</option>)}
             </select>
           )}
           {hasPermission(PATH_VISTA, "filtros_busqueda", "select_mes") && (
-            <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} className="h-8 border border-gray-300 dark:border-gray-600 rounded text-[12px] px-2 outline-none capitalize bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]">
+            <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} className="h-8 border border-gray-300 dark:border-gray-600 rounded text-[12px] px-2 outline-none capitalize bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]">
               <option value="" className="dark:bg-gray-900">Seleccionar mes</option>
               {mesesDisponibles.map(m => <option key={m} value={m} className="dark:bg-gray-900">{m}</option>)}
             </select>
@@ -225,7 +225,7 @@ const Guias = () => {
               <input 
                 value={busqueda} 
                 onChange={e => setBusqueda(e.target.value)} 
-                className="w-full h-8 pl-8 pr-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded text-[12px] outline-none transition-all duration-200 focus:border-[#2383C2] focus:ring-2 focus:ring-[#2383C2]/20 focus:shadow-[0_0_8px_rgba(35,131,194,0.2)] dark:focus:ring-[#2383C2]/30" 
+                className="w-full h-8 pl-8 pr-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 rounded text-[12px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2]" 
                 placeholder="Buscar por Folio o Ref..." 
               />
             </div>
@@ -236,8 +236,8 @@ const Guias = () => {
       {hasPermission(PATH_VISTA, "tabla_guias") && (
         <div className="flex-grow overflow-auto">
           <table className="w-full text-left text-[12px] border-collapse">
-            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 text-gray-600 dark:text-gray-300 uppercase font-bold text-[11px] z-10">
-              <tr>
+            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+              <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
                 <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
                 <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Fch Emisión</th>
                 <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio Ref</th>
@@ -246,27 +246,29 @@ const Guias = () => {
                 <th className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="text-gray-700 dark:text-gray-300">
+            <tbody>
               {guiasFiltradas.length > 0 ? (
                 guiasFiltradas.map((g) => (
-                  <tr key={g.id} className="border-l-4 border-transparent hover:border-[#2383C2] dark:hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/40 border-b border-gray-200 dark:border-gray-700/80 transition-colors duration-150">
-                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-100">{g.folio}</td>
-                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">{g.fchEmis}</td>
-                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">{g.folioRef}</td>
-                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 truncate max-w-[200px]">{g.rznSoc}</td>
-                    <td className={`p-3 border-r border-gray-200 dark:border-gray-700 font-bold ${g.estadoRegistro === 'Ingresado' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
-                      {g.estadoRegistro || 'Pendiente'}
+                  <tr key={g.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-800 dark:text-gray-100 font-bold">{g.folio}</td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{g.fchEmis}</td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{g.folioRef}</td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 truncate max-w-[200px]">{g.rznSoc}</td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${g.estadoRegistro === 'Ingresado' ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-gray-900/40 text-gray-500 dark:text-gray-400'}`}>
+                        {g.estadoRegistro || 'Pendiente'}
+                      </span>
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
                       <div className="flex justify-center gap-3">
                         {hasPermission(PATH_VISTA, "tabla_guias", "action_copiar") && (
-                          <button onClick={() => handleCopy(g)} className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 transition-colors"><Copy size={15} /></button>
+                          <button onClick={() => handleCopy(g)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition"><Copy size={15} /></button>
                         )}
                         {hasPermission(PATH_VISTA, "tabla_guias", "action_ver_detalle") && (
-                          <button onClick={() => setGuiaSeleccionada(g)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 transition-colors"><Eye size={15} /></button>
+                          <button onClick={() => setGuiaSeleccionada(g)} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition"><Eye size={15} /></button>
                         )}
                         {hasPermission(PATH_VISTA, "tabla_guias", "action_eliminar") && (
-                          <button onClick={() => handleDelete(g.id)} className="text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors"><Trash2 size={15} /></button>
+                          <button onClick={() => handleDelete(g.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"><Trash2 size={15} /></button>
                         )}
                       </div>
                     </td>

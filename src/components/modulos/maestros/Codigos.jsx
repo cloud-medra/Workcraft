@@ -211,29 +211,27 @@ const Codigos = () => {
             </thead>
             <tbody className="text-gray-700 dark:text-gray-300">
               {codigosFiltrados.map(c => (
-                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#2383C2] dark:hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/40 border-b border-gray-200 dark:border-gray-700/80 transition-colors">
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_referencia") && <td className="p-3 border-r border-gray-200 dark:border-gray-700">{c.referencia}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_detalle") && <td className="p-3 border-r border-gray-200 dark:border-gray-700">{c.detalle}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold">$ {formatMiles(c.precioCosto)}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_empresa") && <td className="p-3 border-r border-gray-200 dark:border-gray-700">{c.empresa}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-[#2383C2] dark:text-[#42a2e2]">{c.codigo || '-'}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_descripcion") && <td className="p-3 border-r border-gray-200 dark:border-gray-700">{c.descripcion}</td>}
+                <tr key={c.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_referencia") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200">{c.referencia}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_detalle") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">{c.detalle}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold">$ {formatMiles(c.precioCosto)}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_empresa") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">{c.empresa}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-[#2383C2] dark:text-[#42a2e2]">{c.codigo || '-'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_descripcion") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">{c.descripcion}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_tipo_atributo") && (
                     <>
-                      <td className="p-3 border-r border-gray-200 dark:border-gray-700">{c.tipo}</td>
-                      <td className="p-3 border-r border-gray-200 dark:border-gray-700">{c.atributo}</td>
+                      <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">{c.tipo}</td>
+                      <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">{c.atributo}</td>
                     </>
                   )}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_historial") && (
-                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-[10px] text-gray-500 dark:text-gray-400">
-                      {c.historialPrecios?.length > 0
-                        ? `$ ${formatMiles(c.historialPrecios[c.historialPrecios.length - 1].precio)} - ${c.historialPrecios[c.historialPrecios.length - 1].fecha.toDate().toLocaleDateString('es-CL')}`
-                        : '-'}
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-[10px] text-gray-500 dark:text-gray-400">
+                      {c.historialPrecios?.length > 0 ? `$ ${formatMiles(c.historialPrecios[c.historialPrecios.length - 1].precio)} - ${c.historialPrecios[c.historialPrecios.length - 1].fecha.toDate().toLocaleDateString('es-CL')}` : '-'}
                     </td>
                   )}
-                  <td className="p-3 text-center">
+                  <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
                     {hasPermission(PATH_VISTA, "tabla_datos", "action_editar") && (
-                      <button onClick={() => { setEditingId(c.id); setFormData({ ...c, precioOriginal: c.precioCosto }); setIsManualDesc(true); }} className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"><Pencil size={15} /></button>
+                      <button onClick={() => { setEditingId(c.id); setFormData({ ...c, precioOriginal: c.precioCosto }); setIsManualDesc(true); }} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"><Pencil size={15} /></button>
                     )}
                   </td>
                 </tr>

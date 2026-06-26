@@ -143,31 +143,31 @@ const Facturas = () => {
   const facturasFiltradas = facturas.filter(f => f.folio?.includes(busqueda) || f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) || f.folioRef?.includes(busqueda));
 
   return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative transition-colors">
+    <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative">
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
           <div className="bg-white/90 dark:bg-gray-800/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
             <Spinner size="md" color="#2383C2" />
-            <h3 className="text-[#2383C2] dark:text-[#369BCE] font-bold text-[15px]">Procesando XML...</h3>
+            <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando XML...</h3>
           </div>
         </div>
       )}
 
-      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-        <FileText size={16} className="text-[#2383C2] dark:text-[#369BCE]" /> GESTIÓN DE FACTURAS
+      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-100 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+        <FileText size={16} className="text-[#2383C2]" /> GESTIÓN DE FACTURAS
         {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar_xml") && (
-          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] hover:bg-[#369BCE] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 transition-colors">
+          <button onClick={() => setShowModal(true)} className="ml-auto bg-[#2383C2] hover:bg-[#369BCE] text-white px-3 py-1 rounded text-[11px] font-bold flex items-center gap-1 transition">
             <Upload size={12} /> Importar XML
           </button>
         )}
       </h2>
 
-      <div className="bg-gray-50 dark:bg-gray-900/40 p-3 flex flex-wrap gap-2 items-center border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-gray-50 dark:bg-gray-800/50 p-3 flex flex-wrap gap-2 items-center border-b border-gray-200 dark:border-gray-700">
         {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
           <select
             value={filtroAnio}
             onChange={(e) => { setFiltroAnio(e.target.value); setFiltroMes(""); }}
-            className="h-8 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded text-[12px] px-2 outline-none dark:[color-scheme:dark]"
+            className="h-8 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded text-[12px] px-2 outline-none"
           >
             <option value="">Año</option>
             {aniosDisponibles.map((a, idx) => <option key={`anio-${a}-${idx}`} value={a}>{a}</option>)}
@@ -178,7 +178,7 @@ const Facturas = () => {
           <select
             value={filtroMes}
             onChange={(e) => setFiltroMes(e.target.value)}
-            className="h-8 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded text-[12px] px-2 outline-none capitalize dark:[color-scheme:dark]"
+            className="h-8 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded text-[12px] px-2 outline-none capitalize"
           >
             <option value="">Mes</option>
             {mesesDisponibles.map((m, idx) => <option key={`mes-${m}-${idx}`} value={m}>{m}</option>)}
@@ -191,92 +191,87 @@ const Facturas = () => {
             <input
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
-              className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 rounded text-[12px] text-gray-700 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none"
+              className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]"
               placeholder="Buscar por Folio, Ref o Razón Social..."
             />
           </div>
         )}
       </div>
 
-      <div className="flex-grow overflow-auto bg-white dark:bg-gray-800">
-        <table className="w-full text-left text-[12px] border-collapse">
-          <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
-            <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_folio") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_emision") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Emisión</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_ref") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Ref.</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_razon") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Razón Social</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_total") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total (Neto)</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_estado") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_f_ingreso") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">F. Ingreso</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_oc_ingresada") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">OC Ingresada</th>}
-              {hasPermission(PATH_VISTA, "tabla_facturas", "col_acciones") && <th className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-            {facturasFiltradas.map((f) => (
-              <tr key={f.id} className="border-l-4 border-transparent hover:border-[#2383C2] dark:hover:border-[#369BCE] bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/30 border-b border-gray-200 dark:border-gray-700 transition-colors">
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_folio") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-700 dark:text-gray-200">{f.folio}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_emision") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 whitespace-nowrap">{f.fchEmis}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_ref") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-medium text-gray-500 dark:text-gray-400">{f.folioRef}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_razon") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{f.rznSoc}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_total") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 whitespace-nowrap">${parseInt(f.total || 0).toLocaleString()}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_estado") && (
-                  <td className="p-3 border-r border-gray-200 dark:border-gray-700 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded text-[10px] font-bold ${f.estado === 'Ingresada' ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400'}`}>
-                      {f.estado || 'Pendiente'}
-                    </span>
-                  </td>
-                )}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_f_ingreso") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-[11px] whitespace-nowrap">{f.fechaIngreso || '-'}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_oc_ingresada") && <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-[#2383C2] dark:text-[#369BCE]">{f.ocIngresada || '-'}</td>}
-                {hasPermission(PATH_VISTA, "tabla_facturas", "col_acciones") && (
-                  <td className="p-3 text-center">
-                    <div className="flex justify-center gap-3">
-                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
-                        <button
-                          onClick={() => setFacturaSeleccionada(f)}
-                          className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors"
-                        >
-                          <Eye size={15} />
-                        </button>
-                      )}
-
-                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
-                        <button
-                          onClick={() => handleDelete(f.id)}
-                          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                )}
+      {hasPermission(PATH_VISTA, "tabla_facturas") && (
+        <div className="flex-grow overflow-auto">
+          <table className="w-full text-left text-[12px] border-collapse">
+            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+              <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_folio") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_emision") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Emisión</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_ref") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Ref.</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_razon") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Razón Social</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_total") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total (Neto)</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_estado") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_f_ingreso") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">F. Ingreso</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_oc_ingresada") && <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">OC Ingresada</th>}
+                {hasPermission(PATH_VISTA, "tabla_facturas", "col_acciones") && <th className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {facturasFiltradas.map((f) => (
+                <tr key={f.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_folio") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-700 dark:text-gray-200">{f.folio}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_emision") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400">{f.fchEmis}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_ref") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-500 dark:text-gray-400">{f.folioRef}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_razon") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{f.rznSoc}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_total") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">${parseInt(f.total || 0).toLocaleString()}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_estado") && (
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${f.estado === 'Ingresada' ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-700 dark:text-yellow-400'}`}>
+                        {f.estado || 'Pendiente'}
+                      </span>
+                    </td>
+                  )}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_f_ingreso") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 text-[11px]">{f.fechaIngreso || '-'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_oc_ingresada") && <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-[#2383C2]">{f.ocIngresada || '-'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_facturas", "col_acciones") && (
+                    <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
+                      <div className="flex justify-center gap-3">
+                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
+                          <button onClick={() => setFacturaSeleccionada(f)} className="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition">
+                            <Eye size={15} />
+                          </button>
+                        )}
+                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
+                          <button onClick={() => handleDelete(f.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {facturaSeleccionada && <DetalleFacturaModal factura={facturaSeleccionada} onClose={() => setFacturaSeleccionada(null)} />}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-transparent dark:border-gray-700 animate-in fade-in zoom-in duration-200">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-transparent dark:border-gray-700">
             <div className="px-6 py-5 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-900/40">
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#2383C2]/10 dark:bg-[#369BCE]/10 rounded-lg">
-                  <Upload size={18} className="text-[#2383C2] dark:text-[#369BCE]" />
+                <div className="p-2 bg-[#2383C2]/10 rounded-lg">
+                  <Upload size={18} className="text-[#2383C2]" />
                 </div>
                 <h3 className="font-bold text-gray-800 dark:text-gray-100">Importar Documentos XML</h3>
               </div>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1">
+              <button onClick={() => setShowModal(false)} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition p-1">
                 <X size={20} />
               </button>
             </div>
             <div className="p-8">
-              <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-4 ${isDragActive ? "border-[#2383C2] dark:border-[#369BCE] bg-[#2383C2]/5 dark:bg-[#369BCE]/5" : "border-gray-200 dark:border-gray-700 hover:border-[#2383C2]/50 dark:hover:border-[#369BCE]/50 hover:bg-gray-50 dark:hover:bg-gray-700/30"}`}>
+              <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer flex flex-col items-center justify-center gap-4 transition ${isDragActive ? "border-[#2383C2] bg-[#2383C2]/5" : "border-gray-200 dark:border-gray-700 hover:border-[#2383C2]/50 hover:bg-gray-50 dark:hover:bg-gray-700/30"}`}>
                 <input {...getInputProps()} />
                 <div className="bg-gray-100 dark:bg-gray-900 p-4 rounded-full">
                   <FileText size={32} className="text-gray-400 dark:text-gray-500" />
@@ -288,7 +283,7 @@ const Facturas = () => {
               </div>
             </div>
             <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 flex justify-end">
-              <button onClick={() => setShowModal(false)} className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-4 py-2 rounded-lg transition-colors">
+              <button onClick={() => setShowModal(false)} className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 px-4 py-2 rounded-lg transition">
                 Cancelar
               </button>
             </div>

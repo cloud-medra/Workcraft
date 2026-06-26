@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, collectionGroup, query, onSnapshot, orderBy, where, setDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, collectionGroup, query, onSnapshot, orderBy, setDoc, doc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { FilePlus, Save, CheckCircle } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
@@ -26,6 +26,7 @@ const SolicitudIngresos = () => {
     paciente: '',
     medico: '',
     fechaCx: '',
+    modalidad: 'CONSIGNACION', // Nuevo campo con valor por defecto
     descripcion: '',
     cantidad: '',
     delivery: '',
@@ -43,7 +44,7 @@ const SolicitudIngresos = () => {
   // Cargar datos
   useEffect(() => {
     const qM = query(collection(db, "maestros_medicos"), orderBy("nombre", "asc"));
-    const qC = query(collection(db, "maestros_codigos"), where("active", "==", true));
+    const qC = query(collection(db, "maestros_codigos"));
     const qS = collectionGroup(db, "registros");
 
     const unsubM = onSnapshot(qM, (snap) => setMedicos(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
@@ -64,6 +65,18 @@ const SolicitudIngresos = () => {
 
     return () => { unsubM(); unsubC(); unsubS(); };
   }, []);
+
+  // Manejar el cambio de modalidad (Consignación / Cotización)
+  const handleModalidadChange = (e) => {
+    const nuevaModalidad = e.target.value;
+    setFormData(prev => ({
+      ...prev,
+      modalidad: nuevaModalidad,
+      // Limpiamos los datos del artículo previo para evitar inconsistencias
+      descripcion: '', cantidad: '', delivery: '',
+      codigo: '', precioCosto: '', tipo: '', atributo: '', empresa: ''
+    }));
+  };
 
   const handleSelectDescripcion = (item) => {
     setFormData(prev => ({
@@ -86,16 +99,12 @@ const SolicitudIngresos = () => {
       const anio = now.getFullYear().toString();
       const mes = (now.getMonth() + 1).toString().padStart(2, '0');
 
-      const rutaAnio = `consignacion_ingresos/${anio}`;
-      const rutaMes = `${rutaAnio}/meses/${mes}`;
-      const pathRegistros = `${rutaMes}/registros`;
-
       // 1. Marcar año y mes como activos
       await setDoc(doc(db, "consignacion_ingresos", anio), { active: true }, { merge: true });
-      await setDoc(doc(db, rutaMes, "_metadata"), { active: true }, { merge: true });
+      await setDoc(doc(db, "consignacion_ingresos", anio, "meses", mes), { active: true }, { merge: true });
 
       // 2. Registrar el documento
-      await addDoc(collection(db, pathRegistros), {
+      await addDoc(collection(db, "consignacion_ingresos", anio, "meses", mes, "registros"), {
         ...formData,
         active: true,
         registradoPor: userData?.nombreCompleto || 'Usuario',
@@ -104,7 +113,7 @@ const SolicitudIngresos = () => {
 
       showToast("Solicitud registrada con éxito", "success");
 
-      // Limpiar solo campos de detalle
+      // Limpiar campos manteniendo la modalidad actual
       setFormData(prev => ({
         ...prev,
         descripcion: '', cantidad: '', delivery: '',
@@ -121,8 +130,11 @@ const SolicitudIngresos = () => {
     m.estado !== 'INACTIVO' &&
     m.nombre.toLowerCase().includes(formData.medico.toLowerCase())
   );
+
+  // Filtrado dinámico basado en la selección del nuevo campo (CONSIGNACION o COTIZACION)
   const descFiltradas = codigos.filter(c =>
-    c.descripcion?.toLowerCase().includes(formData.descripcion.toLowerCase())
+    c.atributo === formData.modalidad &&
+    (c.descripcion?.toLowerCase() || '').includes(formData.descripcion.toLowerCase())
   );
 
   const inputClass = "w-full h-8 px-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#369BCE]";
@@ -145,13 +157,36 @@ const SolicitudIngresos = () => {
             { key: 'paciente', label: 'Paciente' },
             { key: 'medico', label: 'Médico', isMedico: true },
             { key: 'fechaCx', label: 'F. CX', type: 'date' },
+            { key: 'modalidad', label: 'Tipo Reg.', isSelect: true }, // Nuevo elemento en el array antes de descripción
             { key: 'descripcion', label: 'Descripción', isDesc: true },
             { key: 'cantidad', label: 'Cantidad', type: 'number' },
             { key: 'delivery', label: 'Delivery' }
           ].map((f) => (
             <div key={f.key} className="flex-1 min-w-[120px] relative" ref={f.isMedico ? medicoRef : f.isDesc ? descRef : null}>
               <label className={labelClass}>{f.label}</label>
-              <input type={f.type || 'text'} value={formData[f.key]} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })} readOnly={f.readOnly} className={inputClass} onFocus={() => f.isMedico ? setShowMedicoList(true) : f.isDesc ? setShowDescList(true) : null} />
+
+              {f.isSelect ? (
+                /* Renderizado del nuevo campo Select */
+                <select
+                  value={formData.modalidad}
+                  onChange={handleModalidadChange}
+                  className={inputClass}
+                >
+                  <option value="CONSIGNACION">CONSIGNACION</option>
+                  <option value="COTIZACION">COTIZACION</option>
+                </select>
+              ) : (
+                /* Input normal */
+                <input
+                  type={f.type || 'text'}
+                  value={formData[f.key]}
+                  onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                  readOnly={f.readOnly}
+                  className={inputClass}
+                  onFocus={() => f.isMedico ? setShowMedicoList(true) : f.isDesc ? setShowDescList(true) : null}
+                />
+              )}
+
               {f.isMedico && showMedicoList && (
                 <div className={dropDownClass}>
                   {medicosFiltrados.map(m => <div key={m.id} className="px-3 py-2 text-[11px] cursor-pointer hover:bg-[#2383C2] hover:text-white" onClick={() => { setFormData({ ...formData, medico: m.nombre }); setShowMedicoList(false) }}>{m.nombre}</div>)}
@@ -180,7 +215,7 @@ const SolicitudIngresos = () => {
           <button type="submit" className="h-8 px-4 bg-[#2383C2] hover:bg-[#369BCE] text-white rounded font-bold text-[12px] flex items-center gap-2">
             <Save size={14} /> Registrar
           </button>
-          <button type="button" onClick={() => setFormData(initialFormState)} className="h-8 px-4 bg-gray-500 hover:bg-gray-600 text-white rounded font-bold text-[12px] flex items-center gap-2">
+          <button type="button" onClick={() => setFormData(initialFormState)} className="h-8 px-4 bg-gray-gray-500 hover:bg-gray-600 text-white rounded font-bold text-[12px] flex items-center gap-2">
             <CheckCircle size={14} /> Finalizar
           </button>
         </div>
