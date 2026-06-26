@@ -185,10 +185,10 @@ const EnlazarOrden = () => {
     };
 
     return (
-        <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative transition-colors">
+        <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden relative">
             {cargando && (
-                <div className="absolute inset-0 z-[100] flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
-                    <div className="bg-white dark:bg-gray-800 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5 border dark:border-gray-700">
+                <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
+                    <div className="bg-white/90 dark:bg-gray-800/90 p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-5">
                         <Spinner size="md" color="#2383C2" />
                         <h3 className="text-[#2383C2] font-bold text-[15px]">Procesando...</h3>
                     </div>
@@ -223,67 +223,72 @@ const EnlazarOrden = () => {
             </h2>
 
             <div className="flex-grow overflow-auto">
-                <table className="w-full text-left text-[12px] border-collapse">
-                    <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
-                        <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                {/* ✅ Corregido: Se removió 'divide-y' del contenedor global para manejar bordes por celda */}
+                <table className="w-full text-left text-[11px] border-collapse table-fixed">
+                    <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10 text-gray-600 dark:text-gray-400 uppercase font-bold">
+                        <tr>
                             {vistaActual === 'lista' ? (
                                 <>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Folio</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Proveedor</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Total</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
-                                    <th className="p-3 border-b border-gray-200 dark:border-gray-700">Acciones</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[100px]">Folio</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[220px]">Proveedor</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[120px]">Total</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[150px]">Estado</th>
+                                    <th className="p-3 border-b border-gray-200 dark:border-gray-700 w-[100px] text-center">Acciones</th>
                                 </>
                             ) : (
                                 <>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Cant.</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Precio Unit.</th>
-                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">Cod. Maestro</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[110px]">Referencia</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[160px]">Descripción</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[55px]">Cant.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[95px]">Precio Unit.</th>
+                                    <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 w-[120px]">Cod. Maestro</th>
                                     {ordenEnlazada && (
                                         <>
-                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Art. OC</th>
-                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Cant. OC</th>
-                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">Precio OC</th>
-                                            <th className="p-3 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400">Dif. OC</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 w-[150px]">Art. OC</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 w-[60px]">Cant. OC</th>
+                                            <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 w-[95px]">Precio OC</th>
+                                            <th className="p-3 border-b border-gray-200 dark:border-gray-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 w-[110px]">Dif. OC</th>
                                         </>
                                     )}
                                 </>
                             )}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                         {vistaActual === 'lista' ? (
                             ordenes.map(o => (
-                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-[#2383C2]">{o.folio}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{o.rznSoc}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Number(o.total || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700">
-                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${colorEstado(o.estado)}`}>
+                                <tr key={o.id} onDoubleClick={() => handleVerDetalle(o)} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer">
+                                    {/* ✅ Primera Tabla: Se le añade border-b explícito a los TD */}
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-[#2383C2]">{o.folio}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 truncate">{o.rznSoc}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-bold">${Number(o.total || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${colorEstado(o.estado)}`}>
                                             {o.estado || 'Pendiente'}
                                         </span>
                                     </td>
-                                    <td className="p-3">
-                                        <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2]"><Eye size={16} /></button>
+                                    <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
+                                        <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2] transition" title="Visualizar">
+                                            <Eye size={15} />
+                                        </button>
                                     </td>
                                 </tr>
                             ))
                         ) : (
                             detalleItems.map((item, i) => (
-                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-mono text-gray-600 dark:text-gray-400">{item.codigo}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200">{item.nombre || item.descripcion}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">{item.cantidad}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">${Math.round(item.precioUnitarioFactura || 0).toLocaleString()}</td>
-                                    <td className="p-3 border-r border-gray-200 dark:border-gray-700 font-mono text-green-700 dark:text-green-400">{item.codigoMaestro}</td>
+                                <tr key={`${item.id}-${i}`} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 bg-white dark:bg-gray-800 transition-colors">
+                                    {/* ✅ Segunda Tabla (Detalle): Se le añade border-b individual a cada celda para solventar el error visual */}
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-gray-500 dark:text-gray-400 truncate">{item.codigo}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-800 dark:text-gray-200 truncate">{item.nombre || item.descripcion}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-300">{item.cantidad}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400">${Math.round(item.precioUnitarioFactura || 0).toLocaleString()}</td>
+                                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-green-700 dark:text-green-400 truncate">{item.codigoMaestro}</td>
                                     {ordenEnlazada && (
                                         <>
-                                            <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-blue-700 dark:text-blue-400">{item.articuloOrden}</td>
-                                            <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-blue-700 dark:text-blue-400">{item.cantidadOrden}</td>
-                                            <td className="p-3 border-r border-gray-200 dark:border-gray-700 text-blue-700 dark:text-blue-400">${Number(item.precioOrden || 0).toLocaleString()}</td>
-                                            <td className={`p-3 font-bold ${(item.diferenciaOrden || 0) !== 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                            <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-blue-700 dark:text-blue-400 truncate">{item.articuloOrden}</td>
+                                            <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-blue-700 dark:text-blue-400">{item.cantidadOrden}</td>
+                                            <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-blue-700 dark:text-blue-400">${Number(item.precioOrden || 0).toLocaleString()}</td>
+                                            <td className={`p-3 border-b font-bold truncate border-gray-200 dark:border-gray-700/70 ${(item.diferenciaOrden || 0) !== 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                                 {(item.diferenciaOrden || 0) === 0 ? 'Sin diferencia' : `$${Number(item.diferenciaOrden || 0).toLocaleString()}`}
                                             </td>
                                         </>
