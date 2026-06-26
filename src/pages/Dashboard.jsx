@@ -37,7 +37,6 @@ import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacid
 import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
 
-// Vistas especiales que no vienen de MODULES
 const SPECIAL_VIEWS = {
   dashboard: { label: 'Inicio', icon: <Home size={13} /> },
   perfil: { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
@@ -116,10 +115,7 @@ const Dashboard = () => {
     fetchUserData();
   }, []);
 
-  // ─── Breadcrumb ───────────────────────────────────────────────────────────────
-  // Devuelve { moduloLabel, moduloIcon, vistaLabel, vistaIcon } según activeView
   const getBreadcrumb = () => {
-    // Vistas especiales (no vienen de MODULES)
     if (SPECIAL_VIEWS[activeView]) {
       return {
         moduloLabel: null,
@@ -129,7 +125,6 @@ const Dashboard = () => {
       };
     }
 
-    // Buscar en MODULES cuál módulo contiene activeView como subItem
     for (const mKey of Object.keys(MODULES)) {
       const modulo = MODULES[mKey];
       const subItem = modulo.subItems?.find(s => s.path === activeView);
@@ -147,7 +142,6 @@ const Dashboard = () => {
   };
 
   const breadcrumb = getBreadcrumb();
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} />,
@@ -321,13 +315,10 @@ const Dashboard = () => {
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden gap-2">
 
-        {/* ── Header con Breadcrumb ── */}
         <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
 
-          {/* Todo en una sola fila: bienvenida + separador + breadcrumb + separador + fecha */}
           <div className="flex items-center gap-3 min-w-0">
 
-            {/* Bienvenida */}
             <h2 className="text-sm font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2 flex-shrink-0">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
               ¡Bienvenido {userData.nombreCompleto?.toUpperCase()}!
@@ -335,13 +326,11 @@ const Dashboard = () => {
 
             <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
 
-            {/* Fecha */}
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2 flex-shrink-0">
               <Calendar size={14} /> {fechaActual}
             </p>
             <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
 
-            {/* Breadcrumb */}
             <nav className="flex items-center gap-1.5 text-[12px] font-medium text-gray-700 dark:text-gray-200 truncate">
               <button
                 onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
@@ -371,19 +360,22 @@ const Dashboard = () => {
                 </>
               )}
             </nav>
-
-
-
-
           </div>
 
-          {/* Avatar + menú */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="w-9 h-9 rounded-full bg-[#2383C2] text-white flex items-center justify-center font-bold text-sm shadow-md"
             >
-              {userData.nombreCompleto?.charAt(0).toUpperCase()}
+              {userData.nombreCompleto
+                ? userData.nombreCompleto
+                  .trim()
+                  .split(' ')
+                  .filter(Boolean) 
+                  .map(palabra => palabra.charAt(0).toUpperCase())
+                  .slice(0, 2)
+                  .join('')
+                : 'U'}
             </button>
 
             {isMenuOpen && (
