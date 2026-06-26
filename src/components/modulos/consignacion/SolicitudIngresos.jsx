@@ -498,7 +498,7 @@ const SolicitudIngresos = () => {
             {solicitudes.map((s, index) => (
               <tr
                 key={s.id}
-                className={`border-l-4 border-transparent hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors ${editandoId === s.id ? 'bg-amber-50/20 dark:bg-amber-950/10 border-l-amber-500' : ''}`}
+                className={`border-l-4 border-transparent transition-colors hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 ${editandoId === s.id ? 'bg-amber-50/20 dark:bg-amber-950/10 border-l-amber-500 hover:border-l-amber-500' : ''} `}
               >
                 <td style={tdStyle('num')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold">{index + 1}</td>
                 <td style={tdStyle('fechaCx')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.fechaCx} className="font-medium text-gray-700 dark:text-gray-200" /></td>

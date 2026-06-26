@@ -22,6 +22,7 @@ import CalculadoraMargen from "../components/modulos/maestros/CalculadoraMargen"
 import Guias from '../components/modulos/consignacion/Guias';
 import VistaRapida from '../components/modulos/consignacion/VistaRapida';
 import SolicitudIngresos from '../components/modulos/consignacion/SolicitudIngresos';
+import CargaConsigna from '../components/modulos/consignacion/CargaConsigna';
 
 
 import EmpresasLaboratorio from '../components/modulos/laboratorio/Empresas';
@@ -157,7 +158,7 @@ const Dashboard = () => {
     '/consignacion/guias': <Guias />,
     '/consignacion/vistaRapida': <VistaRapida />,
     '/consignacion/solicitudIngresos': <SolicitudIngresos />,
-
+    '/consignacion/cargaConsigna': <CargaConsigna />,
 
 
     '/laboratorio/empresas': <EmpresasLaboratorio />,

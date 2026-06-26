@@ -24,7 +24,8 @@ import {
   BadgeInfo,
   ClipboardList,
   ShieldCheck,
-  ClipboardCheck
+  ClipboardCheck,
+  Upload
 } from "lucide-react";
 
 export const MODULES = {
@@ -60,7 +61,8 @@ export const MODULES = {
     subItems: [
       { label: 'Guías', path: '/consignacion/guias', icon: <Package size={14} /> },
       { label: 'Vista Rápida', path: '/consignacion/vistaRapida', icon: <Eye size={14} /> },
-      { label: 'Solicitud Ingresos', path: '/consignacion/solicitudIngresos', icon: <FileText size={14} /> }
+      { label: 'Solicitud Ingresos', path: '/consignacion/solicitudIngresos', icon: <FileText size={14} /> },
+      { label: 'Carga Consigna', path: '/consignacion/cargaConsigna', icon: <Upload size={14} /> }
     ]
   },
   laboratorio: {
