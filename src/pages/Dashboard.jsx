@@ -23,6 +23,7 @@ import Guias from '../components/modulos/consignacion/Guias';
 import VistaRapida from '../components/modulos/consignacion/VistaRapida';
 import SolicitudIngresos from '../components/modulos/consignacion/SolicitudIngresos';
 import CargaConsigna from '../components/modulos/consignacion/CargaConsigna';
+import ConsignacionLayout from '../components/modulos/consignacion/cargos/ConsignacionLayout';
 
 
 import EmpresasLaboratorio from '../components/modulos/laboratorio/Empresas';
@@ -159,7 +160,7 @@ const Dashboard = () => {
     '/consignacion/vistaRapida': <VistaRapida />,
     '/consignacion/solicitudIngresos': <SolicitudIngresos />,
     '/consignacion/cargaConsigna': <CargaConsigna />,
-
+    '/consignacion/consignacionLayout': <ConsignacionLayout />,
 
     '/laboratorio/empresas': <EmpresasLaboratorio />,
     '/laboratorio/facturas': <Facturas />,
