@@ -25,7 +25,8 @@ import {
   ClipboardList,
   ShieldCheck,
   ClipboardCheck,
-  Upload
+  Upload,
+  FileSpreadsheet
 } from "lucide-react";
 
 export const MODULES = {
@@ -85,7 +86,8 @@ export const MODULES = {
     icon: <Folder size={18} />,
     subItems: [
       { label: 'Carga Datos', path: '/documentos/carga', icon: <FileUp size={14} /> },
-      { label: 'Dashbaord', path: '/documentos/DashboardFinanciero', icon: <BarChart3 size={14} /> }
+      { label: 'Dashbaord', path: '/documentos/DashboardFinanciero', icon: <BarChart3 size={14} /> },
+      { label: 'Reporte Pabellón', path: '/documentos/reportePabellon', icon: <FileSpreadsheet size={14} /> }
     ]
   },
 };

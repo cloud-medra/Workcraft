@@ -35,6 +35,7 @@ import ImportarOrden from '../components/modulos/laboratorio/ImportarOrden';
 import ControlFacturas from '../components/modulos/laboratorio/controlFacturas/ControlFacturas';
 import CargaDatos from '../components/modulos/documentos/CargaDatos';
 import DashboardFinanciero from '../components/modulos/documentos/DashboardFinanciero';
+import ReportePabellon from '../components/modulos/documentos/ReportePabellon';
 import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
@@ -171,6 +172,7 @@ const Dashboard = () => {
     '/laboratorio/controlFactura': <ControlFacturas />,
     '/documentos/carga': <CargaDatos />,
     '/documentos/DashboardFinanciero': <DashboardFinanciero />,
+    '/documentos/reportePabellon': <ReportePabellon />,
     'privacidad': <PoliticasPrivacidad />,
     'terminos': <TerminosServicio />,
     'perfil': <Perfil userData={userData} />,
