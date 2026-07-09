@@ -61,7 +61,7 @@ const ReportePabellon = () => {
     cargarMeses();
   }, [filtroAnio]);
 
-  // 3. Cargar listado plano directo (Sin subcolecciones, lectura directa y veloz)
+  // 3. Cargar listado plano directo
   useEffect(() => {
     if (!filtroAnio || !filtroMes) {
       setFilasPlanas([]);
@@ -72,7 +72,6 @@ const ReportePabellon = () => {
       setCargando(true);
       setProgresoTexto("Cargando registros detallados...");
       try {
-        // Ahora los registros están todos juntos a nivel de "registros_planos"
         const pathRegistros = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/registros_planos`;
         const snap = await getDocs(collection(db, pathRegistros));
         
@@ -93,7 +92,7 @@ const ReportePabellon = () => {
     cargarDatosPlanos();
   }, [filtroAnio, filtroMes, showToast]);
 
-  // 4. NUEVA LÓGICA DE IMPORTACIÓN COMPLETAMENTE PLANA (Guarda todas las columnas por fila)
+  // 4. NUEVA LÓGICA DE IMPORTACIÓN COMPLETAMENTE PLANA
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
     setProgresoTexto("Leyendo archivo...");
@@ -109,7 +108,6 @@ const ReportePabellon = () => {
 
         setProgresoTexto("Estructurando filas del archivo...");
         
-        // Agrupamos en memoria temporalmente solo para saber a qué Año/Mes enviar los batches corporativos
         const lotesPorMes = {};
 
         jsonData.forEach((row) => {
@@ -143,7 +141,6 @@ const ReportePabellon = () => {
             lotesPorMes[llaveBloque] = { anio: y, mes: nombreMes, filas: [] };
           }
 
-          // ID único compuesto para evitar duplicar la misma fila si se vuelve a subir
           const idDocUnico = `${admision}_${codArticulo}`;
 
           lotesPorMes[llaveBloque].filas.push({
@@ -151,6 +148,7 @@ const ReportePabellon = () => {
             datos: {
               "Admisión": admision,
               "Fecha": fechaString,
+              "Paciente": row["Paciente"] || "", // <-- NUEVO CAMPO IMPORTADO
               "Edad": row["Edad"] || "",
               "1° Cirujano": row["1° Cirujano"] || "",
               "Previsión": row["Previsión"] || "",
@@ -168,25 +166,21 @@ const ReportePabellon = () => {
           });
         });
 
-        // Guardar en Firestore usando batches por cada Año/Mes detectado
         for (const llave in lotesPorMes) {
           const { anio, mes, filas } = lotesPorMes[llave];
           setProgresoTexto(`Guardando filas detalladas en ${mes} ${anio}...`);
 
-          // Marcamos carpetas estructurales como activas
           const batchEstructura = writeBatch(db);
           batchEstructura.set(doc(db, COL_BASE, anio), { active: "true" }, { merge: true });
           batchEstructura.set(doc(db, COL_BASE, anio, "meses", mes), { active: "true" }, { merge: true });
           await batchEstructura.commit();
 
-          // Guardar filas de 500 en 500 (límite de Firestore Batches)
           let batch = writeBatch(db);
           let count = 0;
 
           for (const fila of filas) {
             const docRef = doc(db, COL_BASE, anio, "meses", mes, "registros_planos", fila.idDocUnico);
             
-            // Usamos set con merge: true para que si ya existe, se actualice con los campos completos actuales
             batch.set(docRef, fila.datos, { merge: true });
             count++;
             totalNuevosAgregados++;
@@ -202,8 +196,8 @@ const ReportePabellon = () => {
             await batch.commit();
           }
 
-          ultAnioProcesado = anio;
-          ultMesProcesado = mes;
+          let ultAnioProcesado = anio;
+          let ultMesProcesado = mes;
         }
       }
 
@@ -230,9 +224,10 @@ const ReportePabellon = () => {
     accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'text/csv': ['.csv'] } 
   });
 
-  // Filtrado multizona inteligente en memoria
+  // Filtrado multizona inteligente en memoria (Incluye búsqueda por paciente)
   const filasFiltradas = filasPlanas.filter(o =>
     o["Admisión"]?.includes(busqueda) ||
+    o["Paciente"]?.toLowerCase().includes(busqueda.toLowerCase()) || // <-- BÚSQUEDA POR PACIENTE
     o["1° Cirujano"]?.toLowerCase().includes(busqueda.toLowerCase()) ||
     o["Cod.Artículo"]?.includes(busqueda) ||
     o["Descripción"]?.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -273,20 +268,21 @@ const ReportePabellon = () => {
         </select>
         <div className="relative flex-grow max-w-sm">
           <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={14} />
-          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]" placeholder="Buscar por Admisión, Cirujano, Artículo, Arancel..." />
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]" placeholder="Buscar por Admisión, Paciente, Cirujano..." />
         </div>
         <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 ml-auto">
           Total registros: {filasFiltradas.length}
         </span>
       </div>
 
-      {/* TABLA GLOBAL - MUESTRA TODOS LOS CAMPOS DIRECTAMENTE */}
+      {/* TABLA GLOBAL */}
       <div className="flex-grow overflow-auto h-[550px]">
         <table className="w-full text-left text-[12px] border-collapse table-fixed">
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
             <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
               <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[95px]">Admisión</th>
               <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[95px]">Fecha</th>
+              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[160px]">Paciente</th>{/* <-- NUEVO TH */}
               <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[55px] text-center">Edad</th>
               <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[160px]">1° Cirujano</th>
               <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[100px]">Previsión</th>
@@ -304,6 +300,7 @@ const ReportePabellon = () => {
                 <tr key={f.idUnico} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-800 dark:text-gray-200">{f["Admisión"]}</td>
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 whitespace-nowrap">{f["Fecha"]}</td>
+                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-300 truncate font-medium" title={f["Paciente"]}>{f["Paciente"]}</td>{/* <-- NUEVO TD */}
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 text-center">{f["Edad"]}</td>
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-300 truncate font-medium" title={f["1° Cirujano"]}>{f["1° Cirujano"]}</td>
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 truncate" title={f["Previsión"]}>{f["Previsión"]}</td>
@@ -317,7 +314,7 @@ const ReportePabellon = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="11" className="p-8 text-center text-gray-400 dark:text-gray-500 font-medium">
+                <td colSpan="12" className="p-8 text-center text-gray-400 dark:text-gray-500 font-medium">{/* <-- colSpan actualizado a 12 */}
                   {filtroAnio && filtroMes ? "No se encontraron registros." : "Selecciona Año y Mes para desplegar el listado maestro plano."}
                 </td>
               </tr>
@@ -350,7 +347,7 @@ const ReportePabellon = () => {
                 <div>
                   <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Sube o arrastra tu reporte histórico aquí</p>
                   <p className="text-xs text-gray-400 dark:text-gray-400 mt-2">
-                    Las filas se almacenarán individualmente con todas sus columnas (Admisión, Previsión, Cirujano, Artículo, etc.) evitando resúmenes restrictivos.
+                    Las filas se almacenarán individualmente con todas sus columnas (Admisión, Paciente, Previsión, Cirujano, Artículo, etc.) evitando resúmenes restrictivos.
                   </p>
                 </div>
               </div>

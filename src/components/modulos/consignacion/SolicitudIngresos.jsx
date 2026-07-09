@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, addDoc, collectionGroup, query, onSnapshot, orderBy, setDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
-import { FilePlus, Save, CheckCircle, AlertCircle, Edit2, X, Trash2, Undo2 } from 'lucide-react';
+import { FilePlus, Save, CheckCircle, AlertCircle, Edit2, X, Trash2 } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
 import { useUser } from '../../../context/UserContext';
 import Spinner from '../../ui/Spinner';
@@ -17,7 +17,7 @@ const COL_KEYS = Object.keys(INITIAL_COL_WIDTHS);
 
 function useColumnResize(initialWidths) {
   const [widths, setWidths] = useState(initialWidths);
-  const resizingRef = useRef(null); // { key, startX, startWidth }
+  const resizingRef = useRef(null);
 
   const onMouseDown = useCallback((key, e) => {
     e.preventDefault();
@@ -59,7 +59,11 @@ const SolicitudIngresos = () => {
 
   const [asignandoCodigoId, setAsignandoCodigoId] = useState(null);
   const [showEditDescList, setShowEditDescList] = useState(false);
-  const [editFormData, setEditFormData] = useState({ descripcion: '', codigo: '', precioCosto: '', tipo: '', atributo: '', empresa: '' });
+  
+  // Se añade 'referencia' al estado de edición rápida
+  const [editFormData, setEditFormData] = useState({ 
+    descripcion: '', codigo: '', precioCosto: '', tipo: '', atributo: '', empresa: '', referencia: '' 
+  });
 
   const medicoRef   = useRef(null);
   const descRef     = useRef(null);
@@ -69,6 +73,7 @@ const SolicitudIngresos = () => {
 
   const { widths, onMouseDown: onColMouseDown } = useColumnResize(INITIAL_COL_WIDTHS);
 
+  // Se añade 'referencia' al estado inicial del formulario
   const initialFormState = {
     fecha: getFechaHoy(),
     admision: '',
@@ -84,6 +89,7 @@ const SolicitudIngresos = () => {
     tipo: '',
     atributo: '',
     empresa: '',
+    referencia: '',
     estado: 'INGRESADO'
   };
 
@@ -94,7 +100,7 @@ const SolicitudIngresos = () => {
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (medicoRef.current && !medicoRef.current.contains(event.target))   setShowMedicoList(false);
-      if (descRef.current     && !descRef.current.contains(event.target))     setShowDescList(false);
+      if (descRef.current     && !descRef.current.contains(event.target))      setShowDescList(false);
       if (editDescRef.current && !editDescRef.current.contains(event.target)) setShowEditDescList(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -135,11 +141,12 @@ const SolicitudIngresos = () => {
       ...prev,
       modalidad: nuevaModalidad,
       descripcion: '', cantidad: '', delivery: '',
-      codigo: '', precioCosto: '', tipo: '', atributo: '', empresa: ''
+      codigo: '', precioCosto: '', tipo: '', atributo: '', empresa: '', referencia: ''
     }));
     setCodigoNoRegistrado(false);
   };
 
+  // Se mapea la propiedad id del maestro a 'referencia'
   const handleSelectDescripcion = (item) => {
     setFormData(prev => ({
       ...prev,
@@ -148,7 +155,8 @@ const SolicitudIngresos = () => {
       precioCosto:  item.precioCosto || '',
       tipo:         item.tipo        || '',
       atributo:     item.atributo    || '',
-      empresa:      item.empresa     || ''
+      empresa:      item.empresa     || '',
+      referencia:   item.referencia  || ''
     }));
     setShowDescList(false);
   };
@@ -174,6 +182,7 @@ const SolicitudIngresos = () => {
           tipo:        formData.tipo,
           atributo:    formData.atributo,
           empresa:     formData.empresa,
+          referencia:  codigoNoRegistrado ? '' : formData.referencia,
           estado:      estadoFinal
         });
         showToast("Solicitud actualizada con éxito", "success");
@@ -189,6 +198,7 @@ const SolicitudIngresos = () => {
         await setDoc(doc(db, "consignacion_ingresos", anio, "meses", mes), { active: true }, { merge: true });
         await addDoc(collection(db, "consignacion_ingresos", anio, "meses", mes, "registros"), {
           ...formData,
+          referencia: codigoNoRegistrado ? '' : formData.referencia,
           estado:        estadoFinal,
           active:        true,
           registradoPor: userData?.nombreCompleto || 'Usuario',
@@ -226,6 +236,7 @@ const SolicitudIngresos = () => {
       tipo:        solicitud.tipo        || '',
       atributo:    solicitud.atributo    || '',
       empresa:     solicitud.empresa     || '',
+      referencia:  solicitud.referencia  || '', // <-- Asegura cargar la referencia guardada
       estado:      solicitud.estado      || 'INGRESADO'
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -257,11 +268,12 @@ const SolicitudIngresos = () => {
     setAsignandoCodigoId(solicitud.id);
     setEditFormData({
       descripcion: solicitud.descripcion,
-      codigo: '', precioCosto: '', tipo: '', empresa: '',
+      codigo: '', precioCosto: '', tipo: '', empresa: '', referencia: '',
       atributo: solicitud.modalidad
     });
   };
 
+  // Se añade item.id a la referencia en la asignación rápida de código
   const handleSelectEditDescripcion = (item) => {
     setEditFormData({
       descripcion: item.descripcion,
@@ -269,7 +281,8 @@ const SolicitudIngresos = () => {
       precioCosto: item.precioCosto || '',
       tipo:        item.tipo        || '',
       atributo:    item.atributo    || '',
-      empresa:     item.empresa     || ''
+      empresa:     item.empresa     || '',
+      referencia:  item.referencia  || ''
     });
     setShowEditDescList(false);
   };
@@ -289,6 +302,7 @@ const SolicitudIngresos = () => {
         tipo:        editFormData.tipo,
         atributo:    editFormData.atributo,
         empresa:     editFormData.empresa,
+        referencia:  editFormData.referencia,
         estado:      'INGRESADO'
       });
       showToast("Código asignado con éxito", "success");
@@ -390,7 +404,7 @@ const SolicitudIngresos = () => {
                   checked={codigoNoRegistrado} 
                   onChange={(e) => {
                     setCodigoNoRegistrado(e.target.checked);
-                    setFormData({ ...formData, descripcion: '', codigo: '', precioCosto: '', tipo: '', empresa: '' });
+                    setFormData({ ...formData, descripcion: '', codigo: '', precioCosto: '', tipo: '', empresa: '', referencia: '' });
                   }}
                   className="rounded border-gray-300 text-[#2383C2] focus:ring-0 w-3 h-3 cursor-pointer"
                 />
@@ -443,6 +457,7 @@ const SolicitudIngresos = () => {
           {formData.codigo ? (
             <div className="flex flex-wrap flex-grow justify-end gap-x-6 gap-y-1 py-1.5 px-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded text-[11px] text-gray-600 dark:text-gray-300 max-w-full md:max-w-max">
               <span><strong>Código:</strong> <span className="font-mono">{formData.codigo}</span></span>
+              <span><strong>Ref. Maestro:</strong> <span className="font-mono text-xs text-blue-600 dark:text-blue-400">{formData.referencia || 'N/A'}</span></span>
               <span><strong>Precio Costo:</strong> ${formData.precioCosto}</span>
               <span><strong>Tipo:</strong> {formData.tipo}</span>
               <span><strong>Atributo:</strong> {formData.atributo}</span>
@@ -457,6 +472,7 @@ const SolicitudIngresos = () => {
         </div>
       </form>
 
+      {/* TABLA DE SOLICITUDES */}
       <div className="flex-grow overflow-auto">
         <table className="text-left text-[12px] border-collapse table-fixed" style={{ width: 'max-content', minWidth: '100%' }}>
           <colgroup>
@@ -466,7 +482,7 @@ const SolicitudIngresos = () => {
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
             <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
               {[
-                { key: 'num',           label: '#'             },
+                { key: 'num',           label: '#'               },
                 { key: 'fechaCx',       label: 'Fecha Cx'      },
                 { key: 'admision',      label: 'Admisión'      },
                 { key: 'paciente',      label: 'Paciente'      },
