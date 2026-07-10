@@ -1,28 +1,40 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { collectionGroup, writeBatch, doc, onSnapshot } from 'firebase/firestore';
+import { collectionGroup, collection, writeBatch, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Truck, CheckSquare, Square, RefreshCw } from 'lucide-react';
+import { Truck, CheckSquare, Square, RefreshCw, ChevronDown, ChevronRight, PackageOpen } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import Spinner from '../../../ui/Spinner';
 
-// Configuración de anchos iniciales exclusiva para las 11 columnas solicitadas
+// Configuración de anchos iniciales
 const INITIAL_COL_WIDTHS = {
   select: 40,
-  num: 45,
+  num: 60,
   admision: 100,
   paciente: 220,
   medico: 200,
   fecha: 100,
   codigo: 110,
   descripcion: 240,
-  cantidad: 80,
-  precioCosto: 110,
+  cantidad: 60,
+  precioCosto: 80,
   atributo: 100,
-  lote: 110,
-  fechaVencimiento: 120
+  lote: 90,
+  fechaVencimiento: 90,
+  delivery: 130,
+  folioGuia: 110,
+  referencia: 150
 };
 
 const COL_KEYS = Object.keys(INITIAL_COL_WIDTHS);
+
+// Términos que, si aparecen en la DESCRIPCIÓN o CÓDIGO, deben provocar que la fila se omita
+const OMITIR_DESCRIPCIONES = ["KITMANGACRL", "KITBYPASSTCRL2", "KITBYPASSTCRL"];
+
+// Función utilitaria para extraer el primer bloque de texto de un código
+const limpiarCodigo = (codigo) => {
+  if (!codigo) return 'N/A';
+  return codigo.toString().trim().split(' ')[0].replace(/_+$/, '');
+};
 
 function useColumnResize(initialWidths) {
   const [widths, setWidths] = useState(initialWidths);
@@ -36,7 +48,7 @@ function useColumnResize(initialWidths) {
       if (!resizingRef.current || !resizingRef.current.key) return;
       const delta = ev.clientX - resizingRef.current.startX;
       const newW = Math.max(30, resizingRef.current.startWidth + delta);
-      
+
       if (!isNaN(newW)) {
         setWidths(prev => {
           if (!resizingRef.current || !resizingRef.current.key) return prev;
@@ -60,27 +72,71 @@ function useColumnResize(initialWidths) {
 
 const Delivery = () => {
   const [solicitudes, setSolicitudes] = useState([]);
+  const [guiasMap, setGuiasMap] = useState({});
+  const [codigosMap, setCodigosMap] = useState({});
+  const [expandedRows, setExpandedRows] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [procesandoAccion, setProcesandoAccion] = useState(false);
+
   const { showToast } = useToast();
   const { widths, onMouseDown: onColMouseDown } = useColumnResize(INITIAL_COL_WIDTHS);
 
-  // Escuchar solicitudes en estado INGRESAR L/F
+  // Escucha activa y sincronizada de la colección maestra de códigos en Firestore
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "maestros_codigos"),
+      (snap) => {
+        const mapa = {};
+
+        snap.docs.forEach(d => {
+          const data = d.data();
+
+          // Buscamos el campo 'referencia' que es donde guardas "ONB12STF"
+          if (data.referencia) {
+            // Limpiamos y estandarizamos la referencia por si acaso
+            const refLimpia = limpiarCodigo(data.referencia).toUpperCase();
+
+            // Guardamos la descripción usando la referencia como clave de búsqueda
+            mapa[refLimpia] = data.descripcion;
+          }
+        });
+
+        setCodigosMap(mapa);
+      },
+      (error) => {
+        console.error("Error al cargar la colección maestra de códigos:", error);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // 1. Escuchar solicitudes en estado INGRESAR L/F con filtros aplicados
   useEffect(() => {
     const qS = collectionGroup(db, "registros");
 
     const unsubscribe = onSnapshot(qS,
       (snap) => {
         const data = snap.docs
-          .map(d => ({ 
-            id: d.id, 
-            path: d.ref.path, 
-            ...d.data() 
+          .map(d => ({
+            id: d.id,
+            path: d.ref.path,
+            ...d.data()
           }))
-          .filter(d => d.active === true && d.estado === 'INGRESAR L/F');
-        
-        setSolicitudes(data.sort((a, b) => b.fechaRegistro?.seconds - a.fechaRegistro?.seconds));
+          .filter(d => {
+            if (!d.active || d.estado !== 'INGRESAR L/F' || !d.codigo) return false;
+
+            const codigoLimpio = limpiarCodigo(d.codigo).toUpperCase();
+            const descripcionUpper = (d.descripcion || '').toString().trim().toUpperCase();
+
+            const coincideEnCodigo = OMITIR_DESCRIPCIONES.includes(codigoLimpio);
+            const coincideEnDescripcion = OMITIR_DESCRIPCIONES.some(codigoOmitir =>
+              descripcionUpper.includes(codigoOmitir)
+            );
+            return !coincideEnCodigo && !coincideEnDescripcion;
+          });
+
+        setSolicitudes(data.sort((a, b) => (b.fechaRegistro?.seconds || 0) - (a.fechaRegistro?.seconds || 0)));
         setSelectedIds(prev => prev.filter(id => data.some(s => s.id === id)));
         setCargando(false);
       },
@@ -94,6 +150,33 @@ const Delivery = () => {
     return () => unsubscribe();
   }, [showToast]);
 
+  // 2. Escuchar de forma global la colección de guías para enlazar en tiempo real
+  useEffect(() => {
+    const qG = collectionGroup(db, "guias");
+
+    const unsubscribe = onSnapshot(qG, (snap) => {
+      const mapa = {};
+      snap.docs.forEach(docSnap => {
+        const gData = docSnap.data();
+        if (gData.folioRef && gData.folioRef !== "N/A") {
+          const key = gData.folioRef.trim();
+          mapa[key] = gData;
+        }
+      });
+      setGuiasMap(mapa);
+    }, (error) => {
+      console.error("Error cargando mapeo global de guías:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const toggleRowExpand = (id) => {
+    setExpandedRows(prev =>
+      prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
+    );
+  };
+
   const handleSelectAll = () => {
     if (selectedIds.length === solicitudes.length) {
       setSelectedIds([]);
@@ -103,24 +186,24 @@ const Delivery = () => {
   };
 
   const handleSelectRow = (id) => {
-    setSelectedIds(prev => 
+    setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
 
   const handleDespacharMasivo = async () => {
     if (selectedIds.length === 0) return;
-    
+
     setProcesandoAccion(true);
     try {
       const batch = writeBatch(db);
-      
+
       selectedIds.forEach(id => {
         const item = solicitudes.find(s => s.id === id);
         if (item && item.path) {
           const docRef = doc(db, item.path);
-          batch.update(docRef, { 
-            estado: 'DESPACHADO', 
+          batch.update(docRef, {
+            estado: 'SOLICITAR ORDEN',
             fechaModificacion: new Date()
           });
         }
@@ -149,20 +232,19 @@ const Delivery = () => {
   );
 
   const thStyle = (key) => ({
-    width: widths[key] || INITIAL_COL_WIDTHS[key], 
-    minWidth: widths[key] || INITIAL_COL_WIDTHS[key], 
+    width: widths[key] || INITIAL_COL_WIDTHS[key],
+    minWidth: widths[key] || INITIAL_COL_WIDTHS[key],
     maxWidth: widths[key] || INITIAL_COL_WIDTHS[key],
     position: 'relative', overflow: 'hidden', userSelect: 'none',
   });
 
   const tdStyle = (key) => ({
-    width: widths[key] || INITIAL_COL_WIDTHS[key], 
-    minWidth: widths[key] || INITIAL_COL_WIDTHS[key], 
-    maxWidth: widths[key] || INITIAL_COL_WIDTHS[key], 
+    width: widths[key] || INITIAL_COL_WIDTHS[key],
+    minWidth: widths[key] || INITIAL_COL_WIDTHS[key],
+    maxWidth: widths[key] || INITIAL_COL_WIDTHS[key],
     overflow: 'hidden',
   });
 
-  // Mantenemos destacado visual el bloque central crítico
   const isHighlightedToken = (key) => ['codigo', 'cantidad', 'lote', 'fechaVencimiento'].includes(key);
 
   return (
@@ -176,7 +258,7 @@ const Delivery = () => {
       {/* Cabecera de Módulo */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2 bg-gray-50/50 dark:bg-gray-900/20">
         <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-          <Truck size={16} className="text-amber-500 dark:text-amber-400" /> 
+          <Truck size={16} className="text-amber-500 dark:text-amber-400" />
           DESPACHO / DELIVERY (INGRESAR L/F)
         </h2>
 
@@ -190,7 +272,7 @@ const Delivery = () => {
               className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] uppercase tracking-wider px-3 py-1.5 rounded shadow-sm transition-all active:scale-95"
             >
               <RefreshCw size={12} className={procesandoAccion ? "animate-spin" : ""} />
-              Procesar Despacho
+              Solicitar Orden
             </button>
           </div>
         )}
@@ -219,22 +301,25 @@ const Delivery = () => {
                 { key: 'atributo', label: 'ATRIBUTO' },
                 { key: 'lote', label: 'LOTE' },
                 { key: 'fechaVencimiento', label: 'F. VENCIMIENTO' },
+                { key: 'delivery', label: 'DELIVERY' },
+                { key: 'folioGuia', label: 'GUÍAS (FOLIO)' },
+                { key: 'referencia', label: 'REFERENCIA' },
               ].map(({ key, label }) => {
                 const isSpecial = isHighlightedToken(key);
                 return (
-                  <th 
-                    key={key} 
-                    style={thStyle(key)} 
+                  <th
+                    key={key}
+                    style={thStyle(key)}
                     className={[
                       "p-3 border-b border-r border-gray-200 dark:border-gray-700 overflow-hidden transition-colors",
                       key === 'select' ? "text-center" : "",
-                      isSpecial 
-                        ? "bg-amber-100/60 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-extrabold border-r-gray-300 dark:border-r-gray-600" 
+                      isSpecial
+                        ? "bg-amber-100/60 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 font-extrabold border-r-gray-300 dark:border-r-gray-600"
                         : ""
                     ].join(' ')}
                   >
                     {key === 'select' ? (
-                      <button 
+                      <button
                         type="button"
                         onClick={handleSelectAll}
                         disabled={solicitudes.length === 0}
@@ -249,9 +334,9 @@ const Delivery = () => {
                     ) : (
                       <>
                         <span className="truncate block">{label}</span>
-                        <div 
-                          onMouseDown={(e) => onColMouseDown(key, e)} 
-                          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-amber-500/60 active:bg-amber-500 z-20 transition-colors" 
+                        <div
+                          onMouseDown={(e) => onColMouseDown(key, e)}
+                          className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize hover:bg-amber-500/60 active:bg-amber-500 z-20 transition-colors"
                         />
                       </>
                     )}
@@ -271,42 +356,154 @@ const Delivery = () => {
             ) : (
               solicitudes.map((s, index) => {
                 const isRowSelected = selectedIds.includes(s.id);
-                
-                return (
-                  <tr 
-                    key={s.id} 
-                    className={[
-                      "border-l-4 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-700/40",
-                      isRowSelected ? "border-amber-500 bg-amber-50/10 dark:bg-amber-950/5" : "border-transparent"
-                    ].join(' ')}
-                  >
-                    <td style={tdStyle('select')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectRow(s.id)}
-                        className="text-gray-400 dark:text-gray-500 hover:text-amber-500 dark:hover:text-amber-400 transition-colors focus:outline-none block mx-auto"
-                      >
-                        {isRowSelected ? <CheckSquare size={16} className="text-amber-500 dark:text-amber-400" /> : <Square size={16} />}
-                      </button>
-                    </td>
+                const deliveryKey = s.delivery ? s.delivery.trim() : '';
+                const guiaAsociada = deliveryKey ? guiasMap[deliveryKey] : null;
 
-                    <td style={tdStyle('num')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold">{index + 1}</td>
-                    
-                    <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-800 dark:text-gray-100"><TruncCell value={s.admision} /></td>
-                    <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.paciente} /></td>
-                    <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.medico} /></td>
-                    <td style={tdStyle('fecha')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.fecha || s.fechaCx} /></td>
-                    
-                    <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-mono text-amber-600 dark:text-amber-400 font-bold"><TruncCell value={s.codigo} /></td>
-                    <td style={tdStyle('descripcion')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.descripcion} /></td>
-                    <td style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={s.cantidad?.toString()} /></td>
-                    
-                    <td style={tdStyle('precioCosto')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-700 dark:text-gray-200 text-right"><TruncCell value={formatMoneda(s.precioCosto)} /></td>
-                    <td style={tdStyle('atributo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.atributo} /></td>
-                    
-                    <td style={tdStyle('lote')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-mono font-bold text-gray-700 dark:text-gray-200"><TruncCell value={s.lote} /></td>
-                    <td style={tdStyle('fechaVencimiento')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-semibold text-gray-700 dark:text-gray-200"><TruncCell value={s.fechaVencimiento} /></td>
-                  </tr>
+                const detallesFiltrados = (guiaAsociada?.detalles || []).filter(det => {
+                  const texto = `${det.nombre || ''} ${det.dscItem || ''} ${det.codigo || ''}`.toUpperCase();
+                  return !OMITIR_DESCRIPCIONES.some(termino => texto.includes(termino));
+                });
+
+                const tieneDetalles = detallesFiltrados.length > 0;
+                const isExpanded = expandedRows.includes(s.id);
+
+                return (
+                  <React.Fragment key={s.id}>
+                    {/* Fila Principal */}
+                    <tr
+                      className={[
+                        "border-l-4 transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-700/40",
+                        isRowSelected ? "border-amber-500 bg-amber-50/10 dark:bg-amber-950/5" : "border-transparent"
+                      ].join(' ')}
+                    >
+                      <td style={tdStyle('select')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectRow(s.id)}
+                          className="text-gray-400 dark:text-gray-500 hover:text-amber-500 dark:hover:text-amber-400 transition-colors focus:outline-none block mx-auto"
+                        >
+                          {isRowSelected ? <CheckSquare size={16} className="text-amber-500 dark:text-amber-400" /> : <Square size={16} />}
+                        </button>
+                      </td>
+
+                      <td style={tdStyle('num')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold flex items-center justify-between gap-1">
+                        <span>{index + 1}</span>
+                        {tieneDetalles && (
+                          <button
+                            type="button"
+                            onClick={() => toggleRowExpand(s.id)}
+                            className="p-0.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors text-amber-600 dark:text-amber-400 focus:outline-none"
+                            title="Ver ítems de la guía asignada"
+                          >
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          </button>
+                        )}
+                      </td>
+
+                      <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-800 dark:text-gray-100"><TruncCell value={s.admision} /></td>
+                      <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.paciente} /></td>
+                      <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.medico} /></td>
+                      <td style={tdStyle('fecha')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.fecha || s.fechaCx} /></td>
+
+                      <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-mono text-amber-600 dark:text-amber-400 font-bold">
+                        <TruncCell value={limpiarCodigo(s.codigo)} />
+                      </td>
+
+                      <td style={tdStyle('descripcion')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                        <TruncCell value={s.descripcion} />
+                      </td>
+
+                      <td style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={s.cantidad?.toString()} /></td>
+                      <td style={tdStyle('precioCosto')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-700 dark:text-gray-200 text-right"><TruncCell value={formatMoneda(s.precioCosto)} /></td>
+                      <td style={tdStyle('atributo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.atributo} /></td>
+
+                      <td style={tdStyle('lote')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-mono font-bold text-gray-700 dark:text-gray-200"><TruncCell value={s.lote} /></td>
+                      <td style={tdStyle('fechaVencimiento')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-semibold text-gray-700 dark:text-gray-200"><TruncCell value={s.fechaVencimiento} /></td>
+
+                      <td style={tdStyle('delivery')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-amber-600 dark:text-amber-400"><TruncCell value={s.delivery} /></td>
+
+                      <td style={tdStyle('folioGuia')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-green-600 dark:text-green-400 bg-green-50/5 dark:bg-green-950/5">
+                        <TruncCell value={guiaAsociada ? guiaAsociada.folio : 'No Encontrada'} />
+                      </td>
+
+                      <td style={tdStyle('referencia')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.referencia} /></td>
+                    </tr>
+
+                    {/* Subfilas Anidadas de la Guía XML Asociada */}
+                    {tieneDetalles && isExpanded && (
+                      detallesFiltrados.map((det, detIdx) => {
+                        const refSubfila = limpiarCodigo(det.codigo).toUpperCase();
+                        const descripcionEncontrada = codigosMap[refSubfila];
+
+                        const celdaDescripcionContenido = descripcionEncontrada
+                          ? descripcionEncontrada
+                          : "registrar en codigos";
+
+                        const esCodigoFaltante = !descripcionEncontrada;
+
+                        return (
+                          <tr
+                            key={`${s.id}-det-${detIdx}`}
+                            className="bg-blue-50/20 dark:bg-blue-950/5 border-l-4 border-blue-400 dark:border-blue-500/60 transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/10 text-gray-500 dark:text-gray-400 opacity-75"
+                          >
+                            <td style={tdStyle('select')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"></td>
+                            <td style={tdStyle('num')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 text-center text-blue-500 dark:text-blue-400 font-mono text-[10px]">
+                              {detIdx === 0 && <PackageOpen size={12} className="inline-block mx-auto" />}
+                            </td>
+
+                            <td style={tdStyle('admision')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 font-medium"><TruncCell value={s.admision} /></td>
+                            <td style={tdStyle('paciente')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={s.paciente} /></td>
+                            <td style={tdStyle('medico')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={s.medico} /></td>
+                            <td style={tdStyle('fecha')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={s.fecha || s.fechaCx} /></td>
+
+                            <td style={tdStyle('codigo')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 text-[11px] font-semibold text-gray-400 italic">
+                              <TruncCell value="No lleva OC" />
+                            </td>
+
+                            <td
+                              style={tdStyle('descripcion')}
+                              className={[
+                                "p-2 border-b border-r border-gray-100 dark:border-gray-700/40 text-[11px]",
+                                esCodigoFaltante ? "text-red-500 dark:text-red-400 font-semibold italic" : "text-gray-600 dark:text-gray-300 font-medium"
+                              ].join(' ')}
+                            >
+                              <TruncCell value={celdaDescripcionContenido} />
+                            </td>
+
+                            <td style={tdStyle('cantidad')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
+                              <TruncCell value={det.cantidad?.toString()} />
+                            </td>
+
+                            <td style={tdStyle('precioCosto')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 text-right text-gray-400">
+                              <TruncCell value="0" />
+                            </td>
+
+                            <td style={tdStyle('atributo')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40">
+                              <TruncCell value={s.atributo} />
+                            </td>
+
+                            <td style={tdStyle('lote')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 font-mono text-gray-700 dark:text-gray-200 bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
+                              <TruncCell value={det.dscItem} />
+                            </td>
+                            <td style={tdStyle('fechaVencimiento')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 text-center text-gray-700 dark:text-gray-200 bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
+                              <TruncCell value={det.fchVenc} />
+                            </td>
+
+                            <td style={tdStyle('delivery')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 font-bold text-amber-600 dark:text-amber-400 opacity-100">
+                              <TruncCell value={s.delivery} />
+                            </td>
+                            <td style={tdStyle('folioGuia')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 font-bold text-green-600 dark:text-green-400 bg-green-50/5 dark:bg-green-950/5 opacity-100">
+                              <TruncCell value={guiaAsociada ? guiaAsociada.folio : 'No Encontrada'} />
+                            </td>
+
+                            <td style={tdStyle('referencia')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 font-mono text-blue-600 dark:text-blue-400 font-bold bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
+                              <TruncCell value={limpiarCodigo(det.codigo)} />
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </React.Fragment>
                 );
               })
             )}
