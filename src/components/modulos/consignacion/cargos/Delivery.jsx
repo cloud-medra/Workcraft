@@ -27,10 +27,8 @@ const INITIAL_COL_WIDTHS = {
 
 const COL_KEYS = Object.keys(INITIAL_COL_WIDTHS);
 
-// Términos que, si aparecen en la DESCRIPCIÓN o CÓDIGO, deben provocar que la fila se omita
 const OMITIR_DESCRIPCIONES = ["KITMANGACRL", "KITBYPASSTCRL2", "KITBYPASSTCRL"];
 
-// Función utilitaria para extraer el primer bloque de texto de un código
 const limpiarCodigo = (codigo) => {
   if (!codigo) return 'N/A';
   return codigo.toString().trim().split(' ')[0].replace(/_+$/, '');
@@ -82,39 +80,29 @@ const Delivery = () => {
   const { showToast } = useToast();
   const { widths, onMouseDown: onColMouseDown } = useColumnResize(INITIAL_COL_WIDTHS);
 
-  // Escucha activa y sincronizada de la colección maestra de códigos en Firestore
+  // Escucha activa de maestros_codigos
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "maestros_codigos"),
       (snap) => {
         const mapa = {};
-
         snap.docs.forEach(d => {
           const data = d.data();
-
-          // Buscamos el campo 'referencia' que es donde guardas "ONB12STF"
           if (data.referencia) {
-            // Limpiamos y estandarizamos la referencia por si acaso
             const refLimpia = limpiarCodigo(data.referencia).toUpperCase();
-
-            // Guardamos la descripción usando la referencia como clave de búsqueda
             mapa[refLimpia] = data.descripcion;
           }
         });
-
         setCodigosMap(mapa);
       },
-      (error) => {
-        console.error("Error al cargar la colección maestra de códigos:", error);
-      }
+      (error) => console.error("Error al cargar maestros_codigos:", error)
     );
     return () => unsubscribe();
   }, []);
 
-  // 1. Escuchar solicitudes en estado INGRESAR L/F con filtros aplicados
+  // Escuchar solicitudes en estado INGRESAR L/F
   useEffect(() => {
     const qS = collectionGroup(db, "registros");
-
     const unsubscribe = onSnapshot(qS,
       (snap) => {
         const data = snap.docs
@@ -146,14 +134,12 @@ const Delivery = () => {
         setCargando(false);
       }
     );
-
     return () => unsubscribe();
   }, [showToast]);
 
-  // 2. Escuchar de forma global la colección de guías para enlazar en tiempo real
+  // Escuchar guías globalmente
   useEffect(() => {
     const qG = collectionGroup(db, "guias");
-
     const unsubscribe = onSnapshot(qG, (snap) => {
       const mapa = {};
       snap.docs.forEach(docSnap => {
@@ -164,10 +150,7 @@ const Delivery = () => {
         }
       });
       setGuiasMap(mapa);
-    }, (error) => {
-      console.error("Error cargando mapeo global de guías:", error);
-    });
-
+    }, (error) => console.error("Error cargando mapeo global de guías:", error));
     return () => unsubscribe();
   }, []);
 
@@ -191,30 +174,78 @@ const Delivery = () => {
     );
   };
 
+  // NUEVA FUNCIÓN: Mueve los datos a 'consignacion_solicitud' y los quita de su origen
   const handleDespacharMasivo = async () => {
     if (selectedIds.length === 0) return;
 
     setProcesandoAccion(true);
     try {
       const batch = writeBatch(db);
+      const nuevaColeccionRef = collection(db, "consignacion_solicitud");
 
       selectedIds.forEach(id => {
         const item = solicitudes.find(s => s.id === id);
         if (item && item.path) {
-          const docRef = doc(db, item.path);
-          batch.update(docRef, {
-            estado: 'SOLICITAR ORDEN',
-            fechaModificacion: new Date()
-          });
+          
+          // 1. Resolver los datos de la Guía y sus Subfilas (detalles)
+          const deliveryKey = item.delivery ? item.delivery.trim() : '';
+          const guiaAsociada = deliveryKey ? guiasMap[deliveryKey] : null;
+
+          // Filtramos las subfilas tal cual lo hace la vista de la tabla
+          const detallesFiltrados = (guiaAsociada?.detalles || [])
+            .filter(det => {
+              const texto = `${det.nombre || ''} ${det.dscItem || ''} ${det.codigo || ''}`.toUpperCase();
+              return !OMITIR_DESCRIPCIONES.some(termino => texto.includes(termino));
+            })
+            .map(det => {
+              // Mapeamos e integramos la descripción de maestros_codigos a la data que se va a guardar
+              const refSubfila = limpiarCodigo(det.codigo).toUpperCase();
+              const descripcionEncontrada = codigosMap[refSubfila] || "registrar en codigos";
+              
+              return {
+                ...det,
+                codigoLimpio: refSubfila,
+                descripcionResuelta: descripcionEncontrada
+              };
+            });
+
+          // 2. Construir el objeto completo que se irá a la nueva colección
+          const nuevoDocumentoData = {
+            ...item,                                      // Todos los campos originales de la fila
+            estado: 'SOLICITAR ORDEN',                    // Actualizamos el estado para la nueva colección
+            fechaMovimiento: new Date(),                  // Timestamp del traspaso
+            folioGuiaAsociada: guiaAsociada ? guiaAsociada.folio : 'No Encontrada',
+            subfilasGuia: detallesFiltrados               // Guardamos el array completo de subfilas procesadas
+          };
+
+          // Eliminar el id y path del objeto para que no se dupliquen de forma extraña dentro de los campos
+          delete nuevoDocumentoData.id;
+          delete nuevoDocumentoData.path;
+
+          // 3. Programar la creación en 'consignacion_solicitud' (usando el mismo ID para mantener trazabilidad si quieres)
+          const nuevoDocRef = doc(nuevaColeccionRef, id);
+          batch.set(nuevoDocRef, nuevoDocumentoData);
+
+          // 4. Programar la eliminación del documento antiguo en su ruta original
+          const antiguoDocRef = doc(db, item.path);
+          batch.delete(antiguoDocRef); 
+          
+          /* 
+            NOTA: Si en vez de BORRAR físicamente de Firestore prefieres sólo desactivarlo 
+            para que no aparezca pero quede historial en la colección original, cambia 'batch.delete' por:
+            batch.update(antiguoDocRef, { active: false, estado: 'MOVIDO A CONSIGNACION' });
+          */
         }
       });
 
+      // Ejecutar todas las operaciones de forma atómica
       await batch.commit();
-      showToast(`${selectedIds.length} registro(s) procesado(s) con éxito.`, "success");
+      
+      showToast(`${selectedIds.length} registro(s) movidos a Consignación con éxito.`, "success");
       setSelectedIds([]);
     } catch (error) {
-      console.error("Error en acción masiva de Delivery:", error);
-      showToast("No se pudieron actualizar los registros.", "error");
+      console.error("Error en el traspaso masivo a consignación_solicitud:", error);
+      showToast("No se pudieron mover los registros.", "error");
     } finally {
       setProcesandoAccion(false);
     }
@@ -287,6 +318,7 @@ const Delivery = () => {
 
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
             <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+              {/* Mapeo de cabeceras igual */}
               {[
                 { key: 'select', label: '' },
                 { key: 'num', label: '#' },

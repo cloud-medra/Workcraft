@@ -4,13 +4,14 @@ import CargaConsigna from './CargaConsigna';
 import EnlazarDatos from './EnlazarDatos';
 import Delivery from './Delivery';
 import Resumen from './Resumen';
+import SolicitudOrden from './SolicitudOrden'; // <-- NUEVO IMPORT AGREGADO AQUÍ
 
 const TABS = [
   { key: 'ingresos',  label: 'Ingresos'       },
   { key: 'enlazar',   label: 'Enlazar Datos'  },
-  { key: 'cargas',    label: 'Cargas'         }, // <-- NUEVA PESTAÑA AGREGADA AQUÍ
+  { key: 'cargas',    label: 'Cargas'         }, 
   { key: 'delivery',  label: 'Delivery'       },
-  { key: 'solicitud', label: 'Solicitud'      },
+  { key: 'solicitud', label: 'Solicitud'      }, // <-- ESTA ES LA PESTAÑA DESTINO
   { key: 'resumen',   label: 'Resumen'        },
 ];
 
@@ -21,9 +22,9 @@ const ConsignacionLayout = () => {
     switch (activeTab) {
       case 'ingresos':  return <SolicitudIngresos />;
       case 'enlazar':   return <EnlazarDatos />;
-      case 'cargas':    return <CargaConsigna />; // <-- ASOCIADA A LA NUEVA PESTAÑA
+      case 'cargas':    return <CargaConsigna />; 
       case 'delivery':  return <Delivery />;
-      case 'solicitud': return <div className="p-4 text-gray-500 italic text-[13px]">Contenido de la pestaña Solicitud (Por implementar)</div>; 
+      case 'solicitud': return <SolicitudOrden />; // <-- REEMPLAZADO EL DIV POR TU NUEVO COMPONENTE
       case 'resumen':   return <Resumen />;
       default:          return null;
     }
