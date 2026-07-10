@@ -65,9 +65,23 @@ const Facturas = () => {
 
         const folio = xmlDoc.getElementsByTagName("Folio")[0]?.textContent;
         const fchEmis = xmlDoc.getElementsByTagName("FchEmis")[0]?.textContent;
-        const folioRef = xmlDoc.getElementsByTagName("FolioRef")[0]?.textContent || "N/A";
 
         if (!fchEmis || !folio) continue;
+
+        // --- LÓGICA FILTRADA PARA FOLIOREF (Orden de Compra: TpoDocRef 801) ---
+        const referencias = Array.from(xmlDoc.getElementsByTagName("Referencia"));
+        const refOrdenCompra = referencias.find(ref => {
+          const tpoDoc = ref.getElementsByTagName("TpoDocRef")[0]?.textContent;
+          return tpoDoc === "801";
+        });
+
+        let folioRef = "N/A";
+        if (refOrdenCompra) {
+          folioRef = refOrdenCompra.getElementsByTagName("FolioRef")[0]?.textContent || "N/A";
+        } else if (referencias.length > 0) {
+          folioRef = referencias[0].getElementsByTagName("FolioRef")[0]?.textContent || "N/A";
+        }
+        // ---------------------------------------------------------------------
 
         const [anio, mesNum] = fchEmis.split('-');
         const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
