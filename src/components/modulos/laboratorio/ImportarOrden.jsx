@@ -177,7 +177,7 @@ const ImportarOrden = () => {
               <ArrowLeft size={16} />
             </button>
             <div className="flex flex-col">
-              <span className="text-[#2383C2]">ORDEN N° {ordenSeleccionada.id}</span>
+              <span className="text-[#2383C2] uppercase">ORDEN N° {ordenSeleccionada.id}</span>
               <div className="flex gap-4 text-[11px] font-normal text-gray-500 dark:text-gray-400 mt-0.5">
                 <span>📅 {ordenSeleccionada["F.Orden"]}</span>
                 <span>🏢 {ordenSeleccionada["Proveedor"]}</span>
@@ -216,33 +216,24 @@ const ImportarOrden = () => {
         </div>
       )}
 
-      {/* TABLA */}
+      {/* CONTENEDOR DE TABLAS */}
       <div className="flex-grow overflow-auto h-[500px]">
-        <table className="w-full text-left text-[12px] border-collapse table-fixed">
-          <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
-            <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
-              {ordenSeleccionada ? (
-                <>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Artículo</th>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Cantidad</th>
-                  <th className="p-3 border-b border-gray-200 dark:border-gray-700">Precio</th>
-                </>
-              ) : (
-                <>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[120px]">Nro.Orden</th>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[110px]">F.Orden</th>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[130px]">Rut Proveedor</th>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Proveedor</th>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[80px]">Items</th>
-                  <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[120px]">Total</th>
-                  <th className="p-3 border-b border-gray-200 dark:border-gray-700 w-[80px] text-center">Acciones</th>
-                </>
-              )}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
-            {!ordenSeleccionada ? (
-              ordenes.filter(o =>
+        {!ordenSeleccionada ? (
+          /* TABLA LISTADO PRINCIPAL */
+          <table className="w-full text-left text-[12px] border-collapse table-fixed">
+            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+              <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[110px]">Nro.Orden</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[110px]">F.Orden</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[130px]">Rut Proveedor</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Proveedor</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[80px] text-center">Items</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[130px] text-right">Total</th>
+                <th className="p-3 border-b border-gray-200 dark:border-gray-700 w-[80px] text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+              {ordenes.filter(o =>
                 o["Nro.Orden"]?.includes(busqueda) ||
                 o["Proveedor"]?.toLowerCase().includes(busqueda.toLowerCase()) ||
                 o["Rut proveedor"]?.toLowerCase().includes(busqueda.toLowerCase())
@@ -252,26 +243,58 @@ const ImportarOrden = () => {
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 whitespace-nowrap">{o["F.Orden"]}</td>
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 whitespace-nowrap">{o["Rut proveedor"]}</td>
                   <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 truncate">{o["Proveedor"]}</td>
-                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400">{o.totalItems}</td>
-                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-200 whitespace-nowrap">${o.totalOrden?.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 text-center">{o.totalItems}</td>
+                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium text-right whitespace-nowrap">${o.totalOrden?.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
                     <button onClick={() => setOrdenSeleccionada(o)} className="text-gray-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-1">
                       <Eye size={15} />
                     </button>
                   </td>
                 </tr>
-              ))
-            ) : (
-              detalle.map((item, i) => (
-                <tr key={i} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-300">{item["Artículo"]}</td>
-                  <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400">{item["Cant."]}</td>
-                  <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">${item["P.Unitario"]}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          /* TABLA DETALLE DE ORDEN SELECCIONADA */
+          <table className="w-full text-left text-[12px] border-collapse table-fixed">
+            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+              <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[120px]">Código</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Descripción / Artículo</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[100px] text-center">Cantidad</th>
+                <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-[130px] text-right">P. Unitario</th>
+                <th className="p-3 border-b border-gray-200 dark:border-gray-700 w-[140px] text-right">Total Línea</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+              {detalle.map((item, i) => {
+                const cantidad = parseFloat(item["Cant."]) || 0;
+                const precioUnidad = parseFloat(item["P.Unitario"]) || 0;
+                const totalLinea = cantidad * precioUnidad;
+
+                return (
+                  <tr key={i} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-gray-600 dark:text-gray-400 truncate">
+                      {item["Cod.Artículo"] || "N/A"}
+                    </td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-300 font-medium truncate">
+                      {item["Artículo"] || "Sin Descripción"}
+                    </td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-400 text-center font-medium">
+                      {item["Cant."]}
+                    </td>
+                    <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-200 text-right whitespace-nowrap">
+                      ${precioUnidad.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
+                    </td>
+                    <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 font-semibold text-right whitespace-nowrap">
+                      ${totalLinea.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* MODAL */}
