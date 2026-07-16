@@ -1,3 +1,4 @@
+import React from 'react'; // Buena práctica tenerlo si usas JSX en esta carpeta
 import {
   Users,
   LayoutDashboard,
@@ -26,7 +27,9 @@ import {
   ShieldCheck,
   ClipboardCheck,
   Upload,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Calendar,
+  CalendarDays // <--- IMPORTACIÓN REPARADA AQUÍ
 } from "lucide-react";
 
 export const MODULES = {
@@ -63,7 +66,7 @@ export const MODULES = {
       { label: 'Guías', path: '/consignacion/guias', icon: <Package size={14} /> },
       { label: 'Vista Rápida', path: '/consignacion/vistaRapida', icon: <Eye size={14} /> },
       { label: 'Solicitud Ingresos', path: '/consignacion/solicitudIngresos', icon: <FileText size={14} /> },
-      { label: 'Seguimiento', path: '/consignacion/seguimiento', icon: <ClipboardList size={14} /> }, // <- Modificado aquí
+      { label: 'Seguimiento', path: '/consignacion/seguimiento', icon: <ClipboardList size={14} /> },
       { label: 'Cargos', path: '/consignacion/consignacionLayout', icon: <Upload size={14} /> }
     ]
   },
@@ -80,14 +83,24 @@ export const MODULES = {
       { label: 'Control Facturas', path: '/laboratorio/controlFactura', icon: <ClipboardCheck size={14} /> }
     ]
   },
-
   documentos: {
     label: 'Documentos',
     icon: <Folder size={18} />,
     subItems: [
       { label: 'Carga Datos', path: '/documentos/carga', icon: <FileUp size={14} /> },
-      { label: 'Dashbaord', path: '/documentos/DashboardFinanciero', icon: <BarChart3 size={14} /> },
+      { label: 'Dashboard', path: '/documentos/DashboardFinanciero', icon: <BarChart3 size={14} /> },
       { label: 'Reporte Pabellón', path: '/documentos/reportePabellon', icon: <FileSpreadsheet size={14} /> }
     ]
   },
+  misturnos: {
+    label: 'Mis Turnos',
+    icon: <CalendarDays size={18} />, // Ajustado a 18 para mantener consistencia visual lateral
+    subItems: [
+      {
+        label: 'Ver Turnos',
+        path: '/misturnos/ver',
+        icon: <Calendar size={14} />
+      }
+    ]
+  }
 };

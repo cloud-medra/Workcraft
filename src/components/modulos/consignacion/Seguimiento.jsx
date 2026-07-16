@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, getDocs, doc, updateDoc } from 'firebase/firestore'; // Importamos getDocs para lecturas manuales
 import { db } from '../../../firebaseConfig';
 import {
   BarChart3, ChevronDown, ChevronRight, PackageOpen,
-  CalendarRange, FolderOpen, Inbox
+  CalendarRange, FolderOpen, Inbox, Search, X, RotateCw // Agregamos RotateCw para el botón de actualizar
 } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
 import Spinner from '../../ui/Spinner';
@@ -11,10 +11,10 @@ import Spinner from '../../ui/Spinner';
 // 1. Configuración de anchos iniciales con las 4 nuevas columnas agregadas al principio
 const INITIAL_COL_WIDTHS = {
   num: 50,
-  orden: 100,       // Nueva columna
-  despacho: 100,    // Nueva columna
-  guia: 100,        // Nueva columna
-  factura: 100,     // Nueva columna
+  orden: 100,       
+  despacho: 100,    
+  guia: 100,        
+  factura: 100,     
   admision: 100,
   paciente: 220,
   medico: 200,
@@ -110,6 +110,12 @@ const Seguimiento = () => {
 
   const [registros, setRegistros] = useState([]);
   const [cargandoRegistros, setCargandoRegistros] = useState(false);
+  
+  // Estado para la animación y control del botón de actualización
+  const [actualizando, setActualizando] = useState(false);
+
+  // Estado para el campo de búsqueda
+  const [filtroBusqueda, setFiltroBusqueda] = useState('');
 
   const [expandedRows, setExpandedRows] = useState([]);
 
@@ -139,6 +145,7 @@ const Seguimiento = () => {
     setMeses([]);
     setMesSeleccionado('');
     setRegistros([]);
+    setFiltroBusqueda(''); // Limpiar búsqueda al cambiar de año
 
     if (!anioSeleccionado) return;
 
@@ -166,6 +173,7 @@ const Seguimiento = () => {
   useEffect(() => {
     setRegistros([]);
     setExpandedRows([]);
+    setFiltroBusqueda(''); // Limpiar búsqueda al cambiar de mes
 
     if (!anioSeleccionado || !mesSeleccionado) return;
 
@@ -187,22 +195,101 @@ const Seguimiento = () => {
     return () => unsubscribe();
   }, [anioSeleccionado, mesSeleccionado, showToast]);
 
+  // 4. FUNCIÓN PARA ACTUALIZAR DATOS DESDE OTRA COLECCIÓN
+  const handleActualizarDatos = async () => {
+    if (!anioSeleccionado || !mesSeleccionado) {
+      showToast("Selecciona un año y un mes primero para poder actualizar.", "warning");
+      return;
+    }
+
+    try {
+      setActualizando(true);
+
+      // --- EJEMPLO DE LÓGICA DE ACTUALIZACIÓN ---
+      // Supongamos que quieres traer los últimos folios o estados desde una colección llamada "consignaciones_activas"
+      const activasRef = collection(db, "consignaciones_activas");
+      const activeSnap = await getDocs(activasRef);
+      
+      // Creamos un mapa/diccionario rápido de los datos activos usando el identificador común (p. ej., la admisión o folio)
+      const mapaActivas = {};
+      activeSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.admision) {
+          mapaActivas[data.admision] = data; // Guardamos todo el objeto bajo la llave de su admisión
+        }
+      });
+
+      // Recorremos los registros cargados actualmente en el historial del componente
+      let actualizadosContador = 0;
+      for (const registro of registros) {
+        const datoFresco = mapaActivas[registro.admision];
+        
+        // Si encontramos una coincidencia y hay un dato que queremos refrescar (ej: un nuevo folio o guía)
+        if (datoFresco && datoFresco.folioGuiaAsociada !== registro.folioGuiaAsociada) {
+          const docRef = doc(db, "consignacion_historial", anioSeleccionado, "meses", mesSeleccionado, "datos", registro.id);
+          
+          // Actualizamos la base de datos en el historial
+          await updateDoc(docRef, {
+            folioGuiaAsociada: datoFresco.folioGuiaAsociada || registro.folioGuiaAsociada,
+            // Agrega aquí cualquier otro campo de la otra colección que quieras traer e importar al historial...
+          });
+          actualizadosContador++;
+        }
+      }
+
+      if (actualizadosContador > 0) {
+        showToast(`Sincronización completa. Se actualizaron ${actualizadosContador} registros con datos recientes.`, "success");
+      } else {
+        showToast("Sincronización al día. No se encontraron cambios nuevos.", "info");
+      }
+
+    } catch (error) {
+      console.error("Error durante la actualización cruzada:", error);
+      showToast("Hubo un error al sincronizar con la otra colección.", "error");
+    } finally {
+      setActualizando(false);
+    }
+  };
+
   const toggleRowExpand = (id) => {
     setExpandedRows(prev =>
       prev.includes(id) ? prev.filter(rowId => rowId !== id) : [...prev, id]
     );
   };
 
-  // Resumen numérico del mes seleccionado
+  // 5. Filtrar registros en base a Admisión, Paciente, Orden, Despacho y Guía
+  const registrosFiltrados = useMemo(() => {
+    if (!filtroBusqueda.trim()) return registros;
+
+    const query = filtroBusqueda.toLowerCase().trim();
+
+    return registros.filter(r => {
+      const admision = (r.admision || '').toString().toLowerCase();
+      const paciente = (r.paciente || '').toString().toLowerCase();
+      const orden = (r.orden || '').toString().toLowerCase();
+      const despacho = (r.despacho || '').toString().toLowerCase();
+      const guia = (r.guia || '').toString().toLowerCase();
+
+      return (
+        admision.includes(query) ||
+        paciente.includes(query) ||
+        orden.includes(query) ||
+        despacho.includes(query) ||
+        guia.includes(query)
+      );
+    });
+  }, [registros, filtroBusqueda]);
+
+  // Resumen numérico calculado sobre los registros filtrados
   const totales = useMemo(() => {
-    const totalRegistros = registros.length;
-    const totalCantidad = registros.reduce((acc, r) => acc + (Number(r.cantidad) || 0), 0);
-    const totalValorizado = registros.reduce(
+    const totalRegistros = registrosFiltrados.length;
+    const totalCantidad = registrosFiltrados.reduce((acc, r) => acc + (Number(r.cantidad) || 0), 0);
+    const totalValorizado = registrosFiltrados.reduce(
       (acc, r) => acc + ((Number(r.cantidad) || 0) * (Number(r.precioCosto) || 0)),
       0
     );
     return { totalRegistros, totalCantidad, totalValorizado };
-  }, [registros]);
+  }, [registrosFiltrados]);
 
   const TruncCell = ({ value, className = '' }) => (
     <div className={`truncate text-[12px] ${className}`} title={value || ''} style={{ maxWidth: '100%' }}>
@@ -226,13 +313,12 @@ const Seguimiento = () => {
 
   const isHighlightedToken = (key) => ['codigo', 'cantidad', 'lote', 'fechaVencimiento'].includes(key);
 
-  // 2. Array de Columnas con las nuevas incorporaciones ordenadas al inicio
   const COLUMNAS = [
     { key: 'num', label: '#' },
-    { key: 'orden', label: 'Orden' },           // Nueva
-    { key: 'despacho', label: 'Despacho' },     // Nueva
-    { key: 'guia', label: 'Guía' },             // Nueva
-    { key: 'factura', label: 'Factura' },       // Nueva
+    { key: 'orden', label: 'Orden' },           
+    { key: 'despacho', label: 'Despacho' },     
+    { key: 'guia', label: 'Guía' },             
+    { key: 'factura', label: 'Factura' },       
     { key: 'admision', label: 'Admisión' },
     { key: 'paciente', label: 'Paciente' },
     { key: 'medico', label: 'Médico' },
@@ -259,8 +345,43 @@ const Seguimiento = () => {
           SEGUIMIENTO DE CONSIGNACIÓN (HISTORIAL)
         </h2>
 
-        {/* Selectores Año / Mes */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Buscador, Selectores y Botón Actualizar */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Input de Búsqueda Dinámico */}
+          {anioSeleccionado && mesSeleccionado && registros.length > 0 && (
+            <div className="relative flex items-center">
+              <Search size={14} className="absolute left-2.5 text-gray-400 dark:text-gray-500" />
+              <input
+                type="text"
+                placeholder="Buscar admisión, paciente, orden..."
+                value={filtroBusqueda}
+                onChange={(e) => setFiltroBusqueda(e.target.value)}
+                className="pl-8 pr-7 py-1.5 w-64 text-[12px] bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-rose-400 transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              />
+              {filtroBusqueda && (
+                <button
+                  onClick={() => setFiltroBusqueda('')}
+                  className="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Botón de Actualización Sincronizada */}
+          {anioSeleccionado && mesSeleccionado && (
+            <button
+              onClick={handleActualizarDatos}
+              disabled={actualizando || cargandoRegistros}
+              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 font-semibold px-2.5 py-1.5 rounded text-[12px] transition-colors disabled:opacity-50"
+              title="Sincronizar datos del historial con la base de datos de consignaciones activas"
+            >
+              <RotateCw size={14} className={actualizando ? "animate-spin" : ""} />
+              {actualizando ? "Actualizando..." : "Actualizar"}
+            </button>
+          )}
+
           <div className="flex items-center gap-1.5">
             <CalendarRange size={14} className="text-gray-400 dark:text-gray-500" />
             <select
@@ -299,8 +420,8 @@ const Seguimiento = () => {
         </div>
       </div>
 
-      {/* Resumen numérico */}
-      {anioSeleccionado && mesSeleccionado && registros.length > 0 && (
+      {/* Resumen numérico filtrado */}
+      {anioSeleccionado && mesSeleccionado && registrosFiltrados.length > 0 && (
         <div className="px-4 py-2.5 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 bg-white dark:bg-gray-800">
           <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-md px-3 py-1.5">
             <span className="text-[10px] uppercase tracking-wide text-rose-500 dark:text-rose-400 font-bold block">Registros</span>
@@ -319,7 +440,7 @@ const Seguimiento = () => {
 
       {/* Cuerpo: estados vacíos o tabla */}
       <div className="flex-grow overflow-auto relative">
-        {cargandoRegistros && (
+        {(cargandoRegistros || actualizando) && (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm">
             <Spinner size="md" />
           </div>
@@ -349,16 +470,18 @@ const Seguimiento = () => {
               Ya seleccionaste el año {anioSeleccionado}. Ahora elige un mes para ver los registros archivados.
             </p>
           </div>
-        ) : registros.length === 0 && !cargandoRegistros ? (
+        ) : registrosFiltrados.length === 0 && !cargandoRegistros ? (
           <div className="flex flex-col items-center justify-center h-full p-6 text-center">
             <div className="p-3 bg-gray-100 dark:bg-gray-900/40 text-gray-400 dark:text-gray-500 rounded-full mb-3">
               <Inbox size={28} />
             </div>
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide">
-              Sin registros
+              {filtroBusqueda ? 'Sin coincidencias' : 'Sin registros'}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
-              No hay registros archivados para {MESES_LABEL[mesSeleccionado] || mesSeleccionado} de {anioSeleccionado}.
+              {filtroBusqueda 
+                ? `No encontramos resultados para "${filtroBusqueda}" en este periodo.`
+                : `No hay registros archivados para ${MESES_LABEL[mesSeleccionado] || mesSeleccionado} de ${anioSeleccionado}.`}
             </p>
           </div>
         ) : (
@@ -394,10 +517,10 @@ const Seguimiento = () => {
             </thead>
 
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-200">
-              {registros.map((r, index) => {
+              {registrosFiltrados.map((r, index) => {
                 const subfilas = Array.isArray(r.subfilasGuia) ? r.subfilasGuia.filter(det => {
-                  const texto = `${det.nombre || ''} ${det.dscItem || ''} ${det.codigo || ''}`.toUpperCase();
-                  return !OMITIR_DESCRIPCIONES.some(termino => texto.includes(termino));
+                  const text = `${det.nombre || ''} ${det.dscItem || ''} ${det.codigo || ''}`.toUpperCase();
+                  return !OMITIR_DESCRIPCIONES.some(term => text.includes(term));
                 }) : [];
                 const tieneSubfilas = subfilas.length > 0;
                 const isExpanded = expandedRows.includes(r.id);
@@ -420,7 +543,6 @@ const Seguimiento = () => {
                         )}
                       </td>
 
-                      {/* 3. Renderizado de las 4 nuevas celdas en el cuerpo principal */}
                       <td style={tdStyle('orden')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-700 dark:text-gray-200">
                         <TruncCell value={r.orden} />
                       </td>
@@ -434,7 +556,6 @@ const Seguimiento = () => {
                         <TruncCell value={r.factura} />
                       </td>
 
-                      {/* Columnas originales */}
                       <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-800 dark:text-gray-100"><TruncCell value={r.admision} /></td>
                       <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={r.paciente} /></td>
                       <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={r.medico} /></td>
@@ -448,7 +569,7 @@ const Seguimiento = () => {
                         <TruncCell value={r.descripcion} />
                       </td>
 
-                      <td style={tdStyle('grid_cantidad_fila')} style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={r.cantidad?.toString()} /></td>
+                      <td style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={r.cantidad?.toString()} /></td>
                       <td style={tdStyle('precioCosto')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-700 dark:text-gray-200 text-right"><TruncCell value={formatMoneda(r.precioCosto)} /></td>
                       <td style={tdStyle('atributo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={r.atributo} /></td>
 
@@ -479,13 +600,11 @@ const Seguimiento = () => {
                             {detIdx === 0 && <PackageOpen size={12} className="inline-block mx-auto" />}
                           </td>
 
-                          {/* 4. Renderizado de las 4 nuevas celdas correspondientes en la subfila */}
                           <td style={tdStyle('orden')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.orden} /></td>
                           <td style={tdStyle('despacho')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.despacho} /></td>
                           <td style={tdStyle('guia')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.guia} /></td>
                           <td style={tdStyle('factura')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.factura} /></td>
 
-                          {/* Celdas originales de la subfila */}
                           <td style={tdStyle('admision')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 font-medium"><TruncCell value={r.admision} /></td>
                           <td style={tdStyle('paciente')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.paciente} /></td>
                           <td style={tdStyle('medico')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.medico} /></td>

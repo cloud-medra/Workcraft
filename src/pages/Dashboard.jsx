@@ -38,6 +38,7 @@ import ReportePabellon from '../components/modulos/documentos/ReportePabellon';
 import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
+import MisTurnos from '../components/modulos/misturnos/MisTurnos';
 
 const SPECIAL_VIEWS = {
   dashboard: { label: 'Inicio', icon: <Home size={13} /> },
@@ -176,6 +177,7 @@ const Dashboard = () => {
     'terminos': <TerminosServicio />,
     'perfil': <Perfil userData={userData} />,
     'password': <CambiarPasswordSeguro />,
+    '/misturnos/ver': <MisTurnos />,
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
