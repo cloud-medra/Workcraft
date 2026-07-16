@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { db } from '../../../firebaseConfig';
 import {
   BarChart3, ChevronDown, ChevronRight, PackageOpen,
   CalendarRange, FolderOpen, Inbox
 } from 'lucide-react';
-import { useToast } from '../../../../context/ToastContext';
-import Spinner from '../../../ui/Spinner';
+import { useToast } from '../../../context/ToastContext';
+import Spinner from '../../ui/Spinner';
 
-// Configuración de anchos iniciales (misma familia visual que Delivery / SolicitudOrden)
+// 1. Configuración de anchos iniciales con las 4 nuevas columnas agregadas al principio
 const INITIAL_COL_WIDTHS = {
   num: 50,
+  orden: 100,       // Nueva columna
+  despacho: 100,    // Nueva columna
+  guia: 100,        // Nueva columna
+  factura: 100,     // Nueva columna
   admision: 100,
   paciente: 220,
   medico: 200,
@@ -92,7 +96,7 @@ function useColumnResize(initialWidths) {
   return { widths, onMouseDown };
 }
 
-const Resumen = () => {
+const Seguimiento = () => {
   const { showToast } = useToast();
   const { widths, onMouseDown: onColMouseDown } = useColumnResize(INITIAL_COL_WIDTHS);
 
@@ -117,7 +121,7 @@ const Resumen = () => {
       (snap) => {
         const lista = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => b.id.localeCompare(a.id)); // años más recientes primero
+          .sort((a, b) => b.id.localeCompare(a.id));
         setAnios(lista);
         setCargandoAnios(false);
       },
@@ -145,7 +149,7 @@ const Resumen = () => {
       (snap) => {
         const lista = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .sort((a, b) => a.id.localeCompare(b.id)); // meses en orden 01..12
+          .sort((a, b) => a.id.localeCompare(b.id));
         setMeses(lista);
         setCargandoMeses(false);
       },
@@ -222,8 +226,13 @@ const Resumen = () => {
 
   const isHighlightedToken = (key) => ['codigo', 'cantidad', 'lote', 'fechaVencimiento'].includes(key);
 
+  // 2. Array de Columnas con las nuevas incorporaciones ordenadas al inicio
   const COLUMNAS = [
     { key: 'num', label: '#' },
+    { key: 'orden', label: 'Orden' },           // Nueva
+    { key: 'despacho', label: 'Despacho' },     // Nueva
+    { key: 'guia', label: 'Guía' },             // Nueva
+    { key: 'factura', label: 'Factura' },       // Nueva
     { key: 'admision', label: 'Admisión' },
     { key: 'paciente', label: 'Paciente' },
     { key: 'medico', label: 'Médico' },
@@ -247,7 +256,7 @@ const Resumen = () => {
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3 bg-gray-50/50 dark:bg-gray-900/20">
         <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
           <BarChart3 size={16} className="text-rose-500 dark:text-rose-400" />
-          RESUMEN DE CONSIGNACIÓN (HISTORIAL)
+          SEGUIMIENTO DE CONSIGNACIÓN (HISTORIAL)
         </h2>
 
         {/* Selectores Año / Mes */}
@@ -290,7 +299,7 @@ const Resumen = () => {
         </div>
       </div>
 
-      {/* Resumen numérico (solo cuando hay mes seleccionado y datos) */}
+      {/* Resumen numérico */}
       {anioSeleccionado && mesSeleccionado && registros.length > 0 && (
         <div className="px-4 py-2.5 border-b border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 bg-white dark:bg-gray-800">
           <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 rounded-md px-3 py-1.5">
@@ -322,7 +331,7 @@ const Resumen = () => {
               <BarChart3 size={28} />
             </div>
             <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide">
-              Resumen de Consignación
+              Seguimiento de Consignación
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-xs">
               Selecciona un año para explorar los meses archivados y ver los registros del historial.
@@ -396,6 +405,7 @@ const Resumen = () => {
                 return (
                   <React.Fragment key={r.id}>
                     <tr className="border-l-4 border-transparent transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-700/40">
+                      {/* Columna # con botón de despliegue */}
                       <td style={tdStyle('num')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold flex items-center justify-between gap-1">
                         <span>{index + 1}</span>
                         {tieneSubfilas && (
@@ -410,6 +420,21 @@ const Resumen = () => {
                         )}
                       </td>
 
+                      {/* 3. Renderizado de las 4 nuevas celdas en el cuerpo principal */}
+                      <td style={tdStyle('orden')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-700 dark:text-gray-200">
+                        <TruncCell value={r.orden} />
+                      </td>
+                      <td style={tdStyle('despacho')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-700 dark:text-gray-200">
+                        <TruncCell value={r.despacho} />
+                      </td>
+                      <td style={tdStyle('guia')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-700 dark:text-gray-200">
+                        <TruncCell value={r.guia} />
+                      </td>
+                      <td style={tdStyle('factura')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-700 dark:text-gray-200">
+                        <TruncCell value={r.factura} />
+                      </td>
+
+                      {/* Columnas originales */}
                       <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-gray-800 dark:text-gray-100"><TruncCell value={r.admision} /></td>
                       <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={r.paciente} /></td>
                       <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={r.medico} /></td>
@@ -423,7 +448,7 @@ const Resumen = () => {
                         <TruncCell value={r.descripcion} />
                       </td>
 
-                      <td style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={r.cantidad?.toString()} /></td>
+                      <td style={tdStyle('grid_cantidad_fila')} style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={r.cantidad?.toString()} /></td>
                       <td style={tdStyle('precioCosto')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-700 dark:text-gray-200 text-right"><TruncCell value={formatMoneda(r.precioCosto)} /></td>
                       <td style={tdStyle('atributo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={r.atributo} /></td>
 
@@ -443,7 +468,7 @@ const Resumen = () => {
                       </td>
                     </tr>
 
-                    {/* Subfilas Anidadas de la Guía, ya resueltas al momento de archivar */}
+                    {/* Subfilas Anidadas de la Guía */}
                     {tieneSubfilas && isExpanded && (
                       subfilas.map((det, detIdx) => (
                         <tr
@@ -454,6 +479,13 @@ const Resumen = () => {
                             {detIdx === 0 && <PackageOpen size={12} className="inline-block mx-auto" />}
                           </td>
 
+                          {/* 4. Renderizado de las 4 nuevas celdas correspondientes en la subfila */}
+                          <td style={tdStyle('orden')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.orden} /></td>
+                          <td style={tdStyle('despacho')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.despacho} /></td>
+                          <td style={tdStyle('guia')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.guia} /></td>
+                          <td style={tdStyle('factura')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.factura} /></td>
+
+                          {/* Celdas originales de la subfila */}
                           <td style={tdStyle('admision')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 font-medium"><TruncCell value={r.admision} /></td>
                           <td style={tdStyle('paciente')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.paciente} /></td>
                           <td style={tdStyle('medico')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"><TruncCell value={r.medico} /></td>
@@ -512,4 +544,4 @@ const Resumen = () => {
   );
 };
 
-export default Resumen;
+export default Seguimiento;

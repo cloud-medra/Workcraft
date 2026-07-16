@@ -22,9 +22,8 @@ import CalculadoraMargen from "../components/modulos/maestros/CalculadoraMargen"
 import Guias from '../components/modulos/consignacion/Guias';
 import VistaRapida from '../components/modulos/consignacion/VistaRapida';
 import SolicitudIngresos from '../components/modulos/consignacion/SolicitudIngresos';
-import CargaConsigna from '../components/modulos/consignacion/CargaConsigna';
 import ConsignacionLayout from '../components/modulos/consignacion/cargos/ConsignacionLayout';
-
+import Seguimiento from '../components/modulos/consignacion/Seguimiento'; // <- Nuevo componente importado
 
 import EmpresasLaboratorio from '../components/modulos/laboratorio/Empresas';
 import Facturas from '../components/modulos/laboratorio/Facturas';
@@ -160,8 +159,8 @@ const Dashboard = () => {
     '/consignacion/guias': <Guias />,
     '/consignacion/vistaRapida': <VistaRapida />,
     '/consignacion/solicitudIngresos': <SolicitudIngresos />,
-    '/consignacion/cargaConsigna': <CargaConsigna />,
     '/consignacion/consignacionLayout': <ConsignacionLayout />,
+    '/consignacion/seguimiento': <Seguimiento />, // <- Ruta del nuevo componente agregada
 
     '/laboratorio/empresas': <EmpresasLaboratorio />,
     '/laboratorio/facturas': <Facturas />,
@@ -317,7 +316,7 @@ const Dashboard = () => {
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden gap-2">
+      <div className="flex-grow flex flex-col h-screen overflow-hidden gap-2">
 
         <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
 

@@ -63,7 +63,7 @@ export const MODULES = {
       { label: 'Guías', path: '/consignacion/guias', icon: <Package size={14} /> },
       { label: 'Vista Rápida', path: '/consignacion/vistaRapida', icon: <Eye size={14} /> },
       { label: 'Solicitud Ingresos', path: '/consignacion/solicitudIngresos', icon: <FileText size={14} /> },
-      { label: 'Carga Consigna', path: '/consignacion/cargaConsigna', icon: <Upload size={14} /> },
+      { label: 'Seguimiento', path: '/consignacion/seguimiento', icon: <ClipboardList size={14} /> }, // <- Modificado aquí
       { label: 'Cargos', path: '/consignacion/consignacionLayout', icon: <Upload size={14} /> }
     ]
   },
