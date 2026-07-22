@@ -3,21 +3,7 @@ import { db } from '../../../../firebaseConfig';
 import { collection, query, where, getDocs, writeBatch, doc, setDoc } from 'firebase/firestore';
 import Spinner from '../../../ui/Spinner';
 import { useToast } from '../../../../context/ToastContext';
-import { ArrowLeft, CheckCircle, Eye, X, Search, Sliders, AlertTriangle } from 'lucide-react';
-
-const CAUSAS_EXCEPCION = [
-    { value: '', label: 'Sin excepción', color: 'text-gray-400' },
-    { value: '3A', label: '3A · Código no existe en la OC', color: 'text-orange-600 dark:text-orange-400' },
-    { value: '3B', label: '3B · La OC no existe', color: 'text-red-600 dark:text-red-400' },
-    { value: '3C', label: '3C · Código duplicado', color: 'text-purple-600 dark:text-purple-400' },
-];
-
-const badgeCausa = (causa) => {
-    if (causa === '3A') return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400';
-    if (causa === '3B') return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400';
-    if (causa === '3C') return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400';
-    return 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400';
-};
+import { ArrowLeft, CheckCircle, Eye, X, Search } from 'lucide-react';
 
 const EnlazarOrden = () => {
     const [ordenes, setOrdenes] = useState([]);
@@ -34,13 +20,6 @@ const EnlazarOrden = () => {
     const [filtroAnioBase, setFiltroAnioBase] = useState("");
     const [filtroMesBase, setFiltroMesBase] = useState("");
     const [ordenesEncontradas, setOrdenesEncontradas] = useState([]);
-
-    // --- Excepciones / Resoluciones (3A / 3B / 3C) ---
-    const [showModalExcepciones, setShowModalExcepciones] = useState(false);
-    const [ordenExcepcion, setOrdenExcepcion] = useState(null);
-    const [itemsExcepcion, setItemsExcepcion] = useState([]);
-    const [cargandoExcepciones, setCargandoExcepciones] = useState(false);
-    const [guardandoExcepciones, setGuardandoExcepciones] = useState(false);
 
     const { showToast } = useToast();
 
@@ -198,107 +177,6 @@ const EnlazarOrden = () => {
         }
     };
 
-    // --- Excepciones / Resoluciones ---
-    const abrirModalExcepciones = async (orden) => {
-        setOrdenExcepcion(orden);
-        setShowModalExcepciones(true);
-        setItemsExcepcion([]);
-        setCargandoExcepciones(true);
-        try {
-            const q = query(collection(db, "laboratorio_conciliaciones_items"), where("folio", "==", orden.folio));
-            const snap = await getDocs(q);
-            const items = snap.docs.map(d => {
-                const data = d.data();
-                return {
-                    id: d.id,
-                    ...data,
-                    causaExcepcion: data.excepcion?.causa || '',
-                    comentarioExcepcion: data.excepcion?.comentario || ''
-                };
-            });
-            setItemsExcepcion(items);
-        } catch (error) {
-            showToast("Error al cargar ítems para excepciones", "error");
-        } finally {
-            setCargandoExcepciones(false);
-        }
-    };
-
-    const cerrarModalExcepciones = () => {
-        setShowModalExcepciones(false);
-        setOrdenExcepcion(null);
-        setItemsExcepcion([]);
-    };
-
-    const handleCambiarCausaItem = (itemId, causa) => {
-        setItemsExcepcion(prev => prev.map(it => it.id === itemId ? { ...it, causaExcepcion: causa } : it));
-    };
-
-    const handleCambiarComentarioItem = (itemId, comentario) => {
-        setItemsExcepcion(prev => prev.map(it => it.id === itemId ? { ...it, comentarioExcepcion: comentario } : it));
-    };
-
-    const handleGuardarExcepciones = async () => {
-        if (!ordenExcepcion) return;
-        setGuardandoExcepciones(true);
-        try {
-            const batch = writeBatch(db);
-
-            itemsExcepcion.forEach(item => {
-                batch.set(
-                    doc(db, "laboratorio_conciliaciones_items", item.id),
-                    {
-                        excepcion: {
-                            causa: item.causaExcepcion || null,
-                            resuelta: !!item.causaExcepcion,
-                            comentario: item.comentarioExcepcion || '',
-                            fecha: new Date()
-                        }
-                    },
-                    { merge: true }
-                );
-            });
-
-            await batch.commit();
-
-            const folio = String(ordenExcepcion.folio).trim();
-            const nuevoEstado = "Iniciar Solicitud";
-
-            await setDoc(doc(db, "laboratorio_conciliaciones", folio), {
-                estado: nuevoEstado,
-                fechaExcepcion: new Date()
-            }, { merge: true });
-
-            setOrdenes(prev => prev.map(o =>
-                String(o.folio) === folio ? { ...o, estado: nuevoEstado } : o
-            ));
-
-            if (ordenActual && String(ordenActual.folio) === folio) {
-                setOrdenActual(prev => ({ ...prev, estado: nuevoEstado }));
-                setDetalleItems(prev => prev.map(it => {
-                    const actualizado = itemsExcepcion.find(x => x.id === it.id);
-                    if (!actualizado) return it;
-                    return {
-                        ...it,
-                        excepcion: {
-                            causa: actualizado.causaExcepcion || null,
-                            resuelta: !!actualizado.causaExcepcion,
-                            comentario: actualizado.comentarioExcepcion || '',
-                            fecha: new Date()
-                        }
-                    };
-                }));
-            }
-
-            cerrarModalExcepciones();
-            showToast(`Excepciones guardadas. Folio movido a "${nuevoEstado}"`, "success");
-        } catch (error) {
-            showToast("Error: " + error.message, "error");
-        } finally {
-            setGuardandoExcepciones(false);
-        }
-    };
-
     const colorEstado = (estado) => {
         if (estado === 'Listo para Ingresar') return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400';
         if (estado === 'Iniciar Solicitud') return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400';
@@ -390,14 +268,9 @@ const EnlazarOrden = () => {
                                         </span>
                                     </td>
                                     <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2] transition" title="Visualizar">
-                                                <Eye size={15} />
-                                            </button>
-                                            <button onClick={() => abrirModalExcepciones(o)} className="text-gray-400 hover:text-orange-500 transition" title="Resolver excepciones (3A / 3B / 3C)">
-                                                <Sliders size={15} />
-                                            </button>
-                                        </div>
+                                        <button onClick={() => handleVerDetalle(o)} className="text-gray-400 hover:text-[#2383C2] transition" title="Visualizar">
+                                            <Eye size={15} />
+                                        </button>
                                     </td>
                                 </tr>
                             ))
@@ -494,111 +367,6 @@ const EnlazarOrden = () => {
                                     <div className="text-center"><p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">Sin resultados</p></div>
                                 </div>
                             )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showModalExcepciones && (
-                <div className="fixed inset-0 bg-black/50 z-[200] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-[720px] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl overflow-hidden flex flex-col max-h-[85vh]">
-                        <div className="px-6 pt-5 pb-4 flex justify-between items-start border-b border-gray-100 dark:border-gray-700">
-                            <div className="flex items-start gap-3">
-                                <div className="w-9 h-9 rounded-lg bg-orange-50 dark:bg-orange-900/20 flex items-center justify-center text-orange-500 shrink-0 mt-0.5">
-                                    <AlertTriangle size={16} />
-                                </div>
-                                <div>
-                                    <h3 className="text-[14px] font-medium text-gray-900 dark:text-white leading-tight">
-                                        Resolución de excepciones · Folio {ordenExcepcion?.folio}
-                                    </h3>
-                                    <p className="text-[12px] text-gray-400 mt-0.5">
-                                        Marque la causa por cada ítem para destrabar el flujo (3A: código no existe en la OC · 3B: la OC no existe · 3C: código duplicado)
-                                    </p>
-                                </div>
-                            </div>
-                            <button onClick={cerrarModalExcepciones} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors p-1.5 rounded-lg shrink-0">
-                                <X size={16} />
-                            </button>
-                        </div>
-
-                        <div className="overflow-auto flex-grow relative">
-                            {cargandoExcepciones && (
-                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] gap-3">
-                                    <Spinner size="sm" color="#2383C2" />
-                                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">Cargando ítems...</p>
-                                </div>
-                            )}
-                            {guardandoExcepciones && (
-                                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 dark:bg-gray-800/80 backdrop-blur-[2px] gap-3">
-                                    <Spinner size="sm" color="#2383C2" />
-                                    <p className="text-[12px] text-gray-500 dark:text-gray-400 font-medium">Guardando resolución...</p>
-                                </div>
-                            )}
-
-                            {itemsExcepcion.length === 0 && !cargandoExcepciones ? (
-                                <div className="flex flex-col items-center justify-center h-56 gap-3 text-gray-400">
-                                    <div className="w-11 h-11 rounded-full bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-700 flex items-center justify-center"><Sliders size={16} /></div>
-                                    <div className="text-center"><p className="text-[13px] text-gray-500 dark:text-gray-400 font-medium">Sin ítems para este folio</p></div>
-                                </div>
-                            ) : (
-                                <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
-                                    {itemsExcepcion.map(item => (
-                                        <div key={item.id} className="px-6 py-4 flex flex-col gap-2.5">
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="text-[13px] font-bold text-gray-800 dark:text-gray-200 truncate">{item.nombre || item.descripcion}</p>
-                                                    <p className="text-[11px] font-mono text-gray-400 mt-0.5">
-                                                        Cod. maestro: {item.codigoMaestro || '—'} · Cod. factura: {item.codigo || '—'}
-                                                    </p>
-                                                </div>
-                                                {item.causaExcepcion && (
-                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold shrink-0 ${badgeCausa(item.causaExcepcion)}`}>
-                                                        {item.causaExcepcion}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <select
-                                                    value={item.causaExcepcion}
-                                                    onChange={(e) => handleCambiarCausaItem(item.id, e.target.value)}
-                                                    className="w-full border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded-lg text-[12px] text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2]"
-                                                >
-                                                    {CAUSAS_EXCEPCION.map(c => (
-                                                        <option key={c.value} value={c.value}>{c.label}</option>
-                                                    ))}
-                                                </select>
-                                                <input
-                                                    type="text"
-                                                    disabled={!item.causaExcepcion}
-                                                    value={item.comentarioExcepcion}
-                                                    onChange={(e) => handleCambiarComentarioItem(item.id, e.target.value)}
-                                                    placeholder="Comentario / justificación (opcional)"
-                                                    className="w-full border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 rounded-lg text-[12px] text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] disabled:opacity-50 disabled:cursor-not-allowed"
-                                                />
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between gap-3">
-                            <p className="text-[11px] text-gray-400">
-                                {itemsExcepcion.filter(i => i.causaExcepcion).length} de {itemsExcepcion.length} ítems con excepción marcada
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <button onClick={cerrarModalExcepciones} className="px-4 py-2 rounded-lg text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={handleGuardarExcepciones}
-                                    disabled={guardandoExcepciones || itemsExcepcion.length === 0}
-                                    className="bg-[#2383C2] hover:bg-[#1a6da0] text-white px-4 py-2 rounded-lg text-[12px] font-bold flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <CheckCircle size={13} /> Guardar resolución
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
