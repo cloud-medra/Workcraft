@@ -30,11 +30,18 @@ const PdfConsigna = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  // Ruta de permisos ajustada (o puedes mantener la existente)
-  const PATH_VISTA = "/consignacion/guias";
+  // Ruta propia de permisos para este nuevo componente
+  const PATH_VISTA = "/consignacion/pdf";
 
+  // 1. Obtener Años EXCLUSIVAMENTE de "consignacion_pdf"
   useEffect(() => {
-    const q = collection(db, "consignacion_guias");
+    setAniosDisponibles([]);
+    setMesesDisponibles([]);
+    setGuias([]);
+    setFiltroAnio("");
+    setFiltroMes("");
+
+    const q = collection(db, "consignacion_pdf");
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const anios = snapshot.docs.map(d => d.id).sort((a, b) => b - a);
       setAniosDisponibles(anios);
@@ -42,12 +49,14 @@ const PdfConsigna = () => {
     return () => unsubscribe();
   }, []);
 
+  // 2. Obtener Meses EXCLUSIVAMENTE de "consignacion_pdf/{anio}/meses"
   useEffect(() => {
     if (!filtroAnio) {
       setMesesDisponibles([]);
+      setGuias([]);
       return;
     }
-    const q = collection(db, "consignacion_guias", filtroAnio, "meses");
+    const q = collection(db, "consignacion_pdf", filtroAnio, "meses");
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const meses = snapshot.docs.map(d => d.id);
       setMesesDisponibles(meses);
@@ -55,19 +64,23 @@ const PdfConsigna = () => {
     return () => unsubscribe();
   }, [filtroAnio]);
 
+  // 3. Obtener Guías EXCLUSIVAMENTE de "consignacion_pdf/{anio}/meses/{mes}/guias"
   useEffect(() => {
     if (!filtroAnio || !filtroMes) {
       setGuias([]);
       return;
     }
-    const path = `consignacion_guias/${filtroAnio}/meses/${filtroMes}/guias`;
+    const path = `consignacion_pdf/${filtroAnio}/meses/${filtroMes}/guias`;
     const q = query(collection(db, path), orderBy("fchEmis", "asc"));
-    return onSnapshot(q, (snapshot) => setGuias(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setGuias(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubscribe();
   }, [filtroAnio, filtroMes]);
 
   const handleCopy = async (guia) => {
     const omitirCodigos = ["KIT-MANGACRL", "KITBYPASSTCRL2", "KITBYPASSTCRL"];
-    const rows = guia.detalles
+    const rows = (guia.detalles || [])
       .filter(item => !omitirCodigos.includes(item.codigo))
       .map(item => {
         const cantidadLimpia = item.cantidad || "";
@@ -84,7 +97,7 @@ const PdfConsigna = () => {
     try {
       await navigator.clipboard.writeText(rows);
       if (guia.estadoRegistro !== "Ingresado") {
-        const guiaRef = doc(db, "consignacion_guias", filtroAnio, "meses", filtroMes, "guias", guia.id);
+        const guiaRef = doc(db, "consignacion_pdf", filtroAnio, "meses", filtroMes, "guias", guia.id);
         await updateDoc(guiaRef, { estadoRegistro: "Ingresado" });
       }
       showToast("Detalle copiado y marcado como ingresado", "success");
@@ -93,7 +106,6 @@ const PdfConsigna = () => {
     }
   };
 
-  // Función para procesar y extraer texto del PDF subido
   const parsePDF = async (file) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -106,36 +118,56 @@ const PdfConsigna = () => {
       fullText += pageText + "\n";
     }
 
-    // Expresiones regulares para capturar cabecera (se adaptan al formato de tu DTE/Guía)
-    const folioMatch = fullText.match(/(?:GUIA DE DESPACHO|FOLIO|N°)\s*:?\s*(\d+)/i);
-    const fchEmisMatch = fullText.match(/(?:FECHA|FECHA EMISIÓN)\s*:?\s*(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4})/i);
-    const rznSocMatch = fullText.match(/(?:SEÑOR\(ES\)|RAZÓN SOCIAL|RZN SOC)\s*:?\s*([^\n]+)/i);
-    const folioRefMatch = fullText.match(/(?:ORDEN DE COMPRA|FOLIO REF|REF)\s*:?\s*(\d+)/i);
+    const folioMatch = 
+      fullText.match(/(?:GUIA DE DESPACHO|GUÍA DE DESPACHO|FOLIO|N°|NUMERO|Nº)\s*[:.]?\s*(\d+)/i) ||
+      fullText.match(/Nº\s*(\d+)/i) ||
+      fullText.match(/\b\d{5,10}\b/);
+
+    const fchEmisMatch = 
+      fullText.match(/(?:FECHA|FECHA EMISIÓN|EMISION|FECHA DE EMISION)\s*[:.]?\s*(\d{2}[/-]\d{2}[/-]\d{4}|\d{4}[/-]\d{2}[/-]\d{2})/i) ||
+      fullText.match(/(\d{2}[/-]\d{2}[/-]\d{4})/)||
+      fullText.match(/(\d{4}[/-]\d{2}[/-]\d{2})/);
+
+    const rznSocMatch = fullText.match(/(?:SEÑOR\(ES\)|RAZÓN SOCIAL|RAZON SOCIAL|CLIENTE|RZN SOC)\s*[:.]?\s*([^\n]+)/i);
+    const folioRefMatch = fullText.match(/(?:ORDEN DE COMPRA|FOLIO REF|REF|O\/C|OC)\s*[:.]?\s*(\d+)/i);
 
     const folio = folioMatch ? folioMatch[1] : null;
-    let fchEmis = fchEmisMatch ? fchEmisMatch[1] : null;
+    let rawFecha = fchEmisMatch ? fchEmisMatch[1] : null;
+    let fchEmis = null;
 
-    if (fchEmis && fchEmis.includes('/')) {
-      const [dia, mes, anio] = fchEmis.split('/');
-      fchEmis = `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+    if (rawFecha) {
+      if (rawFecha.includes('/')) {
+        const partes = rawFecha.split('/');
+        if (partes[0].length === 4) {
+          fchEmis = `${partes[0]}-${partes[1].padStart(2, '0')}-${partes[2].padStart(2, '0')}`;
+        } else {
+          fchEmis = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+        }
+      } else if (rawFecha.includes('-')) {
+        const partes = rawFecha.split('-');
+        if (partes[0].length === 4) {
+          fchEmis = rawFecha;
+        } else {
+          fchEmis = `${partes[2]}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+        }
+      }
     }
 
     const rznSoc = rznSocMatch ? rznSocMatch[1].trim() : "N/A";
     const folioRef = folioRefMatch ? folioRefMatch[1] : "N/A";
 
-    // Extraer los detalles/ítems
     const detalles = [];
     const lineas = fullText.split('\n');
 
     lineas.forEach((linea, index) => {
-      const itemMatch = linea.match(/([A-Z0-9_-]+)\s+(.+?)\s+(\d+(?:\.\d+)?)/i);
+      const itemMatch = linea.match(/([A-Z0-9_-]{3,20})\s+(.+?)\s+(\d+(?:[.,]\d+)?)/i);
       if (itemMatch) {
         detalles.push({
           nroLin: index + 1,
           codigo: itemMatch[1],
-          nombre: itemMatch[2],
-          dscItem: itemMatch[2],
-          cantidad: itemMatch[3].includes('.') ? itemMatch[3].split('.')[0] : itemMatch[3],
+          nombre: itemMatch[2].trim(),
+          dscItem: itemMatch[2].trim(),
+          cantidad: itemMatch[3].replace(',', '.').split('.')[0],
           fchVenc: null
         });
       }
@@ -147,6 +179,7 @@ const PdfConsigna = () => {
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
     let omitidos = 0;
+    let noLeidos = 0;
     let ultimoAnioCargado = "";
     let ultimoMesCargado = "";
 
@@ -154,13 +187,21 @@ const PdfConsigna = () => {
       for (const file of acceptedFiles) {
         const { folio, fchEmis, rznSoc, folioRef, detalles } = await parsePDF(file);
 
-        if (!fchEmis || !folio) continue;
+        if (!fchEmis || !folio) {
+          noLeidos++;
+          continue;
+        }
 
         const [anio, mesNum] = fchEmis.split('-');
         const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-        const nombreMes = meses[parseInt(mesNum) - 1];
+        const nombreMes = meses[parseInt(mesNum, 10) - 1];
 
-        const colRef = collection(db, "consignacion_guias", anio, "meses", nombreMes, "guias");
+        if (!nombreMes) {
+          noLeidos++;
+          continue;
+        }
+
+        const colRef = collection(db, "consignacion_pdf", anio, "meses", nombreMes, "guias");
         const q = query(colRef, where("folio", "==", folio));
         const existe = await getDocs(q);
 
@@ -169,8 +210,8 @@ const PdfConsigna = () => {
           continue;
         }
 
-        await setDoc(doc(db, "consignacion_guias", anio), { active: "true" }, { merge: true });
-        await setDoc(doc(db, "consignacion_guias", anio, "meses", nombreMes), { active: "true" }, { merge: true });
+        await setDoc(doc(db, "consignacion_pdf", anio), { active: "true" }, { merge: true });
+        await setDoc(doc(db, "consignacion_pdf", anio, "meses", nombreMes), { active: "true" }, { merge: true });
 
         await addDoc(colRef, {
           folio, fchEmis, rznSoc, folioRef, detalles,
@@ -183,13 +224,15 @@ const PdfConsigna = () => {
         ultimoMesCargado = nombreMes;
       }
 
-      if (omitidos === acceptedFiles.length) {
-        showToast("Todos los archivos ya existían en la base de datos.", "warning");
+      if (noLeidos > 0 && noLeidos === acceptedFiles.length) {
+        showToast("No se pudo leer el Folio o la Fecha de los PDF.", "error");
+      } else if (omitidos === acceptedFiles.length) {
+        showToast("Todos los archivos ya existían en consignacion_pdf.", "warning");
       } else {
-        if (omitidos > 0) {
-          showToast(`Importación finalizada. ${omitidos} archivos omitidos por duplicado.`, "warning");
+        if (omitidos > 0 || noLeidos > 0) {
+          showToast(`Procesado. Omitidos por duplicado: ${omitidos}, No leídos: ${noLeidos}`, "warning");
         } else {
-          showToast("Importación masiva completada con éxito", "success");
+          showToast("Importación completada en consignacion_pdf", "success");
         }
 
         if (ultimoAnioCargado && ultimoMesCargado) {
@@ -211,7 +254,7 @@ const PdfConsigna = () => {
 
   const handleDelete = (id) => {
     confirmAction("Eliminar Guía", "¿Estás seguro de eliminar este registro?", async () => {
-      await deleteDoc(doc(db, "consignacion_guias", filtroAnio, "meses", filtroMes, "guias", id));
+      await deleteDoc(doc(db, "consignacion_pdf", filtroAnio, "meses", filtroMes, "guias", id));
       showToast("Guía eliminada", "info");
     });
   };
@@ -313,7 +356,7 @@ const PdfConsigna = () => {
               ) : (
                 <tr>
                   <td colSpan="6" className="p-8 text-center text-gray-400 dark:text-gray-500 font-medium">
-                    {!filtroAnio || !filtroMes ? "Selecciona un año y un mes para visualizar las guías." : "No se encontraron guías para este periodo."}
+                    {!filtroAnio || !filtroMes ? "Selecciona un año y un mes para visualizar las guías." : "No se encontraron guías en la colección consignacion_pdf para este periodo."}
                   </td>
                 </tr>
               )}
@@ -340,7 +383,7 @@ const PdfConsigna = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-800 dark:text-gray-100 text-[15px]">Importar PDF de Consignación</h3>
-                  <p className="text-[11px] text-slate-400 dark:text-gray-400 font-medium">Carga masiva a base de datos de consignación</p>
+                  <p className="text-[11px] text-slate-400 dark:text-gray-400 font-medium">Colección destina: consignacion_pdf</p>
                 </div>
               </div>
               <button
