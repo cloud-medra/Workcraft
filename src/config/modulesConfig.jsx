@@ -63,6 +63,7 @@ export const MODULES = {
     label: 'Consignación',
     icon: <Package size={18} />,
     subItems: [
+      { label: 'PDF', path: '/consignacion/pdfConsigna', icon: <Package size={14} /> },
       { label: 'Guías', path: '/consignacion/guias', icon: <Package size={14} /> },
       { label: 'Vista Rápida', path: '/consignacion/vistaRapida', icon: <Eye size={14} /> },
       { label: 'Solicitud Ingresos', path: '/consignacion/solicitudIngresos', icon: <FileText size={14} /> },

@@ -19,6 +19,8 @@ import Convenios from '../components/modulos/maestros/Convenios';
 import Previsiones from '../components/modulos/maestros/Previsiones';
 import Margen from '../components/modulos/maestros/Margen';
 import CalculadoraMargen from "../components/modulos/maestros/CalculadoraMargen";
+import PdfConsigna from '../components/modulos/consignacion/PdfConsigna';
+
 import Guias from '../components/modulos/consignacion/Guias';
 import VistaRapida from '../components/modulos/consignacion/VistaRapida';
 import SolicitudIngresos from '../components/modulos/consignacion/SolicitudIngresos';
@@ -157,6 +159,7 @@ const Dashboard = () => {
     '/maestros/previsiones': <Previsiones />,
     '/maestros/margenes': <Margen />,
     '/maestros/calculadora': <CalculadoraMargen />,
+    '/consignacion/pdfConsigna': <PdfConsigna />,
     '/consignacion/guias': <Guias />,
     '/consignacion/vistaRapida': <VistaRapida />,
     '/consignacion/solicitudIngresos': <SolicitudIngresos />,
