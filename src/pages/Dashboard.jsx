@@ -21,7 +21,7 @@ import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
 import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
 
 // LABORATORIO
-import EmpresasLaboratorio from '../components/modulos/laboratorio/Empresas';
+import EmpresasLaboratorio from '../components/modulos/laboratorio/EmpresasLaboratorio';
 import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaboratorio';
 
 // MIS TURNOS
@@ -157,7 +157,7 @@ const Dashboard = () => {
     '/usuarios/listado': <ListadoUsuarios />,
 
     // LABORATORIO
-    '/laboratorio/empresas': <EmpresasLaboratorio />,
+    '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
 
     // MIS TURNOS
@@ -192,9 +192,12 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
 
-      <aside className={`${isSidebarCollapsed ? 'w-16' : 'w-48'} bg-[#2383C2] dark:bg-gray-800 text-white transition-colors duration-300 hidden md:flex flex-col shadow-xl h-screen sticky top-0 [transition:width_0.4s_cubic-bezier(0.25,1,0.5,1)] will-change-[width]`}>
+      {/* SIDEBAR CON ANCHO BLOQUEADO FIJO */}
+      <aside className={`${
+        isSidebarCollapsed ? 'w-16 min-w-[64px] max-w-[64px]' : 'w-56 min-w-[190px] max-w-[190px]'
+      } bg-[#2383C2] dark:bg-gray-800 text-white transition-all duration-300 ease-in-out hidden md:flex flex-col shadow-xl h-screen sticky top-0 flex-shrink-0 z-30 select-none overflow-x-hidden`}>
 
-        <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden">
+        <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden flex-shrink-0">
           <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
             Cloud - Medra
           </span>
@@ -207,14 +210,14 @@ const Dashboard = () => {
           </button>
         </div>
 
-        <nav className="flex-1 p-2 text-xs overflow-y-auto overflow-x-hidden space-y-1 select-none">
+        <nav className="flex-1 p-2 text-xs overflow-y-auto overflow-x-hidden space-y-1">
           <div className="mb-2">
             <button
               onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
               className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}
             >
               <Home size={16} className="flex-shrink-0" />
-              <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+              <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
                 Inicio
               </span>
             </button>
@@ -230,9 +233,9 @@ const Dashboard = () => {
                   className={`w-full flex items-center rounded-lg hover:bg-white/10 transition-all p-2 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
                   title={isSidebarCollapsed ? MODULES[key].label : ""}
                 >
-                  <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="flex items-center gap-3 overflow-hidden min-w-0">
                     <div className="flex-shrink-0">{MODULES[key].icon}</div>
-                    <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                    <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
                       {MODULES[key].label}
                     </span>
                   </div>
@@ -248,12 +251,12 @@ const Dashboard = () => {
                 title="Volver a módulos"
               >
                 <ArrowLeft size={12} className="flex-shrink-0" />
-                <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
                   Volver a módulos
                 </span>
               </button>
 
-              <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+              <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
                 {MODULES[activeModule].label}
               </div>
 
@@ -263,11 +266,11 @@ const Dashboard = () => {
                   <button
                     key={idx}
                     onClick={() => setActiveView(sub.path)}
-                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
                     title={isSidebarCollapsed ? sub.label : ""}
                   >
                     <div className="flex-shrink-0">{sub.icon}</div>
-                    <span className={`transition-all duration-300 whitespace-nowrap ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                    <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
                       {sub.label}
                     </span>
                   </button>
@@ -283,15 +286,17 @@ const Dashboard = () => {
               <div className="flex flex-col gap-1.5 border-b border-white/5 pb-1.5">
                 <button
                   onClick={() => { setActiveView('privacidad'); setActiveModule(null); }}
-                  className="hover:text-white transition-colors text-left flex items-center gap-1.5"
+                  className="hover:text-white transition-colors text-left flex items-center gap-1.5 truncate"
                 >
-                  <ShieldCheck size={12} className="opacity-70 flex-shrink-0" /> Política de Privacidad
+                  <ShieldCheck size={12} className="opacity-70 flex-shrink-0" />
+                  <span className="truncate">Política de Privacidad</span>
                 </button>
                 <button
                   onClick={() => { setActiveView('terminos'); setActiveModule(null); }}
-                  className="hover:text-white transition-colors text-left flex items-center gap-1.5"
+                  className="hover:text-white transition-colors text-left flex items-center gap-1.5 truncate"
                 >
-                  <FileText size={12} className="opacity-70 flex-shrink-0" /> Términos de Servicio
+                  <FileText size={12} className="opacity-70 flex-shrink-0" />
+                  <span className="truncate">Términos de Servicio</span>
                 </button>
               </div>
               <div className="flex justify-between items-center text-[9px] text-white/40 font-mono px-0.5">
@@ -310,6 +315,7 @@ const Dashboard = () => {
         </div>
       </aside>
 
+      {/* ÁREA PRINCIPAL */}
       <div className="flex-grow flex flex-col h-screen overflow-hidden gap-2">
 
         <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">

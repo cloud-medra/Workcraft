@@ -29,7 +29,7 @@ export const MODULES = {
     label: 'Laboratorio',
     icon: <Microscope size={18} />,
     subItems: [
-      { label: 'Registro Empresas', path: '/laboratorio/empresas', icon: <Building2 size={14} /> },
+      { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> },
       { label: 'Maestro Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> }
     ]
   },
