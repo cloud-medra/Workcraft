@@ -5,43 +5,40 @@ import { signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
-  Settings, LayoutDashboard, Home, ShieldCheck, Menu, Shield, Moon, Sun
+  Settings, Home, ShieldCheck, Menu, Shield, Moon, Sun
 } from 'lucide-react';
 import { MODULES } from '../config/modulesConfig.jsx';
+
+// =================================================================
+// IMPORTACIÓN DE COMPONENTES POR MÓDULOS
+// =================================================================
+
+// DASHBOARD
+import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
+
+// USUARIOS
 import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
 import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
-import Perfil from '../components/modulos/perfil/Perfil';
-import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
-import Medicos from '../components/modulos/maestros/Medicos';
-import Empresas from '../components/modulos/maestros/Empresas';
-import Codigos from '../components/modulos/maestros/Codigos';
-import Convenios from '../components/modulos/maestros/Convenios';
-import Previsiones from '../components/modulos/maestros/Previsiones';
-import Margen from '../components/modulos/maestros/Margen';
-import CalculadoraMargen from "../components/modulos/maestros/CalculadoraMargen";
-import PdfConsigna from '../components/modulos/consignacion/PdfConsigna';
 
-import Guias from '../components/modulos/consignacion/Guias';
-import VistaRapida from '../components/modulos/consignacion/VistaRapida';
-import SolicitudIngresos from '../components/modulos/consignacion/SolicitudIngresos';
-import ConsignacionLayout from '../components/modulos/consignacion/cargos/ConsignacionLayout';
-import Seguimiento from '../components/modulos/consignacion/Seguimiento'; // <- Nuevo componente importado
-
+// LABORATORIO
 import EmpresasLaboratorio from '../components/modulos/laboratorio/Empresas';
-import Facturas from '../components/modulos/laboratorio/Facturas';
-import IngresoFacturas from '../components/modulos/laboratorio/IngresoFacturas';
-import ResumenLaboratorio from '../components/modulos/laboratorio/ResumenLaboratorio';
 import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaboratorio';
-import ImportarOrden from '../components/modulos/laboratorio/ImportarOrden';
-import ControlFacturas from '../components/modulos/laboratorio/controlFacturas/ControlFacturas';
-import CargaDatos from '../components/modulos/documentos/CargaDatos';
-import DashboardFinanciero from '../components/modulos/documentos/DashboardFinanciero';
-import ReportePabellon from '../components/modulos/documentos/ReportePabellon';
-import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
-import TerminosServicio from '../components/modulos/legales/TerminosServicio';
-import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
+
+// MIS TURNOS
 import MisTurnos from '../components/modulos/misturnos/MisTurnos';
 
+// AJUSTES & PERFIL
+import Perfil from '../components/modulos/perfil/Perfil';
+import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
+
+// LEGALES
+import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
+import TerminosServicio from '../components/modulos/legales/TerminosServicio';
+
+
+// =================================================================
+// CONFIGURACIÓN DE VISTAS ESPECIALES
+// =================================================================
 const SPECIAL_VIEWS = {
   dashboard: { label: 'Inicio', icon: <Home size={13} /> },
   perfil: { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
@@ -148,39 +145,31 @@ const Dashboard = () => {
 
   const breadcrumb = getBreadcrumb();
 
+  // =================================================================
+  // MAPEO DE RUTAS A COMPONENTES POR MÓDULOS
+  // =================================================================
   const VIEW_MAP = {
+    // DASHBOARD
     'dashboard': <ResumenGeneral userData={userData} />,
+
+    // USUARIOS
     '/usuarios/crear': <CrearUsuario />,
     '/usuarios/listado': <ListadoUsuarios />,
-    '/maestros/medicos': <Medicos />,
-    '/maestros/empresas': <Empresas />,
-    '/maestros/codigos': <Codigos />,
-    '/maestros/convenios': <Convenios />,
-    '/maestros/previsiones': <Previsiones />,
-    '/maestros/margenes': <Margen />,
-    '/maestros/calculadora': <CalculadoraMargen />,
-    '/consignacion/pdfConsigna': <PdfConsigna />,
-    '/consignacion/guias': <Guias />,
-    '/consignacion/vistaRapida': <VistaRapida />,
-    '/consignacion/solicitudIngresos': <SolicitudIngresos />,
-    '/consignacion/consignacionLayout': <ConsignacionLayout />,
-    '/consignacion/seguimiento': <Seguimiento />, // <- Ruta del nuevo componente agregada
 
+    // LABORATORIO
     '/laboratorio/empresas': <EmpresasLaboratorio />,
-    '/laboratorio/facturas': <Facturas />,
-    '/laboratorio/ingresoFacturas': <IngresoFacturas />,
-    '/laboratorio/resumenLaboratorio': <ResumenLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
-    '/laboratorio/importarOrden': <ImportarOrden />,
-    '/laboratorio/controlFactura': <ControlFacturas />,
-    '/documentos/carga': <CargaDatos />,
-    '/documentos/DashboardFinanciero': <DashboardFinanciero />,
-    '/documentos/reportePabellon': <ReportePabellon />,
-    'privacidad': <PoliticasPrivacidad />,
-    'terminos': <TerminosServicio />,
+
+    // MIS TURNOS
+    '/misturnos/ver': <MisTurnos />,
+
+    // AJUSTES & PERFIL
     'perfil': <Perfil userData={userData} />,
     'password': <CambiarPasswordSeguro />,
-    '/misturnos/ver': <MisTurnos />,
+
+    // LEGALES
+    'privacidad': <PoliticasPrivacidad />,
+    'terminos': <TerminosServicio />,
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
