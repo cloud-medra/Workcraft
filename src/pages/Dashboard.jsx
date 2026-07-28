@@ -23,6 +23,7 @@ import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
 // LABORATORIO
 import EmpresasLaboratorio from '../components/modulos/laboratorio/EmpresasLaboratorio';
 import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaboratorio';
+import OrdenLaboratorio from '../components/modulos/laboratorio/OrdenLaboratorio';
 
 // MIS TURNOS
 import MisTurnos from '../components/modulos/misturnos/MisTurnos';
@@ -159,6 +160,7 @@ const Dashboard = () => {
     // LABORATORIO
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
+    '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
 
     // MIS TURNOS
     '/misturnos/ver': <MisTurnos />,

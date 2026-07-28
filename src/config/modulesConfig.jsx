@@ -8,7 +8,8 @@ import {
   Microscope,
   BadgeInfo,
   Calendar,
-  CalendarDays
+  CalendarDays,
+  ClipboardList
 } from "lucide-react";
 
 export const MODULES = {
@@ -30,7 +31,8 @@ export const MODULES = {
     icon: <Microscope size={18} />,
     subItems: [
       { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> },
-      { label: 'Maestro Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> }
+      { label: 'Maestro Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
+      { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> }
     ]
   },
   misturnos: {
