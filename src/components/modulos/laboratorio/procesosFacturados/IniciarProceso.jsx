@@ -1,10 +1,11 @@
 // src/components/facturas/IniciarProceso.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../../../../firebaseConfig'; // Asegúrate de importar auth o usar tu useAuth context
+import { db, auth } from '../../../../firebaseConfig';
 import { FileText, Search, PlayCircle, CheckSquare, Square } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
+import { useUser } from '../../../../context/UserContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 
 const IniciarProceso = () => {
@@ -19,6 +20,7 @@ const IniciarProceso = () => {
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
+  const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/laboratorio/controlFactura";
@@ -106,32 +108,33 @@ const IniciarProceso = () => {
     }
   };
 
-  // Cambiar estado a "En Proceso" registrando auditoría/logs
+  // Cambiar estado a "Proceso Iniciado" registrando auditoría/logs
   const handleIniciarProceso = () => {
     if (seleccionadas.length === 0) return;
 
     confirmAction(
       "Iniciar Proceso",
-      `¿Desea cambiar el estado de ${seleccionadas.length} factura(s) a 'En Proceso'?`,
+      `¿Desea iniciar el proceso de ${seleccionadas.length} factura(s)?`,
       async () => {
         try {
-          // Datos del usuario actual autenticado
           const currentUser = auth.currentUser;
+          
+          // Sanitización estricta utilizando preferentemente Nombre Completo
           const usuarioInfo = {
             uid: currentUser?.uid || "desconocido",
-            email: currentUser?.email || "usuario_anonimo",
-            nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
+            email: userData?.email || currentUser?.email || "usuario_anonimo",
+            nombre: userData?.nombreCompleto || userData?.nombre || currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
           };
 
           const ahora = new Date();
-          const fechaHoraString = ahora.toLocaleString('es-CL'); // Ej: "30/07/2026, 15:45:00"
+          const fechaHoraString = ahora.toLocaleString('es-CL');
 
           const promesasUpdate = seleccionadas.map(async (f) => {
             const docRef = doc(db, COL_BASE, filtroAnio, "meses", f.mesId, "documentos", f.id);
             
-            // 1. Actualizar el documento principal de la factura con la trazabilidad
+            // 1. Actualizar el documento principal con el nuevo estado "Proceso Iniciado"
             await updateDoc(docRef, {
-              estado: "En Proceso",
+              estado: "Proceso Iniciado",
               procesoIniciado: {
                 fechaHora: fechaHoraString,
                 timestamp: serverTimestamp(),
@@ -139,16 +142,21 @@ const IniciarProceso = () => {
               }
             });
 
-            // 2. Opcional: Registrar evento en subcolección 'logs' interna para auditoría histórica
-            const logsRef = collection(docRef, "logs");
-            await addDoc(logsRef, {
-              accion: "INICIO_PROCESO",
-              estadoAnterior: f.estado || "Iniciar Ingreso",
-              nuevoEstado: "En Proceso",
-              fechaHora: fechaHoraString,
-              timestamp: serverTimestamp(),
-              usuario: usuarioInfo
-            });
+            // 2. Registrar evento en la subcolección 'logs' protegida con try/catch
+            try {
+              const logsRef = collection(docRef, "logs");
+              await addDoc(logsRef, {
+                accion: "INICIO_PROCESO",
+                detalle: `El proceso ha iniciado para el folio ${f.folio || f.id}`,
+                estadoAnterior: f.estado || "Iniciar Ingreso",
+                nuevoEstado: "Proceso Iniciado",
+                fechaHora: fechaHoraString,
+                timestamp: serverTimestamp(),
+                usuario: usuarioInfo
+              });
+            } catch (logError) {
+              console.error(`Error al escribir log para la factura ${f.id}:`, logError);
+            }
           });
 
           await Promise.all(promesasUpdate);
@@ -157,12 +165,13 @@ const IniciarProceso = () => {
           setFacturas(prev => prev.filter(f => !idsProcesados.has(f.id)));
           setSeleccionadas([]);
 
-          showToast(`${seleccionadas.length} factura(s) pasaron a 'En Proceso'`, "success");
+          showToast(`${seleccionadas.length} factura(s) pasaron a 'Proceso Iniciado'`, "success");
         } catch (error) {
           console.error("Error al actualizar estados y guardar logs:", error);
           showToast("Hubo un error al actualizar el estado", "error");
         }
-      }
+      },
+      { confirmText: "Iniciar", type: "primary" }
     );
   };
 
@@ -216,7 +225,7 @@ const IniciarProceso = () => {
           )}
         </div>
 
-        {/* BOTÓN PARA CAMBIAR ESTADO A EN PROCESO */}
+        {/* BOTÓN PARA CAMBIAR ESTADO A PROCESO INICIADO */}
         <button
           onClick={handleIniciarProceso}
           disabled={seleccionadas.length === 0}

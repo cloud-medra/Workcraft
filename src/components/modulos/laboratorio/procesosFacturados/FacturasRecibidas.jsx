@@ -1,5 +1,6 @@
+// src/components/facturas/FacturasRecibidas.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot, where } from 'firebase/firestore';
+import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
 import { FileText, Trash2, Search, Eye, Settings, History, X } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
@@ -86,34 +87,25 @@ const FacturasRecibidas = () => {
     setLoadingLogs(true);
 
     try {
-      // Nota: Estructura base para consultar logs cuando definamos el guardado de datos
-      const q = query(
-        collection(db, "laboratorio_facturas_logs"),
-        where("facturaId", "==", factura.id),
-        orderBy("fecha", "desc")
-      );
+      // CORRECCIÓN DE LA RUTA: Apuntar a la subcolección 'logs' dentro del documento de la factura
+      const logsRef = collection(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", factura.id, "logs");
+      const q = query(logsRef, orderBy("timestamp", "desc"));
+      
       const snapshot = await getDocs(q);
       const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setLogsList(logsData);
     } catch (error) {
       console.error("Error cargando logs:", error);
-      // Evitamos alertear si la colección aún no contiene datos
       setLogsList([]);
-    } finally { //  CORREGIDO
+    } finally {
       setLoadingLogs(false);
     }
   };
 
-  const formatearFecha = (fecha) => {
-    if (!fecha) return 'N/A';
-    const date = fecha.toDate ? fecha.toDate() : new Date(fecha);
-    return date.toLocaleString('es-ES', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const formatearFechaLog = (log) => {
+    if (log.fechaHora) return log.fechaHora;
+    if (log.timestamp?.toDate) return log.timestamp.toDate().toLocaleString('es-CL');
+    return 'N/A';
   };
 
   const facturasFiltradas = facturas.filter(f => 
@@ -217,7 +209,7 @@ const FacturasRecibidas = () => {
                     ${parseInt(f.total || 0).toLocaleString('es-CL')}
                   </td>
                   
-                  {/* Celda de Estado (Cargada desde Firestore) */}
+                  {/* Celda de Estado */}
                   <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                     <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
                       {f.estado || "Iniciar Ingreso"}
@@ -354,23 +346,24 @@ const FacturasRecibidas = () => {
               <div key={log.id} className="p-3 border border-gray-200 dark:border-gray-700/80 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 text-[10px] space-y-2">
                 <div className="flex justify-between items-center">
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                    log.accion === 'INICIO_PROCESO' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
                     log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' :
                     log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
-                    'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400'
+                    'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
                   }`}>
                     {log.accion}
                   </span>
                   <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
-                    {formatearFecha(log.fecha)}
+                    {formatearFechaLog(log)}
                   </span>
                 </div>
 
                 <p className="text-gray-700 dark:text-gray-300 font-semibold">
-                  Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario}</span>
+                  Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario?.nombre || log.usuario?.email || "Usuario"}</span>
                 </p>
 
                 <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200/80 dark:border-gray-700 text-[10px]">
-                  {/* Aquí se desplegarán las diferencias/detalles del log en el siguiente paso */}
+                  {log.detalle || `Cambio de estado: ${log.estadoAnterior} → ${log.nuevoEstado}`}
                 </div>
               </div>
             ))

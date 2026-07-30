@@ -1,5 +1,6 @@
+// src/components/facturas/XmlFacturasLaboratorio.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, onSnapshot, deleteDoc, doc, query, orderBy, addDoc, getDocs, setDoc, where } from 'firebase/firestore';
+import { collection, onSnapshot, deleteDoc, doc, query, orderBy, addDoc, getDocs, setDoc, where, serverTimestamp } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import { db } from '../../../firebaseConfig';
 import { FileText, Trash2, Search, Upload, X, Eye } from 'lucide-react';
@@ -66,7 +67,7 @@ const XmlFacturasLaboratorio = () => {
     return onSnapshot(q, (snapshot) => setFacturas(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [filtroAnio, filtroMes]);
 
-  // Importar XML con registro de Log
+  // Importar XML con registro automático de Log en Subcolección interna
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
     let omitidos = 0;
@@ -120,10 +121,11 @@ const XmlFacturasLaboratorio = () => {
         setAniosDisponibles(prev => Array.from(new Set([...prev, anio])).sort((a, b) => b - a));
         setMesesDisponibles(prev => Array.from(new Set([...prev, nombreMes])));
 
-        const usuarioActual = userData?.nombreCompleto || 'Usuario Desconocido';
+        const usuarioActualNombre = userData?.nombreCompleto || userData?.nombre || 'Usuario Desconocido';
+        const usuarioActualEmail = userData?.email || '';
         const fechaActual = new Date();
 
-        // 1. Guardar la factura en Firestore
+        // 1. Guardar documento de Factura en Firestore
         const docRefFactura = await addDoc(colRef, {
           folio: folio ?? "",
           folioRef: folioRef ?? "N/A",
@@ -133,18 +135,22 @@ const XmlFacturasLaboratorio = () => {
           estado: "Iniciar Ingreso",
           xmlOriginal: text,
           detalles,
-          registeredPor: usuarioActual,
+          registeredPor: usuarioActualNombre,
           fechaRegistro: fechaActual
         });
 
-        // 2. Registrar el Log de creación
-        await addDoc(collection(db, "laboratorio_facturas_logs"), {
-          facturaId: docRefFactura.id,
-          folio: folio ?? "",
+        // 2. Generar registro de Log DENTRO de la subcolección de la factura creada
+        const logsSubcollectionRef = collection(db, COL_BASE, anio, "meses", nombreMes, "documentos", docRefFactura.id, "logs");
+        
+        await addDoc(logsSubcollectionRef, {
           accion: "CREACION",
-          detalle: "Factura importada vía XML",
-          usuario: usuarioActual,
-          fecha: fechaActual
+          detalle: "Factura cargada e importada mediante archivo XML",
+          usuario: {
+            nombre: usuarioActualNombre,
+            email: usuarioActualEmail
+          },
+          fechaHora: fechaActual.toLocaleString('es-CL'),
+          timestamp: serverTimestamp()
         });
       }
 
@@ -154,8 +160,8 @@ const XmlFacturasLaboratorio = () => {
       showToast(mensaje, omitidos > 0 ? "warning" : "success");
       setShowModal(false);
     } catch (error) {
-      console.error(error);
-      showToast("Error al importar", "error");
+      console.error("Error al importar XML:", error);
+      showToast("Error al importar el archivo", "error");
     } finally {
       setCargando(false);
     }

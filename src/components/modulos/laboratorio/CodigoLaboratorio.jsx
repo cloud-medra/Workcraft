@@ -66,6 +66,21 @@ const CodigoLaboratorio = () => {
     }
   };
 
+  const iniciarEdicion = (item) => {
+    setEditingId(item.id);
+    setFormData({
+      referencia: item.referencia || '',
+      codigo: item.codigo || '',
+      precio: item.precio || '',
+      descripcion: item.descripcion || ''
+    });
+  };
+
+  const cancelarEdicion = () => {
+    setEditingId(null);
+    setFormData({ referencia: '', codigo: '', precio: '', descripcion: '' });
+  };
+
   const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.referencia || !formData.codigo || !formData.precio) {
@@ -82,15 +97,13 @@ const CodigoLaboratorio = () => {
         const codigoExistente = codigos.find(c => c.id === editingId);
 
         const dataAEnviar = {
-          ...formData,
           referencia: refUpper,
+          codigo: formData.codigo,
           descripcion: descUpper,
-          precio: precioNum,
-          registradoPor: codigoExistente?.registradoPor || userData?.nombreCompleto || 'Usuario',
-          fechaRegistro: codigoExistente?.fechaRegistro || new Date()
+          precio: precioNum
         };
 
-        // Construir objeto solo con los campos que realmente cambiaron
+        // Construir objeto solo con los campos que realmente cambiaron para el log
         const cambios = {};
         if (codigoExistente?.referencia !== refUpper) cambios.referencia = refUpper;
         if (codigoExistente?.codigo !== formData.codigo) cambios.codigo = formData.codigo;
@@ -99,7 +112,6 @@ const CodigoLaboratorio = () => {
 
         await updateDoc(doc(db, COL_CODIGOS, editingId), dataAEnviar);
 
-        // Si hubo cambios reales, registrar el log con los nuevos valores
         if (Object.keys(cambios).length > 0) {
           await registrarLog(editingId, 'EDICION', cambios);
         }
@@ -107,8 +119,8 @@ const CodigoLaboratorio = () => {
         showToast("Código actualizado correctamente", "success");
       } else {
         const dataAEnviar = {
-          ...formData,
           referencia: refUpper,
+          codigo: formData.codigo,
           descripcion: descUpper,
           precio: precioNum,
           registradoPor: userData?.nombreCompleto || 'Usuario',
@@ -126,8 +138,7 @@ const CodigoLaboratorio = () => {
 
         showToast("Código registrado correctamente", "success");
       }
-      setFormData({ referencia: '', codigo: '', precio: '', descripcion: '' });
-      setEditingId(null);
+      cancelarEdicion();
     } catch (error) {
       showToast("Error al guardar: " + error.message, "error");
     } finally {
@@ -237,7 +248,7 @@ const CodigoLaboratorio = () => {
             </button>
           )}
           {editingId && hasPermission(PATH_VISTA, "formulario", "btn_cancelar") && (
-            <button type="button" onClick={() => { setEditingId(null); setFormData({ referencia: '', codigo: '', precio: '', descripcion: '' }) }} className="h-7 px-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded font-bold text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 transition">
+            <button type="button" onClick={cancelarEdicion} className="h-7 px-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded font-bold text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 transition">
               <X size={13} /> Cancelar
             </button>
           )}
@@ -288,7 +299,7 @@ const CodigoLaboratorio = () => {
                           </button>
                         )}
                         {hasPermission(PATH_VISTA, "tabla", "btn_editar") && (
-                          <button onClick={() => { setEditingId(c.id); setFormData(c); }} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
+                          <button onClick={() => iniciarEdicion(c)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
                             <Pencil size={13} />
                           </button>
                         )}

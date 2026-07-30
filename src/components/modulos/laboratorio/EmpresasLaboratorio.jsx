@@ -78,6 +78,23 @@ const EmpresasLaboratorios = () => {
     }
 
     const rutFormateado = formatearRut(formData.rut);
+    const nombreTrimmed = formData.nombre.trim().toLowerCase();
+
+    // 1. Validar RUT duplicado (excluyendo el registro actual si se está editando)
+    const existeRut = laboratorios.some(l => 
+      l.rut === rutFormateado && l.id !== editingId
+    );
+    if (existeRut) {
+      return showToast("Ya existe un laboratorio registrado con este RUT", "error");
+    }
+
+    // 2. Validar Nombre duplicado (excluyendo el registro actual si se está editando)
+    const existeNombre = laboratorios.some(l => 
+      l.nombre.trim().toLowerCase() === nombreTrimmed && l.id !== editingId
+    );
+    if (existeNombre) {
+      return showToast("Ya existe un laboratorio registrado con este Nombre", "error");
+    }
 
     try {
       if (editingId) {
@@ -172,7 +189,7 @@ const EmpresasLaboratorios = () => {
     } catch (error) {
       console.error("Error cargando logs:", error);
       showToast("Error al cargar el historial", "error");
-    } finally {
+    } finally { 
       setLoadingLogs(false);
     }
   };
