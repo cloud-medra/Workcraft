@@ -66,7 +66,7 @@ const XmlFacturasLaboratorio = () => {
     return onSnapshot(q, (snapshot) => setFacturas(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [filtroAnio, filtroMes]);
 
-  // Importar XML
+  // Importar XML con registro de Log
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
     let omitidos = 0;
@@ -120,8 +120,11 @@ const XmlFacturasLaboratorio = () => {
         setAniosDisponibles(prev => Array.from(new Set([...prev, anio])).sort((a, b) => b - a));
         setMesesDisponibles(prev => Array.from(new Set([...prev, nombreMes])));
 
-        // Guardar factura con estado por defecto
-        await addDoc(colRef, {
+        const usuarioActual = userData?.nombreCompleto || 'Usuario Desconocido';
+        const fechaActual = new Date();
+
+        // 1. Guardar la factura en Firestore
+        const docRefFactura = await addDoc(colRef, {
           folio: folio ?? "",
           folioRef: folioRef ?? "N/A",
           fchEmis: fchEmis ?? "",
@@ -130,8 +133,18 @@ const XmlFacturasLaboratorio = () => {
           estado: "Iniciar Ingreso",
           xmlOriginal: text,
           detalles,
-          registeredPor: userData?.nombreCompleto || 'Usuario',
-          fechaRegistro: new Date()
+          registeredPor: usuarioActual,
+          fechaRegistro: fechaActual
+        });
+
+        // 2. Registrar el Log de creación
+        await addDoc(collection(db, "laboratorio_facturas_logs"), {
+          facturaId: docRefFactura.id,
+          folio: folio ?? "",
+          accion: "CREACION",
+          detalle: "Factura importada vía XML",
+          usuario: usuarioActual,
+          fecha: fechaActual
         });
       }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { FileText, Trash2, Search, Eye, Settings } from 'lucide-react';
+import { FileText, Trash2, Search, Eye, Settings, History, X } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
@@ -17,6 +17,12 @@ const FacturasRecibidas = () => {
   // Estados para controlar los modales
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
   const [facturaParaConfigurar, setFacturaParaConfigurar] = useState(null);
+
+  // Estados para el Drawer Lateral de Historial / Logs
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [selectedFacturaForLog, setSelectedFacturaForLog] = useState(null);
+  const [logsList, setLogsList] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const [filtroAnio, setFiltroAnio] = useState("");
   const [filtroMes, setFiltroMes] = useState("");
@@ -70,6 +76,43 @@ const FacturasRecibidas = () => {
     confirmAction("Eliminar Factura", "¿Estás seguro de eliminar este registro?", async () => {
       await deleteDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", id));
       showToast("Factura eliminada", "info");
+    });
+  };
+
+  // Abrir Panel Lateral de Logs
+  const abrirHistorialLogs = async (factura) => {
+    setSelectedFacturaForLog(factura);
+    setShowLogModal(true);
+    setLoadingLogs(true);
+
+    try {
+      // Nota: Estructura base para consultar logs cuando definamos el guardado de datos
+      const q = query(
+        collection(db, "laboratorio_facturas_logs"),
+        where("facturaId", "==", factura.id),
+        orderBy("fecha", "desc")
+      );
+      const snapshot = await getDocs(q);
+      const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLogsList(logsData);
+    } catch (error) {
+      console.error("Error cargando logs:", error);
+      // Evitamos alertear si la colección aún no contiene datos
+      setLogsList([]);
+    } finally { //  CORREGIDO
+      setLoadingLogs(false);
+    }
+  };
+
+  const formatearFecha = (fecha) => {
+    if (!fecha) return 'N/A';
+    const date = fecha.toDate ? fecha.toDate() : new Date(fecha);
+    return date.toLocaleString('es-ES', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -189,6 +232,15 @@ const FacturasRecibidas = () => {
 
                   <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                     <div className="flex justify-center gap-1.5">
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_log") && (
+                        <button 
+                          onClick={() => abrirHistorialLogs(f)} 
+                          className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                          title="Ver Historial / Logs"
+                        >
+                          <History size={13} />
+                        </button>
+                      )}
                       {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
                         <button 
                           onClick={() => setFacturaSeleccionada(f)} 
@@ -242,6 +294,99 @@ const FacturasRecibidas = () => {
           onClose={() => setFacturaParaConfigurar(null)} 
         />
       )}
+
+      {/* BACKDROP Y PANEL LATERAL DERECHA (DRAWER DE LOGS) */}
+      <div 
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity duration-300 ${
+          showLogModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setShowLogModal(false)}
+      />
+
+      <aside 
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 ease-in-out text-[11px] ${
+          showLogModal ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Cabecera Fija del Panel */}
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/80 dark:bg-gray-900/80 shrink-0">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="p-1.5 rounded-md bg-[#2383C2]/10 dark:bg-[#2383C2]/20 text-[#2383C2]">
+              <History size={16} />
+            </div>
+            <div className="truncate">
+              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 truncate">
+                Historial de Cambios
+              </h3>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                Folio: {selectedFacturaForLog?.folio} - {selectedFacturaForLog?.rznSoc}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold">
+              {logsList.length} logs
+            </span>
+            <button 
+              onClick={() => setShowLogModal(false)} 
+              className="p-1 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Contenido con Scroll Vertical */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {loadingLogs ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-500 dark:text-gray-400">
+              <div className="w-6 h-6 border-2 border-[#2383C2] border-t-transparent rounded-full animate-spin mb-2" />
+              <p className="text-[10px]">Cargando historial...</p>
+            </div>
+          ) : logsList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-center px-4">
+              <History size={32} className="mb-2 opacity-30" />
+              <p className="text-[11px] font-medium">Sin registros</p>
+              <p className="text-[10px]">No hay actividad documentada para esta factura.</p>
+            </div>
+          ) : (
+            logsList.map((log) => (
+              <div key={log.id} className="p-3 border border-gray-200 dark:border-gray-700/80 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 text-[10px] space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                    log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' :
+                    log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
+                    'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400'
+                  }`}>
+                    {log.accion}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
+                    {formatearFecha(log.fecha)}
+                  </span>
+                </div>
+
+                <p className="text-gray-700 dark:text-gray-300 font-semibold">
+                  Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario}</span>
+                </p>
+
+                <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200/80 dark:border-gray-700 text-[10px]">
+                  {/* Aquí se desplegarán las diferencias/detalles del log en el siguiente paso */}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Pie Fijo del Panel */}
+        <div className="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900/80 shrink-0">
+          <button 
+            onClick={() => setShowLogModal(false)} 
+            className="px-4 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-bold transition"
+          >
+            Cerrar
+          </button>
+        </div>
+      </aside>
     </div>
   );
 };
