@@ -15,8 +15,8 @@ const CodigoLaboratorio = () => {
   const [editingId, setEditingId] = useState(null);
   const [cargando, setCargando] = useState(false);
 
-  // Estados para el Modal de Historial / Logs
-  const [showLogModal, setShowLogModal] = useState(false);
+  // Estados para el Panel Lateral de Historial / Logs
+  const [showLogDrawer, setShowLogDrawer] = useState(false);
   const [selectedCodigoForLog, setSelectedCodigoForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -90,18 +90,19 @@ const CodigoLaboratorio = () => {
           fechaRegistro: codigoExistente?.fechaRegistro || new Date()
         };
 
+        // Construir objeto solo con los campos que realmente cambiaron
+        const cambios = {};
+        if (codigoExistente?.referencia !== refUpper) cambios.referencia = refUpper;
+        if (codigoExistente?.codigo !== formData.codigo) cambios.codigo = formData.codigo;
+        if (Number(codigoExistente?.precio) !== precioNum) cambios.precio = precioNum;
+        if ((codigoExistente?.descripcion || '') !== descUpper) cambios.descripcion = descUpper;
+
         await updateDoc(doc(db, COL_CODIGOS, editingId), dataAEnviar);
 
-        await registrarLog(editingId, 'EDICION', {
-          referenciaAnterior: codigoExistente?.referencia,
-          referenciaNueva: refUpper,
-          codigoAnterior: codigoExistente?.codigo,
-          codigoNuevo: formData.codigo,
-          precioAnterior: codigoExistente?.precio,
-          precioNuevo: precioNum,
-          descripcionAnterior: codigoExistente?.descripcion,
-          descripcionNueva: descUpper
-        });
+        // Si hubo cambios reales, registrar el log con los nuevos valores
+        if (Object.keys(cambios).length > 0) {
+          await registrarLog(editingId, 'EDICION', cambios);
+        }
 
         showToast("Código actualizado correctamente", "success");
       } else {
@@ -160,7 +161,7 @@ const CodigoLaboratorio = () => {
 
   const abrirHistorialLogs = async (item) => {
     setSelectedCodigoForLog(item);
-    setShowLogModal(true);
+    setShowLogDrawer(true);
     setLoadingLogs(true);
 
     try {
@@ -306,92 +307,117 @@ const CodigoLaboratorio = () => {
         </div>
       )}
 
-      {/* Modal Historial de Cambios / Logs */}
-      {showLogModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3">
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-lg w-full max-w-lg border border-gray-200 dark:border-gray-700 flex flex-col text-[11px] overflow-hidden">
-            
-            {/* Cabecera Fija del Modal */}
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800 shrink-0">
-              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 truncate">
-                <History size={14} className="text-[#2383C2] shrink-0" /> Historial - {selectedCodigoForLog?.referencia} ({selectedCodigoForLog?.codigo})
-              </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-400 font-medium">({logsList.length} registros)</span>
-                <button onClick={() => setShowLogModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Contenedor con Altura Fija y Scrollbar Interno */}
-            <div className="p-3 overflow-y-auto max-h-[380px] min-h-[180px] space-y-2">
-              {loadingLogs ? (
-                <p className="text-[10px] text-center text-gray-500 dark:text-gray-400 py-6">Cargando historial...</p>
-              ) : logsList.length === 0 ? (
-                <p className="text-[10px] text-center text-gray-500 dark:text-gray-400 py-6">No hay logs registrados para este código.</p>
-              ) : (
-                logsList.map((log) => (
-                  <div key={log.id} className="p-2 border border-gray-200 dark:border-gray-700 rounded bg-gray-50/70 dark:bg-gray-900/40 text-[10px]">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                        log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
-                        log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                        'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                      }`}>
-                        {log.accion}
-                      </span>
-                      <span className="text-gray-400 text-[9px]">{formatearFecha(log.fecha)}</span>
-                    </div>
-
-                    <p className="text-gray-700 dark:text-gray-300 font-semibold mb-1">Usuario: <span className="font-normal">{log.usuario}</span></p>
-
-                    <div className="text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-1.5 rounded border border-gray-100 dark:border-gray-700 text-[10px]">
-                      {log.accion === 'CREACION' && (
-                        <div className="space-y-0.5">
-                          <p><strong>Referencia:</strong> {log.detalles?.referencia}</p>
-                          <p><strong>Código:</strong> {log.detalles?.codigo}</p>
-                          <p><strong>Precio:</strong> $ {Number(log.detalles?.precio || 0).toLocaleString('es-CL')}</p>
-                          <p><strong>Descripción:</strong> {log.detalles?.descripcion || 'N/A'}</p>
-                        </div>
-                      )}
-
-                      {log.accion === 'EDICION' && (
-                        <ul className="space-y-0.5 list-disc list-inside">
-                          {log.detalles?.referenciaAnterior !== log.detalles?.referenciaNueva && (
-                            <li>Referencia: <span className="text-red-500 font-medium">{log.detalles?.referenciaAnterior}</span> {'->'} <span className="text-green-600 font-medium">{log.detalles?.referenciaNueva}</span></li>
-                          )}
-                          {log.detalles?.codigoAnterior !== log.detalles?.codigoNuevo && (
-                            <li>Código: <span className="text-red-500 font-medium">{log.detalles?.codigoAnterior}</span> {'->'} <span className="text-green-600 font-medium">{log.detalles?.codigoNuevo}</span></li>
-                          )}
-                          {log.detalles?.precioAnterior !== log.detalles?.precioNuevo && (
-                            <li>Precio: <span className="text-red-500 font-medium">${Number(log.detalles?.precioAnterior || 0).toLocaleString('es-CL')}</span> {'->'} <span className="text-green-600 font-medium">${Number(log.detalles?.precioNuevo || 0).toLocaleString('es-CL')}</span></li>
-                          )}
-                          {log.detalles?.descripcionAnterior !== log.detalles?.descripcionNueva && (
-                            <li>Descripción: <span className="text-red-500 font-medium">{log.detalles?.descripcionAnterior || 'Vacío'}</span> {'->'} <span className="text-green-600 font-medium">{log.detalles?.descripcionNueva || 'Vacío'}</span></li>
-                          )}
-                        </ul>
-                      )}
-
-                      {log.accion === 'ELIMINACION' && (
-                        <p className="text-red-500">Registro eliminado ({log.detalles?.referencia} - {log.detalles?.codigo})</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Pie Fijo del Modal */}
-            <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-800 shrink-0">
-              <button onClick={() => setShowLogModal(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-bold transition">
-                Cerrar
-              </button>
-            </div>
-
-          </div>
-        </div>
+      {/* Backdrop del Panel Lateral */}
+      {showLogDrawer && (
+        <div 
+          onClick={() => setShowLogDrawer(false)} 
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300" 
+        />
       )}
+
+      {/* Drawer Panel Lateral Derecho */}
+      <div className={`fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-300 ease-in-out ${
+        showLogDrawer ? 'translate-x-0' : 'translate-x-full'
+      }`}>
+        
+        {/* Encabezado del Panel Lateral */}
+        <div className="px-3 py-2.5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900 shrink-0">
+          <div className="flex items-center gap-2 truncate">
+            <History size={15} className="text-[#2383C2] shrink-0" />
+            <div className="truncate">
+              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 truncate">
+                Historial de Cambios
+              </h3>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                Ref: <span className="font-semibold text-gray-700 dark:text-gray-300">{selectedCodigoForLog?.referencia}</span> ({selectedCodigoForLog?.codigo})
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowLogDrawer(false)} 
+            className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Cuerpo / Lista del Panel */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+          {loadingLogs ? (
+            <div className="flex flex-col items-center justify-center h-48 gap-2">
+              <Spinner size="sm" color="#2383C2" />
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">Cargando historial...</p>
+            </div>
+          ) : logsList.length === 0 ? (
+            <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
+              No hay registros de auditoría para este código.
+            </div>
+          ) : (
+            logsList.map((log) => (
+              <div key={log.id} className="p-2.5 border border-gray-200 dark:border-gray-700/80 rounded-md bg-gray-50/60 dark:bg-gray-900/40 text-[10px] space-y-1.5 shadow-sm">
+                <div className="flex justify-between items-center">
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                    log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
+                    log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
+                    'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                  }`}>
+                    {log.accion}
+                  </span>
+                  <span className="text-gray-400 text-[9px]">{formatearFecha(log.fecha)}</span>
+                </div>
+
+                <p className="text-gray-700 dark:text-gray-300 font-medium">
+                  Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario}</span>
+                </p>
+
+                <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700/60 text-[10px]">
+                  {log.accion === 'CREACION' && (
+                    <div className="space-y-0.5">
+                      <p><strong>Referencia:</strong> {log.detalles?.referencia}</p>
+                      <p><strong>Código:</strong> {log.detalles?.codigo}</p>
+                      <p><strong>Precio:</strong> $ {Number(log.detalles?.precio || 0).toLocaleString('es-CL')}</p>
+                      <p><strong>Descripción:</strong> {log.detalles?.descripcion || 'N/A'}</p>
+                    </div>
+                  )}
+
+                  {log.accion === 'EDICION' && (
+                    <ul className="space-y-0.5">
+                      {log.detalles?.referencia !== undefined && (
+                        <li><strong>Referencia:</strong> {log.detalles.referencia}</li>
+                      )}
+                      {log.detalles?.codigo !== undefined && (
+                        <li><strong>Código:</strong> {log.detalles.codigo}</li>
+                      )}
+                      {log.detalles?.precio !== undefined && (
+                        <li><strong>Precio:</strong> $ {Number(log.detalles.precio).toLocaleString('es-CL')}</li>
+                      )}
+                      {log.detalles?.descripcion !== undefined && (
+                        <li><strong>Descripción:</strong> {log.detalles.descripcion || 'Vacío'}</li>
+                      )}
+                    </ul>
+                  )}
+
+                  {log.accion === 'ELIMINACION' && (
+                    <p className="text-red-500 font-medium">Registro eliminado ({log.detalles?.referencia} - {log.detalles?.codigo})</p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Pie del Panel Lateral */}
+        <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900 shrink-0 text-[10px] text-gray-500">
+          <span>{logsList.length} registros</span>
+          <button 
+            onClick={() => setShowLogDrawer(false)} 
+            className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded font-bold transition"
+          >
+            Cerrar
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 };

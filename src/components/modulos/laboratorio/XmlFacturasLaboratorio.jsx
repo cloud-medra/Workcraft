@@ -120,13 +120,14 @@ const XmlFacturasLaboratorio = () => {
         setAniosDisponibles(prev => Array.from(new Set([...prev, anio])).sort((a, b) => b - a));
         setMesesDisponibles(prev => Array.from(new Set([...prev, nombreMes])));
 
-        // Guardar factura (solo campos indispensables)
+        // Guardar factura con estado por defecto
         await addDoc(colRef, {
           folio: folio ?? "",
           folioRef: folioRef ?? "N/A",
           fchEmis: fchEmis ?? "",
           rznSoc: xmlDoc.getElementsByTagName("RznSoc")[0]?.textContent || "Sin Razón Social",
           total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent ?? "0",
+          estado: "Iniciar Ingreso",
           xmlOriginal: text,
           detalles,
           registeredPor: userData?.nombreCompleto || 'Usuario',
@@ -160,7 +161,8 @@ const XmlFacturasLaboratorio = () => {
   const facturasFiltradas = facturas.filter(f => 
     f.folio?.includes(busqueda) || 
     f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) || 
-    f.folioRef?.includes(busqueda)
+    f.folioRef?.includes(busqueda) ||
+    f.estado?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
@@ -225,7 +227,7 @@ const XmlFacturasLaboratorio = () => {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]"
-              placeholder="Buscar por Folio, Ref o Razón Social..."
+              placeholder="Buscar por Folio, Ref, Razón Social o Estado..."
             />
           </div>
         )}
@@ -238,11 +240,12 @@ const XmlFacturasLaboratorio = () => {
             <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-8 text-center">#</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%]">Folio</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%]">Emisión</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%]">Ref.</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[34%]">Razón Social</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%] text-right">Total (Neto)</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Folio</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Emisión</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Ref.</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[30%]">Razón Social</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%] text-center">Estado</th>
                 <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[10%] text-center">Acciones</th>
               </tr>
             </thead>
@@ -269,6 +272,11 @@ const XmlFacturasLaboratorio = () => {
                   </td>
                   <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
                     ${parseInt(f.total || 0).toLocaleString('es-CL')}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                      {f.estado || "Iniciar Ingreso"}
+                    </span>
                   </td>
                   <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                     <div className="flex justify-center gap-2">

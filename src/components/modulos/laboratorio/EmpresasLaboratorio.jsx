@@ -13,7 +13,7 @@ const EmpresasLaboratorios = () => {
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
 
-  // Estados para el Modal de Historial / Logs
+  // Estados para el Drawer Lateral de Historial / Logs
   const [showLogModal, setShowLogModal] = useState(false);
   const [selectedLabForLog, setSelectedLabForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
@@ -296,88 +296,145 @@ const EmpresasLaboratorios = () => {
         </div>
       )}
 
-      {/* Modal Historial de Cambios / Logs */}
-      {showLogModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3">
-          <div className="bg-white dark:bg-gray-800 rounded-md shadow-lg w-full max-w-lg border border-gray-200 dark:border-gray-700 flex flex-col text-[11px] overflow-hidden">
-            
-            {/* Cabecera Fija del Modal */}
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800 shrink-0">
-              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1.5 truncate">
-                <History size={14} className="text-[#2383C2] shrink-0" /> Historial - {selectedLabForLog?.nombre}
+      {/* Backdrop y Panel Lateral Derecha (Drawer) */}
+      <div 
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity duration-300 ${
+          showLogModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setShowLogModal(false)}
+      />
+
+      <aside 
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 ease-in-out text-[11px] ${
+          showLogModal ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {/* Cabecera Fija del Panel */}
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/80 dark:bg-gray-900/80 shrink-0">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="p-1.5 rounded-md bg-[#2383C2]/10 dark:bg-[#2383C2]/20 text-[#2383C2]">
+              <History size={16} />
+            </div>
+            <div className="truncate">
+              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 truncate">
+                Historial de Cambios
               </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-400 font-medium">({logsList.length} registros)</span>
-                <button onClick={() => setShowLogModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                  <X size={14} />
-                </button>
-              </div>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                {selectedLabForLog?.nombre}
+              </p>
             </div>
-
-            {/* Contenedor con Altura Fija y Scrollbar Interno */}
-            <div className="p-3 overflow-y-auto max-h-[380px] min-h-[180px] space-y-2">
-              {loadingLogs ? (
-                <p className="text-[10px] text-center text-gray-500 dark:text-gray-400 py-6">Cargando historial...</p>
-              ) : logsList.length === 0 ? (
-                <p className="text-[10px] text-center text-gray-500 dark:text-gray-400 py-6">No hay logs registrados para este laboratorio.</p>
-              ) : (
-                logsList.map((log) => (
-                  <div key={log.id} className="p-2 border border-gray-200 dark:border-gray-700 rounded bg-gray-50/70 dark:bg-gray-900/40 text-[10px]">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                        log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
-                        log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                        'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
-                      }`}>
-                        {log.accion}
-                      </span>
-                      <span className="text-gray-400 text-[9px]">{formatearFecha(log.fecha)}</span>
-                    </div>
-
-                    <p className="text-gray-700 dark:text-gray-300 font-semibold mb-1">Usuario: <span className="font-normal">{log.usuario}</span></p>
-
-                    <div className="text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 p-1.5 rounded border border-gray-100 dark:border-gray-700 text-[10px]">
-                      {log.accion === 'CREACION' && (
-                        <div className="space-y-0.5">
-                          <p><strong>Nombre:</strong> {log.detalles?.nombre}</p>
-                          <p><strong>RUT:</strong> {log.detalles?.rut}</p>
-                          <p><strong>Estado:</strong> {log.detalles?.estado}</p>
-                        </div>
-                      )}
-
-                      {log.accion === 'EDICION' && (
-                        <ul className="space-y-0.5 list-disc list-inside">
-                          {log.detalles?.nombreAnterior !== log.detalles?.nombreNuevo && (
-                            <li>Nombre: <span className="text-red-500 font-medium">{log.detalles?.nombreAnterior}</span> {'->'} <span className="text-green-600 font-medium">{log.detalles?.nombreNuevo}</span></li>
-                          )}
-                          {log.detalles?.rutAnterior !== log.detalles?.rutNuevo && (
-                            <li>RUT: <span className="text-red-500 font-medium">{log.detalles?.rutAnterior}</span> {'->'} <span className="text-green-600 font-medium">{log.detalles?.rutNuevo}</span></li>
-                          )}
-                          {log.detalles?.estadoAnterior !== log.detalles?.estadoNuevo && (
-                            <li>Estado: <span className="text-red-500 font-medium">{log.detalles?.estadoAnterior}</span> {'->'} <span className="text-green-600 font-medium">{log.detalles?.estadoNuevo}</span></li>
-                          )}
-                        </ul>
-                      )}
-
-                      {log.accion === 'ELIMINACION' && (
-                        <p className="text-red-500">Registro eliminado ({log.detalles?.nombre} - {log.detalles?.rut})</p>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Pie Fijo del Modal */}
-            <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-800 shrink-0">
-              <button onClick={() => setShowLogModal(false)} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-bold transition">
-                Cerrar
-              </button>
-            </div>
-
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold">
+              {logsList.length} logs
+            </span>
+            <button 
+              onClick={() => setShowLogModal(false)} 
+              className="p-1 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Contenido con Scroll Vertical */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {loadingLogs ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-500 dark:text-gray-400">
+              <div className="w-6 h-6 border-2 border-[#2383C2] border-t-transparent rounded-full animate-spin mb-2" />
+              <p className="text-[10px]">Cargando historial...</p>
+            </div>
+          ) : logsList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-center px-4">
+              <History size={32} className="mb-2 opacity-30" />
+              <p className="text-[11px] font-medium">Sin registros</p>
+              <p className="text-[10px]">No hay actividad documentada para este laboratorio.</p>
+            </div>
+          ) : (
+            logsList.map((log) => (
+              <div key={log.id} className="p-3 border border-gray-200 dark:border-gray-700/80 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 text-[10px] space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                    log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' :
+                    log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
+                    'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400'
+                  }`}>
+                    {log.accion}
+                  </span>
+                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
+                    {formatearFecha(log.fecha)}
+                  </span>
+                </div>
+
+                <p className="text-gray-700 dark:text-gray-300 font-semibold">
+                  Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario}</span>
+                </p>
+
+                <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200/80 dark:border-gray-700 text-[10px]">
+                  {log.accion === 'CREACION' && (
+                    <div className="space-y-1">
+                      <p><strong className="text-gray-500 dark:text-gray-400">Nombre:</strong> {log.detalles?.nombre}</p>
+                      <p><strong className="text-gray-500 dark:text-gray-400">RUT:</strong> {log.detalles?.rut}</p>
+                      <p><strong className="text-gray-500 dark:text-gray-400">Estado:</strong> {log.detalles?.estado}</p>
+                    </div>
+                  )}
+
+                  {log.accion === 'EDICION' && (
+                    <ul className="space-y-1">
+                      {log.detalles?.nombreAnterior !== log.detalles?.nombreNuevo && (
+                        <li className="flex flex-col gap-0.5">
+                          <span className="text-gray-400 text-[9px] font-bold">Nombre</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.nombreAnterior}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.nombreNuevo}</span>
+                          </div>
+                        </li>
+                      )}
+                      {log.detalles?.rutAnterior !== log.detalles?.rutNuevo && (
+                        <li className="flex flex-col gap-0.5">
+                          <span className="text-gray-400 text-[9px] font-bold">RUT</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.rutAnterior}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.rutNuevo}</span>
+                          </div>
+                        </li>
+                      )}
+                      {log.detalles?.estadoAnterior !== log.detalles?.estadoNuevo && (
+                        <li className="flex flex-col gap-0.5">
+                          <span className="text-gray-400 text-[9px] font-bold">Estado</span>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.estadoAnterior}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.estadoNuevo}</span>
+                          </div>
+                        </li>
+                      )}
+                    </ul>
+                  )}
+
+                  {log.accion === 'ELIMINACION' && (
+                    <p className="text-red-500 dark:text-red-400 font-medium">
+                      Registro eliminado ({log.detalles?.nombre} - {log.detalles?.rut})
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Pie Fijo del Panel */}
+        <div className="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900/80 shrink-0">
+          <button 
+            onClick={() => setShowLogModal(false)} 
+            className="px-4 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-bold transition"
+          >
+            Cerrar
+          </button>
+        </div>
+      </aside>
     </div>
   );
 };

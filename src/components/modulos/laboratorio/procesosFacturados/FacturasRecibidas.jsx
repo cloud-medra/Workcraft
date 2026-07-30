@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { FileText, Trash2, Search, Eye } from 'lucide-react';
+import { FileText, Trash2, Search, Eye, Settings } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import DetalleFacturaModal from '../XmlDetallesFacturas';
+import ConfigDetallesFacturas from './ConfigDetallesFacturas';
 
 const FacturasRecibidas = () => {
   const [facturas, setFacturas] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
+  
+  // Estados para controlar los modales
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+  const [facturaParaConfigurar, setFacturaParaConfigurar] = useState(null);
+
   const [filtroAnio, setFiltroAnio] = useState("");
   const [filtroMes, setFiltroMes] = useState("");
 
@@ -71,7 +76,8 @@ const FacturasRecibidas = () => {
   const facturasFiltradas = facturas.filter(f => 
     f.folio?.includes(busqueda) || 
     f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) || 
-    f.folioRef?.includes(busqueda)
+    f.folioRef?.includes(busqueda) ||
+    f.estado?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
@@ -118,7 +124,7 @@ const FacturasRecibidas = () => {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]"
-              placeholder="Buscar por Folio, Ref o Razón Social..."
+              placeholder="Buscar por Folio, Ref, Razón Social o Estado..."
             />
           </div>
         )}
@@ -136,19 +142,22 @@ const FacturasRecibidas = () => {
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[24%]">Razón Social</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%] text-right">Total (Neto)</th>
                 
-                {/* Nuevas Columnas */}
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Estado</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Orden</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Acta</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Salida</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%] text-center">Mes imputado</th>
+                {/* Columnas de Control */}
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Estado</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Orden</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Acta</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Salida</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%] text-center">Mes imputado</th>
                 
                 <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
               {facturasFiltradas.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors">
+                <tr 
+                  key={f.id} 
+                  className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
+                >
                   <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
                     {f.folio}
                   </td>
@@ -165,8 +174,14 @@ const FacturasRecibidas = () => {
                     ${parseInt(f.total || 0).toLocaleString('es-CL')}
                   </td>
                   
-                  {/* Celdas Vacías Nuevas */}
-                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
+                  {/* Celda de Estado (Cargada desde Firestore) */}
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                      {f.estado || "Iniciar Ingreso"}
+                    </span>
+                  </td>
+
+                  {/* Resto de Celdas de Control */}
                   <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
                   <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
                   <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
@@ -181,6 +196,15 @@ const FacturasRecibidas = () => {
                           title="Ver Detalle"
                         >
                           <Eye size={13} />
+                        </button>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_configurar") && (
+                        <button 
+                          onClick={() => setFacturaParaConfigurar(f)} 
+                          className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                          title="Configurar"
+                        >
+                          <Settings size={13} />
                         </button>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
@@ -206,6 +230,16 @@ const FacturasRecibidas = () => {
         <DetalleFacturaModal 
           factura={facturaSeleccionada} 
           onClose={() => setFacturaSeleccionada(null)} 
+        />
+      )}
+
+      {/* MODAL DE CONFIGURACIÓN DE FACTURA */}
+      {facturaParaConfigurar && (
+        <ConfigDetallesFacturas 
+          factura={facturaParaConfigurar} 
+          filtroAnio={filtroAnio}
+          filtroMes={filtroMes}
+          onClose={() => setFacturaParaConfigurar(null)} 
         />
       )}
     </div>
