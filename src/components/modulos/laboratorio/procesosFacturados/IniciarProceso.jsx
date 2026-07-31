@@ -26,6 +26,19 @@ const IniciarProceso = () => {
   const PATH_VISTA = "/laboratorio/controlFactura";
   const COL_BASE = "laboratorio_facturasXml";
 
+  // Función para formatear fechas de emisión a dd/mm/yyyy
+  const formatearFechaEmision = (fechaStr) => {
+    if (!fechaStr) return '';
+    const partes = fechaStr.replace(/-/g, '/').split('/');
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      if (anio.length === 4) {
+        return `${dia}/${mes}/${anio}`;
+      }
+    }
+    return fechaStr;
+  };
+
   // Cargar Años Disponibles
   useEffect(() => {
     const cargarAnios = async () => {
@@ -308,7 +321,7 @@ const IniciarProceso = () => {
                           {f.folio}
                         </td>
                         <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                          {f.fchEmis}
+                          {formatearFechaEmision(f.fchEmis)}
                         </td>
                         <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
                           {f.folioRef}

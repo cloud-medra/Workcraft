@@ -1,8 +1,8 @@
 // src/components/facturas/VinculacionCodigos.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { ClipboardList, Search, RefreshCw, Link as LinkIcon } from 'lucide-react';
+import { ClipboardList, Search, RefreshCw } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
@@ -21,6 +21,19 @@ const VinculacionCodigos = () => {
   const PATH_VISTA = "/laboratorio/controlFactura";
   const COL_BASE = "laboratorio_facturasXml";
 
+  // Función para formatear fechas de emisión a dd/mm/yyyy
+  const formatearFechaEmision = (fechaStr) => {
+    if (!fechaStr) return '';
+    const partes = fechaStr.replace(/-/g, '/').split('/');
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      if (anio.length === 4) {
+        return `${dia}/${mes}/${anio}`;
+      }
+    }
+    return fechaStr;
+  };
+
   // Cargar Años Disponibles
   useEffect(() => {
     const cargarAnios = async () => {
@@ -35,7 +48,7 @@ const VinculacionCodigos = () => {
     cargarAnios();
   }, []);
 
-  // Cargar facturas en estado "En Proceso"
+  // Cargar facturas en estado "Proceso Iniciado"
   const cargarFacturasEnProceso = async () => {
     if (!filtroAnio) {
       setFacturas([]);
@@ -53,7 +66,8 @@ const VinculacionCodigos = () => {
         
         docsSnap.docs.forEach(d => {
           const data = d.data();
-          if (data.estado === "En Proceso") {
+          // Filtrar únicamente los documentos con estado "Proceso Iniciado"
+          if (data.estado === "Proceso Iniciado") {
             docsAcumulados.push({
               id: d.id,
               mesId,
@@ -66,8 +80,8 @@ const VinculacionCodigos = () => {
       docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
       setFacturas(docsAcumulados);
     } catch (error) {
-      console.error("Error al cargar facturas en proceso:", error);
-      showToast("Error al obtener las facturas en proceso", "error");
+      console.error("Error al cargar facturas en proceso iniciado:", error);
+      showToast("Error al obtener las facturas en proceso iniciado", "error");
     } finally {
       setLoading(false);
     }
@@ -91,7 +105,7 @@ const VinculacionCodigos = () => {
         <div className="flex items-center gap-2">
           <ClipboardList size={16} className="text-[#2383C2]" />
           <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Vinculación de Códigos (Estado: En Proceso)
+            Vinculación de Códigos (Estado: Proceso Iniciado)
           </span>
         </div>
       </header>
@@ -136,12 +150,12 @@ const VinculacionCodigos = () => {
         </button>
       </div>
 
-      {/* TABLA DE FACTURAS EN PROCESO */}
+      {/* TABLA DE FACTURAS EN PROCESO INICIADO */}
       {hasPermission(PATH_VISTA, "tabla_facturas") && (
         <div className="flex-grow overflow-auto">
           {loading ? (
             <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400">
-              Cargando facturas en proceso del año {filtroAnio}...
+              Cargando facturas en proceso iniciado del año {filtroAnio}...
             </div>
           ) : (
             <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[800px]">
@@ -160,7 +174,7 @@ const VinculacionCodigos = () => {
                   <tr>
                     <td colSpan="6" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                       {filtroAnio 
-                        ? "No hay facturas en estado 'En Proceso' para este año." 
+                        ? "No hay facturas en estado 'Proceso Iniciado' para este año." 
                         : "Seleccione un año para visualizar las facturas."}
                     </td>
                   </tr>
@@ -174,7 +188,7 @@ const VinculacionCodigos = () => {
                         {f.folio}
                       </td>
                       <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                        {f.fchEmis}
+                        {formatearFechaEmision(f.fchEmis)}
                       </td>
                       <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
                         {f.folioRef}

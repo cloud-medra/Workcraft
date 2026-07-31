@@ -4,6 +4,21 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
 import { useToast } from '../../../../context/ToastContext';
 
+// Funciones para normalizar el formato dd/mm/yyyy
+const formatToDDMMYYYY = (dateStr) => {
+  if (!dateStr) return '';
+  if (dateStr.includes('/')) return dateStr;
+  const [year, month, day] = dateStr.split('T')[0].split('-');
+  return (year && month && day) ? `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}` : dateStr;
+};
+
+const formatToYYYYMMDD = (dateStr) => {
+  if (!dateStr) return '';
+  if (dateStr.includes('-')) return dateStr.split('T')[0];
+  const [day, month, year] = dateStr.split('/');
+  return (year && month && day) ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : '';
+};
+
 const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => {
   if (!factura) return null;
 
@@ -12,7 +27,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
 
   // --- ESTADOS GENERALES DE LA FACTURA ---
   const [folio, setFolio] = useState(factura.folio || '');
-  const [fchEmis, setFchEmis] = useState(factura.fchEmis || '');
+  const [fchEmis, setFchEmis] = useState(formatToDDMMYYYY(factura.fchEmis || ''));
   const [rznSoc, setRznSoc] = useState(factura.rznSoc || '');
   const [folioRef, setFolioRef] = useState(factura.folioRef || '');
   
@@ -79,7 +94,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
 
       await updateDoc(docRef, {
         folio,
-        fchEmis,
+        fchEmis, // Se guarda en Firestore con formato DD/MM/YYYY
         rznSoc,
         folioRef,
         estado,
@@ -140,14 +155,15 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
               />
             </div>
 
+            {/* FCH EMISIÓN EDITADO */}
             <div className="flex flex-col gap-0.5">
               <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                 <Calendar size={10} className="text-[#2383C2]" /> Fch. Emisión
               </label>
               <input
-                type="text"
-                value={fchEmis}
-                onChange={(e) => setFchEmis(e.target.value)}
+                type="date"
+                value={formatToYYYYMMDD(fchEmis)}
+                onChange={(e) => setFchEmis(formatToDDMMYYYY(e.target.value))}
                 className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:border-[#2383C2]"
               />
             </div>
@@ -179,7 +195,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
               />
             </div>
 
-            {/* SELECT CON LISTA DE ESTADOS ACTUALIZADA */}
             <div className="flex flex-col gap-0.5">
               <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase">Estado</label>
               <select
@@ -188,7 +203,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
                 className="h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:border-[#2383C2]"
               >
                 <option value="">-- Estado --</option>
-                <option value="En Proceso">En Proceso</option>
+                <option value="Poceso Iniciado">Poceso Iniciado</option>
                 <option value="Pendiente Vinculación">Pendiente Vinculación</option>
                 <option value="Códigos Vinculados">Códigos Vinculados</option>
                 <option value="Con Diferencias OC">Con Diferencias OC</option>
