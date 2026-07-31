@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-"deploy": "vite build && npx firebase-tools deploy"
+    "deploy": "vite build && npx firebase-tools deploy"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -18,7 +18,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.17.0",
-    "papaparse": "^5.5.3",
+    "papaparse": "^5.5.4",
     "pdfjs-dist": "^6.1.200",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
