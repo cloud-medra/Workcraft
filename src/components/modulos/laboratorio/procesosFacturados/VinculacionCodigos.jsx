@@ -1,7 +1,7 @@
 // src/components/facturas/VinculacionCodigos.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'; 
+import { db, auth } from '../../../../firebaseConfig'; // <-- Agregamos 'auth' aquí
 import { 
   ClipboardList, 
   Search, 
@@ -120,7 +120,7 @@ const VinculacionCodigos = () => {
     setFacturaSeleccionada(null);
   };
 
-  // Lógica de Vincular Códigos
+  // Lógica de Vincular Códigos con registro en subcolección 'logs'
   const handleVincularFactura = () => {
     if (!facturaSeleccionada || !facturaSeleccionada.detalles?.length) {
       showToast("La factura no contiene ítems para vincular", "error");
@@ -132,6 +132,9 @@ const VinculacionCodigos = () => {
       `¿Está seguro de procesar la vinculación para el folio ${facturaSeleccionada.folio}?`,
       async () => {
         try {
+          // Capturamos el estado general antes de modificarlo
+          const estadoAnteriorGeneral = facturaSeleccionada.estado || "Proceso Iniciado";
+
           // 1. Obtener catálogo maestro de códigos
           const codigosSnap = await getDocs(collection(db, COL_MAESTRO));
           
@@ -144,7 +147,7 @@ const VinculacionCodigos = () => {
             }
           });
 
-          // 3. Evaluar e ítems de la factura
+          // 3. Evaluar ítems de la factura
           let faltantesCount = 0;
           let diferenciasCount = 0;
           let vinculadosOKCount = 0;
@@ -193,7 +196,17 @@ const VinculacionCodigos = () => {
             nuevoEstadoGeneral = "Diferencia Precios";
           }
 
-          // 5. Guardar actualización en Firestore
+          const currentUser = auth.currentUser;
+          const usuarioInfo = {
+            uid: currentUser?.uid || "desconocido",
+            email: currentUser?.email || "usuario_anonimo",
+            nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
+          };
+
+          const ahora = new Date();
+          const fechaHoraString = ahora.toLocaleString('es-CL');
+
+          // Referencia del documento en Firestore
           const docRef = doc(
             db, 
             COL_BASE, 
@@ -204,12 +217,34 @@ const VinculacionCodigos = () => {
             facturaSeleccionada.id
           );
 
+          // 5. Actualizar el documento principal
           await updateDoc(docRef, {
             detalles: nuevosDetalles,
             estado: nuevoEstadoGeneral
           });
 
-          // 6. Actualizar estado local
+          // 6. Registrar evento en la subcolección 'logs' incluyendo ambos estados
+          try {
+            const logsRef = collection(docRef, "logs");
+            await addDoc(logsRef, {
+              accion: "VINCULACION_CODIGOS",
+              detalle: `Vinculación procesada para el folio ${facturaSeleccionada.folio || facturaSeleccionada.id}`,
+              estadoAnterior: estadoAnteriorGeneral, // <-- Asegurado aquí
+              nuevoEstado: nuevoEstadoGeneral,       // <-- Asegurado aquí
+              resumen: {
+                vinculadosOK: vinculadosOKCount,
+                conDiferencias: diferenciasCount,
+                sinVincular: faltantesCount
+              },
+              fechaHora: fechaHoraString,
+              timestamp: serverTimestamp(),
+              usuario: usuarioInfo
+            });
+          } catch (logError) {
+            console.error("Error al escribir log de vinculación:", logError);
+          }
+
+          // 7. Actualizar estado local
           const facturaActualizada = {
             ...facturaSeleccionada,
             detalles: nuevosDetalles,
@@ -217,8 +252,6 @@ const VinculacionCodigos = () => {
           };
 
           setFacturaSeleccionada(facturaActualizada);
-
-          // Actualizar la lista global de facturas
           setFacturas(prev => prev.map(f => f.id === facturaActualizada.id ? facturaActualizada : f));
 
           showToast(
@@ -519,7 +552,7 @@ const VinculacionCodigos = () => {
               {loading ? (
                 <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400">
                   Cargando facturas del año {filtroAnio}...
-                </div>
+              </div>
               ) : (
                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[850px]">
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">

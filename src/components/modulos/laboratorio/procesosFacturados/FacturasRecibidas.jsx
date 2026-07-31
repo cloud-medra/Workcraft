@@ -361,6 +361,7 @@ const FacturasRecibidas = () => {
                     log.accion === 'INICIO_PROCESO' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
                     log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' :
                     log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
+                    log.accion === 'VINCULACION_CODIGOS' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300' :
                     'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
                   }`}>
                     {log.accion}
@@ -374,8 +375,22 @@ const FacturasRecibidas = () => {
                   Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario?.nombre || log.usuario?.email || "Usuario"}</span>
                 </p>
 
-                <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200/80 dark:border-gray-700 text-[10px]">
-                  {log.detalle || `Cambio de estado: ${log.estadoAnterior} → ${log.nuevoEstado}`}
+                <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200/80 dark:border-gray-700 text-[10px] space-y-1">
+                  {log.detalle && <p>{log.detalle}</p>}
+
+                  {log.estadoAnterior && log.nuevoEstado && (
+                    <div className="font-medium text-slate-700 dark:text-slate-200 pt-1 border-t border-slate-100 dark:border-gray-700">
+                      Estado: <span className="text-amber-600 dark:text-amber-400">{log.estadoAnterior}</span> ➔ <span className="text-emerald-600 dark:text-emerald-400">{log.nuevoEstado}</span>
+                    </div>
+                  )}
+
+                  {log.resumen && (
+                    <div className="text-[9px] text-slate-500 dark:text-gray-400 pt-1 flex gap-2">
+                      <span>✅ OK: {log.resumen.vinculadosOK}</span>
+                      <span>⚠️ Dif: {log.resumen.conDiferencias}</span>
+                      <span>❌ Sin vincular: {log.resumen.sinVincular}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))
