@@ -9,9 +9,7 @@ import {
     Tag,
     DollarSign,
     Activity,
-    ShoppingCart,
-    Check,
-    XCircle
+    ShoppingCart
 } from 'lucide-react';
 import DrawerSeleccionOC from './DrawerSeleccionOC';
 
@@ -36,6 +34,7 @@ const DetalleVinculacionOC = ({
     if (!factura) return null;
 
     // Cruzar Código Maestro de Factura con Código de los artículos de la OC
+    // y calcular diferencias de cantidad / precio por ítem + estado general del documento
     const handleConfirmarVinculacion = () => {
         if (!ocSeleccionada) return;
 
@@ -45,7 +44,16 @@ const DetalleVinculacionOC = ({
             const codMaestro = (item.codigoMaestro || '').toString().trim();
 
             if (!codMaestro) {
-                return { ...item, precioOC: null, cantidadOC: null, vincuOC: false };
+                return {
+                    ...item,
+                    precioOC: null,
+                    cantidadOC: null,
+                    vincuOC: false,
+                    diferenciaCantidad: false,
+                    diferenciaPrecio: false,
+                    vincuOCTexto: "Sin coincidencia en OC",
+                    estadoItem: item.estadoItem // Se mantiene el estado original
+                };
             }
 
             const coincidencia = articulosOC.find(art => {
@@ -54,19 +62,55 @@ const DetalleVinculacionOC = ({
             });
 
             if (coincidencia) {
-                const precioUnitOC = coincidencia["P.Unitario"] || 0;
-                const cantOC = coincidencia["Cant."] || 0;
+                const precioUnitOC = parseFloat(coincidencia["P.Unitario"] || 0);
+                const cantOC = parseFloat(coincidencia["Cant."] || 0);
+                const cantFactura = parseFloat(item.cantidad || 0);
+                const precioFactura = parseFloat(item.precio || 0);
+
+                // Diferencia de cantidad: la factura trae MÁS cantidad que lo autorizado en la OC
+                const hayDiferenciaCantidad = cantFactura > cantOC;
+                // Diferencia de precio: cualquier discrepancia entre precio facturado y precio OC
+                const hayDiferenciaPrecio = precioFactura !== precioUnitOC;
+
+                let vincuOCTexto = "Sin diferencias";
+                if (hayDiferenciaCantidad && hayDiferenciaPrecio) {
+                    vincuOCTexto = "Diferencia en cantidad y precio";
+                } else if (hayDiferenciaCantidad) {
+                    vincuOCTexto = "Diferencia en cantidad";
+                } else if (hayDiferenciaPrecio) {
+                    vincuOCTexto = "Diferencia en precio";
+                }
 
                 return {
                     ...item,
-                    precioOC: parseFloat(precioUnitOC),
-                    cantidadOC: parseFloat(cantOC),
-                    vincuOC: true   // hubo coincidencia real
+                    precioOC: precioUnitOC,
+                    cantidadOC: cantOC,
+                    vincuOC: true,
+                    diferenciaCantidad: hayDiferenciaCantidad,
+                    diferenciaPrecio: hayDiferenciaPrecio,
+                    vincuOCTexto,
+                    estadoItem: item.estadoItem // Se mantiene el estado original sin ser sobrescrito
                 };
             }
 
-            return { ...item, precioOC: null, cantidadOC: null, vincuOC: false };
+            return {
+                ...item,
+                precioOC: null,
+                cantidadOC: null,
+                vincuOC: false,
+                diferenciaCantidad: false,
+                diferenciaPrecio: false,
+                vincuOCTexto: "Sin coincidencia en OC",
+                estadoItem: item.estadoItem // Se mantiene el estado original
+            };
         });
+
+        // Estado general del documento: si CUALQUIER ítem tiene diferencia
+        // (de cantidad, de precio, o no encontró coincidencia en la OC) -> Diferencia Reportada
+        const hayAlgunaDiferencia = nuevosDetalles.some(
+            d => d.diferenciaCantidad || d.diferenciaPrecio || d.vincuOC === false
+        );
+        const estadoGeneral = hayAlgunaDiferencia ? "Diferencia Reportada" : "Listo para Ingreso";
 
         setDetallesProcesados(nuevosDetalles);
         setOcVinculadaActiva(ocSeleccionada);
@@ -75,7 +119,8 @@ const DetalleVinculacionOC = ({
         if (onVincular) {
             onVincular({
                 ordenCompra: ocSeleccionada,
-                detallesActualizados: nuevosDetalles
+                detallesActualizados: nuevosDetalles,
+                estadoGeneral
             });
         }
     };
@@ -169,7 +214,7 @@ const DetalleVinculacionOC = ({
 
             {/* TABLA DE DETALLES */}
             <div className="flex-grow overflow-auto">
-                <table className="w-full text-left text-[11px] border-collapse min-w-[1250px]">
+                <table className="w-full text-left text-[11px] border-collapse min-w-[1300px]">
                     <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
@@ -183,7 +228,7 @@ const DetalleVinculacionOC = ({
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-slate-200/60 dark:bg-gray-800/80 text-right text-slate-800 dark:text-gray-200">Precio Maestro</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cantidad OC</th>
-                            <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Vincu OC</th>
+                            <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-36 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Vincu OC</th>
                             <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-28 bg-slate-200/60 dark:bg-gray-800/80 text-center text-slate-800 dark:text-gray-200">Estado Ítem</th>
                         </tr>
                     </thead>
@@ -218,21 +263,24 @@ const DetalleVinculacionOC = ({
                                         {item.cantidadOC !== null && item.cantidadOC !== undefined ? item.cantidadOC : '-'}
                                     </td>
                                     <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center bg-blue-50/40 dark:bg-blue-950/20">
-                                        {item.vincuOC ? (
-                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                                <Check size={11} /> Sí
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-400">
-                                                <XCircle size={11} /> No
-                                            </span>
-                                        )}
+                                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${
+                                            item.vincuOCTexto === "Sin diferencias"
+                                                ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                                : item.vincuOCTexto === "Sin coincidencia en OC"
+                                                    ? "bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-400"
+                                                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                        }`}>
+                                            {item.vincuOCTexto || "-"}
+                                        </span>
                                     </td>
                                     <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center bg-slate-50/50 dark:bg-gray-900/30">
-                                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${item.estadoItem === 'Vinculado'
+                                        <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                            item.estadoItem === 'Vinculado'
                                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
-                                                : 'bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300'
-                                            }`}>
+                                                : item.estadoItem === 'Diferencia'
+                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
+                                                    : 'bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300'
+                                        }`}>
                                             {item.estadoItem || 'Pendiente'}
                                         </span>
                                     </td>

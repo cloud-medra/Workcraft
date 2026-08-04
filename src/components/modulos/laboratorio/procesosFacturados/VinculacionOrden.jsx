@@ -103,10 +103,11 @@ const VinculacionOrden = () => {
   const handleVolverALista = () => setFacturaSeleccionada(null);
 
   // Acción para vincular con Orden de Compra desde el panel lateral
-  const handleVincularOrdenCompra = ({ ordenCompra, detallesActualizados }) => {
+  const handleVincularOrdenCompra = ({ ordenCompra, detallesActualizados, estadoGeneral }) => {
     if (!facturaSeleccionada) return;
 
     const folioOC = ordenCompra?.folioCalculado || ordenCompra?.id || "N/A";
+    const estadoFinal = estadoGeneral || "Diferencia Reportada";
 
     confirmAction(
       "Confirmar Vinculación de OC",
@@ -133,9 +134,10 @@ const VinculacionOrden = () => {
             facturaSeleccionada.id
           );
 
-          // OJO: no se toca "estado". Sigue en "Procesar OC".
+          // Ahora sí se actualiza el estado general según los cálculos de diferencias
           await updateDoc(docRef, {
             detalles: detallesActualizados,
+            estado: estadoFinal,
             ordenCompraVinculada: {
               id: ordenCompra?.id || null,
               folio: folioOC,
@@ -147,25 +149,34 @@ const VinculacionOrden = () => {
           try {
             const logsRef = collection(docRef, "logs");
             await addDoc(logsRef, {
-              accion: "CRUCE_OC",
-              detalle: `Cruce de ítems con OC N° ${folioOC} sobre folio ${facturaSeleccionada.folio || facturaSeleccionada.id}`,
+              accion: "VINCULACION_OC",
+              detalle: `Cruce de ítems con OC N° ${folioOC} sobre folio ${facturaSeleccionada.folio || facturaSeleccionada.id} — Resultado: ${estadoFinal}`,
               fechaHora: fechaHoraString,
               timestamp: serverTimestamp(),
               usuario: usuarioInfo,
-              ocVinculadaId: ordenCompra?.id || null
+              ocVinculadaId: ordenCompra?.id || null,
+              estadoResultante: estadoFinal
             });
           } catch (logError) {
             console.error("Error al registrar log de OC:", logError);
           }
 
-          showToast(`Ítems cruzados con la OC N° ${folioOC}`, "success");
+          showToast(`Ítems cruzados con la OC N° ${folioOC} — ${estadoFinal}`, "success");
 
           // Refresca en memoria la factura seleccionada para que la vista
           // muestre los datos actualizados sin salir de la pantalla de detalle
           setFacturaSeleccionada(prev => prev
-            ? { ...prev, detalles: detallesActualizados, ordenCompraVinculada: { id: ordenCompra?.id, folio: folioOC } }
+            ? {
+                ...prev,
+                detalles: detallesActualizados,
+                estado: estadoFinal,
+                ordenCompraVinculada: { id: ordenCompra?.id, folio: folioOC }
+              }
             : prev
           );
+
+          // Como el estado ya no es "Procesar OC", la sacamos de la lista principal
+          setFacturas(prev => prev.filter(f => f.id !== facturaSeleccionada.id));
         } catch (error) {
           console.error("Error al cruzar Orden de Compra:", error);
           showToast("Error al procesar el cruce con la Orden de Compra", "error");
@@ -180,11 +191,19 @@ const VinculacionOrden = () => {
     f.folioRef?.includes(busqueda)
   );
 
-  const renderBadgeEstadoGeneral = (estado) => (
-    <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-      {estado || 'Procesar OC'}
-    </span>
-  );
+  const renderBadgeEstadoGeneral = (estado) => {
+    const estilos = {
+      "Procesar OC": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+      "Listo para Ingreso": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
+      "Diferencia Reportada": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
+    };
+    const clase = estilos[estado] || estilos["Procesar OC"];
+    return (
+      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${clase}`}>
+        {estado || 'Procesar OC'}
+      </span>
+    );
+  };
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
