@@ -5,25 +5,26 @@ import {
   FileText, 
   ClipboardList, 
   BarChart3, 
-  Settings, 
   FileSpreadsheet, 
   HelpCircle, 
   CheckSquare,
   ShieldAlert,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Link2 // Icono actualizado para Vinculación de Órdenes
 } from 'lucide-react'; 
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import FacturasRecibidas from './FacturasRecibidas';
 import IniciarProceso from './IniciarProceso';
 import VinculacionCodigos from './VinculacionCodigos';
+import VinculacionOrden from './VinculacionOrden'; // Componente importado
 
 // Lista de pestañas ordenada
 const ALL_TABS = [
   { id: 'recibidas', label: 'Facturas Recibidas', Icon: Inbox, perm: 'tab_recibidas' },
   { id: 'procesar', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_procesar' },
   { id: 'gestion', label: 'Vinculación de Códigos', Icon: ClipboardList, perm: 'tab_gestion' },
-  { id: 'ordenes', label: 'Enlazar Órdenes', Icon: Settings, perm: 'tab_ordenes' },
+  { id: 'ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_ordenes' }, // Nombre e icono actualizados
   { id: 'excel', label: 'Solicitud Excel', Icon: FileSpreadsheet, perm: 'tab_excel' },
   { id: 'listas', label: 'Facturas Listas', Icon: CheckSquare, perm: 'tab_listas' },
   { id: 'resumen', label: 'Resumen Facturas', Icon: BarChart3, perm: 'tab_resumen' },
@@ -135,8 +136,9 @@ const ControlFacturas = () => {
         {currentTabObj.id === 'recibidas' && <FacturasRecibidas />}
         {currentTabObj.id === 'procesar' && <IniciarProceso />}
         {currentTabObj.id === 'gestion' && <VinculacionCodigos />}
+        {currentTabObj.id === 'ordenes' && <VinculacionOrden />} {/* Renderizado del nuevo componente */}
 
-        {!['recibidas', 'procesar', 'gestion'].includes(currentTabObj.id) && (
+        {!['recibidas', 'procesar', 'gestion', 'ordenes'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">
             <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-[#2383C2] dark:text-[#369BCE] flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/40">
               <ActiveIcon size={20} />
