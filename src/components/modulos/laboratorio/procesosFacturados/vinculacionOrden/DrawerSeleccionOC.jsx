@@ -1,7 +1,7 @@
 // src/components/facturas/DrawerSeleccionOC.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { db } from '../../../../../firebaseConfig';
 import {
     ListOrdered,
     X,
@@ -114,7 +114,7 @@ const DrawerSeleccionOC = ({
         }
     }, [anioOC, panelAbierto]);
 
-    // 3. Cargar Órdenes de Compra (solo cabeceras, sin ítems todavía)
+    // 3. Cargar Órdenes de Compra (cabeceras)
     const cargarOrdenes = useCallback(async () => {
         if (!anioOC || !mesOC) {
             setOrdenes([]);
@@ -131,10 +131,10 @@ const DrawerSeleccionOC = ({
                 return {
                     id: d.id,
                     ...data,
-                    folioCalculado: data["Nro.Orden"] || d.id,
-                    proveedorCalculado: data["Proveedor"] || 'Sin Razón Social',
-                    montoCalculado: data.totalOrden || 0,
-                    fechaCalculada: data["F.Orden"] || 'N/A'
+                    folioCalculado: data["Nro.Orden"] || data.numero_oc || d.id,
+                    proveedorCalculado: data["Proveedor"] || data.proveedor || 'Sin Razón Social',
+                    montoCalculado: data.totalOrden || data.montoTotal || 0,
+                    fechaCalculada: data["F.Orden"] || data.fecha || 'N/A'
                 };
             });
 
@@ -161,8 +161,15 @@ const DrawerSeleccionOC = ({
         }
     }, [anioOC, mesOC, panelAbierto, cargarOrdenes]);
 
-    // 4. Al seleccionar una orden, traer recién ahí sus ítems reales
-    //    desde la subcolección: laboratorio_ordenes/{año}/meses/{mes}/ordenes/{nro}/documentos
+    // Helper para convertir cualquier formato de dinero/número a float válido
+    const parseMontoToFloat = (valor) => {
+        if (valor === undefined || valor === null || valor === '') return 0;
+        if (typeof valor === 'number') return valor;
+        const strVal = String(valor).replace(/[^0-9,-]/g, '').replace(',', '.');
+        return parseFloat(strVal) || 0;
+    };
+
+    // 4. Traer ítems de la orden y normalizar precio / cantidad
     const handleSeleccionarOrden = useCallback(async (oc) => {
         setCargandoItemsId(oc.id);
         try {
@@ -177,9 +184,45 @@ const DrawerSeleccionOC = ({
                 "documentos"
             );
             const docSnap = await getDocs(pathDocumentos);
-            const articulosOC = docSnap.docs.map(d => d.data());
 
-            setOcSeleccionada({ ...oc, articulosOC });
+            const articulosOC = docSnap.docs.map(d => {
+                const item = d.data();
+
+                const rawPrecio = item["P.Unitario"] ??
+                    item["Precio Net. Unitario"] ??
+                    item["P. Unitario"] ??
+                    item.precio_unitario ??
+                    item.precioOC ??
+                    item.precio ??
+                    0;
+
+                const rawCantidad = item["Cant."] ??
+                    item["Cantidad Pedida"] ??
+                    item["Cantidad"] ??
+                    item.cantidad_oc ??
+                    item.cantidad ??
+                    0;
+
+                const precio_oc = parseMontoToFloat(rawPrecio);
+                const cantidad_oc = parseMontoToFloat(rawCantidad);
+
+                return {
+                    id: d.id,
+                    ...item,
+                    precio_oc,
+                    cantidad_oc,
+                    // Claves alternativas estandarizadas
+                    precio: precio_oc,
+                    cantidad: cantidad_oc
+                };
+            });
+
+            setOcSeleccionada({
+                ...oc,
+                articulosOC,
+                // Mapeo global de la orden por si se requiere a nivel cabecera
+                montoTotal: parseMontoToFloat(oc.montoCalculado)
+            });
         } catch (error) {
             console.error("Error al cargar ítems de la OC:", error);
             setOcSeleccionada({ ...oc, articulosOC: [] });
@@ -301,8 +344,8 @@ const DrawerSeleccionOC = ({
                                         key={oc.id}
                                         onClick={() => handleSeleccionarOrden(oc)}
                                         className={`relative p-2.5 rounded border text-left cursor-pointer transition-all flex flex-col gap-1 ${esSeleccionado
-                                                ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/40'
-                                                : 'border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-slate-300'
+                                            ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/40'
+                                            : 'border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-slate-300'
                                             } ${estaCargando ? 'opacity-60 pointer-events-none' : ''}`}
                                     >
                                         <div className="flex items-center justify-between">

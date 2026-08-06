@@ -17,8 +17,8 @@ import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import FacturasRecibidas from './FacturasRecibidas';
 import IniciarProceso from './IniciarProceso';
 import VinculacionCodigos from './VinculacionCodigos';
-import VinculacionOrden from './VinculacionOrden';
-import SolicitudDiferencias from './SolicitudDiferencias'; // 1. Importación del nuevo componente
+import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
+import SolicitudDiferencias from './SolicitudDiferencias';
 
 // Lista de pestañas ordenada
 const ALL_TABS = [
