@@ -1,18 +1,6 @@
 // src/components/facturas/XmlFacturasLaboratorio.jsx
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  collection,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  query,
-  orderBy,
-  addDoc,
-  getDocs,
-  setDoc,
-  where,
-  serverTimestamp
-} from 'firebase/firestore';
+import { collection, onSnapshot, deleteDoc, doc, query, orderBy, addDoc, getDocs, setDoc, where, serverTimestamp } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import { db } from '../../../firebaseConfig';
 import { FileText, Trash2, Search, Upload, X, Eye } from 'lucide-react';
@@ -42,7 +30,7 @@ const XmlFacturasLaboratorio = () => {
   const PATH_VISTA = "/laboratorio/facturas";
   const COL_BASE = "laboratorio_facturasXml";
 
-  // Cargar Años disponibles
+  // Cargar Años
   useEffect(() => {
     const cargarAnios = async () => {
       try {
@@ -56,12 +44,9 @@ const XmlFacturasLaboratorio = () => {
     cargarAnios();
   }, []);
 
-  // Cargar Meses disponibles al seleccionar Año
+  // Cargar Meses al seleccionar Año
   useEffect(() => {
-    if (!filtroAnio) {
-      setMesesDisponibles([]);
-      return;
-    }
+    if (!filtroAnio) { setMesesDisponibles([]); return; }
     const cargarMeses = async () => {
       try {
         const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
@@ -74,29 +59,18 @@ const XmlFacturasLaboratorio = () => {
     cargarMeses();
   }, [filtroAnio]);
 
-  // Escuchar Facturas del Mes en tiempo real
+  // Escuchar Facturas del Mes
   useEffect(() => {
-    if (!filtroAnio || !filtroMes) {
-      setFacturas([]);
-      return;
-    }
+    if (!filtroAnio || !filtroMes) { setFacturas([]); return; }
     const path = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/documentos`;
     const q = query(collection(db, path), orderBy("fchEmis", "desc"));
-
-    return onSnapshot(q, (snapshot) => {
-      setFacturas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    }, (error) => {
-      console.error("Error al escuchar facturas:", error);
-    });
+    return onSnapshot(q, (snapshot) => setFacturas(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [filtroAnio, filtroMes]);
 
-  // Importar XML con registro de Log en Subcolección interna
+  // Importar XML con registro automático de Log en Subcolección interna
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
     let omitidos = 0;
-    let nuevosAnios = [];
-    let nuevosMeses = [];
-
     try {
       for (const file of acceptedFiles) {
         const text = await file.text();
@@ -123,18 +97,13 @@ const XmlFacturasLaboratorio = () => {
 
         const [anio, mesNum] = fchEmis.split('-');
         const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-        const nombreMes = meses[parseInt(mesNum, 10) - 1];
-
-        if (!anio || !nombreMes) continue;
+        const nombreMes = meses[parseInt(mesNum) - 1];
 
         const colRef = collection(db, COL_BASE, anio, "meses", nombreMes, "documentos");
         const q = query(colRef, where("folio", "==", folio));
         const existe = await getDocs(q);
 
-        if (!existe.empty) {
-          omitidos++;
-          continue;
-        }
+        if (!existe.empty) { omitidos++; continue; }
 
         const detalles = Array.from(xmlDoc.getElementsByTagName("Detalle")).map(d => ({
           nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent ?? "",
@@ -149,23 +118,18 @@ const XmlFacturasLaboratorio = () => {
         await setDoc(doc(db, COL_BASE, anio), { active: "true" }, { merge: true });
         await setDoc(doc(db, COL_BASE, anio, "meses", nombreMes), { active: "true" }, { merge: true });
 
-        nuevosAnios.push(anio);
-        if (filtroAnio === anio) {
-          nuevosMeses.push(nombreMes);
-        }
+        setAniosDisponibles(prev => Array.from(new Set([...prev, anio])).sort((a, b) => b - a));
+        setMesesDisponibles(prev => Array.from(new Set([...prev, nombreMes])));
 
         const usuarioActualNombre = userData?.nombreCompleto || userData?.nombre || 'Usuario Desconocido';
         const usuarioActualEmail = userData?.email || '';
         const fechaActual = new Date();
 
         // 1. Guardar documento de Factura en Firestore
-        // 1. Guardar documento de Factura en Firestore (incluyendo anio y mes)
         const docRefFactura = await addDoc(colRef, {
           folio: folio ?? "",
           folioRef: folioRef ?? "N/A",
           fchEmis: fchEmis ?? "",
-          anio,                     // <-- Añadido
-          mes: nombreMes,           // <-- Añadido
           rznSoc: xmlDoc.getElementsByTagName("RznSoc")[0]?.textContent || "Sin Razón Social",
           total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent ?? "0",
           estado: "Iniciar Ingreso",
@@ -177,7 +141,7 @@ const XmlFacturasLaboratorio = () => {
 
         // 2. Generar registro de Log DENTRO de la subcolección de la factura creada
         const logsSubcollectionRef = collection(db, COL_BASE, anio, "meses", nombreMes, "documentos", docRefFactura.id, "logs");
-
+        
         await addDoc(logsSubcollectionRef, {
           accion: "CREACION",
           detalle: "Factura cargada e importada mediante archivo XML",
@@ -190,14 +154,6 @@ const XmlFacturasLaboratorio = () => {
         });
       }
 
-      // Actualizar selectores si se añadieron nuevos años/meses
-      if (nuevosAnios.length > 0) {
-        setAniosDisponibles(prev => Array.from(new Set([...prev, ...nuevosAnios])).sort((a, b) => b - a));
-      }
-      if (nuevosMeses.length > 0) {
-        setMesesDisponibles(prev => Array.from(new Set([...prev, ...nuevosMeses])));
-      }
-
       const mensaje = omitidos > 0
         ? `Importación finalizada. ${omitidos} archivo(s) omitido(s) por duplicidad.`
         : "Importación completada con éxito.";
@@ -205,34 +161,26 @@ const XmlFacturasLaboratorio = () => {
       setShowModal(false);
     } catch (error) {
       console.error("Error al importar XML:", error);
-      showToast("Error al importar el archivo XML", "error");
+      showToast("Error al importar el archivo", "error");
     } finally {
       setCargando(false);
     }
-  }, [userData, showToast, filtroAnio]);
+  }, [userData, showToast]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'application/xml': ['.xml'], 'text/xml': ['.xml'] }
-  });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: { 'application/xml': ['.xml'] } });
 
   // Eliminar factura
   const handleDelete = (id) => {
     confirmAction("Eliminar Factura", "¿Estás seguro de eliminar este registro?", async () => {
-      try {
-        await deleteDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", id));
-        showToast("Factura eliminada", "info");
-      } catch (error) {
-        console.error("Error al eliminar factura:", error);
-        showToast("Error al eliminar la factura", "error");
-      }
+      await deleteDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", id));
+      showToast("Factura eliminada", "info");
     });
   };
 
-  const facturasFiltradas = facturas.filter(f =>
-    f.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
+  const facturasFiltradas = facturas.filter(f => 
+    f.folio?.includes(busqueda) || 
+    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) || 
+    f.folioRef?.includes(busqueda) ||
     f.estado?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
@@ -258,8 +206,8 @@ const XmlFacturasLaboratorio = () => {
         </div>
 
         {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar_xml") && (
-          <button
-            onClick={() => setShowModal(true)}
+          <button 
+            onClick={() => setShowModal(true)} 
             className="bg-[#2383C2] hover:bg-[#1c6fa6] text-white px-2.5 py-1 rounded text-[10px] font-bold flex items-center gap-1.5 transition shadow-sm"
           >
             <Upload size={11} /> Importar XML
@@ -272,16 +220,11 @@ const XmlFacturasLaboratorio = () => {
         {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
           <select
             value={filtroAnio}
-            onChange={(e) => {
-              setFiltroAnio(e.target.value);
-              setFiltroMes("");
-            }}
+            onChange={(e) => { setFiltroAnio(e.target.value); setFiltroMes(""); }}
             className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]"
           >
             <option value="">Año</option>
-            {aniosDisponibles.map((a, idx) => (
-              <option key={`anio-${a}-${idx}`} value={a}>{a}</option>
-            ))}
+            {aniosDisponibles.map((a, idx) => <option key={`anio-${a}-${idx}`} value={a}>{a}</option>)}
           </select>
         )}
 
@@ -292,9 +235,7 @@ const XmlFacturasLaboratorio = () => {
             className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none capitalize focus:border-[#2383C2]"
           >
             <option value="">Mes</option>
-            {mesesDisponibles.map((m, idx) => (
-              <option key={`mes-${m}-${idx}`} value={m}>{m}</option>
-            ))}
+            {mesesDisponibles.map((m, idx) => <option key={`mes-${m}-${idx}`} value={m}>{m}</option>)}
           </select>
         )}
 
@@ -328,68 +269,58 @@ const XmlFacturasLaboratorio = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-              {facturasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-6 text-slate-400 dark:text-gray-500">
-                    {!filtroAnio || !filtroMes
-                      ? "Selecciona un año y un mes para visualizar las facturas."
-                      : "No se encontraron facturas registradas para este periodo."}
+              {facturasFiltradas.map((f, index) => (
+                <tr 
+                  key={f.id} 
+                  className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
+                >
+                  <td className="py-1 px-2 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
+                    {index + 1}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-medium text-slate-800 dark:text-gray-100 truncate">
+                    {f.folio}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                    {f.fchEmis}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                    {f.folioRef}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
+                    {f.rznSoc}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
+                    ${parseInt(f.total || 0).toLocaleString('es-CL')}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                      {f.estado || "Iniciar Ingreso"}
+                    </span>
+                  </td>
+                  <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
+                    <div className="flex justify-center gap-2">
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
+                        <button 
+                          onClick={() => setFacturaSeleccionada(f)} 
+                          className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition"
+                          title="Ver Detalle"
+                        >
+                          <Eye size={13} />
+                        </button>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
+                        <button 
+                          onClick={() => handleDelete(f.id)} 
+                          className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                facturasFiltradas.map((f, index) => (
-                  <tr
-                    key={f.id}
-                    className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
-                  >
-                    <td className="py-1 px-2 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
-                      {index + 1}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-medium text-slate-800 dark:text-gray-100 truncate">
-                      {f.folio}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                      {f.fchEmis}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                      {f.folioRef}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                      {f.rznSoc}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
-                      ${parseInt(f.total || 0, 10).toLocaleString('es-CL')}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-                        {f.estado || "Iniciar Ingreso"}
-                      </span>
-                    </td>
-                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
-                      <div className="flex justify-center gap-2">
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
-                          <button
-                            onClick={() => setFacturaSeleccionada({ ...f, anio: filtroAnio, mes: filtroMes })}
-                            className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition"
-                            title="Ver Detalle"
-                          >
-                            <Eye size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
-                          <button
-                            onClick={() => handleDelete(f.id)}
-                            className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -397,9 +328,9 @@ const XmlFacturasLaboratorio = () => {
 
       {/* MODAL DETALLE DE FACTURA */}
       {facturaSeleccionada && (
-        <DetalleFacturaModal
-          factura={facturaSeleccionada}
-          onClose={() => setFacturaSeleccionada(null)}
+        <DetalleFacturaModal 
+          factura={facturaSeleccionada} 
+          onClose={() => setFacturaSeleccionada(null)} 
         />
       )}
 
@@ -414,21 +345,12 @@ const XmlFacturasLaboratorio = () => {
                 </div>
                 <h3 className="font-bold text-xs text-slate-800 dark:text-gray-100">Importar Documentos XML</h3>
               </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition p-1"
-              >
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-gray-300 transition p-1">
                 <X size={16} />
               </button>
             </div>
             <div className="p-6">
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer flex flex-col items-center justify-center gap-3 transition ${isDragActive
-                    ? "border-[#2383C2] bg-[#2383C2]/5"
-                    : "border-slate-200 dark:border-gray-700 hover:border-[#2383C2]/50 hover:bg-slate-50 dark:hover:bg-gray-700/30"
-                  }`}
-              >
+              <div {...getRootProps()} className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer flex flex-col items-center justify-center gap-3 transition ${isDragActive ? "border-[#2383C2] bg-[#2383C2]/5" : "border-slate-200 dark:border-gray-700 hover:border-[#2383C2]/50 hover:bg-slate-50 dark:hover:bg-gray-700/30"}`}>
                 <input {...getInputProps()} />
                 <div className="bg-slate-100 dark:bg-gray-900 p-3 rounded-full">
                   <FileText size={24} className="text-slate-400 dark:text-gray-500" />
@@ -440,10 +362,7 @@ const XmlFacturasLaboratorio = () => {
               </div>
             </div>
             <div className="px-4 py-3 bg-slate-50 dark:bg-gray-900/40 border-t border-slate-100 dark:border-gray-700 flex justify-end">
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-[11px] font-bold text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 px-3 py-1 rounded-lg transition"
-              >
+              <button onClick={() => setShowModal(false)} className="text-[11px] font-bold text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200 px-3 py-1 rounded-lg transition">
                 Cancelar
               </button>
             </div>

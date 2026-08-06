@@ -1,6 +1,6 @@
 // src/components/facturas/IniciarProceso.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../firebaseConfig';
 import { FileText, Search, PlayCircle, CheckSquare, Square } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
@@ -53,7 +53,7 @@ const IniciarProceso = () => {
     cargarAnios();
   }, []);
 
-  // Cargar facturas filtradas por índice "estado == Iniciar Ingreso" para el Año seleccionado
+  // Cargar facturas con estado "Iniciar Ingreso" para el Año seleccionado
   useEffect(() => {
     if (!filtroAnio) {
       setFacturas([]);
@@ -65,32 +65,26 @@ const IniciarProceso = () => {
       setLoading(true);
       try {
         const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
+        let docsAcumulados = [];
 
-        // Peticiones paralelas a cada subcolección aplicando filtro de índice Firestore
-        const promesasMeses = mesesSnap.docs.map(async (mesDoc) => {
+        for (const mesDoc of mesesSnap.docs) {
           const mesId = mesDoc.id;
+          const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
           
-          // Consulta indexada directa en la base de datos
-          const q = query(
-            collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"),
-            where("estado", "==", "Iniciar Ingreso")
-          );
-          
-          const docsSnap = await getDocs(q);
-
-          return docsSnap.docs.map(d => {
+          docsSnap.docs.forEach(d => {
             const data = d.data();
-            return {
-              id: d.id,
-              mesId,
-              ...data,
-              estado: data.estado || "Iniciar Ingreso"
-            };
+            const estadoActual = data.estado || "Iniciar Ingreso";
+            
+            if (estadoActual === "Iniciar Ingreso") {
+              docsAcumulados.push({
+                id: d.id,
+                mesId,
+                ...data,
+                estado: estadoActual
+              });
+            }
           });
-        });
-
-        const resultadosPorMes = await Promise.all(promesasMeses);
-        const docsAcumulados = resultadosPorMes.flat();
+        }
 
         docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
         setFacturas(docsAcumulados);

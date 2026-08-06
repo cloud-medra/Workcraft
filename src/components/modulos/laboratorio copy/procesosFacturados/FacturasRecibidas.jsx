@@ -37,7 +37,7 @@ const FacturasRecibidas = () => {
 
   // Función para formatear fechas de emisión a dd/mm/yyyy
   const formatearFechaEmision = (fechaStr) => {
-    if (!fechaStr) return '-';
+    if (!fechaStr) return '';
     const partes = fechaStr.replace(/-/g, '/').split('/');
     if (partes.length === 3) {
       const [anio, mes, dia] = partes;
@@ -46,24 +46,6 @@ const FacturasRecibidas = () => {
       }
     }
     return fechaStr;
-  };
-
-  // Función para obtener clases CSS de badges según el estado
-  const getEstadoBadgeClass = (estado) => {
-    switch (estado?.toLowerCase()) {
-      case 'ingresado':
-      case 'completado':
-      case 'aprobado':
-        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50';
-      case 'en proceso':
-      case 'en revision':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800/50';
-      case 'con diferencias':
-      case 'rechazado':
-        return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800/50';
-      default:
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50';
-    }
   };
 
   // Cargar Años
@@ -139,12 +121,10 @@ const FacturasRecibidas = () => {
   };
 
   const facturasFiltradas = facturas.filter(f => 
-    f.folio?.toLowerCase().includes(busqueda.toLowerCase()) || 
+    f.folio?.includes(busqueda) || 
     f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) || 
-    f.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.estado?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (f.orden || f.numOrden)?.toString().toLowerCase().includes(busqueda.toLowerCase()) ||
-    (f.acta || f.numActa)?.toString().toLowerCase().includes(busqueda.toLowerCase())
+    f.folioRef?.includes(busqueda) ||
+    f.estado?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
@@ -191,7 +171,7 @@ const FacturasRecibidas = () => {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]"
-              placeholder="Buscar por Folio, Ref, Orden, Acta, Razón Social..."
+              placeholder="Buscar por Folio, Ref, Razón Social o Estado..."
             />
           </div>
         )}
@@ -200,124 +180,102 @@ const FacturasRecibidas = () => {
       {/* TABLA DE FACTURAS */}
       {hasPermission(PATH_VISTA, "tabla_facturas") && (
         <div className="flex-grow overflow-auto">
-          <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
+          <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[900px]">
             <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Folio</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Emisión</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Ref.</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[22%]">Razón Social</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref.</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[24%]">Razón Social</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%] text-right">Total (Neto)</th>
                 
                 {/* Columnas de Control */}
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Estado</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Orden</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Acta</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Salida</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Orden</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Acta</th>
+                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Salida</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%] text-center">Mes imputado</th>
                 
                 <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-              {facturasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="py-8 text-center text-slate-400 dark:text-gray-500 text-[11px]">
-                    {!filtroAnio || !filtroMes ? "Selecciona un año y mes para cargar registros." : "No se encontraron facturas con los criterios seleccionados."}
+              {facturasFiltradas.map((f) => (
+                <tr 
+                  key={f.id} 
+                  className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
+                >
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
+                    {f.folio}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                    {formatearFechaEmision(f.fchEmis)}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                    {f.folioRef}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
+                    {f.rznSoc}
+                  </td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                    ${parseInt(f.total || 0).toLocaleString('es-CL')}
+                  </td>
+                  
+                  {/* Celda de Estado */}
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+                      {f.estado || "Iniciar Ingreso"}
+                    </span>
+                  </td>
+
+                  {/* Resto de Celdas de Control */}
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
+                  <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-400 dark:text-gray-500"></td>
+
+                  <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
+                    <div className="flex justify-center gap-1.5">
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_log") && (
+                        <button 
+                          onClick={() => abrirHistorialLogs(f)} 
+                          className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                          title="Ver Historial / Logs"
+                        >
+                          <History size={13} />
+                        </button>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
+                        <button 
+                          onClick={() => setFacturaSeleccionada(f)} 
+                          className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                          title="Ver Detalle"
+                        >
+                          <Eye size={13} />
+                        </button>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_configurar") && (
+                        <button 
+                          onClick={() => setFacturaParaConfigurar(f)} 
+                          className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                          title="Configurar"
+                        >
+                          <Settings size={13} />
+                        </button>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
+                        <button 
+                          onClick={() => handleDelete(f.id)} 
+                          className="text-slate-400 hover:text-red-500 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                facturasFiltradas.map((f) => (
-                  <tr 
-                    key={f.id} 
-                    className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
-                  >
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                      {f.folio || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                      {formatearFechaEmision(f.fchEmis)}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                      {f.folioRef || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                      {f.rznSoc || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                      ${Math.round(Number(f.total) || 0).toLocaleString('es-CL')}
-                    </td>
-                    
-                    {/* Celda de Estado */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(f.estado)}`}>
-                        {f.estado || "Iniciar Ingreso"}
-                      </span>
-                    </td>
-
-                    {/* Orden */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate">
-                      {f.orden || f.numOrden || f.ordenCompra || '-'}
-                    </td>
-
-                    {/* Acta */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate">
-                      {f.acta || f.numActa || '-'}
-                    </td>
-
-                    {/* Salida */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate">
-                      {f.salida || f.numSalida || '-'}
-                    </td>
-
-                    {/* Mes Imputado */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 capitalize truncate">
-                      {f.mesImputado || f.mesImputacion || '-'}
-                    </td>
-
-                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
-                      <div className="flex justify-center gap-1.5">
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_log") && (
-                          <button 
-                            onClick={() => abrirHistorialLogs(f)} 
-                            className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Ver Historial / Logs"
-                          >
-                            <History size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
-                          <button 
-                            onClick={() => setFacturaSeleccionada(f)} 
-                            className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Ver Detalle"
-                          >
-                            <Eye size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_configurar") && (
-                          <button 
-                            onClick={() => setFacturaParaConfigurar(f)} 
-                            className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Configurar"
-                          >
-                            <Settings size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
-                          <button 
-                            onClick={() => handleDelete(f.id)} 
-                            className="text-slate-400 hover:text-red-500 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
