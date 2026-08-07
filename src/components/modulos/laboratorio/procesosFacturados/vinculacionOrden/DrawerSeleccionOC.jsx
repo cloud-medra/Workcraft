@@ -35,10 +35,9 @@ const parseMontoToFloat = (valor) => {
     return parseFloat(strVal) || 0;
 };
 
-// Convierte fechas de manera segura evitando desfases de zona horaria
 const parseFecha = (fechaStr) => {
     if (!fechaStr || fechaStr === 'N/A') return new Date(0);
-    if (typeof fechaStr?.toDate === 'function') return fechaStr.toDate(); // Timestamp de Firestore
+    if (typeof fechaStr?.toDate === 'function') return fechaStr.toDate();
     if (typeof fechaStr === 'string' && fechaStr.includes('/')) {
         const [d, m, y] = fechaStr.split('/');
         return new Date(Number(y), Number(m) - 1, Number(d));
@@ -76,14 +75,18 @@ const DrawerSeleccionOC = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [panelAbierto, setPanelAbierto]);
 
-    // Limpiar búsqueda cuando se abre/cierra el panel
+    // Limpiar estado y selecciones al cerrar/abrir el panel
     useEffect(() => {
         if (!panelAbierto) {
             setBusquedaOC('');
+            setAnioOC('');
+            setMesOC('');
+            setOrdenes([]);
+            setMesesDisponibles([]);
         }
     }, [panelAbierto]);
 
-    // 1. Cargar Años
+    // 1. Cargar Años (sin autoseleccionar el primero)
     useEffect(() => {
         let isCancelled = false;
 
@@ -94,10 +97,6 @@ const DrawerSeleccionOC = ({
 
                 const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
                 setAniosDisponibles(anios);
-
-                if (anios.length > 0) {
-                    setAnioOC(anios[0]);
-                }
             } catch (error) {
                 if (!isCancelled) console.error("Error al cargar años de OC:", error);
             }
@@ -110,7 +109,7 @@ const DrawerSeleccionOC = ({
         return () => { isCancelled = true; };
     }, [panelAbierto]);
 
-    // 2. Cargar Meses
+    // 2. Cargar Meses al seleccionar Año (sin autoseleccionar el último mes)
     useEffect(() => {
         let isCancelled = false;
 
@@ -118,11 +117,15 @@ const DrawerSeleccionOC = ({
             if (!anioOC) {
                 setMesesDisponibles([]);
                 setMesOC('');
+                setOrdenes([]);
                 return;
             }
 
             setLoadingMeses(true);
             setBusquedaOC('');
+            setMesOC(''); // Reinicia el mes cuando se cambia de año
+            setOrdenes([]);
+
             try {
                 const snap = await getDocs(collection(db, COL_ORDENES, String(anioOC), "meses"));
                 if (isCancelled) return;
@@ -139,7 +142,6 @@ const DrawerSeleccionOC = ({
                     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
                 setMesesDisponibles(meses);
-                setMesOC(meses.length > 0 ? meses[meses.length - 1].id : '');
             } catch (error) {
                 if (!isCancelled) {
                     console.error("Error al cargar meses de OC:", error);
@@ -158,7 +160,7 @@ const DrawerSeleccionOC = ({
         return () => { isCancelled = true; };
     }, [anioOC, panelAbierto]);
 
-    // 3. Cargar Órdenes
+    // 3. Cargar Órdenes solo si Año y Mes están explícitamente seleccionados
     const cargarOrdenes = useCallback(async (isCancelledRef) => {
         if (!anioOC || !mesOC) {
             setOrdenes([]);
@@ -275,7 +277,6 @@ const DrawerSeleccionOC = ({
         }
     }, [anioOC, mesOC, setOcSeleccionada]);
 
-    // Filtrado seguro sin conversiones nulas
     const ordenesFiltradas = ordenes.filter(oc => {
         const termino = busquedaOC.toLowerCase().trim();
         if (!termino) return true;
@@ -329,17 +330,22 @@ const DrawerSeleccionOC = ({
                             <select
                                 value={mesOC}
                                 onChange={(e) => setMesOC(e.target.value)}
-                                disabled={loadingMeses || mesesDisponibles.length === 0}
+                                disabled={loadingMeses || !anioOC || mesesDisponibles.length === 0}
                                 className="w-full h-7 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2] disabled:opacity-50"
                             >
                                 {loadingMeses ? (
                                     <option value="">Cargando meses...</option>
+                                ) : !anioOC ? (
+                                    <option value="">Seleccione un año</option>
                                 ) : mesesDisponibles.length === 0 ? (
                                     <option value="">Sin meses registrados</option>
                                 ) : (
-                                    mesesDisponibles.map((m) => (
-                                        <option key={`oc-mes-${m.id}`} value={m.id}>{m.nombre}</option>
-                                    ))
+                                    <>
+                                        <option value="">Seleccionar Mes</option>
+                                        {mesesDisponibles.map((m) => (
+                                            <option key={`oc-mes-${m.id}`} value={m.id}>{m.nombre}</option>
+                                        ))}
+                                    </>
                                 )}
                             </select>
                         </div>
@@ -366,10 +372,9 @@ const DrawerSeleccionOC = ({
                         </div>
                     ) : !anioOC || !mesOC ? (
                         <div className="h-40 flex items-center justify-center text-xs text-slate-400 text-center px-4">
-                            {mesesDisponibles.length === 0
-                                ? `El año ${anioOC || ''} no contiene meses en Firestore.`
-                                : 'Seleccione Año y Mes para consultar órdenes.'
-                            }
+                            {!anioOC 
+                                ? 'Seleccione un Año para comenzar.' 
+                                : 'Seleccione un Mes para consultar órdenes.'}
                         </div>
                     ) : ordenesFiltradas.length === 0 ? (
                         <div className="h-40 flex items-center justify-center text-xs text-slate-400 text-center px-4">

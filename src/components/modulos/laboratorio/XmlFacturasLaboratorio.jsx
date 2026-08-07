@@ -142,7 +142,7 @@ const XmlFacturasLaboratorio = () => {
           nombre: d.getElementsByTagName("NmbItem")[0]?.textContent ?? "",
           cantidad: String(parseFloat(d.getElementsByTagName("QtyItem")[0]?.textContent ?? "0")),
           unidad: d.getElementsByTagName("UnmdItem")[0]?.textContent ?? "Un",
-          precio: d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0",
+          precio: String(parseFloat(d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0")),
           monto: d.getElementsByTagName("MontoItem")[0]?.textContent ?? "0"
         }));
 
@@ -425,8 +425,8 @@ const XmlFacturasLaboratorio = () => {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer flex flex-col items-center justify-center gap-3 transition ${isDragActive
-                    ? "border-[#2383C2] bg-[#2383C2]/5"
-                    : "border-slate-200 dark:border-gray-700 hover:border-[#2383C2]/50 hover:bg-slate-50 dark:hover:bg-gray-700/30"
+                  ? "border-[#2383C2] bg-[#2383C2]/5"
+                  : "border-slate-200 dark:border-gray-700 hover:border-[#2383C2]/50 hover:bg-slate-50 dark:hover:bg-gray-700/30"
                   }`}
               >
                 <input {...getInputProps()} />

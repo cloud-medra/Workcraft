@@ -4,21 +4,21 @@ import {
   Inbox, 
   FileText, 
   ClipboardList, 
-  BarChart3, 
-  AlertTriangle, // Actualizado para Solicitud Diferencias
-  HelpCircle, 
+  AlertTriangle, 
   CheckSquare,
   ShieldAlert,
   Layers,
   ChevronRight,
-  Link2 
+  Link2,
+  CalendarCheck
 } from 'lucide-react'; 
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import FacturasRecibidas from './FacturasRecibidas';
 import IniciarProceso from './IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
-import SolicitudDiferencias from './SolicitudDiferencias';
+import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';
+import PeriodoContable from './cierreMes/PeriodoContable';
 
 // Lista de pestañas ordenada
 const ALL_TABS = [
@@ -26,10 +26,9 @@ const ALL_TABS = [
   { id: 'procesar', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_procesar' },
   { id: 'gestion', label: 'Vinculación de Códigos', Icon: ClipboardList, perm: 'tab_gestion' },
   { id: 'ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_ordenes' },
-  { id: 'excel', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_excel' }, // 2. Etiqueta e icono actualizados
+  { id: 'excel', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_excel' },
   { id: 'listas', label: 'Facturas Listas', Icon: CheckSquare, perm: 'tab_listas' },
-  { id: 'resumen', label: 'Resumen Facturas', Icon: BarChart3, perm: 'tab_resumen' },
-  { id: 'ayuda', label: 'Ayuda y Contextos', Icon: HelpCircle, perm: 'tab_ayuda' },
+  { id: 'cierre_mes', label: 'Cierre de Mes', Icon: CalendarCheck, perm: 'tab_cierre_mes' },
 ];
 
 const PATH_VISTA = "/laboratorio/controlFactura";
@@ -138,10 +137,10 @@ const ControlFacturas = () => {
         {currentTabObj.id === 'procesar' && <IniciarProceso />}
         {currentTabObj.id === 'gestion' && <VinculacionCodigos />}
         {currentTabObj.id === 'ordenes' && <VinculacionOrden />}
-        {currentTabObj.id === 'excel' && <SolicitudDiferencias />} {/* 3. Componente acoplado */}
+        {currentTabObj.id === 'excel' && <SolicitudDiferencias />}
+        {currentTabObj.id === 'cierre_mes' && <PeriodoContable />}
 
-        {/* 4. Actualizada la lista de excepciones para el estado en espera */}
-        {!['recibidas', 'procesar', 'gestion', 'ordenes', 'excel'].includes(currentTabObj.id) && (
+        {!['recibidas', 'procesar', 'gestion', 'ordenes', 'excel', 'cierre_mes'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">
             <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-[#2383C2] dark:text-[#369BCE] flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/40">
               <ActiveIcon size={20} />
