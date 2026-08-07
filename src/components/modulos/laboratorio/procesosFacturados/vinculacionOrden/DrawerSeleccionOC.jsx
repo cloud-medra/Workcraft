@@ -28,6 +28,24 @@ const NOMBRES_MESES = {
     '12': 'Diciembre'
 };
 
+const parseMontoToFloat = (valor) => {
+    if (valor === undefined || valor === null || valor === '') return 0;
+    if (typeof valor === 'number') return valor;
+    const strVal = String(valor).replace(/[^0-9,-]/g, '').replace(',', '.');
+    return parseFloat(strVal) || 0;
+};
+
+// Convierte fechas de manera segura evitando desfases de zona horaria
+const parseFecha = (fechaStr) => {
+    if (!fechaStr || fechaStr === 'N/A') return new Date(0);
+    if (typeof fechaStr?.toDate === 'function') return fechaStr.toDate(); // Timestamp de Firestore
+    if (typeof fechaStr === 'string' && fechaStr.includes('/')) {
+        const [d, m, y] = fechaStr.split('/');
+        return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    return new Date(fechaStr);
+};
+
 const DrawerSeleccionOC = ({
     panelAbierto,
     setPanelAbierto,
@@ -45,14 +63,35 @@ const DrawerSeleccionOC = ({
     const [loadingOC, setLoadingOC] = useState(false);
     const [busquedaOC, setBusquedaOC] = useState('');
 
-    // Para saber qué orden está cargando sus ítems al hacer clic
     const [cargandoItemsId, setCargandoItemsId] = useState(null);
 
-    // 1. Cargar Años Disponibles al abrir el panel
+    // Cierre con tecla Escape
     useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && panelAbierto) {
+                setPanelAbierto(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [panelAbierto, setPanelAbierto]);
+
+    // Limpiar búsqueda cuando se abre/cierra el panel
+    useEffect(() => {
+        if (!panelAbierto) {
+            setBusquedaOC('');
+        }
+    }, [panelAbierto]);
+
+    // 1. Cargar Años
+    useEffect(() => {
+        let isCancelled = false;
+
         const cargarAniosOC = async () => {
             try {
                 const snap = await getDocs(collection(db, COL_ORDENES));
+                if (isCancelled) return;
+
                 const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
                 setAniosDisponibles(anios);
 
@@ -60,17 +99,21 @@ const DrawerSeleccionOC = ({
                     setAnioOC(anios[0]);
                 }
             } catch (error) {
-                console.error("Error al cargar años de OC:", error);
+                if (!isCancelled) console.error("Error al cargar años de OC:", error);
             }
         };
 
         if (panelAbierto) {
             cargarAniosOC();
         }
+
+        return () => { isCancelled = true; };
     }, [panelAbierto]);
 
-    // 2. Cargar Meses para el Año seleccionado
+    // 2. Cargar Meses
     useEffect(() => {
+        let isCancelled = false;
+
         const cargarMesesOC = async () => {
             if (!anioOC) {
                 setMesesDisponibles([]);
@@ -79,8 +122,10 @@ const DrawerSeleccionOC = ({
             }
 
             setLoadingMeses(true);
+            setBusquedaOC('');
             try {
                 const snap = await getDocs(collection(db, COL_ORDENES, String(anioOC), "meses"));
+                if (isCancelled) return;
 
                 const meses = snap.docs
                     .map(d => {
@@ -94,28 +139,27 @@ const DrawerSeleccionOC = ({
                     .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 
                 setMesesDisponibles(meses);
-
-                if (meses.length > 0) {
-                    setMesOC(meses[meses.length - 1].id);
-                } else {
+                setMesOC(meses.length > 0 ? meses[meses.length - 1].id : '');
+            } catch (error) {
+                if (!isCancelled) {
+                    console.error("Error al cargar meses de OC:", error);
+                    setMesesDisponibles([]);
                     setMesOC('');
                 }
-            } catch (error) {
-                console.error("Error al cargar meses de OC:", error);
-                setMesesDisponibles([]);
-                setMesOC('');
             } finally {
-                setLoadingMeses(false);
+                if (!isCancelled) setLoadingMeses(false);
             }
         };
 
         if (panelAbierto && anioOC) {
             cargarMesesOC();
         }
+
+        return () => { isCancelled = true; };
     }, [anioOC, panelAbierto]);
 
-    // 3. Cargar Órdenes de Compra (cabeceras)
-    const cargarOrdenes = useCallback(async () => {
+    // 3. Cargar Órdenes
+    const cargarOrdenes = useCallback(async (isCancelledRef) => {
         if (!anioOC || !mesOC) {
             setOrdenes([]);
             return;
@@ -126,6 +170,8 @@ const DrawerSeleccionOC = ({
             const pathSubcoleccion = collection(db, COL_ORDENES, String(anioOC), "meses", String(mesOC), "ordenes");
             const docSnap = await getDocs(pathSubcoleccion);
 
+            if (isCancelledRef && isCancelledRef.current) return;
+
             const lista = docSnap.docs.map(d => {
                 const data = d.data();
                 return {
@@ -133,43 +179,38 @@ const DrawerSeleccionOC = ({
                     ...data,
                     folioCalculado: data["Nro.Orden"] || data.numero_oc || d.id,
                     proveedorCalculado: data["Proveedor"] || data.proveedor || 'Sin Razón Social',
-                    montoCalculado: data.totalOrden || data.montoTotal || 0,
+                    montoCalculado: parseMontoToFloat(data.totalOrden || data.montoTotal || 0),
                     fechaCalculada: data["F.Orden"] || data.fecha || 'N/A'
                 };
             });
 
-            lista.sort((a, b) => {
-                const parse = (f) => {
-                    const [d, m, y] = (f || '').split('/');
-                    return new Date(`${y}-${m}-${d}`);
-                };
-                return parse(b.fechaCalculada) - parse(a.fechaCalculada);
-            });
-
+            lista.sort((a, b) => parseFecha(b.fechaCalculada) - parseFecha(a.fechaCalculada));
             setOrdenes(lista);
         } catch (error) {
-            console.error("Error al cargar Órdenes de Compra:", error);
-            setOrdenes([]);
+            if (!isCancelledRef || !isCancelledRef.current) {
+                console.error("Error al cargar Órdenes de Compra:", error);
+                setOrdenes([]);
+            }
         } finally {
-            setLoadingOC(false);
+            if (!isCancelledRef || !isCancelledRef.current) {
+                setLoadingOC(false);
+            }
         }
     }, [anioOC, mesOC]);
 
     useEffect(() => {
+        const isCancelledRef = { current: false };
+
         if (panelAbierto && anioOC && mesOC) {
-            cargarOrdenes();
+            cargarOrdenes(isCancelledRef);
         }
+
+        return () => {
+            isCancelledRef.current = true;
+        };
     }, [anioOC, mesOC, panelAbierto, cargarOrdenes]);
 
-    // Helper para convertir cualquier formato de dinero/número a float válido
-    const parseMontoToFloat = (valor) => {
-        if (valor === undefined || valor === null || valor === '') return 0;
-        if (typeof valor === 'number') return valor;
-        const strVal = String(valor).replace(/[^0-9,-]/g, '').replace(',', '.');
-        return parseFloat(strVal) || 0;
-    };
-
-    // 4. Traer ítems de la orden y normalizar precio / cantidad
+    // 4. Seleccionar Orden y Cargar Ítems
     const handleSeleccionarOrden = useCallback(async (oc) => {
         setCargandoItemsId(oc.id);
         try {
@@ -188,20 +229,24 @@ const DrawerSeleccionOC = ({
             const articulosOC = docSnap.docs.map(d => {
                 const item = d.data();
 
+                const rawCodigo = item["Codigo"] ??
+                    item["Código"] ??
+                    item.codigo ??
+                    item.codigo_producto ??
+                    d.id;
+
                 const rawPrecio = item["P.Unitario"] ??
                     item["Precio Net. Unitario"] ??
                     item["P. Unitario"] ??
                     item.precio_unitario ??
                     item.precioOC ??
-                    item.precio ??
-                    0;
+                    item.precio ?? 0;
 
                 const rawCantidad = item["Cant."] ??
                     item["Cantidad Pedida"] ??
                     item["Cantidad"] ??
                     item.cantidad_oc ??
-                    item.cantidad ??
-                    0;
+                    item.cantidad ?? 0;
 
                 const precio_oc = parseMontoToFloat(rawPrecio);
                 const cantidad_oc = parseMontoToFloat(rawCantidad);
@@ -209,9 +254,9 @@ const DrawerSeleccionOC = ({
                 return {
                     id: d.id,
                     ...item,
+                    codigo_oc: String(rawCodigo).trim(),
                     precio_oc,
                     cantidad_oc,
-                    // Claves alternativas estandarizadas
                     precio: precio_oc,
                     cantidad: cantidad_oc
                 };
@@ -220,8 +265,7 @@ const DrawerSeleccionOC = ({
             setOcSeleccionada({
                 ...oc,
                 articulosOC,
-                // Mapeo global de la orden por si se requiere a nivel cabecera
-                montoTotal: parseMontoToFloat(oc.montoCalculado)
+                montoTotal: oc.montoCalculado
             });
         } catch (error) {
             console.error("Error al cargar ítems de la OC:", error);
@@ -231,10 +275,12 @@ const DrawerSeleccionOC = ({
         }
     }, [anioOC, mesOC, setOcSeleccionada]);
 
+    // Filtrado seguro sin conversiones nulas
     const ordenesFiltradas = ordenes.filter(oc => {
-        const termino = busquedaOC.toLowerCase();
-        const folioStr = String(oc.folioCalculado).toLowerCase();
-        const proveedorStr = String(oc.proveedorCalculado).toLowerCase();
+        const termino = busquedaOC.toLowerCase().trim();
+        if (!termino) return true;
+        const folioStr = String(oc.folioCalculado ?? '').toLowerCase();
+        const proveedorStr = String(oc.proveedorCalculado ?? '').toLowerCase();
         return folioStr.includes(termino) || proveedorStr.includes(termino);
     });
 
@@ -243,21 +289,20 @@ const DrawerSeleccionOC = ({
             {/* OVERLAY */}
             {panelAbierto && (
                 <div
-                    className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 z-20"
+                    className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 z-20 transition-opacity"
                     onClick={() => setPanelAbierto(false)}
                 />
             )}
 
             {/* PANEL DRAWER */}
-            <div className={`absolute top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-800 border-l border-slate-200 dark:border-gray-700 shadow-2xl z-30 transform transition-transform duration-300 flex flex-col ${panelAbierto ? 'translate-x-0' : 'translate-x-full'
-                }`}>
+            <div className={`absolute top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-800 border-l border-slate-200 dark:border-gray-700 shadow-2xl z-30 transform transition-transform duration-300 flex flex-col ${panelAbierto ? 'translate-x-0' : 'translate-x-full'}`}>
 
                 <div className="bg-slate-100 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-1.5 text-slate-800 dark:text-gray-100 font-bold text-xs uppercase">
                         <ListOrdered size={15} className="text-[#2383C2]" />
                         <span>Seleccionar Orden de Compra</span>
                     </div>
-                    <button onClick={() => setPanelAbierto(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-full">
+                    <button onClick={() => setPanelAbierto(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-gray-200 rounded-full">
                         <X size={16} />
                     </button>
                 </div>
@@ -265,8 +310,6 @@ const DrawerSeleccionOC = ({
                 {/* FILTROS AÑO / MES */}
                 <div className="p-3 bg-slate-50 dark:bg-gray-800/60 border-b border-slate-200 dark:border-gray-700 flex flex-col gap-2 shrink-0">
                     <div className="grid grid-cols-2 gap-2">
-
-                        {/* SELECTOR DE AÑO */}
                         <div>
                             <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-0.5">Año</label>
                             <select
@@ -281,7 +324,6 @@ const DrawerSeleccionOC = ({
                             </select>
                         </div>
 
-                        {/* SELECTOR DE MES */}
                         <div>
                             <label className="block text-[10px] font-semibold text-slate-500 uppercase mb-0.5">Mes</label>
                             <select
@@ -343,10 +385,11 @@ const DrawerSeleccionOC = ({
                                     <div
                                         key={oc.id}
                                         onClick={() => handleSeleccionarOrden(oc)}
-                                        className={`relative p-2.5 rounded border text-left cursor-pointer transition-all flex flex-col gap-1 ${esSeleccionado
-                                            ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/40'
-                                            : 'border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-slate-300'
-                                            } ${estaCargando ? 'opacity-60 pointer-events-none' : ''}`}
+                                        className={`relative p-2.5 rounded border text-left cursor-pointer transition-all flex flex-col gap-1 ${
+                                            esSeleccionado
+                                                ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/40'
+                                                : 'border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-slate-300'
+                                        } ${estaCargando ? 'opacity-60 pointer-events-none' : ''}`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-bold text-slate-800 dark:text-gray-100 text-[11px] flex items-center gap-1">
@@ -355,7 +398,7 @@ const DrawerSeleccionOC = ({
                                             </span>
                                             <span className="font-bold text-[#2383C2] text-[11px] flex items-center gap-1">
                                                 {estaCargando && <Loader2 size={11} className="animate-spin" />}
-                                                ${parseInt(oc.montoCalculado || 0).toLocaleString('es-CL')}
+                                                ${Math.round(oc.montoCalculado).toLocaleString('es-CL')}
                                             </span>
                                         </div>
 

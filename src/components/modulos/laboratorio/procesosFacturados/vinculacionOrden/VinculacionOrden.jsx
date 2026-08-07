@@ -1,6 +1,16 @@
 // src/components/facturas/VinculacionOrden.jsx
-import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    collection,
+    getDocs,
+    doc,
+    updateDoc,
+    addDoc,
+    serverTimestamp,
+    collectionGroup,
+    query,
+    where
+} from 'firebase/firestore';
 import { db, auth } from '../../../../../firebaseConfig';
 import {
     ClipboardList,
@@ -41,7 +51,17 @@ const VinculacionOrden = () => {
         return fechaStr;
     };
 
-    // Cargar Años Disponibles y seleccionar el más reciente por defecto
+    // Helper para parsear fecha al ordenar
+    const parseFecha = (fechaStr) => {
+        if (!fechaStr) return 0;
+        if (fechaStr.includes('/')) {
+            const [d, m, y] = fechaStr.split('/');
+            return new Date(`${y}-${m}-${d}`).getTime() || 0;
+        }
+        return new Date(fechaStr).getTime() || 0;
+    };
+
+    // Cargar Años Disponibles
     useEffect(() => {
         const cargarAnios = async () => {
             try {
@@ -49,9 +69,8 @@ const VinculacionOrden = () => {
                 const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
                 setAniosDisponibles(anios);
 
-                // Asignar automáticamente el año más reciente si no hay uno seleccionado
-                if (anios.length > 0 && !filtroAnio) {
-                    setFiltroAnio(anios[0]);
+                if (anios.length > 0) {
+                    setFiltroAnio(prev => prev || anios[0]);
                 }
             } catch (error) {
                 console.error("Error al cargar años:", error);
@@ -60,8 +79,8 @@ const VinculacionOrden = () => {
         cargarAnios();
     }, []);
 
-    // Cargar facturas en estado "Procesar OC"
-    const cargarFacturasProcesarOC = async () => {
+    // Cargar facturas en estado "Procesar OC" optimizado con Collection Group Query
+    const cargarFacturasProcesarOC = useCallback(async () => {
         if (!filtroAnio) {
             setFacturas([]);
             return;
@@ -69,39 +88,44 @@ const VinculacionOrden = () => {
 
         setLoading(true);
         try {
-            const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-            let docsAcumulados = [];
-            const estadosPermitidos = ["Procesar OC"];
+            const q = query(
+                collectionGroup(db, "documentos"),
+                where("estado", "==", "Procesar OC")
+            );
 
-            for (const mesDoc of mesesSnap.docs) {
-                const mesId = mesDoc.id;
-                const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
+            const querySnapshot = await getDocs(q);
+            const docsAcumulados = [];
 
-                docsSnap.docs.forEach(d => {
-                    const data = d.data();
-                    if (estadosPermitidos.includes(data.estado)) {
-                        docsAcumulados.push({
-                            id: d.id,
-                            mesId,
-                            ...data
-                        });
-                    }
-                });
-            }
+            querySnapshot.forEach((d) => {
+                // Parse de la ruta de Firestore: laboratorio_facturasXml/{anio}/meses/{mesId}/documentos/{docId}
+                const pathSegments = d.ref.path.split('/');
+                const coleccionRaiz = pathSegments[0];
+                const anioDoc = pathSegments[1];
+                const mesId = pathSegments[3];
 
-            docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
+                if (coleccionRaiz === COL_BASE && anioDoc === filtroAnio) {
+                    docsAcumulados.push({
+                        id: d.id,
+                        mesId,
+                        ...d.data()
+                    });
+                }
+            });
+
+            docsAcumulados.sort((a, b) => parseFecha(b.fchEmis) - parseFecha(a.fchEmis));
             setFacturas(docsAcumulados);
         } catch (error) {
-            console.error("Error al cargar facturas:", error);
+            console.error("Error al cargar facturas mediante collectionGroup:", error);
             showToast("Error al obtener las facturas pendientes de Orden de Compra", "error");
         } finally {
             setLoading(false);
         }
-    };
+    }, [filtroAnio, showToast]);
 
     useEffect(() => {
+        setFacturaSeleccionada(null);
         cargarFacturasProcesarOC();
-    }, [filtroAnio]);
+    }, [filtroAnio, cargarFacturasProcesarOC]);
 
     // Selección y navegación
     const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
@@ -138,7 +162,6 @@ const VinculacionOrden = () => {
                         facturaSeleccionada.id
                     );
 
-                    // Usamos directamente los detalles ya cruzados en DetalleVinculacionOC
                     await updateDoc(docRef, {
                         detalles: detallesActualizados,
                         estado: estadoFinal,
@@ -166,17 +189,9 @@ const VinculacionOrden = () => {
 
                     showToast(`Ítems cruzados con la OC N° ${folioOC} — ${estadoFinal}`, "success");
 
-                    setFacturaSeleccionada(prev => prev
-                        ? {
-                            ...prev,
-                            detalles: detallesActualizados,
-                            estado: estadoFinal,
-                            ordenCompraVinculada: { id: ordenCompra?.id, folio: folioOC }
-                        }
-                        : prev
-                    );
-
+                    // Remover la factura procesada de la lista activa y volver al listado
                     setFacturas(prev => prev.filter(f => f.id !== facturaSeleccionada.id));
+                    setFacturaSeleccionada(null);
                 } catch (error) {
                     console.error("Error al cruzar Orden de Compra:", error);
                     showToast("Error al procesar el cruce con la Orden de Compra", "error");
@@ -185,7 +200,7 @@ const VinculacionOrden = () => {
         );
     };
 
-    // Búsqueda segura con conversión previa a String
+    // Búsqueda segura
     const busquedaLower = busqueda.trim().toLowerCase();
     const facturasFiltradas = facturas.filter(f => {
         if (!busquedaLower) return true;
@@ -203,6 +218,7 @@ const VinculacionOrden = () => {
             "Procesar OC": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
             "Listo para Ingreso": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
             "Diferencia Reportada": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
+            "Rechazada": "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800/50",
         };
         const clase = estilos[estado] || estilos["Procesar OC"];
         return (
@@ -268,7 +284,7 @@ const VinculacionOrden = () => {
                         <button
                             onClick={cargarFacturasProcesarOC}
                             disabled={!filtroAnio || loading}
-                            className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors"
+                            className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors disabled:opacity-50"
                             title="Recargar datos"
                         >
                             <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
@@ -326,7 +342,7 @@ const VinculacionOrden = () => {
                                                         {f.rznSoc}
                                                     </td>
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                                                        ${parseInt(f.total || 0).toLocaleString('es-CL')}
+                                                        ${parseInt(f.total || 0, 10).toLocaleString('es-CL')}
                                                     </td>
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                                                         {renderBadgeEstadoGeneral(f.estado)}

@@ -16,7 +16,7 @@ import {
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import FacturasRecibidas from './FacturasRecibidas';
 import IniciarProceso from './IniciarProceso';
-import VinculacionCodigos from './VinculacionCodigos';
+import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './SolicitudDiferencias';
 

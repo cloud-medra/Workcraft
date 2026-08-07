@@ -1,7 +1,7 @@
 // src/components/facturas/VinculacionCodigos.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore'; 
-import { db, auth } from '../../../../firebaseConfig'; // <-- Agregamos 'auth' aquí
+import { db, auth } from '../../../../firebaseConfig';
 import { 
   ClipboardList, 
   Search, 
@@ -15,7 +15,8 @@ import {
   Tag, 
   DollarSign,
   Activity,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Loader2
 } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
@@ -27,6 +28,7 @@ const VinculacionCodigos = () => {
   const [busqueda, setBusqueda] = useState('');
   const [filtroAnio, setFiltroAnio] = useState('');
   const [loading, setLoading] = useState(false);
+  const [vinculando, setVinculando] = useState(false); // 1. Estado de carga para la vinculación
 
   // Estado para controlar la factura seleccionada en vista detalle
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
@@ -38,6 +40,7 @@ const VinculacionCodigos = () => {
   const PATH_VISTA = "/laboratorio/controlFactura";
   const COL_BASE = "laboratorio_facturasXml";
   const COL_MAESTRO = "laboratorio_codigos";
+  const ESTADOS_PERMITIDOS = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];
 
   // Formatear fecha dd/mm/yyyy
   const formatearFechaEmision = (fechaStr) => {
@@ -66,8 +69,8 @@ const VinculacionCodigos = () => {
     cargarAnios();
   }, []);
 
-  // Cargar facturas en estados: Proceso Iniciado, Falta Vinculación, Diferencia Precios
-  const cargarFacturasEnProceso = async () => {
+  // Cargar facturas en paralelo (Optimizado con Promise.all)
+  const cargarFacturasEnProceso = useCallback(async () => {
     if (!filtroAnio) {
       setFacturas([]);
       return;
@@ -76,25 +79,18 @@ const VinculacionCodigos = () => {
     setLoading(true);
     try {
       const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-      let docsAcumulados = [];
-
-      const estadosPermitidos = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];
-
-      for (const mesDoc of mesesSnap.docs) {
+      
+      const promesasMeses = mesesSnap.docs.map(async (mesDoc) => {
         const mesId = mesDoc.id;
         const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
         
-        docsSnap.docs.forEach(d => {
-          const data = d.data();
-          if (estadosPermitidos.includes(data.estado)) {
-            docsAcumulados.push({
-              id: d.id,
-              mesId,
-              ...data
-            });
-          }
-        });
-      }
+        return docsSnap.docs
+          .map(d => ({ id: d.id, mesId, ...d.data() }))
+          .filter(data => ESTADOS_PERMITIDOS.includes(data.estado));
+      });
+
+      const resultadosPorMes = await Promise.all(promesasMeses);
+      const docsAcumulados = resultadosPorMes.flat();
 
       docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
       setFacturas(docsAcumulados);
@@ -104,23 +100,16 @@ const VinculacionCodigos = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filtroAnio, showToast]);
 
   useEffect(() => {
     cargarFacturasEnProceso();
-  }, [filtroAnio]);
+  }, [cargarFacturasEnProceso]);
 
-  // Selección de factura para visualización en pantalla
-  const handleVerDetalles = (factura) => {
-    setFacturaSeleccionada(factura);
-  };
+  const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
+  const handleVolverALista = () => setFacturaSeleccionada(null);
 
-  // Volver a la lista general
-  const handleVolverALista = () => {
-    setFacturaSeleccionada(null);
-  };
-
-  // Lógica de Vincular Códigos con registro en subcolección 'logs'
+  // Lógica de Vincular Códigos
   const handleVincularFactura = () => {
     if (!facturaSeleccionada || !facturaSeleccionada.detalles?.length) {
       showToast("La factura no contiene ítems para vincular", "error");
@@ -131,8 +120,8 @@ const VinculacionCodigos = () => {
       "Confirmar Vinculación",
       `¿Está seguro de procesar la vinculación para el folio ${facturaSeleccionada.folio}?`,
       async () => {
+        setVinculando(true); // Activa el spinner
         try {
-          // Capturamos el estado general antes de modificarlo
           const estadoAnteriorGeneral = facturaSeleccionada.estado || "Proceso Iniciado";
 
           // 1. Obtener catálogo maestro de códigos
@@ -150,12 +139,13 @@ const VinculacionCodigos = () => {
           // 3. Evaluar ítems de la factura
           let faltantesCount = 0;
           let diferenciasCount = 0;
-          let vinculadosOKCount = 0;
+          let sinDiferenciasCount = 0;
 
           const nuevosDetalles = facturaSeleccionada.detalles.map(item => {
             const codFactura = item.codigo ? String(item.codigo).trim().toLowerCase() : '';
             const coincidencia = refMap.get(codFactura);
 
+            // Caso A: Código no existe en Maestro
             if (!coincidencia) {
               faltantesCount++;
               return {
@@ -166,9 +156,10 @@ const VinculacionCodigos = () => {
               };
             }
 
-            const precioFactura = Number(item.precio || 0);
-            const precioMaestro = Number(coincidencia.precio || 0);
+            const precioFactura = Math.round(Number(item.precio || 0));
+            const precioMaestro = Math.round(Number(coincidencia.precio || 0));
 
+            // Caso B: Hay diferencia de precio
             if (precioFactura !== precioMaestro) {
               diferenciasCount++;
               return {
@@ -179,16 +170,17 @@ const VinculacionCodigos = () => {
               };
             }
 
-            vinculadosOKCount++;
+            // Caso C: Código existe y precios coinciden sin diferencias (2. Cambio de etiqueta)
+            sinDiferenciasCount++;
             return {
               ...item,
               codigoMaestro: coincidencia.codigo || '-',
               precioMaestro: precioMaestro,
-              estadoItem: 'Vinculado'
+              estadoItem: 'Sin Diferencias'
             };
           });
 
-          // 4. Determinar nuevo Estado General de la Factura
+          // 4. Determinar nuevo Estado General
           let nuevoEstadoGeneral = "Procesar OC";
           if (faltantesCount > 0) {
             nuevoEstadoGeneral = "Falta Vinculación";
@@ -203,10 +195,6 @@ const VinculacionCodigos = () => {
             nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
           };
 
-          const ahora = new Date();
-          const fechaHoraString = ahora.toLocaleString('es-CL');
-
-          // Referencia del documento en Firestore
           const docRef = doc(
             db, 
             COL_BASE, 
@@ -223,20 +211,20 @@ const VinculacionCodigos = () => {
             estado: nuevoEstadoGeneral
           });
 
-          // 6. Registrar evento en la subcolección 'logs' incluyendo ambos estados
+          // 6. Registrar log de evento
           try {
             const logsRef = collection(docRef, "logs");
             await addDoc(logsRef, {
               accion: "VINCULACION_CODIGOS",
               detalle: `Vinculación procesada para el folio ${facturaSeleccionada.folio || facturaSeleccionada.id}`,
-              estadoAnterior: estadoAnteriorGeneral, // <-- Asegurado aquí
-              nuevoEstado: nuevoEstadoGeneral,       // <-- Asegurado aquí
+              estadoAnterior: estadoAnteriorGeneral,
+              nuevoEstado: nuevoEstadoGeneral,
               resumen: {
-                vinculadosOK: vinculadosOKCount,
+                sinDiferencias: sinDiferenciasCount,
                 conDiferencias: diferenciasCount,
                 sinVincular: faltantesCount
               },
-              fechaHora: fechaHoraString,
+              fechaHora: new Date().toLocaleString('es-CL'),
               timestamp: serverTimestamp(),
               usuario: usuarioInfo
             });
@@ -252,16 +240,24 @@ const VinculacionCodigos = () => {
           };
 
           setFacturaSeleccionada(facturaActualizada);
-          setFacturas(prev => prev.map(f => f.id === facturaActualizada.id ? facturaActualizada : f));
+
+          setFacturas(prev => {
+            if (nuevoEstadoGeneral === "Procesar OC") {
+              return prev.filter(f => f.id !== facturaActualizada.id);
+            }
+            return prev.map(f => f.id === facturaActualizada.id ? facturaActualizada : f);
+          });
 
           showToast(
-            `Vinculación guardada: Estado "${nuevoEstadoGeneral}" (${vinculadosOKCount} OK, ${diferenciasCount} Dif., ${faltantesCount} Sin Vincular).`, 
+            `Vinculación guardada: Estado "${nuevoEstadoGeneral}" (${sinDiferenciasCount} Sin Dif., ${diferenciasCount} Con Dif., ${faltantesCount} Sin Vincular).`, 
             nuevoEstadoGeneral === "Procesar OC" ? "success" : "info"
           );
 
         } catch (error) {
           console.error("Error al vincular factura:", error);
           showToast("Error al procesar la vinculación con Códigos Maestro", "error");
+        } finally {
+          setVinculando(false); // Desactiva el spinner en cualquier escenario
         }
       }
     );
@@ -273,7 +269,6 @@ const VinculacionCodigos = () => {
     f.folioRef?.includes(busqueda)
   );
 
-  // Helper para renderizar badges de estado general
   const renderBadgeEstadoGeneral = (estado) => {
     switch (estado) {
       case 'Procesar OC':
@@ -315,7 +310,8 @@ const VinculacionCodigos = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleVolverALista}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-gray-700 rounded text-slate-600 dark:text-gray-300 flex items-center gap-1 text-[11px] font-medium transition-colors"
+                disabled={vinculando}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-gray-700 rounded text-slate-600 dark:text-gray-300 flex items-center gap-1 text-[11px] font-medium transition-colors disabled:opacity-50"
                 title="Volver a la lista"
               >
                 <ArrowLeft size={15} className="text-[#2383C2]" />
@@ -329,10 +325,8 @@ const VinculacionCodigos = () => {
             </div>
           </header>
 
-          {/* TARJETAS RESUMEN METRICAS (6 COLUMNAS) */}
+          {/* TARJETAS RESUMEN METRICAS */}
           <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 shrink-0">
-            
-            {/* FOLIO */}
             <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <Hash size={11} className="text-[#2383C2]" />
@@ -343,7 +337,6 @@ const VinculacionCodigos = () => {
               </span>
             </div>
 
-            {/* FECHA EMISIÓN */}
             <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <Calendar size={11} className="text-[#2383C2]" />
@@ -354,7 +347,6 @@ const VinculacionCodigos = () => {
               </span>
             </div>
 
-            {/* REF (OC) */}
             <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <Tag size={11} className="text-[#2383C2]" />
@@ -365,18 +357,16 @@ const VinculacionCodigos = () => {
               </span>
             </div>
 
-            {/* TOTAL NETO */}
             <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <DollarSign size={11} className="text-[#2383C2]" />
                 Total Neto
               </span>
               <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-                ${parseInt(facturaSeleccionada.total || 0).toLocaleString('es-CL')}
+                ${Math.round(Number(facturaSeleccionada.total || 0)).toLocaleString('es-CL')}
               </span>
             </div>
 
-            {/* ESTADO GENERAL */}
             <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <Activity size={11} className="text-[#2383C2]" />
@@ -387,24 +377,37 @@ const VinculacionCodigos = () => {
               </div>
             </div>
 
-            {/* BOTÓN VINCULAR */}
+            {/* BOTÓN CON SPINNER DE CARGA */}
             <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
               <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                 <LinkIcon size={11} className="text-[#2383C2]" />
                 Acción
               </span>
-              <button
-                onClick={handleVincularFactura}
-                className="mt-0.5 w-full h-5 bg-[#2383C2] hover:bg-[#1d6fa5] active:bg-[#175b88] text-white rounded text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-2xs"
-              >
-                <LinkIcon size={11} />
-                <span>Vincular</span>
-              </button>
+              {hasPermission(PATH_VISTA, "acciones_detalle", "btn_vincular") ? (
+                <button
+                  onClick={handleVincularFactura}
+                  disabled={vinculando}
+                  className="mt-0.5 w-full h-5 bg-[#2383C2] hover:bg-[#1d6fa5] active:bg-[#175b88] disabled:bg-[#2383C2]/60 text-white rounded text-[10px] font-bold flex items-center justify-center gap-1 transition-colors shadow-2xs disabled:cursor-not-allowed"
+                >
+                  {vinculando ? (
+                    <>
+                      <Loader2 size={11} className="animate-spin" />
+                      <span>Vinculando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <LinkIcon size={11} />
+                      <span>Vincular</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <span className="text-[10px] text-slate-400 italic">Sin permiso</span>
+              )}
             </div>
-
           </div>
 
-          {/* DATOS DEL RECEPTOR / PROVEEDOR */}
+          {/* RECEPTOR */}
           <div className="px-3 py-1.5 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2 truncate">
               <Building2 size={13} className="text-[#2383C2] shrink-0" />
@@ -416,7 +419,7 @@ const VinculacionCodigos = () => {
             </span>
           </div>
 
-          {/* TABLA DE DETALLES/ITEMS */}
+          {/* TABLA DE DETALLES */}
           <div className="flex-grow overflow-auto">
             <table className="w-full text-left text-[11px] border-collapse min-w-[1050px]">
               <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
@@ -462,20 +465,21 @@ const VinculacionCodigos = () => {
                         {item.unidad || '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right text-slate-600 dark:text-gray-300">
-                        ${parseInt(item.precio || 0).toLocaleString('es-CL')}
+                        ${Math.round(Number(item.precio || 0)).toLocaleString('es-CL')}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold text-slate-800 dark:text-gray-100">
-                        ${parseInt(item.monto || 0).toLocaleString('es-CL')}
+                        ${Math.round(Number(item.monto || 0)).toLocaleString('es-CL')}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
                         {item.codigoMaestro || '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-right text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
-                        {item.precioMaestro !== undefined ? `$${parseInt(item.precioMaestro || 0).toLocaleString('es-CL')}` : '-'}
+                        {item.precioMaestro !== undefined ? `$${Math.round(Number(item.precioMaestro || 0)).toLocaleString('es-CL')}` : '-'}
                       </td>
+                      {/* RENDERIZADO DEL BADGE DE ESTADO DE ÍTEM */}
                       <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center bg-slate-50/50 dark:bg-gray-900/30">
                         <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
-                          item.estadoItem === 'Vinculado' 
+                          item.estadoItem === 'Sin Diferencias' || item.estadoItem === 'Vinculado'
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50' 
                             : item.estadoItem === 'Con Diferencias'
                             ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50'
@@ -483,7 +487,7 @@ const VinculacionCodigos = () => {
                             ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50'
                             : 'bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300 border border-slate-200 dark:border-gray-600'
                         }`}>
-                          {item.estadoItem || 'Pendiente'}
+                          {item.estadoItem === 'Vinculado' ? 'Sin Diferencias' : (item.estadoItem || 'Pendiente')}
                         </span>
                       </td>
                     </tr>
@@ -494,9 +498,8 @@ const VinculacionCodigos = () => {
           </div>
         </div>
       ) : (
-        /* VISTA PRINCIPAL (LISTA DE FACTURAS) */
+        /* VISTA PRINCIPAL */
         <>
-          {/* CABECERA */}
           <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ClipboardList size={16} className="text-[#2383C2]" />
@@ -506,7 +509,6 @@ const VinculacionCodigos = () => {
             </div>
           </header>
 
-          {/* FILTROS Y BÚSQUEDA */}
           <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center justify-between border-b border-slate-200 dark:border-gray-700">
             <div className="flex flex-wrap gap-1.5 items-center flex-grow">
               {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
@@ -546,13 +548,12 @@ const VinculacionCodigos = () => {
             </button>
           </div>
 
-          {/* TABLA PRINCIPAL */}
           {hasPermission(PATH_VISTA, "tabla_facturas") && (
             <div className="flex-grow overflow-auto">
               {loading ? (
                 <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400">
                   Cargando facturas del año {filtroAnio}...
-              </div>
+                </div>
               ) : (
                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[850px]">
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
@@ -596,7 +597,7 @@ const VinculacionCodigos = () => {
                             {f.rznSoc}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                            ${parseInt(f.total || 0).toLocaleString('es-CL')}
+                            ${Math.round(Number(f.total || 0)).toLocaleString('es-CL')}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                             {renderBadgeEstadoGeneral(f.estado)}
