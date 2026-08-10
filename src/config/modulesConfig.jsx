@@ -10,7 +10,8 @@ import {
   Calendar,
   CalendarDays,
   ClipboardList,
-  FileCode
+  FileCode,
+  FileSpreadsheet
 } from "lucide-react";
 
 export const MODULES = {
@@ -35,7 +36,7 @@ export const MODULES = {
       { label: 'Maestro Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
       { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> },
       { label: 'Xml Facturas', path: '/laboratorio/xmlFacturasLaboratorio', icon: <FileCode size={14} /> },
-      { label: 'Control Facturas', path: '/laboratorio/archivosControl', icon: <FileCode size={14} /> },
+      { label: 'Control Facturas', path: '/laboratorio/archivosControl', icon: <FileSpreadsheet size={14} /> },
     ]
   },
   misturnos: {

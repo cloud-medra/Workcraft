@@ -90,7 +90,6 @@ const VinculacionOrden = () => {
         cargarAnios();
     }, []);
 
-    // Cargar facturas en estado "Procesar OC" optimizado con Collection Group Query
     const cargarFacturasProcesarOC = useCallback(async () => {
         if (!filtroAnio) {
             setFacturas([]);
@@ -99,26 +98,31 @@ const VinculacionOrden = () => {
 
         setLoading(true);
         try {
-            const q = query(
-                collectionGroup(db, "documentos"),
-                where("estado", "==", "Procesar OC")
-            );
+            // Obtenemos todos los documentos del grupo sin el filtro 'where' inicial
+            // para poder filtrar ambos estados manualmente
+            const q = query(collectionGroup(db, "documentos"));
 
             const querySnapshot = await getDocs(q);
             const docsAcumulados = [];
+            const estadosPermitidos = ["Procesar OC", "Solicitud Enviada"];
 
             querySnapshot.forEach((d) => {
-                // Parse de la ruta de Firestore: laboratorio_facturasXml/{anio}/meses/{mesId}/documentos/{docId}
+                const data = d.data();
                 const pathSegments = d.ref.path.split('/');
                 const coleccionRaiz = pathSegments[0];
                 const anioDoc = pathSegments[1];
                 const mesId = pathSegments[3];
 
-                if (coleccionRaiz === COL_BASE && anioDoc === filtroAnio) {
+                // Filtramos por año, colección base Y los estados permitidos
+                if (
+                    coleccionRaiz === COL_BASE &&
+                    anioDoc === filtroAnio &&
+                    estadosPermitidos.includes(data.estado)
+                ) {
                     docsAcumulados.push({
                         id: d.id,
                         mesId,
-                        ...d.data()
+                        ...data
                     });
                 }
             });
@@ -126,8 +130,8 @@ const VinculacionOrden = () => {
             docsAcumulados.sort((a, b) => parseFecha(b.fchEmis) - parseFecha(a.fchEmis));
             setFacturas(docsAcumulados);
         } catch (error) {
-            console.error("Error al cargar facturas mediante collectionGroup:", error);
-            showToast("Error al obtener las facturas pendientes de Orden de Compra", "error");
+            console.error("Error al cargar facturas:", error);
+            showToast("Error al obtener las facturas pendientes", "error");
         } finally {
             setLoading(false);
         }
@@ -234,14 +238,18 @@ const VinculacionOrden = () => {
     const renderBadgeEstadoGeneral = (estado) => {
         const estilos = {
             "Procesar OC": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
+            "Solicitud Enviada": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50", // Nuevo estilo
             "Listo para Ingreso": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
             "Diferencia Reportada": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
             "Rechazada": "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800/50",
         };
-        const clase = estilos[estado] || estilos["Procesar OC"];
+
+        // Si el estado no existe en la lista, usamos uno por defecto (grey)
+        const clase = estilos[estado] || "bg-gray-100 text-gray-800 border-gray-200";
+
         return (
             <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${clase}`}>
-                {estado || 'Procesar OC'}
+                {estado || 'Sin Estado'}
             </span>
         );
     };

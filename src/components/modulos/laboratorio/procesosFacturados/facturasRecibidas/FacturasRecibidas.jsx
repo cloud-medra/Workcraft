@@ -1,12 +1,12 @@
 // src/components/modulos/laboratorio/procesosFacturados/FacturasRecibidas.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { db } from '../../../../../firebaseConfig';
 import { FileText, Trash2, Search, Eye, Settings, History, X } from 'lucide-react';
-import { useToast } from '../../../../context/ToastContext';
-import { useModal } from '../../../../context/ModalContext';
-import { useGranularPermission } from '../../../../hooks/useGranularPermission';
-import DetalleFacturaModal from '../XmlDetallesFacturas';
+import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
+import DetalleFacturaModal from '../../XmlDetallesFacturas';
 import ConfigDetallesFacturas from './ConfigDetallesFacturas';
 
 const FacturasRecibidas = () => {

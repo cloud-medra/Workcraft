@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, Settings, Calendar, Hash, Building2, Save, Trash2, Plus, Tag, DollarSign } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
-import { useToast } from '../../../../context/ToastContext';
+import { db } from '../../../../../firebaseConfig';
+import { useToast } from '../../../../../context/ToastContext';
 
 // Funciones para normalizar el formato dd/mm/yyyy
 const formatToDDMMYYYY = (dateStr) => {
@@ -30,7 +30,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
   const [fchEmis, setFchEmis] = useState(formatToDDMMYYYY(factura.fchEmis || ''));
   const [rznSoc, setRznSoc] = useState(factura.rznSoc || '');
   const [folioRef, setFolioRef] = useState(factura.folioRef || '');
-  
+
   // Campos de control interno
   const [estado, setEstado] = useState(factura.estado || '');
   const [ordenCompra, setOrdenCompra] = useState(factura.ordenCompra || factura.folioRef || '');
@@ -42,13 +42,13 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
   const [detalles, setDetalles] = useState(
     factura.detalles && factura.detalles.length > 0
       ? factura.detalles.map(d => ({
-          codigo: d.codigo || '',
-          nombre: d.nombre || '',
-          cantidad: Number(d.cantidad) || 0,
-          unidad: d.unidad || '',
-          precio: Number(d.precio) || 0,
-          monto: Number(d.monto) || (Number(d.cantidad || 0) * Number(d.precio || 0))
-        }))
+        codigo: d.codigo || '',
+        nombre: d.nombre || '',
+        cantidad: Number(d.cantidad) || 0,
+        unidad: d.unidad || '',
+        precio: Number(d.precio) || 0,
+        monto: Number(d.monto) || (Number(d.cantidad || 0) * Number(d.precio || 0))
+      }))
       : []
   );
 
@@ -129,8 +129,8 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
               Edición Integral de Factura
             </h3>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >
             <X size={15} />
@@ -139,10 +139,10 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
 
         {/* FORMULARIO CONTENEDOR PRINCIPAL */}
         <form onSubmit={handleSave} className="flex flex-col flex-grow overflow-hidden">
-          
+
           {/* SECCIÓN 1: DATOS GENERALES Y CONTROL */}
           <div className="p-3 bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 shrink-0">
-            
+
             <div className="flex flex-col gap-0.5">
               <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                 <Hash size={10} className="text-[#2383C2]" /> Folio
@@ -203,14 +203,16 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
                 className="h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 outline-none focus:border-[#2383C2]"
               >
                 <option value="">-- Estado --</option>
-                <option value="Poceso Iniciado">Poceso Iniciado</option>
-                <option value="Pendiente Vinculación">Pendiente Vinculación</option>
-                <option value="Códigos Vinculados">Códigos Vinculados</option>
-                <option value="Con Diferencias OC">Con Diferencias OC</option>
+                <option value="Iniciar Ingreso">Iniciar Ingreso</option>
+                <option value="Proceso Iniciado">Proceso Iniciado</option>
+                <option value="Procesar OC">Procesar OC</option>
+                <option value="Falta Vinculación">Falta Vinculación</option>
+                <option value="Diferencia Precios">Diferencia Precios</option>
                 <option value="Listo para Ingreso">Listo para Ingreso</option>
-                <option value="Diferencias Reportadas">Diferencias Reportadas</option>
-                <option value="En Revisión">En Revisión</option>
-                <option value="Completado">Completado</option>
+                <option value="Diferencia Reportada">Diferencia Reportada</option>
+                <option value="Rechazada">Rechazada</option>
+                <option value="Solicitud Enviada">Solicitud Enviada</option>
+                <option value="Finalizado">Finalizado</option>
               </select>
             </div>
 
@@ -359,7 +361,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
           {/* PIE DE MODAL */}
           <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center shrink-0">
             <p className="text-[9px] text-gray-400 italic">Los cambios modifican directamente la información guardada en la base de datos.</p>
-            
+
             <div className="flex gap-2">
               <button
                 type="button"

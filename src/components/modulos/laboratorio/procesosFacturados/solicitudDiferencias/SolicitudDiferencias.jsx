@@ -1,384 +1,493 @@
-// src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/DetalleSolicitudDif.jsx
-import React from 'react';
+// src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/SolicitudDiferencias.jsx
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../../../../../firebaseConfig';
 import * as XLSX from 'xlsx';
 import {
-  ArrowLeft,
   FileWarning,
-  Calendar,
-  Hash,
-  Building2,
+  Search,
+  RefreshCw,
+  Eye,
+  AlertTriangle,
   DollarSign,
-  Copy,
-  Receipt,
-  Tag,
-  Activity,
-  CalendarDays,
+  FileText,
   FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
+import DetalleSolicitudDif from './DetalleSolicitudDif';
 
-const DetalleSolicitudDif = ({
-  factura,
-  onVolver,
-  formatearFechaEmision,
-  renderBadgeEstadoGeneral,
-  onExportarExcel
-}) => {
+const SolicitudDiferencias = () => {
+  const [facturas, setFacturas] = useState([]);
+  const [aniosDisponibles, setAniosDisponibles] = useState([]);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroAnio, setFiltroAnio] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [exportando, setExportando] = useState(false);
+
+  // Estado para controlar la factura seleccionada en vista detalle
+  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+
   const { showToast } = useToast();
+  const { confirmAction } = useModal();
+  const { hasPermission } = useGranularPermission();
 
-  if (!factura) return null;
+  const PATH_VISTA = "/laboratorio/controlFactura";
+  const COL_BASE = "laboratorio_facturasXml";
+  
+  const ESTADOS_PERMITIDOS = [
+    "Diferencia Reportada",
+    "DiferenciasReportadas",
+    "Aceptado con Diferencias",
+    "Vinculación Parcial",
+    "Vinculacion Parcial"
+  ];
 
-  const copiarAlPortapapeles = (texto, label) => {
-    if (!texto) return;
-    navigator.clipboard.writeText(texto);
-    showToast(`${label} copiado al portapapeles`, 'info');
+  // Formatear fecha dd/mm/yyyy
+  const formatearFechaEmision = (fechaStr) => {
+    if (!fechaStr) return '';
+    const partes = fechaStr.replace(/-/g, '/').split('/');
+    if (partes.length === 3) {
+      const [anio, mes, dia] = partes;
+      if (anio.length === 4) {
+        return `${dia}/${mes}/${anio}`;
+      }
+    }
+    return fechaStr;
   };
 
-  const parseMontoToFloat = (valor) => {
-    if (valor === undefined || valor === null || valor === '') return 0;
-    if (typeof valor === 'number') return valor;
-    const strVal = String(valor).replace(/[^0-9,-]/g, '').replace(',', '.');
-    return parseFloat(strVal) || 0;
+  // Helper para formatear exclusivamente el campo mesImputado
+  const obtenerMesImputacion = (factura) => {
+    const valor = factura?.mesImputado || factura?.mes_imputado;
+    if (!valor) return '—';
+
+    if (typeof valor === 'string') {
+      if (valor.includes('-')) {
+        const [anio, mes] = valor.split('-');
+        return `${mes}/${anio}`;
+      }
+      return valor;
+    }
+
+    const fecha = valor.toDate ? valor.toDate() : new Date(valor);
+    if (isNaN(fecha.getTime())) return '—';
+
+    return fecha.toLocaleDateString('es-CL', { month: '2-digit', year: 'numeric' });
   };
 
-  const formatearMoneda = (valor) => {
-    const monto = parseMontoToFloat(valor);
-    return `$${Math.round(monto).toLocaleString('es-CL')}`;
-  };
+  // Cargar Años Disponibles
+  useEffect(() => {
+    const cargarAnios = async () => {
+      try {
+        const snap = await getDocs(collection(db, COL_BASE));
+        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        setAniosDisponibles(anios);
+      } catch (error) {
+        console.error("Error al cargar años:", error);
+      }
+    };
+    cargarAnios();
+  }, []);
 
-  // Función para manejar la descarga en Excel con las columnas requeridas
-  const handleExportarExcelLocal = () => {
-    if (onExportarExcel) {
-      onExportarExcel(factura);
+  // Cargar facturas con diferencias en paralelo (Optimizado con Promise.all)
+  const cargarFacturasDiferencias = useCallback(async () => {
+    if (!filtroAnio) {
+      setFacturas([]);
       return;
     }
 
-    const detalles = factura.detalles || [];
+    setLoading(true);
+    try {
+      const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
 
-    if (detalles.length === 0) {
-      showToast('No hay detalles para exportar', 'warning');
+      const promesasMeses = mesesSnap.docs.map(async (mesDoc) => {
+        const mesId = mesDoc.id;
+        const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
+
+        return docsSnap.docs
+          .map(d => ({ id: d.id, mesId, anio: filtroAnio, ...d.data() }))
+          .filter(data => ESTADOS_PERMITIDOS.includes(data.estado) || data.tieneDiferencias === true);
+      });
+
+      const resultadosPorMes = await Promise.all(promesasMeses);
+      const docsAcumulados = resultadosPorMes.flat();
+
+      docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
+      setFacturas(docsAcumulados);
+    } catch (error) {
+      console.error("Error al cargar facturas:", error);
+      showToast("Error al obtener las facturas con diferencias o vinculación parcial", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [filtroAnio, showToast]);
+
+  useEffect(() => {
+    cargarFacturasDiferencias();
+  }, [cargarFacturasDiferencias]);
+
+  const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
+  const handleVolverALista = () => setFacturaSeleccionada(null);
+
+  // Filtrado de facturas
+  const facturasFiltradas = useMemo(() => {
+    const query = busqueda.toLowerCase().trim();
+    if (!query) return facturas;
+    return facturas.filter(f =>
+      (f.folio && String(f.folio).toLowerCase().includes(query)) ||
+      (f.rznSoc && f.rznSoc.toLowerCase().includes(query)) ||
+      (f.folioRef && String(f.folioRef).toLowerCase().includes(query)) ||
+      (f.rutEmisor && f.rutEmisor.toLowerCase().includes(query)) ||
+      (f.estado && f.estado.toLowerCase().includes(query)) ||
+      (f.mesImputado && String(f.mesImputado).toLowerCase().includes(query)) ||
+      (f.mes_imputado && String(f.mes_imputado).toLowerCase().includes(query))
+    );
+  }, [facturas, busqueda]);
+
+  const totalMontoDiferencias = useMemo(() => {
+    return facturasFiltradas.reduce((acc, f) => acc + (Math.round(Number(f.total) || 0)), 0);
+  }, [facturasFiltradas]);
+
+  // Lógica de Exportación a Excel, actualización de estados y registro de Logs al estilo VinculacionCodigos
+  const handleExportarTodoExcel = () => {
+    if (facturasFiltradas.length === 0) {
+      showToast('No hay facturas para exportar', 'warning');
       return;
     }
 
-    const datosExcel = detalles.map((item) => {
-      // Usamos directamente vincuOCTexto/estadoItem, que ya vienen calculados
-      // correctamente desde DetalleVinculacionOC.jsx (basados en item.diferenciaCantidad
-      // y item.diferenciaPrecio). No se recalculan aquí para evitar comparar
-      // valores de distinto tipo (string vs number) que siempre darían "diferente".
-      const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
+    confirmAction(
+      "Confirmar Exportación y Solicitud",
+      `¿Está seguro de exportar el reporte y cambiar el estado de ${facturasFiltradas.length} factura(s) a "Solicitud Enviada"?`,
+      async () => {
+        setExportando(true);
+        try {
+          const filasExcel = [];
 
-      return {
-        'Folio': factura.folio || '',
-        'Ref. (OC)': factura.folioRef || 'Sin Referencia',
-        'Cód. Maestro': item.codigoMaestro || item.codigo_maestro || '',
-        'Descripción Maestro': item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '',
-        'Artículo OC': item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '',
-        'Cant. Factura': item.cantidad ?? 0,
-        'Precio Factura': item.precio ?? 0,
-        'Cant. OC': item.cantidadOC ?? 0,
-        'Precio OC': item.precioOC ?? 0,
-        'Estado Discrepancia': tagEstado
-      };
-    });
+          facturasFiltradas.forEach((factura) => {
+            const detalles = factura.detalles || [];
 
-    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+            if (detalles.length === 0) {
+              filasExcel.push({
+                'Folio': factura.folio || '',
+                'Emisión': formatearFechaEmision(factura.fchEmis),
+                'Proveedor': factura.rznSoc || 'Sin Razón Social',
+                'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+                'Cód. Maestro': '',
+                'Descripción Maestro': '',
+                'Artículo OC': '',
+                'Cant. Factura': '',
+                'Precio Factura': '',
+                'Cant. OC': '',
+                'Precio OC': '',
+                'Estado Discrepancia': 'Sin ítems cargados'
+              });
+              return;
+            }
 
-    worksheet['!cols'] = [
-      { wch: 12 }, // Folio
-      { wch: 16 }, // Ref. (OC)
-      { wch: 16 }, // Cód. Maestro
-      { wch: 32 }, // Descripción Maestro
-      { wch: 18 }, // Artículo OC
-      { wch: 14 }, // Cant. Factura
-      { wch: 14 }, // Precio Factura
-      { wch: 12 }, // Cant. OC
-      { wch: 12 }, // Precio OC
-      { wch: 24 }  // Estado Discrepancia
-    ];
+            detalles.forEach((item) => {
+              const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias');
+              filasExcel.push({
+                'Folio': factura.folio || '',
+                'Emisión': formatearFechaEmision(factura.fchEmis),
+                'Proveedor': factura.rznSoc || 'Sin Razón Social',
+                'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+                'Cód. Maestro': item.codigoMaestro || item.codigo_maestro || '',
+                'Descripción Maestro': item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '',
+                'Artículo OC': item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '',
+                'Cant. Factura': item.cantidad ?? 0,
+                'Precio Factura': item.precio ?? 0,
+                'Cant. OC': item.cantidadOC ?? 0,
+                'Precio OC': item.precioOC ?? 0,
+                'Estado Discrepancia': tagEstado
+              });
+            });
+          });
 
-    const nombreArchivo = `Solicitud_Diferencias_Folio_${factura.folio || 'S-N'}.xlsx`;
-    XLSX.writeFile(workbook, nombreArchivo);
-    showToast('Archivo Excel generado con éxito', 'success');
+          if (filasExcel.length === 0) {
+            showToast('No hay ítems para exportar', 'warning');
+            setExportando(false);
+            return;
+          }
+
+          // 1. Generar y descargar el archivo Excel
+          const worksheet = XLSX.utils.json_to_sheet(filasExcel);
+
+          worksheet['!cols'] = [
+            { wch: 12 }, { wch: 12 }, { wch: 28 }, { wch: 16 },
+            { wch: 16 }, { wch: 32 }, { wch: 18 }, { wch: 14 },
+            { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 24 }
+          ];
+
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias General');
+
+          const nombreArchivo = `Solicitud_Diferencias_General_${filtroAnio || 'Todos'}.xlsx`;
+          XLSX.writeFile(workbook, nombreArchivo);
+
+          // 2. Obtener información del usuario actual autenticado
+          const currentUser = auth.currentUser;
+          const usuarioInfo = {
+            uid: currentUser?.uid || "desconocido",
+            email: currentUser?.email || "usuario_anonimo",
+            nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
+          };
+
+          const nuevoEstadoGeneral = "Solicitud Enviada";
+
+          // 3. Procesar actualización de documentos y registro de logs en paralelo
+          const promesasActualizacion = facturasFiltradas.map(async (factura) => {
+            if (!factura.mesId || !factura.id) return;
+
+            const estadoAnteriorGeneral = factura.estado || "Diferencia Reportada";
+            const docRef = doc(db, COL_BASE, filtroAnio, "meses", factura.mesId, "documentos", factura.id);
+
+            // Actualizar estado en Firestore
+            await updateDoc(docRef, { estado: nuevoEstadoGeneral });
+
+            // Registrar log de evento idéntico a VinculacionCodigos
+            try {
+              const logsRef = collection(docRef, "logs");
+              await addDoc(logsRef, {
+                accion: "SOLICITUD_DIFERENCIAS_EXPORTADA",
+                detalle: `Solicitud de diferencias generada y exportada para el folio ${factura.folio || factura.id}`,
+                estadoAnterior: estadoAnteriorGeneral,
+                nuevoEstado: nuevoEstadoGeneral,
+                fechaHora: new Date().toLocaleString('es-CL'),
+                timestamp: serverTimestamp(),
+                usuario: usuarioInfo
+              });
+            } catch (logError) {
+              console.error("Error al escribir log de solicitud:", logError);
+            }
+          });
+
+          await Promise.all(promesasActualizacion);
+
+          // 4. Recargar datos locales
+          await cargarFacturasDiferencias();
+
+          showToast(`Excel generado y ${facturasFiltradas.length} documento(s) actualizado(s) a "Solicitud Enviada".`, 'success');
+        } catch (error) {
+          console.error("Error al exportar y registrar logs:", error);
+          showToast("Error al procesar la exportación y actualización de estados", "error");
+        } finally {
+          setExportando(false);
+        }
+      }
+    );
   };
 
-  const observaciones =
-    factura.observacionDiferencia ||
-    factura.motivo ||
-    factura.observacion ||
-    'No se registraron observaciones adicionales para las diferencias de esta factura.';
-
-  const detalles = factura.detalles || [];
+  const renderBadgeEstadoGeneral = (estado) => {
+    const estadoNormalizado = (estado || '').toLowerCase();
+    if (estadoNormalizado.includes('vinculación parcial') || estadoNormalizado.includes('vinculacion parcial')) {
+      return (
+        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
+          {estado}
+        </span>
+      );
+    }
+    if (estadoNormalizado.includes('solicitud enviada')) {
+      return (
+        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">
+          {estado}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
+        {estado || 'Diferencia Reportada'}
+      </span>
+    );
+  };
 
   return (
-    <div className="relative flex flex-col h-full w-full bg-white dark:bg-gray-800 overflow-hidden font-sans">
-      {/* CABECERA VISTA DETALLE */}
-      <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onVolver}
-            className="p-1 hover:bg-slate-100 dark:hover:bg-gray-700 rounded text-slate-600 dark:text-gray-300 flex items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer"
-            title="Volver a la lista"
-          >
-            <ArrowLeft size={15} className="text-[#2383C2]" />
-            <span>Volver</span>
-          </button>
-          <span className="text-slate-300 dark:text-gray-600">|</span>
-          <FileWarning className="text-amber-500" size={16} />
-          <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Detalle Solicitud de Diferencias — Folio N° {factura.folio}
-          </span>
-        </div>
-      </header>
+    <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
+      {facturaSeleccionada ? (
+        <DetalleSolicitudDif
+          factura={facturaSeleccionada}
+          exportando={exportando}
+          formatearFechaEmision={formatearFechaEmision}
+          getBadgeStyle={renderBadgeEstadoGeneral}
+          onVolver={handleVolverALista}
+        />
+      ) : (
+        <>
+          {/* CABECERA */}
+          <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800">
+                <FileWarning size={16} className="text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h1 className="text-[12px] font-normal text-slate-800 dark:text-gray-100 uppercase tracking-wide">
+                  Solicitud de Diferencias y Vinculaciones
+                </h1>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400">
+                  Gestión e inspección de facturas con discrepancias o vinculación parcial
+                </p>
+              </div>
+            </div>
 
-      {/* MÉTRICAS Y ACCIONES EN TARJETAS UNIFICADAS */}
-      <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 shrink-0">
-        {/* TARJETA: FOLIO */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <Hash size={11} className="text-[#2383C2]" /> Folio
-          </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            #{factura.folio}
-          </span>
-        </div>
+            {/* MÉTRICAS RÁPIDAS */}
+            <div className="flex items-center gap-2 text-xs">
+              <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
+                <FileText size={13} className="text-slate-500" />
+                <span className="text-slate-600 dark:text-gray-400">Total Casos:</span>
+                <span className="font-semibold text-slate-800 dark:text-gray-200">{facturasFiltradas.length}</span>
+              </div>
+              <div className="px-2.5 py-1 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center gap-1.5">
+                <DollarSign size={13} className="text-amber-600 dark:text-amber-400" />
+                <span className="text-amber-700 dark:text-amber-300">Monto:</span>
+                <span className="font-semibold text-amber-900 dark:text-amber-200">
+                  ${totalMontoDiferencias.toLocaleString('es-CL')}
+                </span>
+              </div>
+            </div>
+          </header>
 
-        {/* TARJETA: FECHA EMISIÓN */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <Calendar size={11} className="text-[#2383C2]" /> Fecha Emisión
-          </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {formatearFechaEmision
-              ? formatearFechaEmision(factura.fchEmis)
-              : factura.fchEmis || '-'}
-          </span>
-        </div>
-
-        {/* TARJETA: MES IMPUTADO */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
-          </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 capitalize">
-            {factura.mesImputado || factura.mes_imputado || '-'}
-          </span>
-        </div>
-
-        {/* TARJETA: REF (OC) */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
-          </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 font-mono">
-            {factura.folioRef || 'Sin Referencia'}
-          </span>
-        </div>
-
-        {/* TARJETA: TOTAL NETO */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
-          </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {formatearMoneda(factura.total)}
-          </span>
-        </div>
-
-        {/* TARJETA: ESTADO */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <Activity size={11} className="text-[#2383C2]" /> Estado
-          </span>
-          <div className="mt-0.5 truncate">
-            {renderBadgeEstadoGeneral ? (
-              renderBadgeEstadoGeneral(factura.estado)
-            ) : (
-              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
-                {factura.estado || 'Diferencia Reportada'}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* TARJETA DE ACCIÓN: BOTÓN SOLICITUD EXCEL */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <FileSpreadsheet size={11} className="text-emerald-600 dark:text-emerald-500" /> Exportar
-          </span>
-          <button
-            type="button"
-            onClick={handleExportarExcelLocal}
-            className="mt-0.5 w-full flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer truncate"
-            title="Generar o descargar solicitud en Excel"
-          >
-            <FileSpreadsheet size={11} />
-            <span className="truncate">Solicitud Excel</span>
-          </button>
-        </div>
-
-        {/* TARJETA DE ACCIÓN: COPIAR RESUMEN */}
-        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <Copy size={11} className="text-[#2383C2]" /> Portapapeles
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              copiarAlPortapapeles(
-                `Folio: ${factura.folio}\nProveedor: ${factura.rznSoc}\nMonto: $${factura.total}\nObservación: ${observaciones}`,
-                'Resumen'
-              )
-            }
-            className="mt-0.5 w-full text-left text-[11px] font-bold text-slate-800 dark:text-gray-100 hover:text-[#2383C2] dark:hover:text-[#2383C2] hover:underline truncate cursor-pointer"
-            title="Copiar resumen al portapapeles"
-          >
-            Copiar Resumen
-          </button>
-        </div>
-      </div>
-
-      {/* RECEPTOR Y RESUMEN DE PROVEEDOR */}
-      <div className="px-3 py-1.5 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between shrink-0 text-xs">
-        <div className="flex items-center gap-2 truncate">
-          <Building2 size={13} className="text-[#2383C2] shrink-0" />
-          <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase">
-            Proveedor:
-          </span>
-          <span
-            className="text-[11px] font-semibold text-slate-800 dark:text-gray-200 truncate"
-            title={factura.rznSoc}
-          >
-            {factura.rznSoc || 'Sin Razón Social'}
-          </span>
-          <span className="text-slate-400 dark:text-gray-500 text-[11px]">
-            (RUT: {factura.rutEmisor || 'N/A'})
-          </span>
-          {factura.rutEmisor && (
-            <button
-              onClick={() => copiarAlPortapapeles(factura.rutEmisor, 'RUT')}
-              className="text-slate-400 hover:text-[#2383C2] transition-colors p-0.5 cursor-pointer"
-              title="Copiar RUT"
-            >
-              <Copy size={12} />
-            </button>
-          )}
-        </div>
-        <span className="text-[10px] text-slate-400 font-semibold shrink-0">
-          Total Ítems: <strong className="text-slate-700 dark:text-gray-200">{detalles.length}</strong>
-        </span>
-      </div>
-
-      {/* CUERPO DEL DETALLE */}
-      <div className="flex-grow flex flex-col min-h-0 p-3 space-y-3 overflow-hidden">
-        {/* CAJA DE OBSERVACIONES */}
-        <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md p-3 shrink-0 max-h-32 overflow-y-auto">
-          <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1.5 text-xs">
-            <Receipt size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
-            <span>Motivo u Observaciones de la Discrepancia</span>
-          </h4>
-          <p className="text-slate-700 dark:text-amber-200 text-[11px] leading-relaxed whitespace-pre-wrap">
-            {observaciones}
-          </p>
-        </div>
-
-        {/* TABLA DE DETALLES */}
-        <div className="border border-slate-200 dark:border-gray-700 rounded-md overflow-auto flex-1 min-h-0 bg-white dark:bg-gray-800">
-          <table className="w-full text-left text-[11px] border-collapse min-w-[1400px]">
-            <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
-              <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
-                <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Discrepancia</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
-              {detalles.length === 0 ? (
-                <tr>
-                  <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                    Esta factura no posee ítems cargados.
-                  </td>
-                </tr>
-              ) : (
-                detalles.map((item, idx) => {
-                  // Usamos directamente los campos ya calculados en DetalleVinculacionOC.jsx
-                  // (item.diferenciaCantidad, item.diferenciaPrecio) en vez de recalcularlos
-                  // aquí comparando item.precio (string) con item.precioOC (number), lo cual
-                  // siempre daba "diferente" por ser tipos distintos.
-                  const tieneDifCant = !!item.diferenciaCantidad;
-                  const tieneDifPrecio = !!item.diferenciaPrecio;
-
-                  const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
-
-                  return (
-                    <tr key={item.id || item.codigo || idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40">
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">
-                        {idx + 1}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-500">
-                        {item.codigo || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
-                        {item.nombre || item.descripcion}
-                      </td>
-                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono ${tieneDifCant ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
-                        {item.cantidad}
-                      </td>
-                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono ${tieneDifPrecio ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
-                        {formatearMoneda(item.precio)}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">
-                        {formatearMoneda(item.monto || item.precio * item.cantidad)}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
-                        {item.codigoMaestro || item.codigo_maestro || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">
-                        {item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
-                        {item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
-                        {item.cantidadOC !== undefined && item.cantidadOC !== null ? item.cantidadOC : '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
-                        {item.precioOC !== undefined && item.precioOC !== null ? formatearMoneda(item.precioOC) : '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${
-                            tagEstado === 'Sin diferencias'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : tagEstado.includes('Diferencia')
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-400'
-                          }`}
-                        >
-                          {tagEstado}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
+          {/* FILTROS Y CONTROLES */}
+          <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center justify-between border-b border-slate-200 dark:border-gray-700">
+            <div className="flex flex-wrap gap-1.5 items-center flex-grow">
+              {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
+                <select
+                  value={filtroAnio}
+                  onChange={(e) => setFiltroAnio(e.target.value)}
+                  className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]"
+                >
+                  <option value="">Seleccionar Año</option>
+                  {aniosDisponibles.map((a, idx) => (
+                    <option key={`anio-${a}-${idx}`} value={a}>{a}</option>
+                  ))}
+                </select>
               )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+
+              {hasPermission(PATH_VISTA, "filtros_busqueda", "input_busqueda") && (
+                <div className="relative flex-grow max-w-xs">
+                  <Search className="absolute left-2 top-1.5 text-slate-400 dark:text-gray-500" size={12} />
+                  <input
+                    value={busqueda}
+                    onChange={e => setBusqueda(e.target.value)}
+                    className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]"
+                    placeholder="Buscar por Folio, RUT, Ref, Estado..."
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleExportarTodoExcel}
+                disabled={!filtroAnio || loading || exportando || facturasFiltradas.length === 0}
+                className="h-6 px-2.5 rounded text-[11px] font-medium bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Descargar Excel con todos los ítems, cambiar estado y registrar log"
+              >
+                <FileSpreadsheet size={12} />
+                <span>Exportar Todo</span>
+              </button>
+
+              <button
+                onClick={cargarFacturasDiferencias}
+                disabled={!filtroAnio || loading}
+                className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Recargar datos"
+              >
+                <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+                <span>Actualizar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* TABLA DE CONTENIDO */}
+          {hasPermission(PATH_VISTA, "tabla_facturas") && (
+            <div className="flex-grow overflow-auto">
+              {loading ? (
+                <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400 gap-2">
+                  <RefreshCw size={16} className="animate-spin text-amber-500" />
+                  <span>Cargando facturas del año {filtroAnio}...</span>
+                </div>
+              ) : (
+                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
+                  <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
+                    <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Mes Imputación</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref. (OC)</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
+                      <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
+                    {facturasFiltradas.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <AlertTriangle size={18} className="text-slate-300 dark:text-gray-600" />
+                            <span>
+                              {filtroAnio
+                                ? "No se encontraron registros de diferencias o vinculación parcial para este año."
+                                : "Seleccione un año para visualizar las facturas."}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      facturasFiltradas.map((f) => (
+                        <tr
+                          key={f.id}
+                          onDoubleClick={() => handleVerDetalles(f)}
+                          className="border-l-2 border-transparent hover:border-amber-500 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition-colors cursor-pointer"
+                          title="Doble clic para ver el detalle"
+                        >
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
+                            #{f.folio}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                            {formatearFechaEmision(f.fchEmis)}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 text-center font-medium whitespace-nowrap">
+                            {obtenerMesImputacion(f)}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                            {f.folioRef || 'S/R'}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
+                            {f.rznSoc || 'Sin Razón Social'}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                            ${Math.round(Number(f.total || 0)).toLocaleString('es-CL')}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                            {renderBadgeEstadoGeneral(f.estado)}
+                          </td>
+                          <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleVerDetalles(f);
+                              }}
+                              className="p-1 text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
+                              title="Visualizar factura"
+                            >
+                              <Eye size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
 
-export default DetalleSolicitudDif;
+export default SolicitudDiferencias;

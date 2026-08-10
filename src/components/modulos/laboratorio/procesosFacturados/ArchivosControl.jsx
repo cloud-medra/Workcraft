@@ -10,10 +10,12 @@ import {
   Layers,
   ChevronRight,
   Link2,
-  CalendarCheck
+  CalendarCheck,
+  FileSpreadsheet,
+  CheckCircle2
 } from 'lucide-react'; 
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
-import FacturasRecibidas from './FacturasRecibidas';
+import FacturasRecibidas from './facturasRecibidas/FacturasRecibidas';
 import IniciarProceso from './iniciarProceso/IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
@@ -28,12 +30,14 @@ const ALL_TABS = [
   { id: 'ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_ordenes' },
   { id: 'excel', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_excel' },
   { id: 'listas', label: 'Facturas Listas', Icon: CheckSquare, perm: 'tab_listas' },
+  { id: 'ingreso_actas', label: 'Ingreso Actas', Icon: FileSpreadsheet, perm: 'tab_ingreso_actas' },
+  { id: 'facturas_finalizadas', label: 'Facturas Finalizadas', Icon: CheckCircle2, perm: 'tab_facturas_finalizadas' },
   { id: 'cierre_mes', label: 'Cierre de Mes', Icon: CalendarCheck, perm: 'tab_cierre_mes' },
 ];
 
 const PATH_VISTA = "/laboratorio/controlFactura";
 
-const ControlFacturas = () => {
+const ArchivosControl = () => {
   const { hasPermission } = useGranularPermission();
 
   // Filtramos las pestañas permitidas según permisos granulares
@@ -95,6 +99,7 @@ const ControlFacturas = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               En línea
             </span>
+
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-gray-400">
@@ -176,4 +181,4 @@ const ControlFacturas = () => {
   );
 };
 
-export default ControlFacturas;
+export default ArchivosControl;
