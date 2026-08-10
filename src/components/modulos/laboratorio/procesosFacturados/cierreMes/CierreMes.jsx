@@ -1,17 +1,15 @@
-// src/components/modulos/laboratorio/procesosFacturados/CierreMes.jsx
-import React, { useState, useEffect } from 'react';
-import { 
-  collection, doc, getDoc, getDocs, setDoc, updateDoc, 
-  query, onSnapshot, arrayUnion, serverTimestamp 
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  collection, doc, getDoc, getDocs, setDoc, updateDoc,
+  query, where, onSnapshot, arrayUnion, serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { 
-  Lock, Unlock, Calendar, History, AlertTriangle, 
-  CheckCircle2, RefreshCw, FileCheck, X, ShieldAlert, AlertCircle 
+import {
+  Lock, Unlock, Calendar, History, AlertTriangle,
+  RefreshCw, X
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
-import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import { useUser } from '../../../../../context/UserContext';
 
 const MESES = [
@@ -31,7 +29,19 @@ const MESES = [
 
 const COL_CIERRES = "laboratorio_cierres";
 const COL_IMPUTADAS = "laboratorio_facturasImputadas";
-const PATH_VISTA = "/laboratorio/controlFactura";
+
+const BadgeEstado = ({ estado }) => {
+  switch (estado) {
+    case 'ABIERTO':
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"><Unlock size={11} /> ABIERTO</span>;
+    case 'CERRADO':
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800"><Lock size={11} /> CERRADO</span>;
+    case 'REABIERTO':
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800"><RefreshCw size={11} /> REABIERTO</span>;
+    default:
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-700">SIN INICIAR</span>;
+  }
+};
 
 const CierreMes = () => {
   const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear().toString());
@@ -39,28 +49,22 @@ const CierreMes = () => {
   const [resumenImputaciones, setResumenImputaciones] = useState({});
   const [cargando, setCargando] = useState(true);
 
-  // Estados para Modal de Reapertura
   const [mesParaReabrir, setMesParaReabrir] = useState(null);
   const [motivoReapertura, setMotivoReapertura] = useState('');
-
-  // Estados para Drawer/Modal de Historial
   const [mesParaHistorial, setMesParaHistorial] = useState(null);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
-  const { hasPermission } = useGranularPermission();
   const { userData } = useUser();
 
-  // Helper para construir la información completa del usuario actual
-  const obtenerUsuarioLog = () => {
+  const obtenerUsuarioLog = useCallback(() => {
     return {
       uid: userData?.uid || '',
       nombre: userData?.nombreCompleto || userData?.displayName || userData?.nombre || userData?.email?.split('@')[0] || 'Usuario Sistema',
       email: userData?.email || ''
     };
-  };
+  }, [userData]);
 
-  // Helper para mostrar de forma segura el usuario en JSX (objeto o string antiguo)
   const formatearNombreUsuario = (usuario) => {
     if (!usuario) return 'Usuario Sistema';
     if (typeof usuario === 'object') {
@@ -69,63 +73,87 @@ const CierreMes = () => {
     return usuario;
   };
 
-  // Escuchar estados de cierre del año seleccionado
+  // 1. Suscripción a cierres filtrada por año
   useEffect(() => {
     setCargando(true);
-    const q = query(collection(db, COL_CIERRES));
-    
+    const q = query(collection(db, COL_CIERRES), where("anio", "==", anioSeleccionado));
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const datos = {};
       snapshot.docs.forEach(d => {
-        if (d.id.startsWith(anioSeleccionado)) {
-          const [, mes] = d.id.split('_');
-          datos[mes] = { id: d.id, ...d.data() };
+        const data = d.data();
+        if (data.mes) {
+          datos[data.mes] = { id: d.id, ...data };
         }
       });
       setEstadosMeses(datos);
       setCargando(false);
     }, (error) => {
       console.error("Error al obtener cierres:", error);
+      showToast("Error al cargar la información de cierres", "error");
       setCargando(false);
     });
 
     return () => unsubscribe();
-  }, [anioSeleccionado]);
+  }, [anioSeleccionado, showToast]);
 
-  // Contar facturas imputadas por cada mes del año
+  // 2. Carga del resumen de facturas sin dependencia circular
   useEffect(() => {
     const cargarResumenFacturas = async () => {
-      const resumen = {};
-      for (const mesObj of MESES) {
-        try {
-          const docsRef = collection(db, COL_IMPUTADAS, anioSeleccionado, "meses", mesObj.id, "documentos");
-          const snap = await getDocs(docsRef);
-          let totalMonto = 0;
-          snap.docs.forEach(d => {
-            totalMonto += Number(d.data().total || 0);
-          });
-          resumen[mesObj.id] = {
-            cantidad: snap.size,
-            montoTotal: totalMonto
-          };
-        } catch (e) {
-          resumen[mesObj.id] = { cantidad: 0, montoTotal: 0 };
-        }
+      try {
+        const promesas = MESES.map(async (mesObj) => {
+          try {
+            const docsRef = collection(db, COL_IMPUTADAS, anioSeleccionado, "meses", mesObj.id, "documentos");
+            const snap = await getDocs(docsRef);
+            let totalMonto = 0;
+            snap.docs.forEach(d => {
+              totalMonto += Number(d.data().total || 0);
+            });
+            return { mesId: mesObj.id, cantidad: snap.size, montoTotal: totalMonto };
+          } catch {
+            return { mesId: mesObj.id, cantidad: 0, montoTotal: 0 };
+          }
+        });
+
+        const resultados = await Promise.all(promesas);
+        const nuevoResumen = resultados.reduce((acc, item) => {
+          acc[item.mesId] = { cantidad: item.cantidad, montoTotal: item.montoTotal };
+          return acc;
+        }, {});
+
+        setResumenImputaciones(nuevoResumen);
+      } catch (e) {
+        console.error("Error cargando resumen de facturas:", e);
       }
-      setResumenImputaciones(resumen);
     };
 
     cargarResumenFacturas();
-  }, [anioSeleccionado, estadosMeses]);
+  }, [anioSeleccionado]); // <--- Removido estadosMeses para evitar bucle infinito
 
-  // Cambiar estado a ABIERTO
-  const handleAbrirMes = async (mesId) => {
+  const handleAbrirMes = (mesId) => {
     const docId = `${anioSeleccionado}_${mesId}`;
     confirmAction(
-      "Abrir Período", 
-      `¿Deseas habilitar la imputación de facturas para ${mesId.toUpperCase()} ${anioSeleccionado}?`, 
+      "Abrir Período",
+      `¿Deseas habilitar la imputación de facturas para ${mesId.toUpperCase()} ${anioSeleccionado}? Esto cerrará automáticamente cualquier otro período que esté abierto.`,
       async () => {
         try {
+          // 1. Cerrar automáticamente cualquier otro mes ABIERTO o REABIERTO (evita 2 meses activos a la vez)
+          const qAbiertos = query(
+            collection(db, COL_CIERRES),
+            where("estado", "in", ["ABIERTO", "REABIERTO"])
+          );
+          const snapAbiertos = await getDocs(qAbiertos);
+          const cierresAutomaticos = snapAbiertos.docs
+            .filter(d => d.id !== docId)
+            .map(d => updateDoc(doc(db, COL_CIERRES, d.id), {
+              estado: 'CERRADO',
+              fechaCierre: serverTimestamp(),
+              usuarioCierre: obtenerUsuarioLog(),
+              cierreAutomatico: true
+            }));
+          await Promise.all(cierresAutomaticos);
+
+          // 2. Abrir el mes seleccionado
           const docRef = doc(db, COL_CIERRES, docId);
           await setDoc(docRef, {
             anio: anioSeleccionado,
@@ -134,6 +162,15 @@ const CierreMes = () => {
             fechaApertura: serverTimestamp(),
             usuarioApertura: obtenerUsuarioLog(),
           }, { merge: true });
+
+          // 3. Actualizar el período activo global — fuente única que consulta IniciarProceso.jsx
+          const periodoActivoRef = doc(db, "configuracion_periodos", "periodo_activo");
+          await setDoc(periodoActivoRef, {
+            mes: mesId,
+            anio: anioSeleccionado,
+            actualizadoEn: serverTimestamp(),
+            actualizadoPor: obtenerUsuarioLog(),
+          });
 
           showToast(`Mes de ${mesId} abierto correctamente`, 'success');
         } catch (error) {
@@ -144,12 +181,11 @@ const CierreMes = () => {
     );
   };
 
-  // Cambiar estado a CERRADO
-  const handleCerrarMes = async (mesId) => {
+  const handleCerrarMes = (mesId) => {
     const docId = `${anioSeleccionado}_${mesId}`;
     confirmAction(
-      "Cerrar Período de Imputación", 
-      `Al cerrar ${mesId.toUpperCase()} ${anioSeleccionado}, no se podrán ingresar ni modificar facturas en este mes. ¿Continuar?`, 
+      "Cerrar Período de Imputación",
+      `Al cerrar ${mesId.toUpperCase()} ${anioSeleccionado}, no se podrán ingresar ni modificar facturas en este mes. ¿Continuar?`,
       async () => {
         try {
           const docRef = doc(db, COL_CIERRES, docId);
@@ -170,7 +206,6 @@ const CierreMes = () => {
     );
   };
 
-  // Confirmar Reapertura con motivo obligatorio
   const ejecutarReapertura = async () => {
     if (!motivoReapertura.trim()) {
       showToast("Debes ingresar el motivo de la reapertura", "warning");
@@ -186,12 +221,12 @@ const CierreMes = () => {
         usuario: obtenerUsuarioLog()
       };
 
-      await updateDoc(docRef, {
+      await setDoc(docRef, {
         estado: 'REABIERTO',
         fechaReapertura: serverTimestamp(),
         usuarioReapertura: obtenerUsuarioLog(),
         historialReaperturas: arrayUnion(registroReapertura)
-      });
+      }, { merge: true });
 
       showToast(`Mes de ${mesParaReabrir} reabierto`, 'warning');
       setMesParaReabrir(null);
@@ -202,23 +237,10 @@ const CierreMes = () => {
     }
   };
 
-  const getBadgeEstado = (estado) => {
-    switch (estado) {
-      case 'ABIERTO':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"><Unlock size={11} /> ABIERTO</span>;
-      case 'CERRADO':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800"><Lock size={11} /> CERRADO</span>;
-      case 'REABIERTO':
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800"><RefreshCw size={11} /> REABIERTO</span>;
-      default:
-        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border border-gray-300 dark:border-gray-700">SIN INICIAR</span>;
-    }
-  };
-
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden font-sans">
-      
-      {/* CABECERA DE SECCIÓN */}
+
+      {/* CABECERA */}
       <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar size={18} className="text-[#2383C2]" />
@@ -232,7 +254,6 @@ const CierreMes = () => {
           </div>
         </div>
 
-        {/* SELECTOR DE AÑO */}
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-medium text-slate-600 dark:text-gray-300">Año:</span>
           <select
@@ -247,7 +268,7 @@ const CierreMes = () => {
         </div>
       </header>
 
-      {/* GRID DE MESES */}
+      {/* CONTENIDO PRINCIPAL */}
       <div className="flex-1 overflow-y-auto p-4">
         {cargando ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-500">
@@ -262,27 +283,22 @@ const CierreMes = () => {
               const resumen = resumenImputaciones[mes.id] || { cantidad: 0, montoTotal: 0 };
 
               return (
-                <div 
+                <div
                   key={mes.id}
-                  className={`bg-white dark:bg-gray-800 border rounded-lg p-3 flex flex-col justify-between transition shadow-xs hover:shadow-md ${
-                    estado === 'CERRADO' ? 'border-rose-200 dark:border-rose-900/40' :
-                    estado === 'ABIERTO' ? 'border-emerald-200 dark:border-emerald-900/40' :
-                    estado === 'REABIERTO' ? 'border-amber-200 dark:border-amber-900/40' :
-                    'border-slate-200 dark:border-gray-700'
-                  }`}
+                  className={`bg-white dark:bg-gray-800 border rounded-lg p-3 flex flex-col justify-between transition shadow-xs hover:shadow-md ${estado === 'CERRADO' ? 'border-rose-200 dark:border-rose-900/40' :
+                      estado === 'ABIERTO' ? 'border-emerald-200 dark:border-emerald-900/40' :
+                        estado === 'REABIERTO' ? 'border-amber-200 dark:border-amber-900/40' :
+                          'border-slate-200 dark:border-gray-700'
+                    }`}
                 >
-                  {/* Encabezado de Tarjeta */}
                   <div>
                     <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="text-[13px] font-bold text-slate-800 dark:text-gray-100">
-                          {mes.nombre} <span className="text-[10px] text-slate-400">{anioSeleccionado}</span>
-                        </h3>
-                      </div>
-                      {getBadgeEstado(estado)}
+                      <h3 className="text-[13px] font-bold text-slate-800 dark:text-gray-100">
+                        {mes.nombre} <span className="text-[10px] text-slate-400">{anioSeleccionado}</span>
+                      </h3>
+                      <BadgeEstado estado={estado} />
                     </div>
 
-                    {/* Resumen de Facturas Imputadas */}
                     <div className="bg-slate-50 dark:bg-gray-900/50 rounded p-2 border border-slate-100 dark:border-gray-700/50 mb-3 space-y-1">
                       <div className="flex justify-between text-[10px]">
                         <span className="text-slate-500 dark:text-gray-400">Facturas Imputadas:</span>
@@ -295,7 +311,6 @@ const CierreMes = () => {
                     </div>
                   </div>
 
-                  {/* Acciones de Cierre */}
                   <div className="pt-2 border-t border-slate-100 dark:border-gray-700/80 flex items-center justify-between gap-1">
                     {infoEstado.historialReaperturas?.length > 0 && (
                       <button
