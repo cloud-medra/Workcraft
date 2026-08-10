@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'; 
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import FacturasRecibidas from './FacturasRecibidas';
-import IniciarProceso from './IniciarProceso';
+import IniciarProceso from './iniciarProceso/IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';

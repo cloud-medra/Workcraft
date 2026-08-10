@@ -1,12 +1,12 @@
 // src/components/facturas/IniciarProceso.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../../../../firebaseConfig';
+import { db, auth } from '../../../../../../firebaseConfig';
 import { FileText, Search, PlayCircle, CheckSquare, Square } from 'lucide-react';
-import { useToast } from '../../../../context/ToastContext';
-import { useModal } from '../../../../context/ModalContext';
-import { useUser } from '../../../../context/UserContext';
-import { useGranularPermission } from '../../../../hooks/useGranularPermission';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useModal } from '../../../../../../context/ModalContext';
+import { useUser } from '../../../../../../context/UserContext';
+import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 
 const IniciarProceso = () => {
   const [facturas, setFacturas] = useState([]);

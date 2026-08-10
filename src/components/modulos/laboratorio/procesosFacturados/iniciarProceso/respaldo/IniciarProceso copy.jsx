@@ -1,13 +1,13 @@
 // src/components/modulos/laboratorio/procesosFacturados/IniciarProceso.jsx (hoy)
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { db } from '../../../../../../firebaseConfig';
 import { FileText, Trash2, Search, Eye, Settings, History, X, Play, AlertTriangle } from 'lucide-react';
-import { useToast } from '../../../../context/ToastContext';
-import { useModal } from '../../../../context/ModalContext';
-import { useGranularPermission } from '../../../../hooks/useGranularPermission';
-import DetalleFacturaModal from '../XmlDetallesFacturas';
-import ConfigDetallesFacturas from './ConfigDetallesFacturas';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useModal } from '../../../../../../context/ModalContext';
+import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import DetalleFacturaModal from '../../../XmlDetallesFacturas';
+import ConfigDetallesFacturas from '../../ConfigDetallesFacturas';
 
 const IniciarProceso = () => {
   const [facturas, setFacturas] = useState([]);
