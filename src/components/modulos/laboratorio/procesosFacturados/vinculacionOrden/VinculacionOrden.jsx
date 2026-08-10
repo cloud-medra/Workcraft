@@ -1,4 +1,4 @@
-// src/components/facturas/VinculacionOrden.jsx
+// src/components/modulos/laboratorio/procesosFacturados/vinculacionOrden/VinculacionOrden.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     collection,

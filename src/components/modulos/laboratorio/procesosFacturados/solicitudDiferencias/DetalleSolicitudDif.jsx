@@ -1,4 +1,4 @@
-// src/components/facturas/DetalleSolicitudDif.jsx
+// src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/DetalleSolicitudDif.jsx
 import React from 'react';
 import {
   ArrowLeft,

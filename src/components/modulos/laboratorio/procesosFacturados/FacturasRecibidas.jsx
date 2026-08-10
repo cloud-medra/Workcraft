@@ -1,4 +1,4 @@
-// src/components/facturas/FacturasRecibidas.jsx
+// src/components/modulos/laboratorio/procesosFacturados/FacturasRecibidas.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';

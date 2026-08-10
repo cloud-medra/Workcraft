@@ -1,4 +1,4 @@
-// src/components/facturas/FacturasRecibidas.jsx
+// src/components/modulos/laboratorio/procesosFacturados/IniciarProceso.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
@@ -9,7 +9,7 @@ import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import DetalleFacturaModal from '../XmlDetallesFacturas';
 import ConfigDetallesFacturas from './ConfigDetallesFacturas';
 
-const FacturasRecibidas = () => {
+const IniciarProceso = () => {
   const [facturas, setFacturas] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -453,4 +453,4 @@ const FacturasRecibidas = () => {
   );
 };
 
-export default FacturasRecibidas;
+export default IniciarProceso;

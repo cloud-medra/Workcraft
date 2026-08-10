@@ -1,4 +1,4 @@
-// src/components/facturas/VinculacionCodigos.jsx
+// src/components/modulos/laboratorio/procesosFacturados/vinculacionCodigos/VinculacionCodigos.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../firebaseConfig';

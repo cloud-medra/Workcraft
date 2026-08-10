@@ -1,4 +1,4 @@
-// src/components/facturas/DetalleFactura.jsx
+// src/components/modulos/laboratorio/procesosFacturados/vinculacionCodigos/DetalleFactura.jsx
 import React from 'react';
 import {
   ArrowLeft,

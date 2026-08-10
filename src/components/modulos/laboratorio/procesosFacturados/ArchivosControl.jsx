@@ -1,4 +1,4 @@
-// src/components/facturas/ControlFacturas.jsx
+// src/components/modulos/laboratorio/procesosFacturados/ArchivosControl.jsx
 import React, { useState, useMemo } from 'react';
 import { 
   Inbox, 
@@ -18,6 +18,7 @@ import IniciarProceso from './IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';
+import CierreMes from './cierreMes/CierreMes';
 
 // Lista de pestañas ordenada
 const ALL_TABS = [
@@ -137,6 +138,7 @@ const ControlFacturas = () => {
         {currentTabObj.id === 'gestion' && <VinculacionCodigos />}
         {currentTabObj.id === 'ordenes' && <VinculacionOrden />}
         {currentTabObj.id === 'excel' && <SolicitudDiferencias />}
+        {currentTabObj.id === 'cierre_mes' && <CierreMes />}
 
         {!['recibidas', 'procesar', 'gestion', 'ordenes', 'excel', 'cierre_mes'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">

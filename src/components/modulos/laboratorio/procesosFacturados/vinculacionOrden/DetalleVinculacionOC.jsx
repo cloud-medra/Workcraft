@@ -1,4 +1,4 @@
-// src/components/facturas/DetalleVinculacionOC.jsx
+// src/components/modulos/laboratorio/procesosFacturados/vinculacionOrden/DetalleVinculacionOC.jsx
 import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft,
