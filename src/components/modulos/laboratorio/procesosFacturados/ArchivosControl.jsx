@@ -12,7 +12,8 @@ import {
   Link2,
   CalendarCheck,
   FileSpreadsheet,
-  CheckCircle2
+  CheckCircle2,
+  Edit3
 } from 'lucide-react'; 
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import FacturasRecibidas from './facturasRecibidas/FacturasRecibidas';
@@ -20,6 +21,7 @@ import IniciarProceso from './iniciarProceso/IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';
+import FacturasListasIngreso from './facturasListasIngreso/FacturasListasIngreso';
 import CierreMes from './cierreMes/CierreMes';
 
 // Lista de pestañas ordenada
@@ -33,6 +35,7 @@ const ALL_TABS = [
   { id: 'ingreso_actas', label: 'Ingreso Actas', Icon: FileSpreadsheet, perm: 'tab_ingreso_actas' },
   { id: 'facturas_finalizadas', label: 'Facturas Finalizadas', Icon: CheckCircle2, perm: 'tab_facturas_finalizadas' },
   { id: 'cierre_mes', label: 'Cierre de Mes', Icon: CalendarCheck, perm: 'tab_cierre_mes' },
+  { id: 'edicion', label: 'Modificación y Edición', Icon: Edit3, perm: 'tab_edicion' },
 ];
 
 const PATH_VISTA = "/laboratorio/controlFactura";
@@ -143,9 +146,10 @@ const ArchivosControl = () => {
         {currentTabObj.id === 'gestion' && <VinculacionCodigos />}
         {currentTabObj.id === 'ordenes' && <VinculacionOrden />}
         {currentTabObj.id === 'excel' && <SolicitudDiferencias />}
+        {currentTabObj.id === 'listas' && <FacturasListasIngreso />}
         {currentTabObj.id === 'cierre_mes' && <CierreMes />}
 
-        {!['recibidas', 'procesar', 'gestion', 'ordenes', 'excel', 'cierre_mes'].includes(currentTabObj.id) && (
+        {!['recibidas', 'procesar', 'gestion', 'ordenes', 'excel', 'listas', 'cierre_mes', 'ingreso_actas', 'facturas_finalizadas', 'edicion'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">
             <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-[#2383C2] dark:text-[#369BCE] flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/40">
               <ActiveIcon size={20} />
