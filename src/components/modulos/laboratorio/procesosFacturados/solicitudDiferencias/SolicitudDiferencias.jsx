@@ -1,313 +1,384 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../../../../firebaseConfig';
+// src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/DetalleSolicitudDif.jsx
+import React from 'react';
+import * as XLSX from 'xlsx';
 import {
+  ArrowLeft,
   FileWarning,
-  Search,
-  RefreshCw,
-  Eye,
-  AlertTriangle,
+  Calendar,
+  Hash,
+  Building2,
   DollarSign,
-  FileText
+  Copy,
+  Receipt,
+  Tag,
+  Activity,
+  CalendarDays,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
-import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import DetalleSolicitudDif from './DetalleSolicitudDif';
 
-const SolicitudDiferencias = () => {
-  const [facturas, setFacturas] = useState([]);
-  const [aniosDisponibles, setAniosDisponibles] = useState([]);
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroAnio, setFiltroAnio] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
-
+const DetalleSolicitudDif = ({
+  factura,
+  onVolver,
+  formatearFechaEmision,
+  renderBadgeEstadoGeneral,
+  onExportarExcel
+}) => {
   const { showToast } = useToast();
-  const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/controlFactura";
-  const COL_BASE = "laboratorio_facturasXml";
+  if (!factura) return null;
 
-  const formatearFechaEmision = (fechaStr) => {
-    if (!fechaStr) return '';
-    const partes = fechaStr.replace(/-/g, '/').split('/');
-    if (partes.length === 3) {
-      const [anio, mes, dia] = partes;
-      if (anio.length === 4) return `${dia}/${mes}/${anio}`;
-    }
-    return fechaStr;
+  const copiarAlPortapapeles = (texto, label) => {
+    if (!texto) return;
+    navigator.clipboard.writeText(texto);
+    showToast(`${label} copiado al portapapeles`, 'info');
   };
 
-  const getBadgeStyle = (estado) => {
-    const estadoNormalizado = (estado || '').toLowerCase();
-    if (estadoNormalizado.includes('vinculación parcial') || estadoNormalizado.includes('vinculacion parcial')) {
-      return 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-300 dark:border-sky-800';
-    }
-    return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50';
+  const parseMontoToFloat = (valor) => {
+    if (valor === undefined || valor === null || valor === '') return 0;
+    if (typeof valor === 'number') return valor;
+    const strVal = String(valor).replace(/[^0-9,-]/g, '').replace(',', '.');
+    return parseFloat(strVal) || 0;
   };
 
-  useEffect(() => {
-    const cargarAnios = async () => {
-      try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
-        setAniosDisponibles(anios);
-        if (anios.length > 0 && !filtroAnio) {
-          setFiltroAnio(anios[0]);
-        }
-      } catch (error) {
-        console.error("Error al cargar años:", error);
-      }
-    };
-    cargarAnios();
-  }, []);
+  const formatearMoneda = (valor) => {
+    const monto = parseMontoToFloat(valor);
+    return `$${Math.round(monto).toLocaleString('es-CL')}`;
+  };
 
-  const cargarFacturasDiferencias = async () => {
-    if (!filtroAnio) {
-      setFacturas([]);
+  // Función para manejar la descarga en Excel con las columnas requeridas
+  const handleExportarExcelLocal = () => {
+    if (onExportarExcel) {
+      onExportarExcel(factura);
       return;
     }
 
-    setLoading(true);
-    try {
-      const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-      let docsAcumulados = [];
+    const detalles = factura.detalles || [];
 
-      const estadosPermitidos = [
-        "Diferencia Reportada",
-        "DiferenciasReportadas",
-        "Aceptado con Diferencias",
-        "Vinculación Parcial",
-        "Vinculacion Parcial"
-      ];
-
-      for (const mesDoc of mesesSnap.docs) {
-        const mesId = mesDoc.id;
-        const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
-
-        docsSnap.docs.forEach(d => {
-          const data = d.data();
-          if (estadosPermitidos.includes(data.estado) || data.tieneDiferencias === true) {
-            docsAcumulados.push({
-              id: d.id,
-              mesId,
-              ...data
-            });
-          }
-        });
-      }
-
-      docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
-      setFacturas(docsAcumulados);
-    } catch (error) {
-      console.error("Error al cargar facturas:", error);
-      showToast("Error al obtener las facturas con diferencias o vinculación parcial", "error");
-    } finally {
-      setLoading(false);
+    if (detalles.length === 0) {
+      showToast('No hay detalles para exportar', 'warning');
+      return;
     }
+
+    const datosExcel = detalles.map((item) => {
+      // Usamos directamente vincuOCTexto/estadoItem, que ya vienen calculados
+      // correctamente desde DetalleVinculacionOC.jsx (basados en item.diferenciaCantidad
+      // y item.diferenciaPrecio). No se recalculan aquí para evitar comparar
+      // valores de distinto tipo (string vs number) que siempre darían "diferente".
+      const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
+
+      return {
+        'Folio': factura.folio || '',
+        'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+        'Cód. Maestro': item.codigoMaestro || item.codigo_maestro || '',
+        'Descripción Maestro': item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '',
+        'Artículo OC': item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '',
+        'Cant. Factura': item.cantidad ?? 0,
+        'Precio Factura': item.precio ?? 0,
+        'Cant. OC': item.cantidadOC ?? 0,
+        'Precio OC': item.precioOC ?? 0,
+        'Estado Discrepancia': tagEstado
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+
+    worksheet['!cols'] = [
+      { wch: 12 }, // Folio
+      { wch: 16 }, // Ref. (OC)
+      { wch: 16 }, // Cód. Maestro
+      { wch: 32 }, // Descripción Maestro
+      { wch: 18 }, // Artículo OC
+      { wch: 14 }, // Cant. Factura
+      { wch: 14 }, // Precio Factura
+      { wch: 12 }, // Cant. OC
+      { wch: 12 }, // Precio OC
+      { wch: 24 }  // Estado Discrepancia
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias');
+
+    const nombreArchivo = `Solicitud_Diferencias_Folio_${factura.folio || 'S-N'}.xlsx`;
+    XLSX.writeFile(workbook, nombreArchivo);
+    showToast('Archivo Excel generado con éxito', 'success');
   };
 
-  useEffect(() => {
-    if (filtroAnio) {
-      cargarFacturasDiferencias();
-    }
-  }, [filtroAnio]);
+  const observaciones =
+    factura.observacionDiferencia ||
+    factura.motivo ||
+    factura.observacion ||
+    'No se registraron observaciones adicionales para las diferencias de esta factura.';
 
-  const facturasFiltradas = useMemo(() => {
-    const query = busqueda.toLowerCase().trim();
-    if (!query) return facturas;
-    return facturas.filter(f =>
-      (f.folio && String(f.folio).toLowerCase().includes(query)) ||
-      (f.rznSoc && f.rznSoc.toLowerCase().includes(query)) ||
-      (f.folioRef && String(f.folioRef).toLowerCase().includes(query)) ||
-      (f.rutEmisor && f.rutEmisor.toLowerCase().includes(query)) ||
-      (f.estado && f.estado.toLowerCase().includes(query)) ||
-      (f.mesImputado && String(f.mesImputado).toLowerCase().includes(query)) ||
-      (f.mes_imputado && String(f.mes_imputado).toLowerCase().includes(query))
-    );
-  }, [facturas, busqueda]);
-
-  const totalMontoDiferencias = useMemo(() => {
-    return facturasFiltradas.reduce((acc, f) => acc + (parseInt(f.total) || 0), 0);
-  }, [facturasFiltradas]);
+  const detalles = factura.detalles || [];
 
   return (
-    <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden font-sans">
-      {!facturaSeleccionada ? (
-        <>
-          {/* CABECERA */}
-          <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800">
-                <FileWarning size={18} className="text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <h1 className="text-xs font-semibold text-slate-800 dark:text-gray-100 uppercase tracking-wider">
-                  Solicitud de Diferencias y Vinculaciones
-                </h1>
-                <p className="text-[11px] text-slate-500 dark:text-gray-400">
-                  Gestión e inspección de facturas con discrepancias o vinculación parcial
-                </p>
-              </div>
-            </div>
+    <div className="relative flex flex-col h-full w-full bg-white dark:bg-gray-800 overflow-hidden font-sans">
+      {/* CABECERA VISTA DETALLE */}
+      <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onVolver}
+            className="p-1 hover:bg-slate-100 dark:hover:bg-gray-700 rounded text-slate-600 dark:text-gray-300 flex items-center gap-1 text-[11px] font-medium transition-colors cursor-pointer"
+            title="Volver a la lista"
+          >
+            <ArrowLeft size={15} className="text-[#2383C2]" />
+            <span>Volver</span>
+          </button>
+          <span className="text-slate-300 dark:text-gray-600">|</span>
+          <FileWarning className="text-amber-500" size={16} />
+          <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
+            Detalle Solicitud de Diferencias — Folio N° {factura.folio}
+          </span>
+        </div>
+      </header>
 
-            {/* METRICAS RAPIDAS */}
-            <div className="flex items-center gap-2 text-xs">
-              <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
-                <FileText size={13} className="text-slate-500" />
-                <span className="text-slate-600 dark:text-gray-400">Total Casos:</span>
-                <span className="font-semibold text-slate-800 dark:text-gray-200">{facturasFiltradas.length}</span>
-              </div>
-              <div className="px-2.5 py-1 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center gap-1.5">
-                <DollarSign size={13} className="text-amber-600 dark:text-amber-400" />
-                <span className="text-amber-700 dark:text-amber-300">Monto:</span>
-                <span className="font-semibold text-amber-900 dark:text-amber-200">
-                  ${totalMontoDiferencias.toLocaleString('es-CL')}
-                </span>
-              </div>
-            </div>
-          </header>
+      {/* MÉTRICAS Y ACCIONES EN TARJETAS UNIFICADAS */}
+      <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 shrink-0">
+        {/* TARJETA: FOLIO */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <Hash size={11} className="text-[#2383C2]" /> Folio
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
+            #{factura.folio}
+          </span>
+        </div>
 
-          {/* FILTROS Y CONTROLES */}
-          <div className="bg-slate-100/70 dark:bg-gray-800/50 p-2 flex flex-wrap gap-2 items-center justify-between border-b border-slate-200 dark:border-gray-700">
-            <div className="flex flex-wrap gap-2 items-center flex-grow">
-              {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
-                <select
-                  value={filtroAnio}
-                  onChange={(e) => setFiltroAnio(e.target.value)}
-                  className="h-7 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-xs px-2 outline-none focus:border-[#2383C2] transition-colors"
-                >
-                  <option value="">Seleccionar Año</option>
-                  {aniosDisponibles.map((a, idx) => (
-                    <option key={`anio-${a}-${idx}`} value={a}>{a}</option>
-                  ))}
-                </select>
-              )}
+        {/* TARJETA: FECHA EMISIÓN */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <Calendar size={11} className="text-[#2383C2]" /> Fecha Emisión
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
+            {formatearFechaEmision
+              ? formatearFechaEmision(factura.fchEmis)
+              : factura.fchEmis || '-'}
+          </span>
+        </div>
 
-              {hasPermission(PATH_VISTA, "filtros_busqueda", "input_busqueda") && (
-                <div className="relative flex-grow max-w-sm">
-                  <Search className="absolute left-2.5 top-2 text-slate-400 dark:text-gray-500" size={13} />
-                  <input
-                    value={busqueda}
-                    onChange={e => setBusqueda(e.target.value)}
-                    className="w-full h-7 pl-8 pr-2 border border-slate-300 dark:border-gray-600 rounded text-xs outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2] transition-colors"
-                    placeholder="Buscar por Folio, RUT, Ref, Mes, Estado..."
-                  />
-                </div>
-              )}
-            </div>
+        {/* TARJETA: MES IMPUTADO */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 capitalize">
+            {factura.mesImputado || factura.mes_imputado || '-'}
+          </span>
+        </div>
 
-            <button
-              onClick={cargarFacturasDiferencias}
-              disabled={!filtroAnio || loading}
-              className="h-7 px-3 rounded text-xs font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
-              title="Recargar datos de Firestore"
-            >
-              <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
-              <span>Actualizar</span>
-            </button>
+        {/* TARJETA: REF (OC) */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 font-mono">
+            {factura.folioRef || 'Sin Referencia'}
+          </span>
+        </div>
+
+        {/* TARJETA: TOTAL NETO */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
+            {formatearMoneda(factura.total)}
+          </span>
+        </div>
+
+        {/* TARJETA: ESTADO */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <Activity size={11} className="text-[#2383C2]" /> Estado
+          </span>
+          <div className="mt-0.5 truncate">
+            {renderBadgeEstadoGeneral ? (
+              renderBadgeEstadoGeneral(factura.estado)
+            ) : (
+              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
+                {factura.estado || 'Diferencia Reportada'}
+              </span>
+            )}
           </div>
+        </div>
 
-          {/* TABLA DE CONTENIDO */}
-          {hasPermission(PATH_VISTA, "tabla_facturas") && (
-            <div className="flex-grow overflow-auto">
-              {loading ? (
-                <div className="w-full h-48 flex flex-col items-center justify-center text-xs text-slate-500 dark:text-gray-400 gap-2">
-                  <RefreshCw size={20} className="animate-spin text-amber-500" />
-                  <span>Cargando documentos del año {filtroAnio}...</span>
-                </div>
-              ) : (
-                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
-                  <thead className="bg-slate-100 dark:bg-gray-900/90 sticky top-0 z-10 border-b border-slate-200 dark:border-gray-700">
-                    <tr className="text-slate-600 dark:text-gray-400 uppercase font-semibold text-[10px] tracking-wider">
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[11%]">Mes Imputado</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref. (OC)</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[28%]">Proveedor / Razón Social</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[13%] text-right">Total Neto</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
-                      <th className="px-3 py-2 w-[6%] text-center">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200/70 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
-                    {facturasFiltradas.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" className="px-3 py-10 text-center text-slate-400 dark:text-gray-500 text-xs">
-                          <div className="flex flex-col items-center gap-1.5">
-                            <AlertTriangle size={20} className="text-slate-300 dark:text-gray-600" />
-                            <span>
-                              {filtroAnio
-                                ? "No se encontraron registros de diferencias o vinculación parcial para los filtros aplicados."
-                                : "Seleccione un año para cargar los documentos."}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      facturasFiltradas.map((f) => (
-                        <tr
-                          key={f.id}
-                          onDoubleClick={() => setFacturaSeleccionada(f)}
-                          className="border-l-2 border-transparent hover:border-amber-500 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition-colors cursor-pointer group"
-                          title="Doble clic para ver el detalle completo"
-                        >
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 font-semibold text-slate-800 dark:text-gray-100 truncate">
-                            #{f.folio}
-                          </td>
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                            {formatearFechaEmision(f.fchEmis)}
-                          </td>
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-700 dark:text-gray-300 font-medium truncate">
-                            {f.mesImputado || f.mes_imputado || '-'}
-                          </td>
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-600 dark:text-gray-400 truncate font-mono">
-                            {f.folioRef || 'S/R'}
-                          </td>
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                            <div className="font-medium truncate">{f.rznSoc || 'Sin Razón Social'}</div>
-                            {f.rutEmisor && <div className="text-[10px] text-slate-400">{f.rutEmisor}</div>}
-                          </td>
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-800 dark:text-gray-100 font-semibold text-right whitespace-nowrap">
-                            ${parseInt(f.total || 0).toLocaleString('es-CL')}
-                          </td>
-                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-center whitespace-nowrap">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold border ${getBadgeStyle(f.estado)}`}>
-                              {f.estado || 'Diferencia Reportada'}
-                            </span>
-                          </td>
-                          <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFacturaSeleccionada(f);
-                              }}
-                              className="p-1 text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 hover:bg-amber-100 dark:hover:bg-gray-700 rounded transition-colors"
-                              title="Inspeccionar detalle"
-                            >
-                              <Eye size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </div>
+        {/* TARJETA DE ACCIÓN: BOTÓN SOLICITUD EXCEL */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <FileSpreadsheet size={11} className="text-emerald-600 dark:text-emerald-500" /> Exportar
+          </span>
+          <button
+            type="button"
+            onClick={handleExportarExcelLocal}
+            className="mt-0.5 w-full flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer truncate"
+            title="Generar o descargar solicitud en Excel"
+          >
+            <FileSpreadsheet size={11} />
+            <span className="truncate">Solicitud Excel</span>
+          </button>
+        </div>
+
+        {/* TARJETA DE ACCIÓN: COPIAR RESUMEN */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <Copy size={11} className="text-[#2383C2]" /> Portapapeles
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              copiarAlPortapapeles(
+                `Folio: ${factura.folio}\nProveedor: ${factura.rznSoc}\nMonto: $${factura.total}\nObservación: ${observaciones}`,
+                'Resumen'
+              )
+            }
+            className="mt-0.5 w-full text-left text-[11px] font-bold text-slate-800 dark:text-gray-100 hover:text-[#2383C2] dark:hover:text-[#2383C2] hover:underline truncate cursor-pointer"
+            title="Copiar resumen al portapapeles"
+          >
+            Copiar Resumen
+          </button>
+        </div>
+      </div>
+
+      {/* RECEPTOR Y RESUMEN DE PROVEEDOR */}
+      <div className="px-3 py-1.5 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between shrink-0 text-xs">
+        <div className="flex items-center gap-2 truncate">
+          <Building2 size={13} className="text-[#2383C2] shrink-0" />
+          <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase">
+            Proveedor:
+          </span>
+          <span
+            className="text-[11px] font-semibold text-slate-800 dark:text-gray-200 truncate"
+            title={factura.rznSoc}
+          >
+            {factura.rznSoc || 'Sin Razón Social'}
+          </span>
+          <span className="text-slate-400 dark:text-gray-500 text-[11px]">
+            (RUT: {factura.rutEmisor || 'N/A'})
+          </span>
+          {factura.rutEmisor && (
+            <button
+              onClick={() => copiarAlPortapapeles(factura.rutEmisor, 'RUT')}
+              className="text-slate-400 hover:text-[#2383C2] transition-colors p-0.5 cursor-pointer"
+              title="Copiar RUT"
+            >
+              <Copy size={12} />
+            </button>
           )}
-        </>
-      ) : (
-        /* VISTA DE DETALLES (Ocupa todo el espacio) */
-        <DetalleSolicitudDif
-          factura={facturaSeleccionada}
-          onClose={() => setFacturaSeleccionada(null)}
-          formatearFechaEmision={formatearFechaEmision}
-          getBadgeStyle={getBadgeStyle}
-        />
-      )}
+        </div>
+        <span className="text-[10px] text-slate-400 font-semibold shrink-0">
+          Total Ítems: <strong className="text-slate-700 dark:text-gray-200">{detalles.length}</strong>
+        </span>
+      </div>
+
+      {/* CUERPO DEL DETALLE */}
+      <div className="flex-grow flex flex-col min-h-0 p-3 space-y-3 overflow-hidden">
+        {/* CAJA DE OBSERVACIONES */}
+        <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md p-3 shrink-0 max-h-32 overflow-y-auto">
+          <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1.5 text-xs">
+            <Receipt size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>Motivo u Observaciones de la Discrepancia</span>
+          </h4>
+          <p className="text-slate-700 dark:text-amber-200 text-[11px] leading-relaxed whitespace-pre-wrap">
+            {observaciones}
+          </p>
+        </div>
+
+        {/* TABLA DE DETALLES */}
+        <div className="border border-slate-200 dark:border-gray-700 rounded-md overflow-auto flex-1 min-h-0 bg-white dark:bg-gray-800">
+          <table className="w-full text-left text-[11px] border-collapse min-w-[1400px]">
+            <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
+              <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Factura</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Factura</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Factura</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Factura</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
+                <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Discrepancia</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
+              {detalles.length === 0 ? (
+                <tr>
+                  <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                    Esta factura no posee ítems cargados.
+                  </td>
+                </tr>
+              ) : (
+                detalles.map((item, idx) => {
+                  // Usamos directamente los campos ya calculados en DetalleVinculacionOC.jsx
+                  // (item.diferenciaCantidad, item.diferenciaPrecio) en vez de recalcularlos
+                  // aquí comparando item.precio (string) con item.precioOC (number), lo cual
+                  // siempre daba "diferente" por ser tipos distintos.
+                  const tieneDifCant = !!item.diferenciaCantidad;
+                  const tieneDifPrecio = !!item.diferenciaPrecio;
+
+                  const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
+
+                  return (
+                    <tr key={item.id || item.codigo || idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40">
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">
+                        {idx + 1}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-500">
+                        {item.codigo || '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
+                        {item.nombre || item.descripcion}
+                      </td>
+                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono ${tieneDifCant ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
+                        {item.cantidad}
+                      </td>
+                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono ${tieneDifPrecio ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
+                        {formatearMoneda(item.precio)}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">
+                        {formatearMoneda(item.monto || item.precio * item.cantidad)}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                        {item.codigoMaestro || item.codigo_maestro || '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">
+                        {item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                        {item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                        {item.cantidadOC !== undefined && item.cantidadOC !== null ? item.cantidadOC : '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                        {item.precioOC !== undefined && item.precioOC !== null ? formatearMoneda(item.precioOC) : '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${
+                            tagEstado === 'Sin diferencias'
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                              : tagEstado.includes('Diferencia')
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                              : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-400'
+                          }`}
+                        >
+                          {tagEstado}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default SolicitudDiferencias;
+export default DetalleSolicitudDif;

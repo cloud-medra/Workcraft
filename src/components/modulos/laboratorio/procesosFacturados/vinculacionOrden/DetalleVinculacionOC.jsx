@@ -135,8 +135,6 @@ const DetalleVinculacionOC = ({
                 const cantFactura = parseMontoToFloat(item.cantidad);
                 const precioFactura = parseMontoToFloat(item.precio);
 
-                // --- EVALUACIÓN CON REDONDEO / TOLERANCIA ---
-                // Para CLP comparamos montos redondeados para hacer coincidir con la UI
                 const precioFacturaRedondeado = Math.round(precioFactura);
                 const precioOCRedondeado = Math.round(precioUnitOC);
 

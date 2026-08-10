@@ -61,14 +61,11 @@ const DetalleSolicitudDif = ({
     }
 
     const datosExcel = detalles.map((item) => {
-      const tieneDifCant = item.diferenciaCantidad || (item.cantidadOC !== undefined && item.cantidad !== item.cantidadOC);
-      const tieneDifPrecio = item.diferenciaPrecio || (item.precioOC !== undefined && item.precio !== item.precioOC);
-
-      let tagEstado = item.vincuOCTexto || 'Sin información';
-      if (tieneDifCant && tieneDifPrecio) tagEstado = 'Diferencia en cantidad y precio';
-      else if (tieneDifCant) tagEstado = 'Diferencia en cantidad';
-      else if (tieneDifPrecio) tagEstado = 'Diferencia en precio';
-      else if (item.vincuOC) tagEstado = 'Sin diferencias';
+      // Usamos directamente vincuOCTexto/estadoItem, que ya vienen calculados
+      // correctamente desde DetalleVinculacionOC.jsx (basados en item.diferenciaCantidad
+      // y item.diferenciaPrecio). No se recalculan aquí para evitar comparar
+      // valores de distinto tipo (string vs number) que siempre darían "diferente".
+      const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
 
       return {
         'Folio': factura.folio || '',
@@ -315,14 +312,14 @@ const DetalleSolicitudDif = ({
                 </tr>
               ) : (
                 detalles.map((item, idx) => {
-                  const tieneDifCant = item.diferenciaCantidad || (item.cantidadOC !== undefined && item.cantidad !== item.cantidadOC);
-                  const tieneDifPrecio = item.diferenciaPrecio || (item.precioOC !== undefined && item.precio !== item.precioOC);
+                  // Usamos directamente los campos ya calculados en DetalleVinculacionOC.jsx
+                  // (item.diferenciaCantidad, item.diferenciaPrecio) en vez de recalcularlos
+                  // aquí comparando item.precio (string) con item.precioOC (number), lo cual
+                  // siempre daba "diferente" por ser tipos distintos.
+                  const tieneDifCant = !!item.diferenciaCantidad;
+                  const tieneDifPrecio = !!item.diferenciaPrecio;
 
-                  let tagEstado = item.vincuOCTexto || 'Sin información';
-                  if (tieneDifCant && tieneDifPrecio) tagEstado = 'Diferencia en cantidad y precio';
-                  else if (tieneDifCant) tagEstado = 'Diferencia en cantidad';
-                  else if (tieneDifPrecio) tagEstado = 'Diferencia en precio';
-                  else if (item.vincuOC) tagEstado = 'Sin diferencias';
+                  const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
 
                   return (
                     <tr key={item.id || item.codigo || idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40">
