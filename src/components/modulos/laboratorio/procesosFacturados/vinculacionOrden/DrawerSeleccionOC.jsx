@@ -86,7 +86,7 @@ const DrawerSeleccionOC = ({
         }
     }, [panelAbierto]);
 
-    // 1. Cargar Años (sin autoseleccionar el primero)
+    // 1. Cargar Años
     useEffect(() => {
         let isCancelled = false;
 
@@ -95,7 +95,7 @@ const DrawerSeleccionOC = ({
                 const snap = await getDocs(collection(db, COL_ORDENES));
                 if (isCancelled) return;
 
-                const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+                const anios = snap.docs.map(d => d.id).sort((a, b) => Number(b) - Number(a));
                 setAniosDisponibles(anios);
             } catch (error) {
                 if (!isCancelled) console.error("Error al cargar años de OC:", error);
@@ -109,7 +109,7 @@ const DrawerSeleccionOC = ({
         return () => { isCancelled = true; };
     }, [panelAbierto]);
 
-    // 2. Cargar Meses al seleccionar Año (sin autoseleccionar el último mes)
+    // 2. Cargar Meses al seleccionar Año
     useEffect(() => {
         let isCancelled = false;
 
@@ -123,7 +123,7 @@ const DrawerSeleccionOC = ({
 
             setLoadingMeses(true);
             setBusquedaOC('');
-            setMesOC(''); // Reinicia el mes cuando se cambia de año
+            setMesOC('');
             setOrdenes([]);
 
             try {
@@ -160,7 +160,7 @@ const DrawerSeleccionOC = ({
         return () => { isCancelled = true; };
     }, [anioOC, panelAbierto]);
 
-    // 3. Cargar Órdenes solo si Año y Mes están explícitamente seleccionados
+    // 3. Cargar Órdenes
     const cargarOrdenes = useCallback(async (isCancelledRef) => {
         if (!anioOC || !mesOC) {
             setOrdenes([]);
@@ -231,10 +231,15 @@ const DrawerSeleccionOC = ({
             const articulosOC = docSnap.docs.map(d => {
                 const item = d.data();
 
-                const rawCodigo = item["Codigo"] ??
+                const rawCodigo = item["Cod.Artículo"] ??
+                    item["Cod.Articulo"] ??
+                    item["Cod. Artículo"] ??
+                    item["Cod. Articulo"] ??
+                    item["Codigo"] ??
                     item["Código"] ??
                     item.codigo ??
                     item.codigo_producto ??
+                    item.cod_articulo ??
                     d.id;
 
                 const rawPrecio = item["P.Unitario"] ??
@@ -250,8 +255,18 @@ const DrawerSeleccionOC = ({
                     item.cantidad_oc ??
                     item.cantidad ?? 0;
 
+                const rawArticulo = item["Artículo"] ??
+                    item["Articulo"] ??
+                    item["Descripción"] ??
+                    item["Descripcion"] ??
+                    item.articulo_oc ??
+                    item.articulo ??
+                    item.descripcion ??
+                    item.nombre ?? '';
+
                 const precio_oc = parseMontoToFloat(rawPrecio);
                 const cantidad_oc = parseMontoToFloat(rawCantidad);
+                const articulo_oc = String(rawArticulo).trim();
 
                 return {
                     id: d.id,
@@ -259,8 +274,10 @@ const DrawerSeleccionOC = ({
                     codigo_oc: String(rawCodigo).trim(),
                     precio_oc,
                     cantidad_oc,
+                    articulo_oc,
                     precio: precio_oc,
-                    cantidad: cantidad_oc
+                    cantidad: cantidad_oc,
+                    articulo: articulo_oc
                 };
             });
 
@@ -413,7 +430,7 @@ const DrawerSeleccionOC = ({
 
                                         <div className="flex items-center justify-between text-[9px] text-slate-400 dark:text-gray-500 mt-1 pt-1 border-t border-slate-100 dark:border-gray-800">
                                             <span>Emisión: {oc.fechaCalculada}</span>
-                                            <span className="font-medium px-1.5 py-0.2 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
+                                            <span className="font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-800 text-slate-600 dark:text-gray-300">
                                                 {oc.estado || 'Pendiente'}
                                             </span>
                                         </div>

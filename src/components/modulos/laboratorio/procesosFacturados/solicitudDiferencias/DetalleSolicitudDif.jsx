@@ -1,5 +1,6 @@
 // src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/DetalleSolicitudDif.jsx
 import React from 'react';
+import * as XLSX from 'xlsx';
 import {
   ArrowLeft,
   FileWarning,
@@ -43,6 +44,67 @@ const DetalleSolicitudDif = ({
   const formatearMoneda = (valor) => {
     const monto = parseMontoToFloat(valor);
     return `$${Math.round(monto).toLocaleString('es-CL')}`;
+  };
+
+  // Función para manejar la descarga en Excel con las columnas requeridas
+  const handleExportarExcelLocal = () => {
+    if (onExportarExcel) {
+      onExportarExcel(factura);
+      return;
+    }
+
+    const detalles = factura.detalles || [];
+
+    if (detalles.length === 0) {
+      showToast('No hay detalles para exportar', 'warning');
+      return;
+    }
+
+    const datosExcel = detalles.map((item) => {
+      const tieneDifCant = item.diferenciaCantidad || (item.cantidadOC !== undefined && item.cantidad !== item.cantidadOC);
+      const tieneDifPrecio = item.diferenciaPrecio || (item.precioOC !== undefined && item.precio !== item.precioOC);
+
+      let tagEstado = item.vincuOCTexto || 'Sin información';
+      if (tieneDifCant && tieneDifPrecio) tagEstado = 'Diferencia en cantidad y precio';
+      else if (tieneDifCant) tagEstado = 'Diferencia en cantidad';
+      else if (tieneDifPrecio) tagEstado = 'Diferencia en precio';
+      else if (item.vincuOC) tagEstado = 'Sin diferencias';
+
+      return {
+        'Folio': factura.folio || '',
+        'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+        'Cód. Maestro': item.codigoMaestro || item.codigo_maestro || '',
+        'Descripción Maestro': item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '',
+        'Artículo OC': item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '',
+        'Cant. Factura': item.cantidad ?? 0,
+        'Precio Factura': item.precio ?? 0,
+        'Cant. OC': item.cantidadOC ?? 0,
+        'Precio OC': item.precioOC ?? 0,
+        'Estado Discrepancia': tagEstado
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+
+    worksheet['!cols'] = [
+      { wch: 12 }, // Folio
+      { wch: 16 }, // Ref. (OC)
+      { wch: 16 }, // Cód. Maestro
+      { wch: 32 }, // Descripción Maestro
+      { wch: 18 }, // Artículo OC
+      { wch: 14 }, // Cant. Factura
+      { wch: 14 }, // Precio Factura
+      { wch: 12 }, // Cant. OC
+      { wch: 12 }, // Precio OC
+      { wch: 24 }  // Estado Discrepancia
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias');
+
+    const nombreArchivo = `Solicitud_Diferencias_Folio_${factura.folio || 'S-N'}.xlsx`;
+    XLSX.writeFile(workbook, nombreArchivo);
+    showToast('Archivo Excel generado con éxito', 'success');
   };
 
   const observaciones =
@@ -151,7 +213,7 @@ const DetalleSolicitudDif = ({
           </span>
           <button
             type="button"
-            onClick={onExportarExcel}
+            onClick={handleExportarExcelLocal}
             className="mt-0.5 w-full flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer truncate"
             title="Generar o descargar solicitud en Excel"
           >
@@ -227,7 +289,7 @@ const DetalleSolicitudDif = ({
 
         {/* TABLA DE DETALLES */}
         <div className="border border-slate-200 dark:border-gray-700 rounded-md overflow-auto flex-1 min-h-0 bg-white dark:bg-gray-800">
-          <table className="w-full text-left text-[11px] border-collapse min-w-[1250px]">
+          <table className="w-full text-left text-[11px] border-collapse min-w-[1400px]">
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
@@ -236,8 +298,9 @@ const DetalleSolicitudDif = ({
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Factura</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Factura</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro / OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro / OC</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
                 <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Discrepancia</th>
@@ -246,7 +309,7 @@ const DetalleSolicitudDif = ({
             <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
               {detalles.length === 0 ? (
                 <tr>
-                  <td colSpan="11" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                  <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                     Esta factura no posee ítems cargados.
                   </td>
                 </tr>
@@ -282,10 +345,13 @@ const DetalleSolicitudDif = ({
                         {formatearMoneda(item.monto || item.precio * item.cantidad)}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
-                        {item.codigoMaestro || '-'}
+                        {item.codigoMaestro || item.codigo_maestro || '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">
-                        {item.descripcionMaestro || item.nombreMaestro || '-'}
+                        {item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '-'}
+                      </td>
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                        {item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
                         {item.cantidadOC !== undefined && item.cantidadOC !== null ? item.cantidadOC : '-'}

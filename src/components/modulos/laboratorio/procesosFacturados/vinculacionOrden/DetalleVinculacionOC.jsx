@@ -80,6 +80,7 @@ const DetalleVinculacionOC = ({
             if (!codMaestro) {
                 return {
                     ...item,
+                    articuloOC: '-',
                     precioOC: 0,
                     cantidadOC: 0,
                     vincuOC: false,
@@ -102,6 +103,13 @@ const DetalleVinculacionOC = ({
             });
 
             if (coincidencia) {
+                const codArticuloOC = coincidencia["Cod.Artículo"] ||
+                    coincidencia["Cod.Articulo"] ||
+                    coincidencia.codigo_articulo ||
+                    coincidencia.codigoArticulo ||
+                    coincidencia.codigo ||
+                    '-';
+
                 const precioUnitOC = coincidencia.precio_oc ?? parseMontoToFloat(
                     coincidencia["P.Unitario"] ||
                     coincidencia["Precio Net. Unitario"] ||
@@ -127,8 +135,13 @@ const DetalleVinculacionOC = ({
                 const cantFactura = parseMontoToFloat(item.cantidad);
                 const precioFactura = parseMontoToFloat(item.precio);
 
-                const hayDiferenciaCantidad = cantFactura !== cantOC;
-                const hayDiferenciaPrecio = Math.abs(precioFactura - precioUnitOC) > 0.01;
+                // --- EVALUACIÓN CON REDONDEO / TOLERANCIA ---
+                // Para CLP comparamos montos redondeados para hacer coincidir con la UI
+                const precioFacturaRedondeado = Math.round(precioFactura);
+                const precioOCRedondeado = Math.round(precioUnitOC);
+
+                const hayDiferenciaCantidad = Math.abs(cantFactura - cantOC) > 0.001;
+                const hayDiferenciaPrecio = Math.abs(precioFacturaRedondeado - precioOCRedondeado) > 0;
 
                 let vincuOCTexto = "Sin diferencias";
                 if (hayDiferenciaCantidad && hayDiferenciaPrecio) {
@@ -143,6 +156,7 @@ const DetalleVinculacionOC = ({
 
                 return {
                     ...item,
+                    articuloOC: codArticuloOC,
                     descripcionMaestro: descMaestro || item.descripcionMaestro,
                     precioOC: precioUnitOC,
                     cantidadOC: cantOC,
@@ -156,6 +170,7 @@ const DetalleVinculacionOC = ({
 
             return {
                 ...item,
+                articuloOC: '-',
                 precioOC: 0,
                 cantidadOC: 0,
                 vincuOC: false,
@@ -238,7 +253,7 @@ const DetalleVinculacionOC = ({
                     </span>
                 </div>
 
-                {/* 3. Mes Imputado (NUEVA TARJETA) */}
+                {/* 3. Mes Imputado */}
                 <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
                     <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                         <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
@@ -309,7 +324,7 @@ const DetalleVinculacionOC = ({
 
             {/* TABLA DE DETALLES */}
             <div className="flex-grow overflow-auto">
-                <table className="w-full text-left text-[11px] border-collapse min-w-[1450px]">
+                <table className="w-full text-left text-[11px] border-collapse min-w-[1550px]">
                     <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
@@ -322,6 +337,7 @@ const DetalleVinculacionOC = ({
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-slate-200/60 dark:bg-gray-800/80 text-slate-800 dark:text-gray-200">Cód. Maestro</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-48 bg-slate-200/60 dark:bg-gray-800/80 text-slate-800 dark:text-gray-200">Descripción Maestro</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-slate-200/60 dark:bg-gray-800/80 text-right text-slate-800 dark:text-gray-200">Precio Maestro</th>
+                            <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-blue-900 dark:text-blue-200">ArticuloOC</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cantidad OC</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-36 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Vincu OC</th>
@@ -331,7 +347,7 @@ const DetalleVinculacionOC = ({
                     <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
                         {detallesProcesados.length === 0 ? (
                             <tr>
-                                <td colSpan="14" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                                <td colSpan="15" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                                     Esta factura no posee ítems cargados.
                                 </td>
                             </tr>
@@ -353,6 +369,9 @@ const DetalleVinculacionOC = ({
                                         </td>
                                         <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-right font-semibold bg-slate-50/50 dark:bg-gray-900/30">
                                             {item.precioMaestro !== undefined && item.precioMaestro !== null ? formatearMoneda(item.precioMaestro) : '-'}
+                                        </td>
+                                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono font-semibold bg-blue-50/40 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                                            {item.articuloOC || item.codArticuloOC || item.articulo_oc || '-'}
                                         </td>
                                         <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-right font-semibold bg-blue-50/40 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
                                             {item.precioOC !== null && item.precioOC !== undefined

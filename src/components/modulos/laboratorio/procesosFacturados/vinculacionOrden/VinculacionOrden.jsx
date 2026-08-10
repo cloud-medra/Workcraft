@@ -133,10 +133,15 @@ const VinculacionOrden = () => {
         }
     }, [filtroAnio, showToast]);
 
+    // Reinicia la selección SOLO cuando cambia el año filtrado
     useEffect(() => {
         setFacturaSeleccionada(null);
+    }, [filtroAnio]);
+
+    // Carga las facturas cuando cambia el año (o cuando cambia la función por deps internas)
+    useEffect(() => {
         cargarFacturasProcesarOC();
-    }, [filtroAnio, cargarFacturasProcesarOC]);
+    }, [cargarFacturasProcesarOC]);
 
     // Selección y navegación
     const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
@@ -200,9 +205,9 @@ const VinculacionOrden = () => {
 
                     showToast(`Ítems cruzados con la OC N° ${folioOC} — ${estadoFinal}`, "success");
 
-                    // Remover la factura procesada de la lista activa y volver al listado
+                    // Remover la factura procesada de la lista activa
                     setFacturas(prev => prev.filter(f => f.id !== facturaSeleccionada.id));
-                    setFacturaSeleccionada(null);
+                    // (ya no volvemos automáticamente — el usuario decide con la flecha "Volver")
                 } catch (error) {
                     console.error("Error al cruzar Orden de Compra:", error);
                     showToast("Error al procesar el cruce con la Orden de Compra", "error");
