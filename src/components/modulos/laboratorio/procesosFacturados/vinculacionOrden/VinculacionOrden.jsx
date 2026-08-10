@@ -51,6 +51,17 @@ const VinculacionOrden = () => {
         return fechaStr;
     };
 
+    // Helper para formatear el Mes Imputado o el mesId (ej: "01_enero" -> "Enero")
+    const formatearMesImputado = (valMes) => {
+        if (!valMes) return '-';
+        if (typeof valMes === 'string' && valMes.includes('_')) {
+            const partes = valMes.split('_');
+            const nombreMes = partes[1] || partes[0];
+            return nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+        }
+        return valMes;
+    };
+
     // Helper para parsear fecha al ordenar
     const parseFecha = (fechaStr) => {
         if (!fechaStr) return 0;
@@ -207,10 +218,12 @@ const VinculacionOrden = () => {
         const folioStr = String(f.folio || '').toLowerCase();
         const rznSocStr = String(f.rznSoc || '').toLowerCase();
         const folioRefStr = String(f.folioRef || '').toLowerCase();
+        const mesStr = String(f.mesImputado || f.mesId || '').toLowerCase();
 
         return folioStr.includes(busquedaLower) ||
             rznSocStr.includes(busquedaLower) ||
-            folioRefStr.includes(busquedaLower);
+            folioRefStr.includes(busquedaLower) ||
+            mesStr.includes(busquedaLower);
     });
 
     const renderBadgeEstadoGeneral = (estado) => {
@@ -275,7 +288,7 @@ const VinculacionOrden = () => {
                                         value={busqueda}
                                         onChange={e => setBusqueda(e.target.value)}
                                         className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]"
-                                        placeholder="Buscar por Folio, Ref o Razón Social..."
+                                        placeholder="Buscar por Folio, Ref, Mes o Razón Social..."
                                     />
                                 </div>
                             )}
@@ -300,22 +313,23 @@ const VinculacionOrden = () => {
                                     Cargando facturas en estado "Procesar OC" del año {filtroAnio}...
                                 </div>
                             ) : (
-                                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[850px]">
+                                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
                                     <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Folio</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Emisión</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Ref.</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[33%]">Razón Social</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[13%] text-right">Total (Neto)</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[13%] text-center">Estado</th>
-                                            <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Mes Imputado</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref.</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
+                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
+                                            <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[7%] text-center">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                                         {facturasFiltradas.length === 0 ? (
                                             <tr>
-                                                <td colSpan="7" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                                                <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                                                     {filtroAnio
                                                         ? "No hay facturas listas para Orden de Compra (Procesar OC) en este año."
                                                         : "Seleccione un año para visualizar las facturas."}
@@ -334,6 +348,9 @@ const VinculacionOrden = () => {
                                                     </td>
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
                                                         {formatearFechaEmision(f.fchEmis)}
+                                                    </td>
+                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 whitespace-nowrap font-medium">
+                                                        {formatearMesImputado(f.mesImputado || f.mesId)}
                                                     </td>
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
                                                         {f.folioRef}

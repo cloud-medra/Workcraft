@@ -7,11 +7,12 @@ import {
   Hash,
   Building2,
   DollarSign,
-  AlertCircle,
   Copy,
   Receipt,
   Tag,
-  Activity
+  Activity,
+  CalendarDays,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 
@@ -19,7 +20,8 @@ const DetalleSolicitudDif = ({
   factura,
   onVolver,
   formatearFechaEmision,
-  renderBadgeEstadoGeneral
+  renderBadgeEstadoGeneral,
+  onExportarExcel
 }) => {
   const { showToast } = useToast();
 
@@ -70,23 +72,11 @@ const DetalleSolicitudDif = ({
             Detalle Solicitud de Diferencias — Folio N° {factura.folio}
           </span>
         </div>
-
-        <button
-          onClick={() =>
-            copiarAlPortapapeles(
-              `Folio: ${factura.folio}\nProveedor: ${factura.rznSoc}\nMonto: $${factura.total}\nObservación: ${observaciones}`,
-              'Resumen'
-            )
-          }
-          className="px-2.5 py-1 text-[11px] bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-700 dark:text-gray-200 rounded flex items-center gap-1.5 transition-colors font-medium cursor-pointer"
-        >
-          <Copy size={13} />
-          <span>Copiar Resumen</span>
-        </button>
       </header>
 
-      {/* MÉTRICAS PRINCIPALES */}
-      <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 shrink-0">
+      {/* MÉTRICAS Y ACCIONES EN TARJETAS UNIFICADAS */}
+      <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 shrink-0">
+        {/* TARJETA: FOLIO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Hash size={11} className="text-[#2383C2]" /> Folio
@@ -96,6 +86,7 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
+        {/* TARJETA: FECHA EMISIÓN */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Calendar size={11} className="text-[#2383C2]" /> Fecha Emisión
@@ -107,6 +98,17 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
+        {/* TARJETA: MES IMPUTADO */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 capitalize">
+            {factura.mesImputado || factura.mes_imputado || '-'}
+          </span>
+        </div>
+
+        {/* TARJETA: REF (OC) */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
@@ -116,6 +118,7 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
+        {/* TARJETA: TOTAL NETO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
@@ -125,6 +128,7 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
+        {/* TARJETA: ESTADO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Activity size={11} className="text-[#2383C2]" /> Estado
@@ -140,13 +144,40 @@ const DetalleSolicitudDif = ({
           </div>
         </div>
 
+        {/* TARJETA DE ACCIÓN: BOTÓN SOLICITUD EXCEL */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <AlertCircle size={11} className="text-amber-500" /> Mes Fiscal
+            <FileSpreadsheet size={11} className="text-emerald-600 dark:text-emerald-500" /> Exportar
           </span>
-          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 truncate mt-0.5 uppercase">
-            {factura.mesId || 'N/A'}
+          <button
+            type="button"
+            onClick={onExportarExcel}
+            className="mt-0.5 w-full flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer truncate"
+            title="Generar o descargar solicitud en Excel"
+          >
+            <FileSpreadsheet size={11} />
+            <span className="truncate">Solicitud Excel</span>
+          </button>
+        </div>
+
+        {/* TARJETA DE ACCIÓN: COPIAR RESUMEN */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <Copy size={11} className="text-[#2383C2]" /> Portapapeles
           </span>
+          <button
+            type="button"
+            onClick={() =>
+              copiarAlPortapapeles(
+                `Folio: ${factura.folio}\nProveedor: ${factura.rznSoc}\nMonto: $${factura.total}\nObservación: ${observaciones}`,
+                'Resumen'
+              )
+            }
+            className="mt-0.5 w-full text-left text-[11px] font-bold text-slate-800 dark:text-gray-100 hover:text-[#2383C2] dark:hover:text-[#2383C2] hover:underline truncate cursor-pointer"
+            title="Copiar resumen al portapapeles"
+          >
+            Copiar Resumen
+          </button>
         </div>
       </div>
 
@@ -169,7 +200,7 @@ const DetalleSolicitudDif = ({
           {factura.rutEmisor && (
             <button
               onClick={() => copiarAlPortapapeles(factura.rutEmisor, 'RUT')}
-              className="text-slate-400 hover:text-[#2383C2] transition-colors p-0.5"
+              className="text-slate-400 hover:text-[#2383C2] transition-colors p-0.5 cursor-pointer"
               title="Copiar RUT"
             >
               <Copy size={12} />
@@ -181,9 +212,9 @@ const DetalleSolicitudDif = ({
         </span>
       </div>
 
-      {/* CUERPO DEL DETALLE (Flexbox ajustado) */}
+      {/* CUERPO DEL DETALLE */}
       <div className="flex-grow flex flex-col min-h-0 p-3 space-y-3 overflow-hidden">
-        {/* CAJA DE OBSERVACIONES (Fija con shrink-0) */}
+        {/* CAJA DE OBSERVACIONES */}
         <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md p-3 shrink-0 max-h-32 overflow-y-auto">
           <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1.5 text-xs">
             <Receipt size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
@@ -194,7 +225,7 @@ const DetalleSolicitudDif = ({
           </p>
         </div>
 
-        {/* TABLA DE DETALLES CON SCROLL INTERNO Y ENCABEZADO FIJO */}
+        {/* TABLA DE DETALLES */}
         <div className="border border-slate-200 dark:border-gray-700 rounded-md overflow-auto flex-1 min-h-0 bg-white dark:bg-gray-800">
           <table className="w-full text-left text-[11px] border-collapse min-w-[1250px]">
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">

@@ -121,7 +121,9 @@ const SolicitudDiferencias = () => {
       (f.rznSoc && f.rznSoc.toLowerCase().includes(query)) ||
       (f.folioRef && String(f.folioRef).toLowerCase().includes(query)) ||
       (f.rutEmisor && f.rutEmisor.toLowerCase().includes(query)) ||
-      (f.estado && f.estado.toLowerCase().includes(query))
+      (f.estado && f.estado.toLowerCase().includes(query)) ||
+      (f.mesImputado && String(f.mesImputado).toLowerCase().includes(query)) ||
+      (f.mes_imputado && String(f.mes_imputado).toLowerCase().includes(query))
     );
   }, [facturas, busqueda]);
 
@@ -189,7 +191,7 @@ const SolicitudDiferencias = () => {
                     value={busqueda}
                     onChange={e => setBusqueda(e.target.value)}
                     className="w-full h-7 pl-8 pr-2 border border-slate-300 dark:border-gray-600 rounded text-xs outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2] transition-colors"
-                    placeholder="Buscar por Folio, RUT, Ref, Estado..."
+                    placeholder="Buscar por Folio, RUT, Ref, Mes, Estado..."
                   />
                 </div>
               )}
@@ -215,14 +217,15 @@ const SolicitudDiferencias = () => {
                   <span>Cargando documentos del año {filtroAnio}...</span>
                 </div>
               ) : (
-                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[850px]">
+                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
                   <thead className="bg-slate-100 dark:bg-gray-900/90 sticky top-0 z-10 border-b border-slate-200 dark:border-gray-700">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-semibold text-[10px] tracking-wider">
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[12%]">Folio</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[12%]">Emisión</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[12%]">Ref. (OC)</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[32%]">Proveedor / Razón Social</th>
-                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[14%] text-right">Total Neto</th>
+                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[11%]">Mes Imputado</th>
+                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref. (OC)</th>
+                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[28%]">Proveedor / Razón Social</th>
+                      <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[13%] text-right">Total Neto</th>
                       <th className="px-3 py-2 border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
                       <th className="px-3 py-2 w-[6%] text-center">Acción</th>
                     </tr>
@@ -230,7 +233,7 @@ const SolicitudDiferencias = () => {
                   <tbody className="divide-y divide-slate-200/70 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
                     {facturasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="px-3 py-10 text-center text-slate-400 dark:text-gray-500 text-xs">
+                        <td colSpan="8" className="px-3 py-10 text-center text-slate-400 dark:text-gray-500 text-xs">
                           <div className="flex flex-col items-center gap-1.5">
                             <AlertTriangle size={20} className="text-slate-300 dark:text-gray-600" />
                             <span>
@@ -254,6 +257,9 @@ const SolicitudDiferencias = () => {
                           </td>
                           <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-600 dark:text-gray-400 whitespace-nowrap">
                             {formatearFechaEmision(f.fchEmis)}
+                          </td>
+                          <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-700 dark:text-gray-300 font-medium truncate">
+                            {f.mesImputado || f.mes_imputado || '-'}
                           </td>
                           <td className="px-3 py-1.5 border-r border-slate-200/60 dark:border-gray-700/60 text-slate-600 dark:text-gray-400 truncate font-mono">
                             {f.folioRef || 'S/R'}

@@ -46,6 +46,26 @@ const VinculacionCodigos = () => {
     return fechaStr;
   };
 
+  // Helper para formatear exclusivamente el campo mesImputado
+  const obtenerMesImputacion = (factura) => {
+    const valor = factura?.mesImputado;
+    if (!valor) return '—';
+
+    if (typeof valor === 'string') {
+      if (valor.includes('-')) {
+        const [anio, mes] = valor.split('-');
+        return `${mes}/${anio}`;
+      }
+      return valor;
+    }
+
+    // Si es un Timestamp de Firestore o un objeto Date
+    const fecha = valor.toDate ? valor.toDate() : new Date(valor);
+    if (isNaN(fecha.getTime())) return '—';
+
+    return fecha.toLocaleDateString('es-CL', { month: '2-digit', year: 'numeric' });
+  };
+
   // Cargar Años Disponibles
   useEffect(() => {
     const cargarAnios = async () => {
@@ -76,7 +96,7 @@ const VinculacionCodigos = () => {
         const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
 
         return docsSnap.docs
-          .map(d => ({ id: d.id, mesId, ...d.data() }))
+          .map(d => ({ id: d.id, mesId, anio: filtroAnio, ...d.data() }))
           .filter(data => ESTADOS_PERMITIDOS.includes(data.estado));
       });
 
@@ -360,22 +380,23 @@ const VinculacionCodigos = () => {
                   Cargando facturas del año {filtroAnio}...
                 </div>
               ) : (
-                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[850px]">
+                <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Folio</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Emisión</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Ref.</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[33%]">Razón Social</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[13%] text-right">Total (Neto)</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[13%] text-center">Estado</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Mes Imputación</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref.</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
+                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
                       <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                     {facturasFiltradas.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                        <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           {filtroAnio
                             ? "No hay facturas pendientes de vinculación para este año."
                             : "Seleccione un año para visualizar las facturas."}
@@ -394,6 +415,9 @@ const VinculacionCodigos = () => {
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
                             {formatearFechaEmision(f.fchEmis)}
+                          </td>
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 text-center font-medium whitespace-nowrap">
+                            {obtenerMesImputacion(f)}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
                             {f.folioRef}

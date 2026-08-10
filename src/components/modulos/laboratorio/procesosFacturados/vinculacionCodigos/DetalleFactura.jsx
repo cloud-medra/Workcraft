@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   FileText,
   Calendar,
+  CalendarDays,
   Hash,
   Building2,
   Tag,
@@ -51,7 +52,9 @@ const DetalleFactura = ({
       </header>
 
       {/* TARJETAS RESUMEN METRICAS */}
-      <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 shrink-0">
+      <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2 shrink-0">
+        
+        {/* 1. FOLIO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Hash size={11} className="text-[#2383C2]" />
@@ -62,6 +65,7 @@ const DetalleFactura = ({
           </span>
         </div>
 
+        {/* 2. FECHA EMISIÓN */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Calendar size={11} className="text-[#2383C2]" />
@@ -72,6 +76,18 @@ const DetalleFactura = ({
           </span>
         </div>
 
+        {/* 3. MES IMPUTADO */}
+        <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
+          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
+            <CalendarDays size={11} className="text-[#2383C2]" />
+            Mes Imputado
+          </span>
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
+            {factura.mesImputado || "N/A"}
+          </span>
+        </div>
+
+        {/* 4. REF. (OC) */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Tag size={11} className="text-[#2383C2]" />
@@ -82,6 +98,7 @@ const DetalleFactura = ({
           </span>
         </div>
 
+        {/* 5. TOTAL NETO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <DollarSign size={11} className="text-[#2383C2]" />
@@ -92,6 +109,7 @@ const DetalleFactura = ({
           </span>
         </div>
 
+        {/* 6. ESTADO GENERAL */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Activity size={11} className="text-[#2383C2]" />
@@ -102,7 +120,7 @@ const DetalleFactura = ({
           </div>
         </div>
 
-        {/* BOTÓN CON SPINNER DE CARGA */}
+        {/* 7. ACCIÓN / BOTÓN CON SPINNER */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <LinkIcon size={11} className="text-[#2383C2]" />
