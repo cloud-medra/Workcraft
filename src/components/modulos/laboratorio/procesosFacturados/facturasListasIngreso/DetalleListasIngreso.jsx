@@ -6,11 +6,11 @@ import {
   Hash,
   Building2,
   DollarSign,
-  Copy,
   Receipt,
   Tag,
   Activity,
-  CalendarDays
+  CalendarDays,
+  FileCheck
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 
@@ -141,23 +141,21 @@ const DetalleListasIngreso = ({
           </div>
         </div>
 
-        {/* TARJETA DE ACCIÓN: COPIAR RESUMEN */}
+        {/* TARJETA DE ACCIÓN: AÑADIR ACTA (BOTÓN CON COLOR BASE) */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
-            <Copy size={11} className="text-[#2383C2]" /> Portapapeles
+            <FileCheck size={11} className="text-[#2383C2]" /> Documento
           </span>
           <button
             type="button"
-            onClick={() =>
-              copiarAlPortapapeles(
-                `Folio: ${factura.folio}\nProveedor: ${factura.rznSoc}\nMonto: $${factura.total}\nObservación: ${observaciones}`,
-                'Resumen'
-              )
-            }
-            className="mt-0.5 w-full text-left text-[11px] font-bold text-slate-800 dark:text-gray-100 hover:text-[#2383C2] dark:hover:text-[#2383C2] hover:underline truncate cursor-pointer"
-            title="Copiar resumen al portapapeles"
+            onClick={() => {
+              showToast("Añadiendo Acta...", "info");
+            }}
+            className="mt-0.5 w-full py-1 px-2 bg-[#2383C2] hover:bg-[#1b6b9f] text-white dark:bg-[#2383C2] dark:hover:bg-[#1b6b9f] rounded border border-[#1b6b9f] text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs"
+            title="Añadir Acta"
           >
-            Copiar Resumen
+            <FileCheck size={11} />
+            <span>Añadir Acta</span>
           </button>
         </div>
       </div>
@@ -184,7 +182,7 @@ const DetalleListasIngreso = ({
               className="text-slate-400 hover:text-[#2383C2] transition-colors p-0.5 cursor-pointer"
               title="Copiar RUT"
             >
-              <Copy size={12} />
+              <FileText size={12} />
             </button>
           )}
         </div>
