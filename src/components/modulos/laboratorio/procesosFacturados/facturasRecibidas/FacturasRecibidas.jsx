@@ -14,7 +14,7 @@ const FacturasRecibidas = () => {
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
-  
+
   // Estados para controlar los modales
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
   const [facturaParaConfigurar, setFacturaParaConfigurar] = useState(null);
@@ -120,7 +120,7 @@ const FacturasRecibidas = () => {
     try {
       const logsRef = collection(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", factura.id, "logs");
       const q = query(logsRef, orderBy("timestamp", "desc"));
-      
+
       const snapshot = await getDocs(q);
       const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setLogsList(logsData);
@@ -138,9 +138,9 @@ const FacturasRecibidas = () => {
     return 'N/A';
   };
 
-  const facturasFiltradas = facturas.filter(f => 
-    f.folio?.toLowerCase().includes(busqueda.toLowerCase()) || 
-    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) || 
+  const facturasFiltradas = facturas.filter(f =>
+    f.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
     f.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
     f.estado?.toLowerCase().includes(busqueda.toLowerCase()) ||
     (f.orden || f.numOrden)?.toString().toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -149,7 +149,7 @@ const FacturasRecibidas = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
-      
+
       {/* CABECERA */}
       <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -208,14 +208,14 @@ const FacturasRecibidas = () => {
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Ref.</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[22%]">Razón Social</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%] text-right">Total (Neto)</th>
-                
+
                 {/* Columnas de Control */}
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Estado</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Orden</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Acta</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Salida</th>
                 <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%] text-center">Mes imputado</th>
-                
+
                 <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
               </tr>
             </thead>
@@ -228,8 +228,8 @@ const FacturasRecibidas = () => {
                 </tr>
               ) : (
                 facturasFiltradas.map((f) => (
-                  <tr 
-                    key={f.id} 
+                  <tr
+                    key={f.id}
                     className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                   >
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
@@ -247,7 +247,7 @@ const FacturasRecibidas = () => {
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
                       ${Math.round(Number(f.total) || 0).toLocaleString('es-CL')}
                     </td>
-                    
+
                     {/* Celda de Estado */}
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                       <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(f.estado)}`}>
@@ -256,18 +256,18 @@ const FacturasRecibidas = () => {
                     </td>
 
                     {/* Orden */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate">
-                      {f.orden || f.numOrden || f.ordenCompra || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroOrden}>
+                      {f.numeroOrden || '-'}
                     </td>
 
                     {/* Acta */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate">
-                      {f.acta || f.numActa || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroActa || f.acta || f.numActa}>
+                      {f.numeroActa || '-'}
                     </td>
 
                     {/* Salida */}
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate">
-                      {f.salida || f.numSalida || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroSalida || f.salida || f.numSalida}>
+                      {f.numeroSalida || '-'}
                     </td>
 
                     {/* Mes Imputado */}
@@ -278,8 +278,8 @@ const FacturasRecibidas = () => {
                     <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                       <div className="flex justify-center gap-1.5">
                         {hasPermission(PATH_VISTA, "tabla_facturas", "btn_log") && (
-                          <button 
-                            onClick={() => abrirHistorialLogs(f)} 
+                          <button
+                            onClick={() => abrirHistorialLogs(f)}
                             className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Ver Historial / Logs"
                           >
@@ -287,8 +287,8 @@ const FacturasRecibidas = () => {
                           </button>
                         )}
                         {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
-                          <button 
-                            onClick={() => setFacturaSeleccionada(f)} 
+                          <button
+                            onClick={() => setFacturaSeleccionada(f)}
                             className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Ver Detalle"
                           >
@@ -296,8 +296,8 @@ const FacturasRecibidas = () => {
                           </button>
                         )}
                         {hasPermission(PATH_VISTA, "tabla_facturas", "btn_configurar") && (
-                          <button 
-                            onClick={() => setFacturaParaConfigurar(f)} 
+                          <button
+                            onClick={() => setFacturaParaConfigurar(f)}
                             className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Configurar"
                           >
@@ -305,8 +305,8 @@ const FacturasRecibidas = () => {
                           </button>
                         )}
                         {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
-                          <button 
-                            onClick={() => handleDelete(f.id)} 
+                          <button
+                            onClick={() => handleDelete(f.id)}
                             className="text-slate-400 hover:text-red-500 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Eliminar"
                           >
@@ -325,34 +325,32 @@ const FacturasRecibidas = () => {
 
       {/* MODAL DETALLE DE FACTURA */}
       {facturaSeleccionada && (
-        <DetalleFacturaModal 
-          factura={facturaSeleccionada} 
-          onClose={() => setFacturaSeleccionada(null)} 
+        <DetalleFacturaModal
+          factura={facturaSeleccionada}
+          onClose={() => setFacturaSeleccionada(null)}
         />
       )}
 
       {/* MODAL DE CONFIGURACIÓN DE FACTURA */}
       {facturaParaConfigurar && (
-        <ConfigDetallesFacturas 
-          factura={facturaParaConfigurar} 
+        <ConfigDetallesFacturas
+          factura={facturaParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}
-          onClose={() => setFacturaParaConfigurar(null)} 
+          onClose={() => setFacturaParaConfigurar(null)}
         />
       )}
 
       {/* BACKDROP Y PANEL LATERAL DERECHA (DRAWER DE LOGS) */}
-      <div 
-        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity duration-300 ${
-          showLogModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
+      <div
+        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity duration-300 ${showLogModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
         onClick={() => setShowLogModal(false)}
       />
 
-      <aside 
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 ease-in-out text-[11px] ${
-          showLogModal ? 'translate-x-0' : 'translate-x-full'
-        }`}
+      <aside
+        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 ease-in-out text-[11px] ${showLogModal ? 'translate-x-0' : 'translate-x-full'
+          }`}
       >
         {/* Cabecera Fija del Panel */}
         <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/80 dark:bg-gray-900/80 shrink-0">
@@ -373,8 +371,8 @@ const FacturasRecibidas = () => {
             <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold">
               {logsList.length} logs
             </span>
-            <button 
-              onClick={() => setShowLogModal(false)} 
+            <button
+              onClick={() => setShowLogModal(false)}
               className="p-1 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
             >
               <X size={16} />
@@ -399,13 +397,12 @@ const FacturasRecibidas = () => {
             logsList.map((log) => (
               <div key={log.id} className="p-3 border border-gray-200 dark:border-gray-700/80 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 text-[10px] space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                    log.accion === 'INICIO_PROCESO' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${log.accion === 'INICIO_PROCESO' ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400' :
                     log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' :
-                    log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
-                    log.accion === 'VINCULACION_CODIGOS' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300' :
-                    'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                  }`}>
+                      log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
+                        log.accion === 'VINCULACION_CODIGOS' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300' :
+                          'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}>
                     {log.accion}
                   </span>
                   <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
@@ -441,8 +438,8 @@ const FacturasRecibidas = () => {
 
         {/* Pie Fijo del Panel */}
         <div className="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900/80 shrink-0">
-          <button 
-            onClick={() => setShowLogModal(false)} 
+          <button
+            onClick={() => setShowLogModal(false)}
             className="px-4 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-bold transition"
           >
             Cerrar

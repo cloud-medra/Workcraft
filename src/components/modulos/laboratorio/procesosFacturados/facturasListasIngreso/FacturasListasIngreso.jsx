@@ -31,7 +31,7 @@ const FacturasListasIngreso = () => {
 
     const PATH_VISTA = "/laboratorio/controlFactura";
     const COL_BASE = "laboratorio_facturasXml";
-    
+
     const ESTADOS_PERMITIDOS = [
         "Listo para Ingreso",
         "Listos para Ingreso",
@@ -157,8 +157,14 @@ const FacturasListasIngreso = () => {
                 <DetalleListasIngreso
                     factura={facturaSeleccionada}
                     formatearFechaEmision={formatearFechaEmision}
-                    getBadgeStyle={renderBadgeEstadoGeneral}
+                    renderBadgeEstadoGeneral={renderBadgeEstadoGeneral}
                     onVolver={handleVolverALista}
+                    onActualizarFactura={(facturaActualizada) => {
+                        setFacturas(prev =>
+                            prev.map(f => (f.id === facturaActualizada.id ? { ...f, ...facturaActualizada } : f))
+                        );
+                        setFacturaSeleccionada(facturaActualizada);
+                    }}
                 />
             ) : (
                 <>
