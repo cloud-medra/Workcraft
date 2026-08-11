@@ -14,7 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
-import { doc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../firebaseConfig';
 
 const DetalleListasIngreso = ({
@@ -85,6 +85,12 @@ const DetalleListasIngreso = ({
       return;
     }
 
+    // Validación nueva: sin período imputado no se puede finalizar
+    if (!factura.mesImputado || !factura.anioImputado) {
+      showToast('Esta factura no tiene un período de imputación asignado. Debe iniciar el proceso primero.', 'error');
+      return;
+    }
+
     try {
       setGuardando(true);
 
@@ -93,21 +99,45 @@ const DetalleListasIngreso = ({
         numeroActa,
         numeroSalida,
         fechaActa,
-        fechaSalida
+        fechaSalida,
+        estado: 'Finalizado' // antes: 'Acta Ingresada'
       };
 
       const refDocumento = doc(
-        db,
-        'laboratorio_facturasXml',
-        factura.anio,
-        'meses',
-        factura.mesId,
-        'documentos',
-        factura.id
+        db, 'laboratorio_facturasXml',
+        factura.anio, 'meses', factura.mesId, 'documentos', factura.id
       );
 
+      // 1. Actualizar el documento original (como ya hacías)
       await updateDoc(refDocumento, datosActa);
 
+      // 2. COPIA CONGELADA a la colección de imputadas — AQUÍ es el cierre real
+      const refImputada = doc(
+        db, 'laboratorio_facturasImputadas',
+        factura.anioImputado, 'meses', factura.mesImputado, 'documentos', factura.id
+      );
+
+      // 2a. Asegurar que los documentos intermedios (año y mes) tengan datos propios,
+      //     para que no aparezcan "vacíos"/en cursiva en la consola de Firestore.
+      const refAnio = doc(db, 'laboratorio_facturasImputadas', factura.anioImputado);
+      const refMes = doc(db, 'laboratorio_facturasImputadas', factura.anioImputado, 'meses', factura.mesImputado);
+
+      await Promise.all([
+        setDoc(refAnio, { anio: factura.anioImputado, activo: true }, { merge: true }),
+        setDoc(refMes, { mes: factura.mesImputado, anio: factura.anioImputado, activo: true }, { merge: true }),
+      ]);
+
+      // 2b. Copia congelada del documento final
+      await setDoc(refImputada, {
+        ...factura,
+        ...datosActa,
+        origenAnio: factura.anio,
+        origenMes: factura.mesId,
+        activo: true,
+        fechaImputacionFinal: serverTimestamp(),
+      });
+
+      // 3. Log (igual que ya tienes, opcionalmente también en refImputada)
       try {
         const currentUser = auth.currentUser;
         const usuarioInfo = {
@@ -115,21 +145,11 @@ const DetalleListasIngreso = ({
           email: currentUser?.email || "usuario_anonimo",
           nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
         };
-
-        const estadoAnterior = factura.estado || 'Registrado';
-        const estadoNuevo = 'Acta Ingresada'; // O el estado que corresponda
-
         const logsRef = collection(refDocumento, "logs");
         await addDoc(logsRef, {
           accion: "ACTA INGRESADA",
-          detalle: `Datos de recepción registrados para el folio ${factura.folio || factura.id}\nOrden: ${numeroOrden || 'N/A'}\nActa: ${numeroActa || 'N/A'}\nSalida: ${numeroSalida || 'N/A'}\nEstado: ${estadoAnterior} -> ${estadoNuevo}`,
-          resumen: {
-            numeroOrden: numeroOrden || '-',
-            numeroActa: numeroActa || '-',
-            numeroSalida: numeroSalida || '-',
-            fechaActa: fechaActa || '-',
-            fechaSalida: fechaSalida || '-'
-          },
+          detalle: `Proceso finalizado e imputado a ${factura.mesImputado} ${factura.anioImputado}. Folio ${factura.folio || factura.id}. Orden: ${numeroOrden || 'N/A'} Acta: ${numeroActa || 'N/A'} Salida: ${numeroSalida || 'N/A'}`,
+          resumen: { numeroOrden: numeroOrden || '-', numeroActa: numeroActa || '-', numeroSalida: numeroSalida || '-', fechaActa: fechaActa || '-', fechaSalida: fechaSalida || '-' },
           fechaHora: new Date().toLocaleString('es-CL'),
           timestamp: serverTimestamp(),
           usuario: usuarioInfo
@@ -138,12 +158,11 @@ const DetalleListasIngreso = ({
         console.error("Error al escribir log de recepción:", logError);
       }
 
-      showToast('Datos guardados exitosamente', 'success');
+      showToast('Proceso finalizado e imputado correctamente', 'success');
 
       if (onActualizarFactura) {
         onActualizarFactura({ ...factura, ...datosActa });
       }
-
       setPanelActaAbierto(false);
     } catch (error) {
       console.error('Error al guardar datos:', error);
