@@ -11,7 +11,7 @@ import {
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import DetalleFactura from './DetalleDocu';
+import DetalleFactura from './DetalleFactura';
 
 const VinculacionCodigos = () => {
   const [facturas, setFacturas] = useState([]);

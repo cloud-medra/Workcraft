@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Settings, Calendar, Hash, Building2, Save, Trash2, Plus, Tag, DollarSign } from 'lucide-react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../../firebaseConfig';
+import { doc, updateDoc, collection, addDoc, serverTimestamp, deleteField } from 'firebase/firestore';
+import { db, auth } from '../../../../../firebaseConfig';
 import { useToast } from '../../../../../context/ToastContext';
 
 // Funciones para normalizar el formato dd/mm/yyyy
@@ -31,24 +31,24 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
   const [rznSoc, setRznSoc] = useState(factura.rznSoc || '');
   const [folioRef, setFolioRef] = useState(factura.folioRef || '');
 
-  // Campos de control interno
+  // Campos de control interno (Se inicializan exactamente con lo que trae la factura, sin valores por defecto forzados)
   const [estado, setEstado] = useState(factura.estado || '');
   const [ordenCompra, setOrdenCompra] = useState(factura.ordenCompra || factura.folioRef || '');
   const [acta, setActa] = useState(factura.acta || '');
   const [salida, setSalida] = useState(factura.salida || '');
-  const [mesImputado, setMesImputado] = useState(factura.mesImputado || filtroMes || '');
+  const [mesImputado, setMesImputado] = useState(factura.mesImputado || '');
 
   // --- ESTADO DE DETALLES / ÍTEMS ---
   const [detalles, setDetalles] = useState(
     factura.detalles && factura.detalles.length > 0
       ? factura.detalles.map(d => ({
-        codigo: d.codigo || '',
-        nombre: d.nombre || '',
-        cantidad: Number(d.cantidad) || 0,
-        unidad: d.unidad || '',
-        precio: Number(d.precio) || 0,
-        monto: Number(d.monto) || (Number(d.cantidad || 0) * Number(d.precio || 0))
-      }))
+          codigo: d.codigo || '',
+          nombre: d.nombre || '',
+          cantidad: Number(d.cantidad) || 0,
+          unidad: d.unidad || '',
+          precio: Number(d.precio) || 0,
+          monto: Number(d.monto) || (Number(d.cantidad || 0) * Number(d.precio || 0))
+        }))
       : []
   );
 
@@ -84,7 +84,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
   // Calcular el Total Neto acumulado dinámicamente
   const totalCalculado = detalles.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
 
-  // Guardar cambios en Firestore
+  // Guardar cambios en Firestore y registrar el Log detallado
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -92,20 +92,129 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
     try {
       const docRef = doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", factura.id);
 
-      await updateDoc(docRef, {
+      // Objeto base de actualización sin los campos opcionales por defecto
+      const datosActualizados = {
         folio,
-        fchEmis, // Se guarda en Firestore con formato DD/MM/YYYY
+        fchEmis,
         rznSoc,
         folioRef,
         estado,
         ordenCompra,
-        acta,
-        salida,
-        mesImputado,
         total: totalCalculado,
         detalles,
         updatedAt: new Date()
+      };
+
+      // Agregar o eliminar dinámicamente según si el usuario escribió algo o no
+      if (acta && acta.trim() !== '') {
+        datosActualizados.acta = acta.trim();
+      } else {
+        datosActualizados.acta = deleteField(); // Los borra de Firestore si estaban vacíos
+      }
+
+      if (salida && salida.trim() !== '') {
+        datosActualizados.salida = salida.trim();
+      } else {
+        datosActualizados.salida = deleteField();
+      }
+
+      if (mesImputado && mesImputado.trim() !== '') {
+        datosActualizados.mesImputado = mesImputado.trim();
+      } else {
+        datosActualizados.mesImputado = deleteField();
+      }
+
+      // 1. Detectar cambios específicos para el log
+      const cambiosRealizados = {};
+
+      if (factura.folio !== folio) cambiosRealizados.folio = { anterior: factura.folio || '', nuevo: folio };
+      if (factura.fchEmis !== fchEmis) cambiosRealizados.fchEmis = { anterior: factura.fchEmis || '', nuevo: fchEmis };
+      if (factura.rznSoc !== rznSoc) cambiosRealizados.rznSoc = { anterior: factura.rznSoc || '', nuevo: rznSoc };
+      if (factura.folioRef !== folioRef) cambiosRealizados.folioRef = { anterior: factura.folioRef || '', nuevo: folioRef };
+      if (factura.estado !== estado) cambiosRealizados.estado = { anterior: factura.estado || '', nuevo: estado };
+      
+      if (factura.acta && factura.acta !== acta) {
+        cambiosRealizados.acta = { anterior: factura.acta, nuevo: acta };
+      } else if (!factura.acta && acta && acta.trim() !== "") {
+        cambiosRealizados.acta = { anterior: "", nuevo: acta };
+      }
+
+      if (factura.salida && factura.salida !== salida) {
+        cambiosRealizados.salida = { anterior: factura.salida, nuevo: salida };
+      } else if (!factura.salida && salida && salida.trim() !== "") {
+        cambiosRealizados.salida = { anterior: "", nuevo: salida };
+      }
+
+      if (factura.mesImputado && factura.mesImputado !== mesImputado) {
+        cambiosRealizados.mesImputado = { anterior: factura.mesImputado, nuevo: mesImputado };
+      } else if (!factura.mesImputado && mesImputado && mesImputado.trim() !== "") {
+        cambiosRealizados.mesImputado = { anterior: "", nuevo: mesImputado };
+      }
+
+      if (Number(factura.total || 0) !== totalCalculado) {
+        cambiosRealizados.total = { anterior: factura.total || 0, nuevo: totalCalculado };
+      }
+      
+      // Comprobar si cambiaron los ítems/detalles de forma limpia
+      const detallesAnteriores = factura.detalles || [];
+      const cambiosDetalles = [];
+
+      detallesAnteriores.forEach((itemAnt, idx) => {
+        const itemNuevo = detalles[idx];
+        if (!itemNuevo) return;
+
+        const cambiosFila = [];
+        if (itemAnt.codigo !== itemNuevo.codigo) cambiosFila.push(`Código: "${itemAnt.codigo || ''}" ➔ "${itemNuevo.codigo || ''}"`);
+        if (itemAnt.nombre !== itemNuevo.nombre) cambiosFila.push(`Nombre: "${itemAnt.nombre || ''}" ➔ "${itemNuevo.nombre || ''}"`);
+        if (Number(itemAnt.cantidad) !== Number(itemNuevo.cantidad)) cambiosFila.push(`Cantidad: ${itemAnt.cantidad} ➔ ${itemNuevo.cantidad}`);
+        if (itemAnt.unidad !== itemNuevo.unidad) cambiosFila.push(`Unidad: "${itemAnt.unidad || ''}" ➔ "${itemNuevo.unidad || ''}"`);
+        if (Number(itemAnt.precio) !== Number(itemNuevo.precio)) cambiosFila.push(`Precio: $${itemAnt.precio} ➔ $${itemNuevo.precio}`);
+
+        if (cambiosFila.length > 0) cambiosDetalles.push(...cambiosFila);
       });
+
+      if (detalles.length > detallesAnteriores.length) {
+        for (let i = detallesAnteriores.length; i < detalles.length; i++) {
+          cambiosDetalles.push(`Ítem #${i + 1} agregado: ${detalles[i].nombre || 'Sin nombre'}`);
+        }
+      }
+
+      if (detalles.length < detallesAnteriores.length) {
+        cambiosDetalles.push(`Se eliminaron ${detallesAnteriores.length - detalles.length} ítem(s).`);
+      }
+
+      if (cambiosDetalles.length > 0) {
+        cambiosRealizados.detalles = {
+          anterior: "Varios ítems modificados",
+          nuevo: cambiosDetalles.join("\n")
+        };
+      }
+
+      // 2. Actualizar el documento principal de la factura
+      await updateDoc(docRef, datosActualizados);
+
+      // 3. Obtener info del usuario actual para el log
+      const currentUser = auth.currentUser;
+      const usuarioInfo = {
+        uid: currentUser?.uid || "desconocido",
+        email: currentUser?.email || "usuario_anonimo",
+        nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
+      };
+
+      // 4. Registrar el log de auditoría detallado
+      try {
+        const logsRef = collection(docRef, "logs");
+        await addDoc(logsRef, {
+          accion: "MODIFICACION_FACTURA",
+          detalle: `Modificación realizada en la factura Folio: ${folio || factura.id}`,
+          cambios: cambiosRealizados,
+          fechaHora: new Date().toLocaleString('es-CL'),
+          timestamp: serverTimestamp(),
+          usuario: usuarioInfo
+        });
+      } catch (logError) {
+        console.error("Error al escribir log interno:", logError);
+      }
 
       showToast("Factura y detalles actualizados correctamente", "success");
       onClose();
@@ -155,7 +264,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
               />
             </div>
 
-            {/* FCH EMISIÓN EDITADO */}
             <div className="flex flex-col gap-0.5">
               <label className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
                 <Calendar size={10} className="text-[#2383C2]" /> Fch. Emisión

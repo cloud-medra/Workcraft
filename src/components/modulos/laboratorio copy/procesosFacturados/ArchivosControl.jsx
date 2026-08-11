@@ -16,23 +16,23 @@ import {
   Edit3
 } from 'lucide-react'; 
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
-import DocumentosRecibidos from './documentosRecibidas/DocRecibidos';
+import FacturasRecibidas from './facturasRecibidas/FacturasRecibidas';
 import IniciarProceso from './iniciarProceso/IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';
-import DocumentosListasIngreso from './documentosListasIngreso/DocListasIngreso';
+import FacturasListasIngreso from './facturasListasIngreso/FacturasListasIngreso';
 import DocImputados from './documentosImputados/DocImputados'; // <-- Nuevo import
 import CierreMes from './cierreMes/CierreMes';
 
 // Lista de pestañas ordenada (Actualizada: sin ingreso_actas, con doc_imputados)
 const ALL_TABS = [
-  { id: 'recibidas', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_recibidas' },
+  { id: 'recibidas', label: 'Facturas Recibidas', Icon: Inbox, perm: 'tab_recibidas' },
   { id: 'procesar', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_procesar' },
   { id: 'gestion', label: 'Vinculación de Códigos', Icon: ClipboardList, perm: 'tab_gestion' },
   { id: 'ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_ordenes' },
   { id: 'excel', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_excel' },
-  { id: 'listas', label: 'Documentos Listos', Icon: CheckSquare, perm: 'tab_listas' },
+  { id: 'listas', label: 'Facturas Listas', Icon: CheckSquare, perm: 'tab_listas' },
   { id: 'doc_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_doc_imputados' },
   { id: 'cierre_mes', label: 'Cierre de Mes', Icon: CalendarCheck, perm: 'tab_cierre_mes' },
   { id: 'edicion', label: 'Modificación y Edición', Icon: Edit3, perm: 'tab_edicion' },
@@ -141,12 +141,12 @@ const ArchivosControl = () => {
 
       {/* Área Principal de Contenido */}
       <div className="flex-grow p-4 overflow-auto">
-        {currentTabObj.id === 'recibidas' && <DocumentosRecibidos />}
+        {currentTabObj.id === 'recibidas' && <FacturasRecibidas />}
         {currentTabObj.id === 'procesar' && <IniciarProceso />}
         {currentTabObj.id === 'gestion' && <VinculacionCodigos />}
         {currentTabObj.id === 'ordenes' && <VinculacionOrden />}
         {currentTabObj.id === 'excel' && <SolicitudDiferencias />}
-        {currentTabObj.id === 'listas' && <DocumentosListasIngreso />}
+        {currentTabObj.id === 'listas' && <FacturasListasIngreso />}
         {currentTabObj.id === 'doc_imputados' && <DocImputados />}
         {currentTabObj.id === 'cierre_mes' && <CierreMes />}
 
