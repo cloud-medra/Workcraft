@@ -1,5 +1,6 @@
+// src/components/facturas/EmpresasLaboratorios.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History } from 'lucide-react';
 import { useToast } from '../../../context/ToastContext';
@@ -25,9 +26,10 @@ const EmpresasLaboratorios = () => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/laboratorio/empresas";
+  const COL_BASE = "laboratorio_empresas";
 
   useEffect(() => {
-    const q = query(collection(db, "laboratorio_empresas"), orderBy("fechaRegistro", "asc"));
+    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setLaboratorios(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
@@ -55,16 +57,17 @@ const EmpresasLaboratorios = () => {
     });
   };
 
-  // Helper para auditoría
+  // Helper para auditoría usando subcolección interna
   const registrarLog = async (laboratorioId, accion, detalles) => {
     try {
-      await addDoc(collection(db, "laboratorio_empresas_logs"), {
-        laboratorioId,
+      const logsSubcollectionRef = collection(db, COL_BASE, laboratorioId, "logs");
+      await addDoc(logsSubcollectionRef, {
         accion,
         detalles,
         usuario: userData?.nombreCompleto || 'Usuario Desconocido',
         usuarioEmail: userData?.email || '',
-        fecha: new Date()
+        fecha: new Date(),
+        timestamp: serverTimestamp()
       });
     } catch (err) {
       console.error("Error al registrar log de auditoría:", err);
@@ -107,7 +110,7 @@ const EmpresasLaboratorios = () => {
           registradoPor: labExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
 
-        await updateDoc(doc(db, "laboratorio_empresas", editingId), dataAEnviar);
+        await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
           nombreAnterior: labExistente?.nombre,
@@ -127,7 +130,7 @@ const EmpresasLaboratorios = () => {
           registradoPor: userData?.nombreCompleto || 'Usuario'
         };
 
-        const docRef = await addDoc(collection(db, "laboratorio_empresas"), dataAEnviar);
+        const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
 
         await registrarLog(docRef.id, 'CREACION', {
           nombre: formData.nombre,
@@ -152,12 +155,13 @@ const EmpresasLaboratorios = () => {
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
-          await deleteDoc(doc(db, "laboratorio_empresas", id));
-
+          // Nota: Opcionalmente puedes registrar el log antes de borrar el documento padre
           await registrarLog(id, 'ELIMINACION', {
             nombre: labAEliminar?.nombre || '',
             rut: labAEliminar?.rut || ''
           });
+
+          await deleteDoc(doc(db, COL_BASE, id));
 
           showToast("Laboratorio eliminado correctamente", "info");
         } catch (error) {
@@ -178,9 +182,9 @@ const EmpresasLaboratorios = () => {
     setLoadingLogs(true);
 
     try {
+      // Consulta a la subcolección interna: laboratorio_empresas/{lab.id}/logs
       const q = query(
-        collection(db, "laboratorio_empresas_logs"),
-        where("laboratorioId", "==", lab.id),
+        collection(db, COL_BASE, lab.id, "logs"),
         orderBy("fecha", "desc")
       );
       const snapshot = await getDocs(q);

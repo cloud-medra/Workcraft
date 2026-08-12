@@ -1,3 +1,4 @@
+// src/components/facturas/CodigoLaboratorio.jsx
 import React, { useState, useEffect } from 'react';
 import {
   collection,
@@ -8,9 +9,9 @@ import {
   doc,
   query,
   orderBy,
-  where,
   getDocs,
-  writeBatch
+  writeBatch,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../firebaseConfig';
 import { Package, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
@@ -45,11 +46,10 @@ const CodigoLaboratorio = () => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/laboratorio/codigoLaboratorio";
-  const COL_CODIGOS = "laboratorio_codigos";
-  const COL_LOGS = "laboratorio_codigos_logs";
+  const COL_BASE = "laboratorio_codigos";
 
   useEffect(() => {
-    const q = query(collection(db, COL_CODIGOS), orderBy("referencia", "asc"));
+    const q = query(collection(db, COL_BASE), orderBy("referencia", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setCodigos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
@@ -68,15 +68,17 @@ const CodigoLaboratorio = () => {
     });
   };
 
+  // Helper de auditoría con subcolección interna
   const registrarLog = async (codigoId, accion, detalles) => {
     try {
-      await addDoc(collection(db, COL_LOGS), {
-        codigoId,
+      const logsSubcollectionRef = collection(db, COL_BASE, codigoId, "logs");
+      await addDoc(logsSubcollectionRef, {
         accion,
         detalles,
         usuario: userData?.nombreCompleto || 'Usuario Desconocido',
         usuarioEmail: userData?.email || '',
-        fecha: new Date()
+        fecha: new Date(),
+        timestamp: serverTimestamp()
       });
     } catch (err) {
       console.error("Error al registrar log de auditoría:", err);
@@ -126,7 +128,7 @@ const CodigoLaboratorio = () => {
         if (Number(codigoExistente?.precio) !== precioNum) cambios.precio = precioNum;
         if ((codigoExistente?.descripcion || '') !== descUpper) cambios.descripcion = descUpper;
 
-        await updateDoc(doc(db, COL_CODIGOS, editingId), dataAEnviar);
+        await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
 
         if (Object.keys(cambios).length > 0) {
           await registrarLog(editingId, 'EDICION', cambios);
@@ -143,7 +145,7 @@ const CodigoLaboratorio = () => {
           fechaRegistro: new Date()
         };
 
-        const docRef = await addDoc(collection(db, COL_CODIGOS), dataAEnviar);
+        const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
 
         await registrarLog(docRef.id, 'CREACION', {
           referencia: refUpper,
@@ -170,13 +172,14 @@ const CodigoLaboratorio = () => {
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
-          await deleteDoc(doc(db, COL_CODIGOS, id));
-
+          // Opcionalmente se registra el log en la subcolección antes de borrar el documento padre
           await registrarLog(id, 'ELIMINACION', {
             referencia: codigoAEliminar?.referencia || '',
             codigo: codigoAEliminar?.codigo || '',
             precio: codigoAEliminar?.precio || 0
           });
+
+          await deleteDoc(doc(db, COL_BASE, id));
 
           showToast("Código eliminado correctamente", "info");
         } catch (error) {
@@ -192,9 +195,9 @@ const CodigoLaboratorio = () => {
     setLoadingLogs(true);
 
     try {
+      // Consulta directa a la subcolección interna: laboratorio_codigos/{item.id}/logs
       const q = query(
-        collection(db, COL_LOGS),
-        where("codigoId", "==", item.id),
+        collection(db, COL_BASE, item.id, "logs"),
         orderBy("fecha", "desc")
       );
       const snapshot = await getDocs(q);
@@ -360,7 +363,8 @@ const CodigoLaboratorio = () => {
       const batch = writeBatch(db);
 
       for (const item of chunk) {
-        const codigoRef = doc(collection(db, COL_CODIGOS));
+        // Referencia del documento padre generado automáticamente
+        const codigoRef = doc(collection(db, COL_BASE));
         batch.set(codigoRef, {
           referencia: item.referencia,
           codigo: item.codigo,
@@ -370,9 +374,9 @@ const CodigoLaboratorio = () => {
           fechaRegistro: new Date()
         });
 
-        const logRef = doc(collection(db, COL_LOGS));
+        // Referencia al log como subcolección interna: laboratorio_codigos/{codigoRef.id}/logs/{logId}
+        const logRef = doc(collection(db, COL_BASE, codigoRef.id, "logs"));
         batch.set(logRef, {
-          codigoId: codigoRef.id,
           accion: 'CREACION_MASIVA',
           detalles: {
             referencia: item.referencia,
@@ -382,7 +386,8 @@ const CodigoLaboratorio = () => {
           },
           usuario: userData?.nombreCompleto || 'Importación Masiva',
           usuarioEmail: userData?.email || '',
-          fecha: new Date()
+          fecha: new Date(),
+          timestamp: serverTimestamp()
         });
       }
 
