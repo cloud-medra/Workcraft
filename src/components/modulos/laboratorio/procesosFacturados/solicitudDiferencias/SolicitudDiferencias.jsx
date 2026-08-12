@@ -26,7 +26,6 @@ const SolicitudDiferencias = () => {
   const [loading, setLoading] = useState(false);
   const [exportando, setExportando] = useState(false);
 
-  // Estado para controlar la factura seleccionada en vista detalle
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
 
   const { showToast } = useToast();
@@ -44,7 +43,6 @@ const SolicitudDiferencias = () => {
     "Vinculacion Parcial"
   ];
 
-  // Formatear fecha dd/mm/yyyy
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '';
     const partes = fechaStr.replace(/-/g, '/').split('/');
@@ -57,7 +55,6 @@ const SolicitudDiferencias = () => {
     return fechaStr;
   };
 
-  // Helper para formatear exclusivamente el campo mesImputado
   const obtenerMesImputacion = (factura) => {
     const valor = factura?.mesImputado || factura?.mes_imputado;
     if (!valor) return '—';
@@ -76,7 +73,6 @@ const SolicitudDiferencias = () => {
     return fecha.toLocaleDateString('es-CL', { month: '2-digit', year: 'numeric' });
   };
 
-  // Cargar Años Disponibles
   useEffect(() => {
     const cargarAnios = async () => {
       try {
@@ -90,7 +86,6 @@ const SolicitudDiferencias = () => {
     cargarAnios();
   }, []);
 
-  // Cargar facturas con diferencias en paralelo (Optimizado con Promise.all)
   const cargarFacturasDiferencias = useCallback(async () => {
     if (!filtroAnio) {
       setFacturas([]);
@@ -130,7 +125,6 @@ const SolicitudDiferencias = () => {
   const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
   const handleVolverALista = () => setFacturaSeleccionada(null);
 
-  // Filtrado de facturas
   const facturasFiltradas = useMemo(() => {
     const query = busqueda.toLowerCase().trim();
     if (!query) return facturas;
@@ -149,7 +143,6 @@ const SolicitudDiferencias = () => {
     return facturasFiltradas.reduce((acc, f) => acc + (Math.round(Number(f.total) || 0)), 0);
   }, [facturasFiltradas]);
 
-  // Lógica de Exportación a Excel, actualización de estados y registro de Logs al estilo VinculacionCodigos
   const handleExportarTodoExcel = () => {
     if (facturasFiltradas.length === 0) {
       showToast('No hay facturas para exportar', 'warning');
@@ -211,7 +204,6 @@ const SolicitudDiferencias = () => {
             return;
           }
 
-          // 1. Generar y descargar el archivo Excel
           const worksheet = XLSX.utils.json_to_sheet(filasExcel);
 
           worksheet['!cols'] = [
@@ -226,7 +218,6 @@ const SolicitudDiferencias = () => {
           const nombreArchivo = `Solicitud_Diferencias_General_${filtroAnio || 'Todos'}.xlsx`;
           XLSX.writeFile(workbook, nombreArchivo);
 
-          // 2. Obtener información del usuario actual autenticado
           const currentUser = auth.currentUser;
           const usuarioInfo = {
             uid: currentUser?.uid || "desconocido",
@@ -236,17 +227,14 @@ const SolicitudDiferencias = () => {
 
           const nuevoEstadoGeneral = "Solicitud Enviada";
 
-          // 3. Procesar actualización de documentos y registro de logs en paralelo
           const promesasActualizacion = facturasFiltradas.map(async (factura) => {
             if (!factura.mesId || !factura.id) return;
 
             const estadoAnteriorGeneral = factura.estado || "Diferencia Reportada";
             const docRef = doc(db, COL_BASE, filtroAnio, "meses", factura.mesId, "documentos", factura.id);
 
-            // Actualizar estado en Firestore
             await updateDoc(docRef, { estado: nuevoEstadoGeneral });
 
-            // Registrar log de evento idéntico a VinculacionCodigos
             try {
               const logsRef = collection(docRef, "logs");
               await addDoc(logsRef, {
@@ -265,7 +253,6 @@ const SolicitudDiferencias = () => {
 
           await Promise.all(promesasActualizacion);
 
-          // 4. Recargar datos locales
           await cargarFacturasDiferencias();
 
           showToast(`Excel generado y ${facturasFiltradas.length} documento(s) actualizado(s) a "Solicitud Enviada".`, 'success');
@@ -314,7 +301,6 @@ const SolicitudDiferencias = () => {
         />
       ) : (
         <>
-          {/* CABECERA */}
           <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800">
@@ -330,7 +316,6 @@ const SolicitudDiferencias = () => {
               </div>
             </div>
 
-            {/* MÉTRICAS RÁPIDAS */}
             <div className="flex items-center gap-2 text-xs">
               <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
                 <FileText size={13} className="text-slate-500" />
@@ -347,7 +332,6 @@ const SolicitudDiferencias = () => {
             </div>
           </header>
 
-          {/* FILTROS Y CONTROLES */}
           <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center justify-between border-b border-slate-200 dark:border-gray-700">
             <div className="flex flex-wrap gap-1.5 items-center flex-grow">
               {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
@@ -399,7 +383,6 @@ const SolicitudDiferencias = () => {
             </div>
           </div>
 
-          {/* TABLA DE CONTENIDO */}
           {hasPermission(PATH_VISTA, "tabla_facturas") && (
             <div className="flex-grow overflow-auto">
               {loading ? (
@@ -444,7 +427,7 @@ const SolicitudDiferencias = () => {
                           title="Doble clic para ver el detalle"
                         >
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                            #{f.folio}
+                            {f.folio}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
                             {formatearFechaEmision(f.fchEmis)}

@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/facturasListasIngreso/FacturasListasIngreso.jsx
+// src/components/modulos/laboratorio/procesosFacturados/facturasListasIngreso/DocListasIngreso.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
@@ -16,14 +16,13 @@ import { useModal } from '../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import DetalleListasIngreso from './DetalleListasIngreso';
 
-const FacturasListasIngreso = () => {
+const DocListasIngreso = () => {
     const [facturas, setFacturas] = useState([]);
     const [aniosDisponibles, setAniosDisponibles] = useState([]);
     const [busqueda, setBusqueda] = useState('');
     const [filtroAnio, setFiltroAnio] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Estado para controlar la factura seleccionada en vista detalle
     const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
 
     const { showToast } = useToast();
@@ -38,7 +37,6 @@ const FacturasListasIngreso = () => {
         "Listo Para Ingreso"
     ];
 
-    // Formatear fecha dd/mm/yyyy
     const formatearFechaEmision = (fechaStr) => {
         if (!fechaStr) return '';
         const partes = fechaStr.replace(/-/g, '/').split('/');
@@ -51,7 +49,6 @@ const FacturasListasIngreso = () => {
         return fechaStr;
     };
 
-    // Helper para formatear exclusivamente el campo mesImputado
     const obtenerMesImputacion = (factura) => {
         const valor = factura?.mesImputado || factura?.mes_imputado;
         if (!valor) return '—';
@@ -70,7 +67,6 @@ const FacturasListasIngreso = () => {
         return fecha.toLocaleDateString('es-CL', { month: '2-digit', year: 'numeric' });
     };
 
-    // Cargar Años Disponibles
     useEffect(() => {
         const cargarAnios = async () => {
             try {
@@ -84,7 +80,6 @@ const FacturasListasIngreso = () => {
         cargarAnios();
     }, []);
 
-    // Cargar facturas listas para ingreso en paralelo
     const cargarFacturasListas = useCallback(async () => {
         if (!filtroAnio) {
             setFacturas([]);
@@ -124,7 +119,6 @@ const FacturasListasIngreso = () => {
     const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
     const handleVolverALista = () => setFacturaSeleccionada(null);
 
-    // Filtrado de facturas
     const facturasFiltradas = useMemo(() => {
         const query = busqueda.toLowerCase().trim();
         if (!query) return facturas;
@@ -168,7 +162,6 @@ const FacturasListasIngreso = () => {
                 />
             ) : (
                 <>
-                    {/* CABECERA */}
                     <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                             <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800">
@@ -184,7 +177,6 @@ const FacturasListasIngreso = () => {
                             </div>
                         </div>
 
-                        {/* MÉTRICAS RÁPIDAS */}
                         <div className="flex items-center gap-2 text-xs">
                             <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
                                 <FileText size={13} className="text-slate-500" />
@@ -201,7 +193,6 @@ const FacturasListasIngreso = () => {
                         </div>
                     </header>
 
-                    {/* FILTROS Y CONTROLES */}
                     <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center justify-between border-b border-slate-200 dark:border-gray-700">
                         <div className="flex flex-wrap gap-1.5 items-center flex-grow">
                             {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
@@ -243,7 +234,6 @@ const FacturasListasIngreso = () => {
                         </div>
                     </div>
 
-                    {/* TABLA DE CONTENIDO */}
                     {hasPermission(PATH_VISTA, "tabla_facturas") && (
                         <div className="flex-grow overflow-auto">
                             {loading ? (
@@ -305,7 +295,6 @@ const FacturasListasIngreso = () => {
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
                                                         ${Math.round(Number(f.total || 0)).toLocaleString('es-CL')}
                                                     </td>
-                                                    {/* CELDA DE ESTADO COMPACTA */}
                                                     <td className="px-1 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                                                         {renderBadgeEstadoGeneral(f.estado)}
                                                     </td>
@@ -335,4 +324,4 @@ const FacturasListasIngreso = () => {
     );
 };
 
-export default FacturasListasIngreso;
+export default DocListasIngreso;

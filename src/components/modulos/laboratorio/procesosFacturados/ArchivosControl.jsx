@@ -17,37 +17,35 @@ import {
   Calendar
 } from 'lucide-react'; 
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig'; // Ajusta la ruta de tu configuración de firebase si es necesario
+import { db } from '../../../../firebaseConfig';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
-import DocumentosRecibidos from './documentosRecibidas/DocRecibidos';
+import DocumentosRecibidos from './documentosRecibidos/DocRecibidos';
 import IniciarProceso from './iniciarProceso/IniciarProceso';
 import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';
 import DocumentosListasIngreso from './documentosListasIngreso/DocListasIngreso';
-import DocImputados from './documentosImputados/DocImputados';
-import CierreMes from './cierreMes/CierreMes';
+import DocImputados from './documentosImputados/DocumentosImputados';
+import GestionPeriodo from './PanelPeriodos/GestionPeriodo';
 
-// Lista de pestañas ordenada
 const ALL_TABS = [
-  { id: 'recibidas', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_recibidas' },
-  { id: 'procesar', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_procesar' },
-  { id: 'gestion', label: 'Vinculación de Códigos', Icon: ClipboardList, perm: 'tab_gestion' },
-  { id: 'ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_ordenes' },
-  { id: 'excel', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_excel' },
-  { id: 'listas', label: 'Documentos Listos', Icon: CheckSquare, perm: 'tab_listas' },
-  { id: 'doc_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_doc_imputados' },
-  { id: 'cierre_mes', label: 'Cierre de Mes', Icon: CalendarCheck, perm: 'tab_cierre_mes' },
+  { id: 'documentos_recibidos', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_documentos_recibidos' },
+  { id: 'iniciar_procesos', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_iniciar_procesos' },
+  { id: 'vinculacion_codigos', label: 'Vinculación de Códigos', Icon: ClipboardList, perm: 'tab_vinculacion_codigos' },
+  { id: 'vinculacion_ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_vinculacion_ordenes' },
+  { id: 'solicitud_diferencias', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_solicitud_diferencias' },
+  { id: 'documentos_listos', label: 'Documentos Listos', Icon: CheckSquare, perm: 'tab_documentos_listos' },
+  { id: 'documentos_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_documentos_imputados' },
+  { id: 'gestor_periodos', label: 'Gestor Periodos', Icon: CalendarCheck, perm: 'tab_gestor_periodos' },
   { id: 'edicion', label: 'Modificación y Edición', Icon: Edit3, perm: 'tab_edicion' },
 ];
 
-const PATH_VISTA = "/laboratorio/controlFactura";
+const PATH_VISTA = "/laboratorio/archivosControl";
 
 const ArchivosControl = () => {
   const { hasPermission } = useGranularPermission();
   const [periodoAbierto, setPeriodoAbierto] = useState(null);
 
-  // Escuchar en tiempo real el período activo abierto
   useEffect(() => {
     const refPeriodo = doc(db, "configuracion_periodos", "periodo_activo");
     const unsubscribe = onSnapshot(refPeriodo, (docSnap) => {
@@ -63,16 +61,13 @@ const ArchivosControl = () => {
     return () => unsubscribe();
   }, []);
 
-  // Filtramos las pestañas permitidas según permisos granulares
   const tabs = useMemo(() => 
     ALL_TABS.filter(t => hasPermission(PATH_VISTA, "navegacion", t.perm)), 
     [hasPermission]
   );
 
-  // Estado local para la pestaña seleccionada
   const [activeTab, setActiveTab] = useState(() => tabs[0]?.id || '');
 
-  // Determinamos la pestaña activa dinámicamente sin re-renders adicionales
   const currentTabObj = useMemo(() => {
     return tabs.find(t => t.id === activeTab) || tabs[0] || null;
   }, [tabs, activeTab]);
@@ -101,7 +96,6 @@ const ArchivosControl = () => {
   return (
     <div className="w-full h-full flex flex-col bg-slate-50/60 dark:bg-gray-900 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs overflow-hidden">
       
-      {/* Header Compacto Corporativo */}
       <div className="bg-white dark:bg-gray-800 border-b border-slate-200/80 dark:border-gray-700 px-5 py-2.5">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -109,7 +103,6 @@ const ArchivosControl = () => {
               Control y Procesos de Documentos
             </h1>
             
-            {/* Ruta de Navegación Dinámica */}
             <div className="hidden sm:flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-gray-500">
               <span>•</span>
               <span>Laboratorio</span>
@@ -127,7 +120,6 @@ const ArchivosControl = () => {
               )}
             </div>
 
-            {/* Badge de Período Abierto en tiempo real */}
             {periodoAbierto && periodoAbierto.mes && (
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#2383C2] dark:text-[#369BCE] text-[10px] font-bold border border-blue-200/60 dark:border-blue-800/40 shadow-2xs">
                 <Calendar size={11} />
@@ -148,7 +140,6 @@ const ArchivosControl = () => {
         </div>
       </div>
 
-      {/* Navegación por Pestañas */}
       <div className="bg-slate-100/60 dark:bg-gray-800/60 px-5 py-1.5 border-b border-slate-200/80 dark:border-gray-700 overflow-x-auto scrollbar-none">
         <div className="flex items-center gap-1 min-w-max">
           {tabs.map((tab) => {
@@ -176,18 +167,17 @@ const ArchivosControl = () => {
         </div>
       </div>
 
-      {/* Área Principal de Contenido */}
       <div className="flex-grow p-4 overflow-auto">
-        {currentTabObj.id === 'recibidas' && <DocumentosRecibidos />}
-        {currentTabObj.id === 'procesar' && <IniciarProceso />}
-        {currentTabObj.id === 'gestion' && <VinculacionCodigos />}
-        {currentTabObj.id === 'ordenes' && <VinculacionOrden />}
-        {currentTabObj.id === 'excel' && <SolicitudDiferencias />}
-        {currentTabObj.id === 'listas' && <DocumentosListasIngreso />}
-        {currentTabObj.id === 'doc_imputados' && <DocImputados />}
-        {currentTabObj.id === 'cierre_mes' && <CierreMes />}
+        {currentTabObj.id === 'documentos_recibidos' && <DocumentosRecibidos />}
+        {currentTabObj.id === 'iniciar_procesos' && <IniciarProceso />}
+        {currentTabObj.id === 'vinculacion_codigos' && <VinculacionCodigos />}
+        {currentTabObj.id === 'vinculacion_ordenes' && <VinculacionOrden />}
+        {currentTabObj.id === 'solicitud_diferencias' && <SolicitudDiferencias />}
+        {currentTabObj.id === 'documentos_listos' && <DocumentosListasIngreso />}
+        {currentTabObj.id === 'documentos_imputados' && <DocImputados />}
+        {currentTabObj.id === 'gestor_periodos' && <GestionPeriodo />}
 
-        {!['recibidas', 'procesar', 'gestion', 'ordenes', 'excel', 'listas', 'doc_imputados', 'cierre_mes', 'edicion'].includes(currentTabObj.id) && (
+        {!['documentos_recibidos', 'iniciar_procesos', 'vinculacion_codigos', 'vinculacion_ordenes', 'solicitud_diferencias', 'documentos_listos', 'documentos_imputados', 'gestor_periodos', 'edicion'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">
             <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-[#2383C2] dark:text-[#369BCE] flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/40">
               <ActiveIcon size={20} />

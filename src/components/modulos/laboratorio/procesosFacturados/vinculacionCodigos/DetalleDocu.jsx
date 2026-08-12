@@ -14,11 +14,6 @@ import {
   Loader2
 } from 'lucide-react';
 
-/**
- * Vista de detalle de una factura: métricas, receptor y tabla de ítems.
- * Toda la lógica de negocio (fetch, vinculación, permisos) vive en el
- * componente padre (VinculacionCodigos) y se recibe aquí vía props.
- */
 const DetalleFactura = ({
   factura,
   vinculando,
@@ -31,7 +26,6 @@ const DetalleFactura = ({
   return (
     <div className="flex flex-col h-full w-full bg-white dark:bg-gray-800">
 
-      {/* CABECERA VISTA DETALLE */}
       <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <button
@@ -51,10 +45,8 @@ const DetalleFactura = ({
         </div>
       </header>
 
-      {/* TARJETAS RESUMEN METRICAS */}
       <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2 shrink-0">
         
-        {/* 1. FOLIO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Hash size={11} className="text-[#2383C2]" />
@@ -65,7 +57,6 @@ const DetalleFactura = ({
           </span>
         </div>
 
-        {/* 2. FECHA EMISIÓN */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Calendar size={11} className="text-[#2383C2]" />
@@ -76,7 +67,6 @@ const DetalleFactura = ({
           </span>
         </div>
 
-        {/* 3. MES IMPUTADO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <CalendarDays size={11} className="text-[#2383C2]" />
@@ -87,7 +77,6 @@ const DetalleFactura = ({
           </span>
         </div>
 
-        {/* 4. REF. (OC) */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Tag size={11} className="text-[#2383C2]" />
@@ -98,7 +87,6 @@ const DetalleFactura = ({
           </span>
         </div>
 
-        {/* 5. TOTAL NETO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <DollarSign size={11} className="text-[#2383C2]" />
@@ -109,7 +97,6 @@ const DetalleFactura = ({
           </span>
         </div>
 
-        {/* 6. ESTADO GENERAL */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Activity size={11} className="text-[#2383C2]" />
@@ -120,7 +107,6 @@ const DetalleFactura = ({
           </div>
         </div>
 
-        {/* 7. ACCIÓN / BOTÓN CON SPINNER */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <LinkIcon size={11} className="text-[#2383C2]" />
@@ -150,7 +136,6 @@ const DetalleFactura = ({
         </div>
       </div>
 
-      {/* RECEPTOR */}
       <div className="px-3 py-1.5 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 truncate">
           <Building2 size={13} className="text-[#2383C2] shrink-0" />
@@ -162,7 +147,6 @@ const DetalleFactura = ({
         </span>
       </div>
 
-      {/* TABLA DE DETALLES */}
       <div className="flex-grow overflow-auto">
         <table className="w-full text-left text-[11px] border-collapse min-w-[1200px]">
           <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
@@ -196,7 +180,7 @@ const DetalleFactura = ({
                   <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 dark:text-gray-400 font-bold text-center">
                     {idx + 1}
                   </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-500 dark:text-gray-400 truncate">
+                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 dark:text-gray-400 truncate">
                     {item.codigo || '-'}
                   </td>
                   <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
@@ -214,13 +198,13 @@ const DetalleFactura = ({
                   <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold text-slate-800 dark:text-gray-100">
                     ${Math.round(Number(item.monto || 0)).toLocaleString('es-CL')}
                   </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
+                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
                     {item.codigoMaestro || '-'}
                   </td>
                   <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 font-medium bg-slate-50/50 dark:bg-gray-900/30 truncate" title={item.descripcionMaestro}>
                     {item.descripcionMaestro || '-'}
                   </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-right text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
+                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
                     {item.precioMaestro !== undefined ? `$${Math.round(Number(item.precioMaestro || 0)).toLocaleString('es-CL')}` : '-'}
                   </td>
                   <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center bg-slate-50/50 dark:bg-gray-900/30">

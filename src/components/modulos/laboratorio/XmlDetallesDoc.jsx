@@ -83,7 +83,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
                     {idx + 1}
                   </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-gray-500 dark:text-gray-400 truncate">
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 truncate">
                     {item.codigo || '-'}
                   </td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-800 dark:text-gray-200 font-medium">

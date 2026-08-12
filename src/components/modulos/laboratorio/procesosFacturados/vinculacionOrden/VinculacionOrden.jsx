@@ -30,7 +30,6 @@ const VinculacionOrden = () => {
     const [filtroAnio, setFiltroAnio] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Estado para la factura seleccionada
     const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
 
     const { showToast } = useToast();
@@ -40,7 +39,6 @@ const VinculacionOrden = () => {
     const PATH_VISTA = "/laboratorio/controlFactura";
     const COL_BASE = "laboratorio_facturasXml";
 
-    // Formatear fecha dd/mm/yyyy
     const formatearFechaEmision = (fechaStr) => {
         if (!fechaStr) return '';
         const partes = fechaStr.replace(/-/g, '/').split('/');
@@ -51,7 +49,6 @@ const VinculacionOrden = () => {
         return fechaStr;
     };
 
-    // Helper para formatear el Mes Imputado o el mesId (ej: "01_enero" -> "Enero")
     const formatearMesImputado = (valMes) => {
         if (!valMes) return '-';
         if (typeof valMes === 'string' && valMes.includes('_')) {
@@ -62,7 +59,6 @@ const VinculacionOrden = () => {
         return valMes;
     };
 
-    // Helper para parsear fecha al ordenar
     const parseFecha = (fechaStr) => {
         if (!fechaStr) return 0;
         if (fechaStr.includes('/')) {
@@ -72,7 +68,6 @@ const VinculacionOrden = () => {
         return new Date(fechaStr).getTime() || 0;
     };
 
-    // Cargar Años Disponibles
     useEffect(() => {
         const cargarAnios = async () => {
             try {
@@ -98,8 +93,6 @@ const VinculacionOrden = () => {
 
         setLoading(true);
         try {
-            // Obtenemos todos los documentos del grupo sin el filtro 'where' inicial
-            // para poder filtrar ambos estados manualmente
             const q = query(collectionGroup(db, "documentos"));
 
             const querySnapshot = await getDocs(q);
@@ -113,7 +106,6 @@ const VinculacionOrden = () => {
                 const anioDoc = pathSegments[1];
                 const mesId = pathSegments[3];
 
-                // Filtramos por año, colección base Y los estados permitidos
                 if (
                     coleccionRaiz === COL_BASE &&
                     anioDoc === filtroAnio &&
@@ -137,17 +129,14 @@ const VinculacionOrden = () => {
         }
     }, [filtroAnio, showToast]);
 
-    // Reinicia la selección SOLO cuando cambia el año filtrado
     useEffect(() => {
         setFacturaSeleccionada(null);
     }, [filtroAnio]);
 
-    // Carga las facturas cuando cambia el año (o cuando cambia la función por deps internas)
     useEffect(() => {
         cargarFacturasProcesarOC();
     }, [cargarFacturasProcesarOC]);
 
-    // Selección y navegación
     const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
     const handleVolverALista = () => setFacturaSeleccionada(null);
 
@@ -209,9 +198,7 @@ const VinculacionOrden = () => {
 
                     showToast(`Ítems cruzados con la OC N° ${folioOC} — ${estadoFinal}`, "success");
 
-                    // Remover la factura procesada de la lista activa
                     setFacturas(prev => prev.filter(f => f.id !== facturaSeleccionada.id));
-                    // (ya no volvemos automáticamente — el usuario decide con la flecha "Volver")
                 } catch (error) {
                     console.error("Error al cruzar Orden de Compra:", error);
                     showToast("Error al procesar el cruce con la Orden de Compra", "error");
@@ -220,7 +207,6 @@ const VinculacionOrden = () => {
         );
     };
 
-    // Búsqueda segura
     const busquedaLower = busqueda.trim().toLowerCase();
     const facturasFiltradas = facturas.filter(f => {
         if (!busquedaLower) return true;
@@ -238,13 +224,12 @@ const VinculacionOrden = () => {
     const renderBadgeEstadoGeneral = (estado) => {
         const estilos = {
             "Procesar OC": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
-            "Solicitud Enviada": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50", // Nuevo estilo
+            "Solicitud Enviada": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50",
             "Listo para Ingreso": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
             "Diferencia Reportada": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
             "Rechazada": "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800/50",
         };
 
-        // Si el estado no existe en la lista, usamos uno por defecto (grey)
         const clase = estilos[estado] || "bg-gray-100 text-gray-800 border-gray-200";
 
         return (
@@ -257,7 +242,6 @@ const VinculacionOrden = () => {
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
 
-            {/* VISTA DETALLE O VISTA TABLA */}
             {facturaSeleccionada ? (
                 <DetalleVinculacionOC
                     factura={facturaSeleccionada}
@@ -268,7 +252,6 @@ const VinculacionOrden = () => {
                 />
             ) : (
                 <>
-                    {/* CABECERA */}
                     <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <ClipboardList size={16} className="text-[#2383C2]" />
@@ -278,7 +261,6 @@ const VinculacionOrden = () => {
                         </div>
                     </header>
 
-                    {/* FILTROS Y BÚSQUEDA */}
                     <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center justify-between border-b border-slate-200 dark:border-gray-700">
                         <div className="flex flex-wrap gap-1.5 items-center flex-grow">
                             {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
@@ -318,7 +300,6 @@ const VinculacionOrden = () => {
                         </button>
                     </div>
 
-                    {/* TABLA PRINCIPAL */}
                     {hasPermission(PATH_VISTA, "tabla_facturas") && (
                         <div className="flex-grow overflow-auto">
                             {loading ? (

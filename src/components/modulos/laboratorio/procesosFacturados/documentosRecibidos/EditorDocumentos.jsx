@@ -4,7 +4,6 @@ import { doc, updateDoc, collection, addDoc, serverTimestamp, deleteField } from
 import { db, auth } from '../../../../../firebaseConfig';
 import { useToast } from '../../../../../context/ToastContext';
 
-// Funciones para normalizar el formato dd/mm/yyyy
 const formatToDDMMYYYY = (dateStr) => {
   if (!dateStr) return '';
   if (dateStr.includes('/')) return dateStr;
@@ -19,29 +18,26 @@ const formatToYYYYMMDD = (dateStr) => {
   return (year && month && day) ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : '';
 };
 
-const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => {
-  if (!factura) return null;
+const EditorDocumentos = ({ documento, filtroAnio, filtroMes, onClose }) => {
+  if (!documento) return null;
 
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // --- ESTADOS GENERALES DE LA FACTURA ---
-  const [folio, setFolio] = useState(factura.folio || '');
-  const [fchEmis, setFchEmis] = useState(formatToDDMMYYYY(factura.fchEmis || ''));
-  const [rznSoc, setRznSoc] = useState(factura.rznSoc || '');
-  const [folioRef, setFolioRef] = useState(factura.folioRef || '');
+  const [folio, setFolio] = useState(documento.folio || '');
+  const [fchEmis, setFchEmis] = useState(formatToDDMMYYYY(documento.fchEmis || ''));
+  const [rznSoc, setRznSoc] = useState(documento.rznSoc || '');
+  const [folioRef, setFolioRef] = useState(documento.folioRef || '');
 
-  // Campos de control interno (Se inicializan exactamente con lo que trae la factura, sin valores por defecto forzados)
-  const [estado, setEstado] = useState(factura.estado || '');
-  const [ordenCompra, setOrdenCompra] = useState(factura.ordenCompra || factura.folioRef || '');
-  const [acta, setActa] = useState(factura.acta || '');
-  const [salida, setSalida] = useState(factura.salida || '');
-  const [mesImputado, setMesImputado] = useState(factura.mesImputado || '');
+  const [estado, setEstado] = useState(documento.estado || '');
+  const [ordenCompra, setOrdenCompra] = useState(documento.ordenCompra || documento.folioRef || '');
+  const [acta, setActa] = useState(documento.acta || '');
+  const [salida, setSalida] = useState(documento.salida || '');
+  const [mesImputado, setMesImputado] = useState(documento.mesImputado || '');
 
-  // --- ESTADO DE DETALLES / ÍTEMS ---
   const [detalles, setDetalles] = useState(
-    factura.detalles && factura.detalles.length > 0
-      ? factura.detalles.map(d => ({
+    documento.detalles && documento.detalles.length > 0
+      ? documento.detalles.map(d => ({
           codigo: d.codigo || '',
           nombre: d.nombre || '',
           cantidad: Number(d.cantidad) || 0,
@@ -54,7 +50,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
 
   const COL_BASE = "laboratorio_facturasXml";
 
-  // Manejar cambios en la tabla de ítems
   const handleItemChange = (index, field, value) => {
     const nuevosDetalles = [...detalles];
     nuevosDetalles[index][field] = value;
@@ -68,7 +63,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
     setDetalles(nuevosDetalles);
   };
 
-  // Agregar una nueva fila de detalle
   const handleAddRow = () => {
     setDetalles([
       ...detalles,
@@ -76,23 +70,19 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
     ]);
   };
 
-  // Eliminar una fila de detalle
   const handleRemoveRow = (index) => {
     setDetalles(detalles.filter((_, idx) => idx !== index));
   };
 
-  // Calcular el Total Neto acumulado dinámicamente
   const totalCalculado = detalles.reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
 
-  // Guardar cambios en Firestore y registrar el Log detallado
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const docRef = doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", factura.id);
+      const docRef = doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", documento.id);
 
-      // Objeto base de actualización sin los campos opcionales por defecto
       const datosActualizados = {
         folio,
         fchEmis,
@@ -105,11 +95,10 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
         updatedAt: new Date()
       };
 
-      // Agregar o eliminar dinámicamente según si el usuario escribió algo o no
       if (acta && acta.trim() !== '') {
         datosActualizados.acta = acta.trim();
       } else {
-        datosActualizados.acta = deleteField(); // Los borra de Firestore si estaban vacíos
+        datosActualizados.acta = deleteField();
       }
 
       if (salida && salida.trim() !== '') {
@@ -124,39 +113,37 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
         datosActualizados.mesImputado = deleteField();
       }
 
-      // 1. Detectar cambios específicos para el log
       const cambiosRealizados = {};
 
-      if (factura.folio !== folio) cambiosRealizados.folio = { anterior: factura.folio || '', nuevo: folio };
-      if (factura.fchEmis !== fchEmis) cambiosRealizados.fchEmis = { anterior: factura.fchEmis || '', nuevo: fchEmis };
-      if (factura.rznSoc !== rznSoc) cambiosRealizados.rznSoc = { anterior: factura.rznSoc || '', nuevo: rznSoc };
-      if (factura.folioRef !== folioRef) cambiosRealizados.folioRef = { anterior: factura.folioRef || '', nuevo: folioRef };
-      if (factura.estado !== estado) cambiosRealizados.estado = { anterior: factura.estado || '', nuevo: estado };
+      if (documento.folio !== folio) cambiosRealizados.folio = { anterior: documento.folio || '', nuevo: folio };
+      if (documento.fchEmis !== fchEmis) cambiosRealizados.fchEmis = { anterior: documento.fchEmis || '', nuevo: fchEmis };
+      if (documento.rznSoc !== rznSoc) cambiosRealizados.rznSoc = { anterior: documento.rznSoc || '', nuevo: rznSoc };
+      if (documento.folioRef !== folioRef) cambiosRealizados.folioRef = { anterior: documento.folioRef || '', nuevo: folioRef };
+      if (documento.estado !== estado) cambiosRealizados.estado = { anterior: documento.estado || '', nuevo: estado };
       
-      if (factura.acta && factura.acta !== acta) {
-        cambiosRealizados.acta = { anterior: factura.acta, nuevo: acta };
-      } else if (!factura.acta && acta && acta.trim() !== "") {
+      if (documento.acta && documento.acta !== acta) {
+        cambiosRealizados.acta = { anterior: documento.acta, nuevo: acta };
+      } else if (!documento.acta && acta && acta.trim() !== "") {
         cambiosRealizados.acta = { anterior: "", nuevo: acta };
       }
 
-      if (factura.salida && factura.salida !== salida) {
-        cambiosRealizados.salida = { anterior: factura.salida, nuevo: salida };
-      } else if (!factura.salida && salida && salida.trim() !== "") {
+      if (documento.salida && documento.salida !== salida) {
+        cambiosRealizados.salida = { anterior: documento.salida, nuevo: salida };
+      } else if (!documento.salida && salida && salida.trim() !== "") {
         cambiosRealizados.salida = { anterior: "", nuevo: salida };
       }
 
-      if (factura.mesImputado && factura.mesImputado !== mesImputado) {
-        cambiosRealizados.mesImputado = { anterior: factura.mesImputado, nuevo: mesImputado };
-      } else if (!factura.mesImputado && mesImputado && mesImputado.trim() !== "") {
+      if (documento.mesImputado && documento.mesImputado !== mesImputado) {
+        cambiosRealizados.mesImputado = { anterior: documento.mesImputado, nuevo: mesImputado };
+      } else if (!documento.mesImputado && mesImputado && mesImputado.trim() !== "") {
         cambiosRealizados.mesImputado = { anterior: "", nuevo: mesImputado };
       }
 
-      if (Number(factura.total || 0) !== totalCalculado) {
-        cambiosRealizados.total = { anterior: factura.total || 0, nuevo: totalCalculado };
+      if (Number(documento.total || 0) !== totalCalculado) {
+        cambiosRealizados.total = { anterior: documento.total || 0, nuevo: totalCalculado };
       }
       
-      // Comprobar si cambiaron los ítems/detalles de forma limpia
-      const detallesAnteriores = factura.detalles || [];
+      const detallesAnteriores = documento.detalles || [];
       const cambiosDetalles = [];
 
       detallesAnteriores.forEach((itemAnt, idx) => {
@@ -190,10 +177,8 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
         };
       }
 
-      // 2. Actualizar el documento principal de la factura
       await updateDoc(docRef, datosActualizados);
 
-      // 3. Obtener info del usuario actual para el log
       const currentUser = auth.currentUser;
       const usuarioInfo = {
         uid: currentUser?.uid || "desconocido",
@@ -201,12 +186,11 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
         nombre: currentUser?.displayName || currentUser?.email?.split('@')[0] || "Usuario"
       };
 
-      // 4. Registrar el log de auditoría detallado
       try {
         const logsRef = collection(docRef, "logs");
         await addDoc(logsRef, {
-          accion: "MODIFICACION_FACTURA",
-          detalle: `Modificación realizada en la factura Folio: ${folio || factura.id}`,
+          accion: "MODIFICACION_DOCUMENTO",
+          detalle: `Modificación realizada en el documento Folio: ${folio || documento.id}`,
           cambios: cambiosRealizados,
           fechaHora: new Date().toLocaleString('es-CL'),
           timestamp: serverTimestamp(),
@@ -216,7 +200,7 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
         console.error("Error al escribir log interno:", logError);
       }
 
-      showToast("Factura y detalles actualizados correctamente", "success");
+      showToast("Documento y detalles actualizados correctamente", "success");
       onClose();
     } catch (error) {
       console.error("Error al guardar la edición:", error);
@@ -230,12 +214,11 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-[2px] p-3 font-sans text-[11px]">
       <div className="bg-white dark:bg-gray-800 w-full max-w-6xl rounded-lg shadow-xl overflow-hidden flex flex-col h-[92vh] border border-gray-200 dark:border-gray-700">
 
-        {/* CABECERA */}
         <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 shrink-0">
           <div className="flex items-center gap-2">
             <Settings className="text-[#2383C2]" size={16} />
             <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wide">
-              Edición Integral de Factura
+              Edición Integral de Documento
             </h3>
           </div>
           <button
@@ -246,10 +229,8 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
           </button>
         </div>
 
-        {/* FORMULARIO CONTENEDOR PRINCIPAL */}
         <form onSubmit={handleSave} className="flex flex-col flex-grow overflow-hidden">
 
-          {/* SECCIÓN 1: DATOS GENERALES Y CONTROL */}
           <div className="p-3 bg-gray-50/50 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 shrink-0">
 
             <div className="flex flex-col gap-0.5">
@@ -368,7 +349,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
 
           </div>
 
-          {/* SECCIÓN 2: BARRA DE ACCIÓN DE ÍTEMS */}
           <div className="px-4 py-1.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
             <span className="text-[10px] font-bold uppercase text-gray-600 dark:text-gray-300">
               Detalle de Ítems ({detalles.length})
@@ -382,7 +362,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
             </button>
           </div>
 
-          {/* SECCIÓN 3: TABLA DE ÍTEMS EDITABLES */}
           <div className="flex-grow overflow-y-auto">
             <table className="w-full text-left border-collapse text-[11px]">
               <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-20 shadow-xs">
@@ -466,7 +445,6 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
             </table>
           </div>
 
-          {/* PIE DE MODAL */}
           <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center shrink-0">
             <p className="text-[9px] text-gray-400 italic">Los cambios modifican directamente la información guardada en la base de datos.</p>
 
@@ -496,4 +474,4 @@ const ConfigDetallesFacturas = ({ factura, filtroAnio, filtroMes, onClose }) => 
   );
 };
 
-export default ConfigDetallesFacturas;
+export default EditorDocumentos;

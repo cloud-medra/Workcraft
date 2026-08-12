@@ -64,7 +64,6 @@ const DrawerSeleccionOC = ({
 
     const [cargandoItemsId, setCargandoItemsId] = useState(null);
 
-    // Cierre con tecla Escape
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape' && panelAbierto) {
@@ -75,7 +74,6 @@ const DrawerSeleccionOC = ({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [panelAbierto, setPanelAbierto]);
 
-    // Limpiar estado y selecciones al cerrar/abrir el panel
     useEffect(() => {
         if (!panelAbierto) {
             setBusquedaOC('');
@@ -86,7 +84,6 @@ const DrawerSeleccionOC = ({
         }
     }, [panelAbierto]);
 
-    // 1. Cargar Años
     useEffect(() => {
         let isCancelled = false;
 
@@ -109,7 +106,6 @@ const DrawerSeleccionOC = ({
         return () => { isCancelled = true; };
     }, [panelAbierto]);
 
-    // 2. Cargar Meses al seleccionar Año
     useEffect(() => {
         let isCancelled = false;
 
@@ -160,7 +156,6 @@ const DrawerSeleccionOC = ({
         return () => { isCancelled = true; };
     }, [anioOC, panelAbierto]);
 
-    // 3. Cargar Órdenes
     const cargarOrdenes = useCallback(async (isCancelledRef) => {
         if (!anioOC || !mesOC) {
             setOrdenes([]);
@@ -212,7 +207,6 @@ const DrawerSeleccionOC = ({
         };
     }, [anioOC, mesOC, panelAbierto, cargarOrdenes]);
 
-    // 4. Seleccionar Orden y Cargar Ítems
     const handleSeleccionarOrden = useCallback(async (oc) => {
         setCargandoItemsId(oc.id);
         try {
@@ -304,7 +298,6 @@ const DrawerSeleccionOC = ({
 
     return (
         <>
-            {/* OVERLAY */}
             {panelAbierto && (
                 <div
                     className="absolute inset-0 bg-slate-900/40 dark:bg-black/60 z-20 transition-opacity"
@@ -312,7 +305,6 @@ const DrawerSeleccionOC = ({
                 />
             )}
 
-            {/* PANEL DRAWER */}
             <div className={`absolute top-0 right-0 h-full w-full max-w-md bg-white dark:bg-gray-800 border-l border-slate-200 dark:border-gray-700 shadow-2xl z-30 transform transition-transform duration-300 flex flex-col ${panelAbierto ? 'translate-x-0' : 'translate-x-full'}`}>
 
                 <div className="bg-slate-100 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between shrink-0">
@@ -325,7 +317,6 @@ const DrawerSeleccionOC = ({
                     </button>
                 </div>
 
-                {/* FILTROS AÑO / MES */}
                 <div className="p-3 bg-slate-50 dark:bg-gray-800/60 border-b border-slate-200 dark:border-gray-700 flex flex-col gap-2 shrink-0">
                     <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -380,7 +371,6 @@ const DrawerSeleccionOC = ({
                     </div>
                 </div>
 
-                {/* LISTADO DE ORDENES */}
                 <div className="flex-grow overflow-auto p-2">
                     {loadingOC ? (
                         <div className="h-40 flex items-center justify-center gap-2 text-xs text-slate-500">
@@ -389,8 +379,8 @@ const DrawerSeleccionOC = ({
                         </div>
                     ) : !anioOC || !mesOC ? (
                         <div className="h-40 flex items-center justify-center text-xs text-slate-400 text-center px-4">
-                            {!anioOC 
-                                ? 'Seleccione un Año para comenzar.' 
+                            {!anioOC
+                                ? 'Seleccione un Año para comenzar.'
                                 : 'Seleccione un Mes para consultar órdenes.'}
                         </div>
                     ) : ordenesFiltradas.length === 0 ? (
@@ -407,16 +397,15 @@ const DrawerSeleccionOC = ({
                                     <div
                                         key={oc.id}
                                         onClick={() => handleSeleccionarOrden(oc)}
-                                        className={`relative p-2.5 rounded border text-left cursor-pointer transition-all flex flex-col gap-1 ${
-                                            esSeleccionado
+                                        className={`relative p-2.5 rounded border text-left cursor-pointer transition-all flex flex-col gap-1 ${esSeleccionado
                                                 ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/40'
                                                 : 'border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:border-slate-300'
-                                        } ${estaCargando ? 'opacity-60 pointer-events-none' : ''}`}
+                                            } ${estaCargando ? 'opacity-60 pointer-events-none' : ''}`}
                                     >
                                         <div className="flex items-center justify-between">
                                             <span className="font-bold text-slate-800 dark:text-gray-100 text-[11px] flex items-center gap-1">
                                                 <Tag size={12} className="text-[#2383C2]" />
-                                                OC #{oc.folioCalculado}
+                                                OC {oc.folioCalculado}
                                             </span>
                                             <span className="font-bold text-[#2383C2] text-[11px] flex items-center gap-1">
                                                 {estaCargando && <Loader2 size={11} className="animate-spin" />}
@@ -441,7 +430,6 @@ const DrawerSeleccionOC = ({
                     )}
                 </div>
 
-                {/* BOTÓN VINCULAR */}
                 <div className="p-2.5 bg-slate-100 dark:bg-gray-900 border-t border-slate-200 dark:border-gray-700 flex items-center justify-end gap-2 shrink-0">
                     <button
                         onClick={() => setPanelAbierto(false)}

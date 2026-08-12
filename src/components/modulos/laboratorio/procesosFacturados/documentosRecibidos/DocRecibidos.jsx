@@ -1,4 +1,3 @@
-// src/components/modulos/laboratorio/procesosFacturados/docImputados/DocImputados.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
@@ -6,11 +5,11 @@ import { FileText, Trash2, Search, Eye, Settings, History } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import DetalleFacturaModal from '../../XmlDetallesFacturas';
-import ConfigDetallesFacturas from '../facturasRecibidas/ConfigDetallesFacturas';
-import HistorialFacturaModal from '../facturasRecibidas/HistorialFacturaModal';
+import DetalleFacturaModal from '../../XmlDetallesDoc';
+import EditorDocumentos from './EditorDocumentos';
+import HistorialDocumentos from './HistorialDocumentos'; 
 
-const DocImputados = () => {
+const FacturasRecibidas = () => {
   const [facturas, setFacturas] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -32,7 +31,7 @@ const DocImputados = () => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/laboratorio/controlFactura";
-  const COL_BASE = "laboratorio_facturasImputadas";
+  const COL_BASE = "laboratorio_facturasXml";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '-';
@@ -113,9 +112,9 @@ const DocImputados = () => {
   }, [filtroAnio, filtroMes]);
 
   const handleDelete = (id) => {
-    confirmAction("Eliminar Documento", "¿Estás seguro de eliminar este registro?", async () => {
+    confirmAction("Eliminar Factura", "¿Estás seguro de eliminar este registro?", async () => {
       await deleteDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", id));
-      showToast("Documento eliminado", "info");
+      showToast("Factura eliminada", "info");
     });
   };
 
@@ -154,7 +153,7 @@ const DocImputados = () => {
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-[#2383C2]" />
           <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Documentos Imputados
+            Facturas Recibidas (XML)
           </span>
         </div>
       </header>
@@ -217,7 +216,7 @@ const DocImputados = () => {
               {facturasFiltradas.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-8 text-center text-slate-400 dark:text-gray-500 text-[11px]">
-                    {!filtroAnio || !filtroMes ? "Selecciona un año y mes para cargar registros." : "No se encontraron documentos con los criterios seleccionados."}
+                    {!filtroAnio || !filtroMes ? "Selecciona un año y mes para cargar registros." : "No se encontraron facturas con los criterios seleccionados."}
                   </td>
                 </tr>
               ) : (
@@ -246,13 +245,13 @@ const DocImputados = () => {
                         {f.estado || "Iniciar Ingreso"}
                       </span>
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroOrden}>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroOrden}>
                       {f.numeroOrden || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroActa || f.acta || f.numActa}>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroActa || f.acta || f.numActa}>
                       {f.numeroActa || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroSalida || f.salida || f.numSalida}>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroSalida || f.salida || f.numSalida}>
                       {f.numeroSalida || '-'}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 capitalize truncate">
@@ -314,7 +313,7 @@ const DocImputados = () => {
       )}
 
       {facturaParaConfigurar && (
-        <ConfigDetallesFacturas
+        <EditorDocumentos
           factura={facturaParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}
@@ -322,7 +321,7 @@ const DocImputados = () => {
         />
       )}
 
-      <HistorialFacturaModal
+      <HistorialDocumentos
         showLogModal={showLogModal}
         onClose={() => setShowLogModal(false)}
         selectedFacturaForLog={selectedFacturaForLog}
@@ -333,4 +332,4 @@ const DocImputados = () => {
   );
 };
 
-export default DocImputados;
+export default FacturasRecibidas;

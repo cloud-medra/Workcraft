@@ -21,7 +21,6 @@ const VinculacionCodigos = () => {
   const [loading, setLoading] = useState(false);
   const [vinculando, setVinculando] = useState(false);
 
-  // Estado para controlar la factura seleccionada en vista detalle
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
 
   const { showToast } = useToast();
@@ -33,7 +32,6 @@ const VinculacionCodigos = () => {
   const COL_MAESTRO = "laboratorio_codigos";
   const ESTADOS_PERMITIDOS = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];
 
-  // Formatear fecha dd/mm/yyyy
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '';
     const partes = fechaStr.replace(/-/g, '/').split('/');
@@ -46,7 +44,6 @@ const VinculacionCodigos = () => {
     return fechaStr;
   };
 
-  // Helper para formatear exclusivamente el campo mesImputado
   const obtenerMesImputacion = (factura) => {
     const valor = factura?.mesImputado;
     if (!valor) return '—';
@@ -59,14 +56,12 @@ const VinculacionCodigos = () => {
       return valor;
     }
 
-    // Si es un Timestamp de Firestore o un objeto Date
     const fecha = valor.toDate ? valor.toDate() : new Date(valor);
     if (isNaN(fecha.getTime())) return '—';
 
     return fecha.toLocaleDateString('es-CL', { month: '2-digit', year: 'numeric' });
   };
 
-  // Cargar Años Disponibles
   useEffect(() => {
     const cargarAnios = async () => {
       try {
@@ -80,7 +75,6 @@ const VinculacionCodigos = () => {
     cargarAnios();
   }, []);
 
-  // Cargar facturas en paralelo (Optimizado con Promise.all)
   const cargarFacturasEnProceso = useCallback(async () => {
     if (!filtroAnio) {
       setFacturas([]);
@@ -120,7 +114,6 @@ const VinculacionCodigos = () => {
   const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
   const handleVolverALista = () => setFacturaSeleccionada(null);
 
-  // Lógica de Vincular Códigos
   const handleVincularFactura = () => {
     if (!facturaSeleccionada || !facturaSeleccionada.detalles?.length) {
       showToast("La factura no contiene ítems para vincular", "error");
@@ -134,11 +127,8 @@ const VinculacionCodigos = () => {
         setVinculando(true);
         try {
           const estadoAnteriorGeneral = facturaSeleccionada.estado || "Proceso Iniciado";
-
-          // 1. Obtener catálogo maestro de códigos
           const codigosSnap = await getDocs(collection(db, COL_MAESTRO));
 
-          // 2. Mapear por Referencia (normalizada)
           const refMap = new Map();
           codigosSnap.docs.forEach(d => {
             const itemMaestro = d.data();
@@ -147,7 +137,6 @@ const VinculacionCodigos = () => {
             }
           });
 
-          // 3. Evaluar ítems de la factura
           let faltantesCount = 0;
           let diferenciasCount = 0;
           let sinDiferenciasCount = 0;
@@ -192,7 +181,6 @@ const VinculacionCodigos = () => {
             };
           });
 
-          // 4. Determinar nuevo Estado General
           let nuevoEstadoGeneral = "Procesar OC";
           if (faltantesCount > 0) {
             nuevoEstadoGeneral = "Falta Vinculación";
@@ -217,13 +205,11 @@ const VinculacionCodigos = () => {
             facturaSeleccionada.id
           );
 
-          // 5. Actualizar el documento principal
           await updateDoc(docRef, {
             detalles: nuevosDetalles,
             estado: nuevoEstadoGeneral
           });
 
-          // 6. Registrar log de evento
           try {
             const logsRef = collection(docRef, "logs");
             await addDoc(logsRef, {
@@ -244,7 +230,6 @@ const VinculacionCodigos = () => {
             console.error("Error al escribir log de vinculación:", logError);
           }
 
-          // 7. Actualizar estado local
           const facturaActualizada = {
             ...facturaSeleccionada,
             detalles: nuevosDetalles,

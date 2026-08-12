@@ -85,7 +85,6 @@ const DetalleListasIngreso = ({
       return;
     }
 
-    // Validación nueva: sin período imputado no se puede finalizar
     if (!factura.mesImputado || !factura.anioImputado) {
       showToast('Esta factura no tiene un período de imputación asignado. Debe iniciar el proceso primero.', 'error');
       return;
@@ -100,7 +99,7 @@ const DetalleListasIngreso = ({
         numeroSalida,
         fechaActa,
         fechaSalida,
-        estado: 'Finalizado' // antes: 'Acta Ingresada'
+        estado: 'Finalizado' 
       };
 
       const refDocumento = doc(
@@ -108,17 +107,13 @@ const DetalleListasIngreso = ({
         factura.anio, 'meses', factura.mesId, 'documentos', factura.id
       );
 
-      // 1. Actualizar el documento original (como ya hacías)
       await updateDoc(refDocumento, datosActa);
 
-      // 2. COPIA CONGELADA a la colección de imputadas — AQUÍ es el cierre real
       const refImputada = doc(
         db, 'laboratorio_facturasImputadas',
         factura.anioImputado, 'meses', factura.mesImputado, 'documentos', factura.id
       );
 
-      // 2a. Asegurar que los documentos intermedios (año y mes) tengan datos propios,
-      //     para que no aparezcan "vacíos"/en cursiva en la consola de Firestore.
       const refAnio = doc(db, 'laboratorio_facturasImputadas', factura.anioImputado);
       const refMes = doc(db, 'laboratorio_facturasImputadas', factura.anioImputado, 'meses', factura.mesImputado);
 
@@ -127,7 +122,6 @@ const DetalleListasIngreso = ({
         setDoc(refMes, { mes: factura.mesImputado, anio: factura.anioImputado, activo: true }, { merge: true }),
       ]);
 
-      // 2b. Copia congelada del documento final
       await setDoc(refImputada, {
         ...factura,
         ...datosActa,
@@ -137,7 +131,6 @@ const DetalleListasIngreso = ({
         fechaImputacionFinal: serverTimestamp(),
       });
 
-      // 3. Log (igual que ya tienes, opcionalmente también en refImputada)
       try {
         const currentUser = auth.currentUser;
         const usuarioInfo = {

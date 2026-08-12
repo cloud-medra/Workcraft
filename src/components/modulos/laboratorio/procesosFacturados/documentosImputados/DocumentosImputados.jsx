@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/docImputados/DocImputados.jsx
+// src/components/modulos/laboratorio/procesosFacturados/docImputados/DocumentosImputados.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
@@ -7,10 +7,10 @@ import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import DetalleFacturaModal from '../../XmlDetallesDoc';
-import ConfigDetallesFacturas from '../documentosRecibidas/ConfigDetallesDoc';
-import HistorialFacturaModal from '../documentosRecibidas/HistorialDocModal';
+import EditorDocumentos from '../documentosRecibidos/EditorDocumentos';
+import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
 
-const DocImputados = () => {
+const DocumentosImputados = () => {
   const [facturas, setFacturas] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -246,13 +246,13 @@ const DocImputados = () => {
                         {f.estado || "Iniciar Ingreso"}
                       </span>
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroOrden}>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroOrden}>
                       {f.numeroOrden || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroActa || f.acta || f.numActa}>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroActa || f.acta || f.numActa}>
                       {f.numeroActa || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center font-mono text-slate-700 dark:text-gray-300 truncate" title={f.numeroSalida || f.salida || f.numSalida}>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroSalida || f.salida || f.numSalida}>
                       {f.numeroSalida || '-'}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 capitalize truncate">
@@ -314,7 +314,7 @@ const DocImputados = () => {
       )}
 
       {facturaParaConfigurar && (
-        <ConfigDetallesFacturas
+        <EditorDocumentos
           factura={facturaParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}
@@ -322,7 +322,7 @@ const DocImputados = () => {
         />
       )}
 
-      <HistorialFacturaModal
+      <HistorialDocumentos
         showLogModal={showLogModal}
         onClose={() => setShowLogModal(false)}
         selectedFacturaForLog={selectedFacturaForLog}
@@ -333,4 +333,4 @@ const DocImputados = () => {
   );
 };
 
-export default DocImputados;
+export default DocumentosImputados;

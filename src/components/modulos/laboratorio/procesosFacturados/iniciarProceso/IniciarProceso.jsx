@@ -15,16 +15,11 @@ const IniciarProceso = () => {
   const [filtroAnio, setFiltroAnio] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Selección de filas
   const [seleccionadas, setSeleccionadas] = useState([]);
 
-  // Modal de confirmación de inicio de proceso
   const [showModalIniciar, setShowModalIniciar] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
-  // ESTADO REAL DEL PERÍODO DE IMPUTACIÓN ABIERTO EN EL SISTEMA
-  // Se escucha en tiempo real desde configuracion_periodos/periodo_activo,
-  // documento que es actualizado exclusivamente por CierreMes.jsx al abrir/cerrar un mes.
   const [periodoAbierto, setPeriodoAbierto] = useState({ mes: '', anio: '', cargando: true });
 
   const { showToast } = useToast();
@@ -35,7 +30,6 @@ const IniciarProceso = () => {
   const PATH_VISTA = "/laboratorio/controlFactura";
   const COL_BASE = "laboratorio_facturasXml";
 
-  // Función para formatear fechas de emisión a dd/mm/yyyy
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '';
     const partes = fechaStr.replace(/-/g, '/').split('/');
@@ -48,14 +42,12 @@ const IniciarProceso = () => {
     return fechaStr;
   };
 
-  // Formateador de mes/año del período abierto
   const formatearPeriodo = (mes, anio) => {
     if (!mes || !anio) return 'No especificado';
     const mesNom = mes.charAt(0).toUpperCase() + mes.slice(1);
     return `${mesNom} ${anio}`;
   };
 
-  // Escuchar el período de imputación abierto en tiempo real
   useEffect(() => {
     const docRef = doc(db, "configuracion_periodos", "periodo_activo");
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
@@ -77,7 +69,6 @@ const IniciarProceso = () => {
     return () => unsubscribe();
   }, []);
 
-  // Cargar Años Disponibles
   useEffect(() => {
     const cargarAnios = async () => {
       try {
@@ -91,7 +82,6 @@ const IniciarProceso = () => {
     cargarAnios();
   }, []);
 
-  // Cargar facturas con estado "Iniciar Ingreso" para el Año seleccionado
   useEffect(() => {
     if (!filtroAnio) {
       setFacturas([]);
@@ -138,7 +128,6 @@ const IniciarProceso = () => {
     cargarFacturasDelAnio();
   }, [filtroAnio]);
 
-  // Selección individual de filas
   const toggleSeleccion = (factura) => {
     setSeleccionadas(prev => {
       const existe = prev.some(item => item.id === factura.id);
@@ -150,7 +139,6 @@ const IniciarProceso = () => {
     });
   };
 
-  // Selección/deselección masiva
   const toggleSeleccionarTodas = () => {
     if (seleccionadas.length === facturasFiltradas.length) {
       setSeleccionadas([]);
@@ -159,10 +147,8 @@ const IniciarProceso = () => {
     }
   };
 
-  // Indica si actualmente existe un período de imputación abierto en el sistema
   const hayPeriodoActivo = !!(periodoAbierto.mes && periodoAbierto.anio);
 
-  // Al presionar el botón "Iniciar Proceso" -> abre el modal con el período abierto
   const handleAbrirModalIniciar = () => {
     if (seleccionadas.length === 0) return;
 
@@ -174,10 +160,7 @@ const IniciarProceso = () => {
     setShowModalIniciar(true);
   };
 
-  // Cambiar estado a "Proceso Iniciado" registrando auditoría/logs e imputación del período abierto
   const handleConfirmarInicioProceso = async () => {
-    // Guarda de seguridad: aunque el botón ya está bloqueado sin período activo,
-    // evitamos que se ejecute el proceso si por alguna razón se llegó a llamar igual.
     if (!hayPeriodoActivo) {
       showToast("No hay ningún período de imputación abierto actualmente", "error");
       return;
@@ -187,7 +170,6 @@ const IniciarProceso = () => {
     try {
       const currentUser = auth.currentUser;
 
-      // Sanitización estricta utilizando preferentemente Nombre Completo
       const usuarioInfo = {
         uid: currentUser?.uid || "desconocido",
         email: userData?.email || currentUser?.email || "usuario_anonimo",
@@ -200,8 +182,6 @@ const IniciarProceso = () => {
       const promesasUpdate = seleccionadas.map(async (f) => {
         const docRef = doc(db, COL_BASE, filtroAnio, "meses", f.mesId, "documentos", f.id);
 
-        // 1. Actualizar el documento principal con el nuevo estado "Proceso Iniciado"
-        //    y dejar registrado el período de imputación abierto al momento de iniciar el proceso
         await updateDoc(docRef, {
           estado: "Proceso Iniciado",
           mesImputado: periodoAbierto.mes,
@@ -217,7 +197,6 @@ const IniciarProceso = () => {
           }
         });
 
-        // 2. Registrar evento en la subcolección 'logs' protegida con try/catch
         try {
           const logsRef = collection(docRef, "logs");
           await addDoc(logsRef, {
@@ -261,13 +240,11 @@ const IniciarProceso = () => {
 
   const todasSeleccionadas = facturasFiltradas.length > 0 && seleccionadas.length === facturasFiltradas.length;
 
-  // Verificar si el año que se está visualizando es distinto al período abierto
   const esPeriodoDiferente = !!filtroAnio && !!periodoAbierto.anio && filtroAnio !== periodoAbierto.anio;
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
 
-      {/* CABECERA */}
       <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-[#2383C2]" />
@@ -277,7 +254,6 @@ const IniciarProceso = () => {
         </div>
       </header>
 
-      {/* FILTROS, BÚSQUEDA Y ACCIÓN */}
       <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center justify-between border-b border-slate-200 dark:border-gray-700">
         <div className="flex flex-wrap gap-1.5 items-center flex-grow">
           {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
@@ -306,7 +282,6 @@ const IniciarProceso = () => {
           )}
         </div>
 
-        {/* BOTÓN PARA ABRIR EL MODAL DE CONFIRMACIÓN CON EL PERÍODO ABIERTO */}
         {hayPeriodoActivo || seleccionadas.length === 0 ? (
           <button
             onClick={handleAbrirModalIniciar}
@@ -328,7 +303,6 @@ const IniciarProceso = () => {
         )}
       </div>
 
-      {/* TABLA DE FACTURAS */}
       {hasPermission(PATH_VISTA, "tabla_facturas") && (
         <div className="flex-grow overflow-auto">
           {loading ? (
@@ -422,7 +396,6 @@ const IniciarProceso = () => {
         </div>
       )}
 
-      {/* MODAL DE CONFIRMACIÓN - MUESTRA EL PERÍODO DE IMPUTACIÓN ABIERTO */}
       {showModalIniciar && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-slate-200 dark:border-gray-700 max-w-md w-full p-4 space-y-4 font-sans text-slate-800 dark:text-gray-100">
@@ -450,7 +423,6 @@ const IniciarProceso = () => {
                 ¿Desea iniciar el proceso para <span className="font-bold text-[#2383C2]">{seleccionadas.length} documento(s)</span> seleccionado(s)?
               </p>
 
-              {/* MUESTRA EL PERÍODO DE IMPUTACIÓN CORRECTO (ABIERTO) */}
               <div className="p-3 bg-blue-50/50 dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-800/50 space-y-1">
                 <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-semibold">
                   Mes / Período de Imputación Abierto:
@@ -460,7 +432,6 @@ const IniciarProceso = () => {
                 </p>
               </div>
 
-              {/* ADVERTENCIA SI ESTÁ VISUALIZANDO UN AÑO DISTINTO AL ABIERTO */}
               {esPeriodoDiferente && (
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200 dark:border-amber-800/50 flex items-start gap-2 text-amber-800 dark:text-amber-300">
                   <AlertTriangle size={16} className="shrink-0 mt-0.5" />

@@ -1,14 +1,13 @@
 import React from 'react';
 import { History, X } from 'lucide-react';
 
-const HistorialFacturaModal = ({
+const HistorialDocumentos = ({
   showLogModal,
   onClose,
   selectedFacturaForLog,
   logsList,
   loadingLogs
 }) => {
-  // Mapa centralizado de estilos por tipo de acción
   const getAccionBadgeClass = (accion) => {
     switch (accion) {
       case 'MODIFICACION_FACTURA':
@@ -227,4 +226,4 @@ const HistorialFacturaModal = ({
   );
 };
 
-export default HistorialFacturaModal;
+export default HistorialDocumentos;

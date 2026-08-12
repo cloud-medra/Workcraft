@@ -46,7 +46,6 @@ const DetalleSolicitudDif = ({
     return `$${Math.round(monto).toLocaleString('es-CL')}`;
   };
 
-  // Función para manejar la descarga en Excel con las columnas requeridas
   const handleExportarExcelLocal = () => {
     if (onExportarExcel) {
       onExportarExcel(factura);
@@ -61,10 +60,6 @@ const DetalleSolicitudDif = ({
     }
 
     const datosExcel = detalles.map((item) => {
-      // Usamos directamente vincuOCTexto/estadoItem, que ya vienen calculados
-      // correctamente desde DetalleVinculacionOC.jsx (basados en item.diferenciaCantidad
-      // y item.diferenciaPrecio). No se recalculan aquí para evitar comparar
-      // valores de distinto tipo (string vs number) que siempre darían "diferente".
       const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
 
       return {
@@ -84,16 +79,16 @@ const DetalleSolicitudDif = ({
     const worksheet = XLSX.utils.json_to_sheet(datosExcel);
 
     worksheet['!cols'] = [
-      { wch: 12 }, // Folio
-      { wch: 16 }, // Ref. (OC)
-      { wch: 16 }, // Cód. Maestro
-      { wch: 32 }, // Descripción Maestro
-      { wch: 18 }, // Artículo OC
-      { wch: 14 }, // Cant. Factura
-      { wch: 14 }, // Precio Factura
-      { wch: 12 }, // Cant. OC
-      { wch: 12 }, // Precio OC
-      { wch: 24 }  // Estado Discrepancia
+      { wch: 12 }, 
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 32 },
+      { wch: 18 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 24 }
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -114,7 +109,6 @@ const DetalleSolicitudDif = ({
 
   return (
     <div className="relative flex flex-col h-full w-full bg-white dark:bg-gray-800 overflow-hidden font-sans">
-      {/* CABECERA VISTA DETALLE */}
       <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <button
@@ -133,19 +127,16 @@ const DetalleSolicitudDif = ({
         </div>
       </header>
 
-      {/* MÉTRICAS Y ACCIONES EN TARJETAS UNIFICADAS */}
       <div className="px-3 py-2 bg-slate-100/60 dark:bg-gray-900/40 border-b border-slate-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 shrink-0">
-        {/* TARJETA: FOLIO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Hash size={11} className="text-[#2383C2]" /> Folio
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            #{factura.folio}
+            {factura.folio}
           </span>
         </div>
 
-        {/* TARJETA: FECHA EMISIÓN */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Calendar size={11} className="text-[#2383C2]" /> Fecha Emisión
@@ -157,7 +148,6 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
-        {/* TARJETA: MES IMPUTADO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
@@ -167,17 +157,15 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
-        {/* TARJETA: REF (OC) */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
           </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 font-mono">
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
             {factura.folioRef || 'Sin Referencia'}
           </span>
         </div>
 
-        {/* TARJETA: TOTAL NETO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
@@ -187,7 +175,6 @@ const DetalleSolicitudDif = ({
           </span>
         </div>
 
-        {/* TARJETA: ESTADO */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Activity size={11} className="text-[#2383C2]" /> Estado
@@ -203,7 +190,6 @@ const DetalleSolicitudDif = ({
           </div>
         </div>
 
-        {/* TARJETA DE ACCIÓN: BOTÓN SOLICITUD EXCEL */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <FileSpreadsheet size={11} className="text-emerald-600 dark:text-emerald-500" /> Exportar
@@ -219,7 +205,6 @@ const DetalleSolicitudDif = ({
           </button>
         </div>
 
-        {/* TARJETA DE ACCIÓN: COPIAR RESUMEN */}
         <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Copy size={11} className="text-[#2383C2]" /> Portapapeles
@@ -240,7 +225,6 @@ const DetalleSolicitudDif = ({
         </div>
       </div>
 
-      {/* RECEPTOR Y RESUMEN DE PROVEEDOR */}
       <div className="px-3 py-1.5 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 flex items-center justify-between shrink-0 text-xs">
         <div className="flex items-center gap-2 truncate">
           <Building2 size={13} className="text-[#2383C2] shrink-0" />
@@ -271,9 +255,7 @@ const DetalleSolicitudDif = ({
         </span>
       </div>
 
-      {/* CUERPO DEL DETALLE */}
       <div className="flex-grow flex flex-col min-h-0 p-3 space-y-3 overflow-hidden">
-        {/* CAJA DE OBSERVACIONES */}
         <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-md p-3 shrink-0 max-h-32 overflow-y-auto">
           <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-1 flex items-center gap-1.5 text-xs">
             <Receipt size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
@@ -284,7 +266,6 @@ const DetalleSolicitudDif = ({
           </p>
         </div>
 
-        {/* TABLA DE DETALLES */}
         <div className="border border-slate-200 dark:border-gray-700 rounded-md overflow-auto flex-1 min-h-0 bg-white dark:bg-gray-800">
           <table className="w-full text-left text-[11px] border-collapse min-w-[1400px]">
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
@@ -312,10 +293,6 @@ const DetalleSolicitudDif = ({
                 </tr>
               ) : (
                 detalles.map((item, idx) => {
-                  // Usamos directamente los campos ya calculados en DetalleVinculacionOC.jsx
-                  // (item.diferenciaCantidad, item.diferenciaPrecio) en vez de recalcularlos
-                  // aquí comparando item.precio (string) con item.precioOC (number), lo cual
-                  // siempre daba "diferente" por ser tipos distintos.
                   const tieneDifCant = !!item.diferenciaCantidad;
                   const tieneDifPrecio = !!item.diferenciaPrecio;
 
@@ -326,34 +303,34 @@ const DetalleSolicitudDif = ({
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">
                         {idx + 1}
                       </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-500">
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500">
                         {item.codigo || '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
                         {item.nombre || item.descripcion}
                       </td>
-                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono ${tieneDifCant ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
+                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center ${tieneDifCant ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
                         {item.cantidad}
                       </td>
-                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono ${tieneDifPrecio ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
+                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right ${tieneDifPrecio ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
                         {formatearMoneda(item.precio)}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">
                         {formatearMoneda(item.monto || item.precio * item.cantidad)}
                       </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
                         {item.codigoMaestro || item.codigo_maestro || '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">
                         {item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '-'}
                       </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
                         {item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '-'}
                       </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
                         {item.cantidadOC !== undefined && item.cantidadOC !== null ? item.cantidadOC : '-'}
                       </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
                         {item.precioOC !== undefined && item.precioOC !== null ? formatearMoneda(item.precioOC) : '-'}
                       </td>
                       <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
