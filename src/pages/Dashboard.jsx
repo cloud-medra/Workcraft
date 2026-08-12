@@ -27,6 +27,10 @@ import OrdenLaboratorio from '../components/modulos/laboratorio/OrdenLaboratorio
 import XmlDocLaboratorio from '../components/modulos/laboratorio/XmlDocLaboratorio';
 import ArchivosControl from '../components/modulos/laboratorio/procesosFacturados/ArchivosControl';
 
+// MAESTROS
+import EmpresasMaestros from '../components/modulos/maestros/EmpresasMaestros';
+import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
+
 // MIS TURNOS
 import MisTurnos from '../components/modulos/misturnos/MisTurnos';
 
@@ -165,6 +169,10 @@ const Dashboard = () => {
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
     '/laboratorio/xmlDocLaboratorio': <XmlDocLaboratorio />,
     '/laboratorio/archivosControl': <ArchivosControl />,
+
+    // MAESTROS
+    '/maestros/empresasMaestros': <EmpresasMaestros />,
+    '/maestros/prestadoresMaestros': <PrestadoresMaestros />,
 
     // MIS TURNOS
     '/misturnos/ver': <MisTurnos />,

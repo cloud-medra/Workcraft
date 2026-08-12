@@ -11,7 +11,8 @@ import {
   CalendarDays,
   ClipboardList,
   FileCode,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Database 
 } from "lucide-react";
 
 export const MODULES = {
@@ -33,12 +34,21 @@ export const MODULES = {
     icon: <Microscope size={18} />,
     subItems: [
       { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> },
-      { label: 'Maestro Codigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
+      { label: 'Maestro Códigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
       { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> },
       { label: 'Xml Facturas', path: '/laboratorio/xmlDocLaboratorio', icon: <FileCode size={14} /> },
       { label: 'Control Procesos', path: '/laboratorio/archivosControl', icon: <FileSpreadsheet size={14} /> },
     ]
   },
+  maestros: {
+    label: 'Maestro',
+    icon: <Database size={18} />, 
+    subItems: [
+      { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
+      { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
+    ]
+  },
+
   misturnos: {
     label: 'Mis Turnos',
     icon: <CalendarDays size={18} />,
