@@ -21,7 +21,7 @@ import { useModal } from '../../../context/ModalContext';
 import { useUser } from '../../../context/UserContext';
 import { useGranularPermission } from '../../../hooks/useGranularPermission';
 import Spinner from '../../ui/Spinner';
-import DetalleFacturaModal from './XmlDetallesFacturas';
+import DetalleFacturaModal from './XmlDetallesDoc';
 
 const XmlFacturasLaboratorio = () => {
   const [facturas, setFacturas] = useState([]);

@@ -1,5 +1,5 @@
 // src/components/modulos/laboratorio/procesosFacturados/ArchivosControl.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Inbox, 
   FileText, 
@@ -13,8 +13,11 @@ import {
   CalendarCheck,
   FileSpreadsheet,
   CheckCircle2,
-  Edit3
+  Edit3,
+  Calendar
 } from 'lucide-react'; 
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../../../firebaseConfig'; // Ajusta la ruta de tu configuración de firebase si es necesario
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import DocumentosRecibidos from './documentosRecibidas/DocRecibidos';
 import IniciarProceso from './iniciarProceso/IniciarProceso';
@@ -22,10 +25,10 @@ import VinculacionCodigos from './vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './solicitudDiferencias/SolicitudDiferencias';
 import DocumentosListasIngreso from './documentosListasIngreso/DocListasIngreso';
-import DocImputados from './documentosImputados/DocImputados'; // <-- Nuevo import
+import DocImputados from './documentosImputados/DocImputados';
 import CierreMes from './cierreMes/CierreMes';
 
-// Lista de pestañas ordenada (Actualizada: sin ingreso_actas, con doc_imputados)
+// Lista de pestañas ordenada
 const ALL_TABS = [
   { id: 'recibidas', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_recibidas' },
   { id: 'procesar', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_procesar' },
@@ -42,6 +45,23 @@ const PATH_VISTA = "/laboratorio/controlFactura";
 
 const ArchivosControl = () => {
   const { hasPermission } = useGranularPermission();
+  const [periodoAbierto, setPeriodoAbierto] = useState(null);
+
+  // Escuchar en tiempo real el período activo abierto
+  useEffect(() => {
+    const refPeriodo = doc(db, "configuracion_periodos", "periodo_activo");
+    const unsubscribe = onSnapshot(refPeriodo, (docSnap) => {
+      if (docSnap.exists()) {
+        setPeriodoAbierto(docSnap.data());
+      } else {
+        setPeriodoAbierto(null);
+      }
+    }, (error) => {
+      console.error("Error al escuchar período activo:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Filtramos las pestañas permitidas según permisos granulares
   const tabs = useMemo(() => 
@@ -86,17 +106,34 @@ const ArchivosControl = () => {
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-sm font-bold text-slate-900 dark:text-gray-100 tracking-tight">
-              Control y Procesos Facturados
+              Control y Procesos de Documentos
             </h1>
             
+            {/* Ruta de Navegación Dinámica */}
             <div className="hidden sm:flex items-center gap-1 text-[11px] font-medium text-slate-400 dark:text-gray-500">
               <span>•</span>
               <span>Laboratorio</span>
               <ChevronRight size={10} className="opacity-60" />
-              <span>Facturación</span>
+              <span>Documentos</span>
               <ChevronRight size={10} className="opacity-60" />
-              <span className="text-[#2383C2] dark:text-[#369BCE] font-semibold">Control de Facturas</span>
+              <span>Control de Procesos</span>
+              {currentTabObj && (
+                <>
+                  <ChevronRight size={10} className="opacity-60" />
+                  <span className="text-[#2383C2] dark:text-[#369BCE] font-semibold">
+                    {currentTabObj.label}
+                  </span>
+                </>
+              )}
             </div>
+
+            {/* Badge de Período Abierto en tiempo real */}
+            {periodoAbierto && periodoAbierto.mes && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-[#2383C2] dark:text-[#369BCE] text-[10px] font-bold border border-blue-200/60 dark:border-blue-800/40 shadow-2xs">
+                <Calendar size={11} />
+                Período: {periodoAbierto.mes.toUpperCase()} {periodoAbierto.anio}
+              </span>
+            )}
 
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold border border-emerald-200/60 dark:border-emerald-800/40">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -106,7 +143,7 @@ const ArchivosControl = () => {
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-gray-400">
-            Conciliación financiera, asignación de folios e integración contable.
+            Conciliación de operaciones, asignación de folios e integración de registros.
           </p>
         </div>
       </div>
