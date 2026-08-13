@@ -9,7 +9,7 @@ import DetalleFacturaModal from '../../XmlDetallesDoc';
 import EditorDocumentos from './EditorDocumentos';
 import HistorialDocumentos from './HistorialDocumentos'; 
 
-const FacturasRecibidas = () => {
+const DocumentosRecibidos = () => {
   const [facturas, setFacturas] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -314,7 +314,7 @@ const FacturasRecibidas = () => {
 
       {facturaParaConfigurar && (
         <EditorDocumentos
-          factura={facturaParaConfigurar}
+          documento={facturaParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}
           onClose={() => setFacturaParaConfigurar(null)}
@@ -332,4 +332,4 @@ const FacturasRecibidas = () => {
   );
 };
 
-export default FacturasRecibidas;
+export default DocumentosRecibidos;
