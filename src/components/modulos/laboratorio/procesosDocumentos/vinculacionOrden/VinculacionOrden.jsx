@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/vinculacionOrden/VinculacionOrden.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/vinculacionOrden/VinculacionOrden.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     collection,
@@ -24,20 +24,20 @@ import { useGranularPermission } from '../../../../../hooks/useGranularPermissio
 import DetalleVinculacionOC from './DetalleVinculacionOC';
 
 const VinculacionOrden = () => {
-    const [facturas, setFacturas] = useState([]);
+    const [documentos, setDocumentos] = useState([]);
     const [aniosDisponibles, setAniosDisponibles] = useState([]);
     const [busqueda, setBusqueda] = useState('');
     const [filtroAnio, setFiltroAnio] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+    const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
     const { showToast } = useToast();
     const { confirmAction } = useModal();
     const { hasPermission } = useGranularPermission();
 
-    const PATH_VISTA = "/laboratorio/controlFactura";
-    const COL_BASE = "laboratorio_facturasXml";
+    const PATH_VISTA = "/laboratorio/archivosControl";
+    const COL_BASE = "laboratorio_documentos";
 
     const formatearFechaEmision = (fechaStr) => {
         if (!fechaStr) return '';
@@ -85,9 +85,9 @@ const VinculacionOrden = () => {
         cargarAnios();
     }, []);
 
-    const cargarFacturasProcesarOC = useCallback(async () => {
+    const cargarDocumentosProcesarOC = useCallback(async () => {
         if (!filtroAnio) {
-            setFacturas([]);
+            setDocumentos([]);
             return;
         }
 
@@ -120,35 +120,35 @@ const VinculacionOrden = () => {
             });
 
             docsAcumulados.sort((a, b) => parseFecha(b.fchEmis) - parseFecha(a.fchEmis));
-            setFacturas(docsAcumulados);
+            setDocumentos(docsAcumulados);
         } catch (error) {
-            console.error("Error al cargar facturas:", error);
-            showToast("Error al obtener las facturas pendientes", "error");
+            console.error("Error al cargar documentos:", error);
+            showToast("Error al obtener los documentos pendientes", "error");
         } finally {
             setLoading(false);
         }
     }, [filtroAnio, showToast]);
 
     useEffect(() => {
-        setFacturaSeleccionada(null);
+        setDocumentoSeleccionado(null);
     }, [filtroAnio]);
 
     useEffect(() => {
-        cargarFacturasProcesarOC();
-    }, [cargarFacturasProcesarOC]);
+        cargarDocumentosProcesarOC();
+    }, [cargarDocumentosProcesarOC]);
 
-    const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
-    const handleVolverALista = () => setFacturaSeleccionada(null);
+    const handleVerDetalles = (documento) => setDocumentoSeleccionado(documento);
+    const handleVolverALista = () => setDocumentoSeleccionado(null);
 
     const handleVincularOrdenCompra = ({ ordenCompra, detallesActualizados, estadoGeneral }) => {
-        if (!facturaSeleccionada) return;
+        if (!documentoSeleccionado) return;
 
         const folioOC = ordenCompra?.folioCalculado || ordenCompra?.folio || ordenCompra?.id || "N/A";
         const estadoFinal = estadoGeneral || "Diferencia Reportada";
 
         confirmAction(
             "Confirmar Vinculación de OC",
-            `¿Desea cruzar los ítems de la factura con la Orden de Compra N° ${folioOC}?`,
+            `¿Desea cruzar los ítems del documento con la Orden de Compra N° ${folioOC}?`,
             async () => {
                 try {
                     const currentUser = auth.currentUser;
@@ -166,9 +166,9 @@ const VinculacionOrden = () => {
                         COL_BASE,
                         filtroAnio,
                         "meses",
-                        facturaSeleccionada.mesId,
+                        documentoSeleccionado.mesId,
                         "documentos",
-                        facturaSeleccionada.id
+                        documentoSeleccionado.id
                     );
 
                     await updateDoc(docRef, {
@@ -185,7 +185,7 @@ const VinculacionOrden = () => {
                         const logsRef = collection(docRef, "logs");
                         await addDoc(logsRef, {
                             accion: "VINCULACION_OC",
-                            detalle: `Cruce de ítems con OC N° ${folioOC} sobre folio ${facturaSeleccionada.folio || facturaSeleccionada.id} — Resultado: ${estadoFinal}`,
+                            detalle: `Cruce de ítems con OC N° ${folioOC} sobre folio ${documentoSeleccionado.folio || documentoSeleccionado.id} — Resultado: ${estadoFinal}`,
                             fechaHora: fechaHoraString,
                             timestamp: serverTimestamp(),
                             usuario: usuarioInfo,
@@ -198,7 +198,7 @@ const VinculacionOrden = () => {
 
                     showToast(`Ítems cruzados con la OC N° ${folioOC} — ${estadoFinal}`, "success");
 
-                    setFacturas(prev => prev.filter(f => f.id !== facturaSeleccionada.id));
+                    setDocumentos(prev => prev.filter(f => f.id !== documentoSeleccionado.id));
                 } catch (error) {
                     console.error("Error al cruzar Orden de Compra:", error);
                     showToast("Error al procesar el cruce con la Orden de Compra", "error");
@@ -208,7 +208,7 @@ const VinculacionOrden = () => {
     };
 
     const busquedaLower = busqueda.trim().toLowerCase();
-    const facturasFiltradas = facturas.filter(f => {
+    const documentosFiltrados = documentos.filter(f => {
         if (!busquedaLower) return true;
         const folioStr = String(f.folio || '').toLowerCase();
         const rznSocStr = String(f.rznSoc || '').toLowerCase();
@@ -242,9 +242,9 @@ const VinculacionOrden = () => {
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
 
-            {facturaSeleccionada ? (
+            {documentoSeleccionado ? (
                 <DetalleVinculacionOC
-                    factura={facturaSeleccionada}
+                    documento={documentoSeleccionado}
                     onVolver={handleVolverALista}
                     onVincular={handleVincularOrdenCompra}
                     formatearFechaEmision={formatearFechaEmision}
@@ -256,7 +256,7 @@ const VinculacionOrden = () => {
                         <div className="flex items-center gap-2">
                             <ClipboardList size={16} className="text-[#2383C2]" />
                             <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-                                Vinculación de Orden de Compra (Facturas Lista para OC)
+                                Vinculación de Orden de Compra (Documentos Listos para OC)
                             </span>
                         </div>
                     </header>
@@ -290,7 +290,7 @@ const VinculacionOrden = () => {
                         </div>
 
                         <button
-                            onClick={cargarFacturasProcesarOC}
+                            onClick={cargarDocumentosProcesarOC}
                             disabled={!filtroAnio || loading}
                             className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors disabled:opacity-50"
                             title="Recargar datos"
@@ -300,11 +300,11 @@ const VinculacionOrden = () => {
                         </button>
                     </div>
 
-                    {hasPermission(PATH_VISTA, "tabla_facturas") && (
+                    {hasPermission(PATH_VISTA, "tabla_documentos") && (
                         <div className="flex-grow overflow-auto">
                             {loading ? (
                                 <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400">
-                                    Cargando facturas en estado "Procesar OC" del año {filtroAnio}...
+                                    Cargando documentos en estado "Procesar OC" del año {filtroAnio}...
                                 </div>
                             ) : (
                                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
@@ -321,16 +321,16 @@ const VinculacionOrden = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                                        {facturasFiltradas.length === 0 ? (
+                                        {documentosFiltrados.length === 0 ? (
                                             <tr>
                                                 <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                                                     {filtroAnio
-                                                        ? "No hay facturas listas para Orden de Compra (Procesar OC) en este año."
-                                                        : "Seleccione un año para visualizar las facturas."}
+                                                        ? "No hay documentos listos para Orden de Compra (Procesar OC) en este año."
+                                                        : "Seleccione un año para visualizar los documentos."}
                                                 </td>
                                             </tr>
                                         ) : (
-                                            facturasFiltradas.map((f) => (
+                                            documentosFiltrados.map((f) => (
                                                 <tr
                                                     key={f.id}
                                                     onDoubleClick={() => handleVerDetalles(f)}
@@ -365,7 +365,7 @@ const VinculacionOrden = () => {
                                                                 handleVerDetalles(f);
                                                             }}
                                                             className="p-1 text-slate-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
-                                                            title="Visualizar factura"
+                                                            title="Visualizar documento"
                                                         >
                                                             <Eye size={14} />
                                                         </button>

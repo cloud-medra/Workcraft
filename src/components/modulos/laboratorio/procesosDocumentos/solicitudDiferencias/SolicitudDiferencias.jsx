@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/SolicitudDiferencias.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/solicitudDiferencias/SolicitudDiferencias.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../firebaseConfig';
@@ -19,21 +19,21 @@ import { useGranularPermission } from '../../../../../hooks/useGranularPermissio
 import DetalleSolicitudDif from './DetalleSolicitudDif';
 
 const SolicitudDiferencias = () => {
-  const [facturas, setFacturas] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroAnio, setFiltroAnio] = useState('');
   const [loading, setLoading] = useState(false);
   const [exportando, setExportando] = useState(false);
 
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/controlFactura";
-  const COL_BASE = "laboratorio_facturasXml";
+  const PATH_VISTA = "/laboratorio/archivosControl";
+  const COL_BASE = "laboratorio_documentos";
   
   const ESTADOS_PERMITIDOS = [
     "Diferencia Reportada",
@@ -55,8 +55,8 @@ const SolicitudDiferencias = () => {
     return fechaStr;
   };
 
-  const obtenerMesImputacion = (factura) => {
-    const valor = factura?.mesImputado || factura?.mes_imputado;
+  const obtenerMesImputacion = (documento) => {
+    const valor = documento?.mesImputado || documento?.mes_imputado;
     if (!valor) return '—';
 
     if (typeof valor === 'string') {
@@ -86,9 +86,9 @@ const SolicitudDiferencias = () => {
     cargarAnios();
   }, []);
 
-  const cargarFacturasDiferencias = useCallback(async () => {
+  const cargarDocumentosDiferencias = useCallback(async () => {
     if (!filtroAnio) {
-      setFacturas([]);
+      setDocumentos([]);
       return;
     }
 
@@ -109,68 +109,68 @@ const SolicitudDiferencias = () => {
       const docsAcumulados = resultadosPorMes.flat();
 
       docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
-      setFacturas(docsAcumulados);
+      setDocumentos(docsAcumulados);
     } catch (error) {
-      console.error("Error al cargar facturas:", error);
-      showToast("Error al obtener las facturas con diferencias o vinculación parcial", "error");
+      console.error("Error al cargar documentos:", error);
+      showToast("Error al obtener los documentos con diferencias o vinculación parcial", "error");
     } finally {
       setLoading(false);
     }
   }, [filtroAnio, showToast]);
 
   useEffect(() => {
-    cargarFacturasDiferencias();
-  }, [cargarFacturasDiferencias]);
+    cargarDocumentosDiferencias();
+  }, [cargarDocumentosDiferencias]);
 
-  const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
-  const handleVolverALista = () => setFacturaSeleccionada(null);
+  const handleVerDetalles = (documento) => setDocumentoSeleccionado(documento);
+  const handleVolverALista = () => setDocumentoSeleccionado(null);
 
-  const facturasFiltradas = useMemo(() => {
+  const documentosFiltrados = useMemo(() => {
     const query = busqueda.toLowerCase().trim();
-    if (!query) return facturas;
-    return facturas.filter(f =>
-      (f.folio && String(f.folio).toLowerCase().includes(query)) ||
-      (f.rznSoc && f.rznSoc.toLowerCase().includes(query)) ||
-      (f.folioRef && String(f.folioRef).toLowerCase().includes(query)) ||
-      (f.rutEmisor && f.rutEmisor.toLowerCase().includes(query)) ||
-      (f.estado && f.estado.toLowerCase().includes(query)) ||
-      (f.mesImputado && String(f.mesImputado).toLowerCase().includes(query)) ||
-      (f.mes_imputado && String(f.mes_imputado).toLowerCase().includes(query))
+    if (!query) return documentos;
+    return documentos.filter(d =>
+      (d.folio && String(d.folio).toLowerCase().includes(query)) ||
+      (d.rznSoc && d.rznSoc.toLowerCase().includes(query)) ||
+      (d.folioRef && String(d.folioRef).toLowerCase().includes(query)) ||
+      (d.rutEmisor && d.rutEmisor.toLowerCase().includes(query)) ||
+      (d.estado && d.estado.toLowerCase().includes(query)) ||
+      (d.mesImputado && String(d.mesImputado).toLowerCase().includes(query)) ||
+      (d.mes_imputado && String(d.mes_imputado).toLowerCase().includes(query))
     );
-  }, [facturas, busqueda]);
+  }, [documentos, busqueda]);
 
   const totalMontoDiferencias = useMemo(() => {
-    return facturasFiltradas.reduce((acc, f) => acc + (Math.round(Number(f.total) || 0)), 0);
-  }, [facturasFiltradas]);
+    return documentosFiltrados.reduce((acc, d) => acc + (Math.round(Number(d.total) || 0)), 0);
+  }, [documentosFiltrados]);
 
   const handleExportarTodoExcel = () => {
-    if (facturasFiltradas.length === 0) {
-      showToast('No hay facturas para exportar', 'warning');
+    if (documentosFiltrados.length === 0) {
+      showToast('No hay documentos para exportar', 'warning');
       return;
     }
 
     confirmAction(
       "Confirmar Exportación y Solicitud",
-      `¿Está seguro de exportar el reporte y cambiar el estado de ${facturasFiltradas.length} factura(s) a "Solicitud Enviada"?`,
+      `¿Está seguro de exportar el reporte y cambiar el estado de ${documentosFiltrados.length} documento(s) a "Solicitud Enviada"?`,
       async () => {
         setExportando(true);
         try {
           const filasExcel = [];
 
-          facturasFiltradas.forEach((factura) => {
-            const detalles = factura.detalles || [];
+          documentosFiltrados.forEach((documento) => {
+            const detalles = documento.detalles || [];
 
             if (detalles.length === 0) {
               filasExcel.push({
-                'Folio': factura.folio || '',
-                'Emisión': formatearFechaEmision(factura.fchEmis),
-                'Proveedor': factura.rznSoc || 'Sin Razón Social',
-                'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+                'Folio': documento.folio || '',
+                'Emisión': formatearFechaEmision(documento.fchEmis),
+                'Proveedor': documento.rznSoc || 'Sin Razón Social',
+                'Ref. (OC)': documento.folioRef || 'Sin Referencia',
                 'Cód. Maestro': '',
                 'Descripción Maestro': '',
                 'Artículo OC': '',
-                'Cant. Factura': '',
-                'Precio Factura': '',
+                'Cant. Documento': '',
+                'Precio Documento': '',
                 'Cant. OC': '',
                 'Precio OC': '',
                 'Estado Discrepancia': 'Sin ítems cargados'
@@ -182,15 +182,15 @@ const SolicitudDiferencias = () => {
               const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
 
               filasExcel.push({
-                'Folio': factura.folio || '',
-                'Emisión': formatearFechaEmision(factura.fchEmis),
-                'Proveedor': factura.rznSoc || 'Sin Razón Social',
-                'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+                'Folio': documento.folio || '',
+                'Emisión': formatearFechaEmision(documento.fchEmis),
+                'Proveedor': documento.rznSoc || 'Sin Razón Social',
+                'Ref. (OC)': documento.folioRef || 'Sin Referencia',
                 'Cód. Maestro': item.codigoMaestro || item.codigo_maestro || '',
                 'Descripción Maestro': item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '',
                 'Artículo OC': item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '',
-                'Cant. Factura': item.cantidad ?? 0,
-                'Precio Factura': item.precio ?? 0,
+                'Cant. Documento': item.cantidad ?? 0,
+                'Precio Documento': item.precio ?? 0,
                 'Cant. OC': item.cantidadOC ?? 0,
                 'Precio OC': item.precioOC ?? 0,
                 'Estado Discrepancia': tagEstado
@@ -227,11 +227,11 @@ const SolicitudDiferencias = () => {
 
           const nuevoEstadoGeneral = "Solicitud Enviada";
 
-          const promesasActualizacion = facturasFiltradas.map(async (factura) => {
-            if (!factura.mesId || !factura.id) return;
+          const promesasActualizacion = documentosFiltrados.map(async (documento) => {
+            if (!documento.mesId || !documento.id) return;
 
-            const estadoAnteriorGeneral = factura.estado || "Diferencia Reportada";
-            const docRef = doc(db, COL_BASE, filtroAnio, "meses", factura.mesId, "documentos", factura.id);
+            const estadoAnteriorGeneral = documento.estado || "Diferencia Reportada";
+            const docRef = doc(db, COL_BASE, filtroAnio, "meses", documento.mesId, "documentos", documento.id);
 
             await updateDoc(docRef, { estado: nuevoEstadoGeneral });
 
@@ -239,7 +239,7 @@ const SolicitudDiferencias = () => {
               const logsRef = collection(docRef, "logs");
               await addDoc(logsRef, {
                 accion: "SOLICITUD_DIFERENCIAS_EXPORTADA",
-                detalle: `Solicitud de diferencias generada y exportada para el folio ${factura.folio || factura.id}`,
+                detalle: `Solicitud de diferencias generada y exportada para el folio ${documento.folio || documento.id}`,
                 estadoAnterior: estadoAnteriorGeneral,
                 nuevoEstado: nuevoEstadoGeneral,
                 fechaHora: new Date().toLocaleString('es-CL'),
@@ -253,9 +253,9 @@ const SolicitudDiferencias = () => {
 
           await Promise.all(promesasActualizacion);
 
-          await cargarFacturasDiferencias();
+          await cargarDocumentosDiferencias();
 
-          showToast(`Excel generado y ${facturasFiltradas.length} documento(s) actualizado(s) a "Solicitud Enviada".`, 'success');
+          showToast(`Excel generado y ${documentosFiltrados.length} documento(s) actualizado(s) a "Solicitud Enviada".`, 'success');
         } catch (error) {
           console.error("Error al exportar y registrar logs:", error);
           showToast("Error al procesar la exportación y actualización de estados", "error");
@@ -291,9 +291,9 @@ const SolicitudDiferencias = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
-      {facturaSeleccionada ? (
+      {documentoSeleccionado ? (
         <DetalleSolicitudDif
-          factura={facturaSeleccionada}
+          documento={documentoSeleccionado}
           exportando={exportando}
           formatearFechaEmision={formatearFechaEmision}
           getBadgeStyle={renderBadgeEstadoGeneral}
@@ -311,7 +311,7 @@ const SolicitudDiferencias = () => {
                   Solicitud de Diferencias y Vinculaciones
                 </h1>
                 <p className="text-[11px] text-slate-500 dark:text-gray-400">
-                  Gestión e inspección de facturas con discrepancias o vinculación parcial
+                  Gestión e inspección de documentos con discrepancias o vinculación parcial
                 </p>
               </div>
             </div>
@@ -320,7 +320,7 @@ const SolicitudDiferencias = () => {
               <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
                 <FileText size={13} className="text-slate-500" />
                 <span className="text-slate-600 dark:text-gray-400">Total Casos:</span>
-                <span className="font-semibold text-slate-800 dark:text-gray-200">{facturasFiltradas.length}</span>
+                <span className="font-semibold text-slate-800 dark:text-gray-200">{documentosFiltrados.length}</span>
               </div>
               <div className="px-2.5 py-1 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-center gap-1.5">
                 <DollarSign size={13} className="text-amber-600 dark:text-amber-400" />
@@ -363,7 +363,7 @@ const SolicitudDiferencias = () => {
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleExportarTodoExcel}
-                disabled={!filtroAnio || loading || exportando || facturasFiltradas.length === 0}
+                disabled={!filtroAnio || loading || exportando || documentosFiltrados.length === 0}
                 className="h-6 px-2.5 rounded text-[11px] font-medium bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                 title="Descargar Excel con todos los ítems, cambiar estado y registrar log"
               >
@@ -372,7 +372,7 @@ const SolicitudDiferencias = () => {
               </button>
 
               <button
-                onClick={cargarFacturasDiferencias}
+                onClick={cargarDocumentosDiferencias}
                 disabled={!filtroAnio || loading}
                 className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                 title="Recargar datos"
@@ -383,12 +383,12 @@ const SolicitudDiferencias = () => {
             </div>
           </div>
 
-          {hasPermission(PATH_VISTA, "tabla_facturas") && (
+          {hasPermission(PATH_VISTA, "tabla_documentos") && (
             <div className="flex-grow overflow-auto">
               {loading ? (
                 <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400 gap-2">
                   <RefreshCw size={16} className="animate-spin text-amber-500" />
-                  <span>Cargando facturas del año {filtroAnio}...</span>
+                  <span>Cargando documentos del año {filtroAnio}...</span>
                 </div>
               ) : (
                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
@@ -405,7 +405,7 @@ const SolicitudDiferencias = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                    {facturasFiltradas.length === 0 ? (
+                    {documentosFiltrados.length === 0 ? (
                       <tr>
                         <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           <div className="flex flex-col items-center gap-1.5">
@@ -413,48 +413,48 @@ const SolicitudDiferencias = () => {
                             <span>
                               {filtroAnio
                                 ? "No se encontraron registros de diferencias o vinculación parcial para este año."
-                                : "Seleccione un año para visualizar las facturas."}
+                                : "Seleccione un año para visualizar los documentos."}
                             </span>
                           </div>
                         </td>
                       </tr>
                     ) : (
-                      facturasFiltradas.map((f) => (
+                      documentosFiltrados.map((d) => (
                         <tr
-                          key={f.id}
-                          onDoubleClick={() => handleVerDetalles(f)}
+                          key={d.id}
+                          onDoubleClick={() => handleVerDetalles(d)}
                           className="border-l-2 border-transparent hover:border-amber-500 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition-colors cursor-pointer"
                           title="Doble clic para ver el detalle"
                         >
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                            {f.folio}
+                            {d.folio}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                            {formatearFechaEmision(f.fchEmis)}
+                            {formatearFechaEmision(d.fchEmis)}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 text-center font-medium whitespace-nowrap">
-                            {obtenerMesImputacion(f)}
+                            {obtenerMesImputacion(d)}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                            {f.folioRef || 'S/R'}
+                            {d.folioRef || 'S/R'}
                           </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                            {f.rznSoc || 'Sin Razón Social'}
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={d.rznSoc}>
+                            {d.rznSoc || 'Sin Razón Social'}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                            ${Math.round(Number(f.total || 0)).toLocaleString('es-CL')}
+                            ${Math.round(Number(d.total || 0)).toLocaleString('es-CL')}
                           </td>
                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                            {renderBadgeEstadoGeneral(f.estado)}
+                            {renderBadgeEstadoGeneral(d.estado)}
                           </td>
                           <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleVerDetalles(f);
+                                handleVerDetalles(d);
                               }}
                               className="p-1 text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
-                              title="Visualizar factura"
+                              title="Visualizar documento"
                             >
                               <Eye size={14} />
                             </button>

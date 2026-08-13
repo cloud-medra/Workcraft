@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/facturasListasIngreso/DocListasIngreso.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/documentosListasIngreso/DocListasIngreso.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
@@ -17,19 +17,19 @@ import { useGranularPermission } from '../../../../../hooks/useGranularPermissio
 import DetalleListasIngreso from './DetalleListasIngreso';
 
 const DocListasIngreso = () => {
-    const [facturas, setFacturas] = useState([]);
+    const [documentos, setDocumentos] = useState([]);
     const [aniosDisponibles, setAniosDisponibles] = useState([]);
     const [busqueda, setBusqueda] = useState('');
     const [filtroAnio, setFiltroAnio] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+    const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
 
-    const PATH_VISTA = "/laboratorio/controlFactura";
-    const COL_BASE = "laboratorio_facturasXml";
+    const PATH_VISTA = "/laboratorio/archivosControl";
+    const COL_BASE = "laboratorio_documentos";
 
     const ESTADOS_PERMITIDOS = [
         "Listo para Ingreso",
@@ -49,8 +49,8 @@ const DocListasIngreso = () => {
         return fechaStr;
     };
 
-    const obtenerMesImputacion = (factura) => {
-        const valor = factura?.mesImputado || factura?.mes_imputado;
+    const obtenerMesImputacion = (documento) => {
+        const valor = documento?.mesImputado || documento?.mes_imputado;
         if (!valor) return '—';
 
         if (typeof valor === 'string') {
@@ -80,9 +80,9 @@ const DocListasIngreso = () => {
         cargarAnios();
     }, []);
 
-    const cargarFacturasListas = useCallback(async () => {
+    const cargarDocumentosListos = useCallback(async () => {
         if (!filtroAnio) {
-            setFacturas([]);
+            setDocumentos([]);
             return;
         }
 
@@ -103,26 +103,26 @@ const DocListasIngreso = () => {
             const docsAcumulados = resultadosPorMes.flat();
 
             docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
-            setFacturas(docsAcumulados);
+            setDocumentos(docsAcumulados);
         } catch (error) {
-            console.error("Error al cargar facturas listas para ingreso:", error);
-            showToast("Error al obtener las facturas listas para ingreso", "error");
+            console.error("Error al cargar documentos listos para ingreso:", error);
+            showToast("Error al obtener los documentos listos para ingreso", "error");
         } finally {
             setLoading(false);
         }
     }, [filtroAnio, showToast]);
 
     useEffect(() => {
-        cargarFacturasListas();
-    }, [cargarFacturasListas]);
+        cargarDocumentosListos();
+    }, [cargarDocumentosListos]);
 
-    const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
-    const handleVolverALista = () => setFacturaSeleccionada(null);
+    const handleVerDetalles = (documento) => setDocumentoSeleccionado(documento);
+    const handleVolverALista = () => setDocumentoSeleccionado(null);
 
-    const facturasFiltradas = useMemo(() => {
+    const documentosFiltrados = useMemo(() => {
         const query = busqueda.toLowerCase().trim();
-        if (!query) return facturas;
-        return facturas.filter(f =>
+        if (!query) return documentos;
+        return documentos.filter(f =>
             (f.folio && String(f.folio).toLowerCase().includes(query)) ||
             (f.rznSoc && f.rznSoc.toLowerCase().includes(query)) ||
             (f.folioRef && String(f.folioRef).toLowerCase().includes(query)) ||
@@ -131,11 +131,11 @@ const DocListasIngreso = () => {
             (f.mesImputado && String(f.mesImputado).toLowerCase().includes(query)) ||
             (f.mes_imputado && String(f.mes_imputado).toLowerCase().includes(query))
         );
-    }, [facturas, busqueda]);
+    }, [documentos, busqueda]);
 
     const totalMontoListas = useMemo(() => {
-        return facturasFiltradas.reduce((acc, f) => acc + (Math.round(Number(f.total) || 0)), 0);
-    }, [facturasFiltradas]);
+        return documentosFiltrados.reduce((acc, f) => acc + (Math.round(Number(f.total) || 0)), 0);
+    }, [documentosFiltrados]);
 
     const renderBadgeEstadoGeneral = (estado) => {
         return (
@@ -147,17 +147,17 @@ const DocListasIngreso = () => {
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
-            {facturaSeleccionada ? (
+            {documentoSeleccionado ? (
                 <DetalleListasIngreso
-                    factura={facturaSeleccionada}
+                    documento={documentoSeleccionado}
                     formatearFechaEmision={formatearFechaEmision}
                     renderBadgeEstadoGeneral={renderBadgeEstadoGeneral}
                     onVolver={handleVolverALista}
-                    onActualizarFactura={(facturaActualizada) => {
-                        setFacturas(prev =>
-                            prev.map(f => (f.id === facturaActualizada.id ? { ...f, ...facturaActualizada } : f))
+                    onActualizarDocumento={(documentoActualizado) => {
+                        setDocumentos(prev =>
+                            prev.map(f => (f.id === documentoActualizado.id ? { ...f, ...documentoActualizado } : f))
                         );
-                        setFacturaSeleccionada(facturaActualizada);
+                        setDocumentoSeleccionado(documentoActualizado);
                     }}
                 />
             ) : (
@@ -169,10 +169,10 @@ const DocListasIngreso = () => {
                             </div>
                             <div>
                                 <h1 className="text-[12px] font-normal text-slate-800 dark:text-gray-100 uppercase tracking-wide">
-                                    Facturas Listas para Ingreso
+                                    Documentos Listos para Ingreso
                                 </h1>
                                 <p className="text-[11px] text-slate-500 dark:text-gray-400">
-                                    Gestión y seguimiento de facturas validadas y listas para su contabilización o ingreso final
+                                    Gestión y seguimiento de documentos validados y listos para su contabilización o ingreso final
                                 </p>
                             </div>
                         </div>
@@ -181,7 +181,7 @@ const DocListasIngreso = () => {
                             <div className="px-2.5 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
                                 <FileText size={13} className="text-slate-500" />
                                 <span className="text-slate-600 dark:text-gray-400">Total Casos:</span>
-                                <span className="font-semibold text-slate-800 dark:text-gray-200">{facturasFiltradas.length}</span>
+                                <span className="font-semibold text-slate-800 dark:text-gray-200">{documentosFiltrados.length}</span>
                             </div>
                             <div className="px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-1.5">
                                 <DollarSign size={13} className="text-emerald-600 dark:text-emerald-400" />
@@ -223,7 +223,7 @@ const DocListasIngreso = () => {
 
                         <div className="flex items-center gap-1.5">
                             <button
-                                onClick={cargarFacturasListas}
+                                onClick={cargarDocumentosListos}
                                 disabled={!filtroAnio || loading}
                                 className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors disabled:opacity-50 cursor-pointer"
                                 title="Recargar datos"
@@ -234,12 +234,12 @@ const DocListasIngreso = () => {
                         </div>
                     </div>
 
-                    {hasPermission(PATH_VISTA, "tabla_facturas") && (
+                    {hasPermission(PATH_VISTA, "tabla_documentos") && (
                         <div className="flex-grow overflow-auto">
                             {loading ? (
                                 <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400 gap-2">
                                     <RefreshCw size={16} className="animate-spin text-emerald-500" />
-                                    <span>Cargando facturas listas para ingreso del año {filtroAnio}...</span>
+                                    <span>Cargando documentos listos para ingreso del año {filtroAnio}...</span>
                                 </div>
                             ) : (
                                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
@@ -256,7 +256,7 @@ const DocListasIngreso = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                                        {facturasFiltradas.length === 0 ? (
+                                        {documentosFiltrados.length === 0 ? (
                                             <tr>
                                                 <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                                                     <div className="flex flex-col items-center gap-1.5">
@@ -264,13 +264,13 @@ const DocListasIngreso = () => {
                                                         <span>
                                                             {filtroAnio
                                                                 ? "No se encontraron registros en estado 'Listo para Ingreso' para este año."
-                                                                : "Seleccione un año para visualizar las facturas."}
+                                                                : "Seleccione un año para visualizar los documentos."}
                                                         </span>
                                                     </div>
                                                 </td>
                                             </tr>
                                         ) : (
-                                            facturasFiltradas.map((f) => (
+                                            documentosFiltrados.map((f) => (
                                                 <tr
                                                     key={f.id}
                                                     onDoubleClick={() => handleVerDetalles(f)}
@@ -305,7 +305,7 @@ const DocListasIngreso = () => {
                                                                 handleVerDetalles(f);
                                                             }}
                                                             className="p-1 text-slate-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
-                                                            title="Visualizar factura"
+                                                            title="Visualizar documento"
                                                         >
                                                             <Eye size={14} />
                                                         </button>

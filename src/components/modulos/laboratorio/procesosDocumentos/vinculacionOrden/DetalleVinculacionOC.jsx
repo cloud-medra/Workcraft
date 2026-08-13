@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/vinculacionOrden/DetalleVinculacionOC.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/vinculacionOrden/DetalleVinculacionOC.jsx
 import React, { useState, useEffect } from 'react';
 import {
     ArrowLeft,
@@ -15,7 +15,7 @@ import {
 import DrawerSeleccionOC from './DrawerSeleccionOC';
 
 const DetalleVinculacionOC = ({
-    factura,
+    documento,
     onVolver,
     onVincular,
     formatearFechaEmision,
@@ -27,9 +27,9 @@ const DetalleVinculacionOC = ({
     const [ocSeleccionada, setOcSeleccionada] = useState(null);
 
     useEffect(() => {
-        if (factura) {
-            setDetallesProcesados(factura.detalles || []);
-            const oc = factura.ordenCompraVinculada || factura.ordenCompra || null;
+        if (documento) {
+            setDetallesProcesados(documento.detalles || []);
+            const oc = documento.ordenCompraVinculada || documento.ordenCompra || null;
             setOcVinculadaActiva(oc);
             setOcSeleccionada(oc);
         } else {
@@ -37,9 +37,9 @@ const DetalleVinculacionOC = ({
             setOcVinculadaActiva(null);
             setOcSeleccionada(null);
         }
-    }, [factura]);
+    }, [documento]);
 
-    if (!factura) return null;
+    if (!documento) return null;
 
     const parseMontoToFloat = (valor) => {
         if (valor === undefined || valor === null || valor === '') return 0;
@@ -69,7 +69,7 @@ const DetalleVinculacionOC = ({
             return;
         }
 
-        const nuevosDetalles = (factura.detalles || []).map((item) => {
+        const nuevosDetalles = (documento.detalles || []).map((item) => {
             const codMaestro = normalizarCodigo(item.codigoMaestro) || normalizarCodigo(item.codigo);
 
             if (!codMaestro) {
@@ -127,14 +127,14 @@ const DetalleVinculacionOC = ({
                     item.nombreMaestro ||
                     '';
 
-                const cantFactura = parseMontoToFloat(item.cantidad);
-                const precioFactura = parseMontoToFloat(item.precio);
+                const cantDocumento = parseMontoToFloat(item.cantidad);
+                const precioDocumento = parseMontoToFloat(item.precio);
 
-                const precioFacturaRedondeado = Math.round(precioFactura);
+                const precioDocumentoRedondeado = Math.round(precioDocumento);
                 const precioOCRedondeado = Math.round(precioUnitOC);
 
-                const hayDiferenciaCantidad = Math.abs(cantFactura - cantOC) > 0.001;
-                const hayDiferenciaPrecio = Math.abs(precioFacturaRedondeado - precioOCRedondeado) > 0;
+                const hayDiferenciaCantidad = Math.abs(cantDocumento - cantOC) > 0.001;
+                const hayDiferenciaPrecio = Math.abs(precioDocumentoRedondeado - precioOCRedondeado) > 0;
 
                 let vincuOCTexto = "Sin diferencias";
                 if (hayDiferenciaCantidad && hayDiferenciaPrecio) {
@@ -219,7 +219,7 @@ const DetalleVinculacionOC = ({
                     <span className="text-slate-300 dark:text-gray-600">|</span>
                     <FileText className="text-[#2383C2]" size={15} />
                     <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-                        Vinculación OC — Folio {factura.folio}
+                        Vinculación OC — Folio {documento.folio}
                     </span>
                 </div>
             </header>
@@ -229,7 +229,7 @@ const DetalleVinculacionOC = ({
                     <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
                         <Hash size={11} className="text-[#2383C2]" /> Folio
                     </span>
-                    <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">{factura.folio}</span>
+                    <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">{documento.folio}</span>
                 </div>
 
                 <div className="px-2.5 py-1.5 rounded bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 flex flex-col justify-between">
@@ -237,7 +237,7 @@ const DetalleVinculacionOC = ({
                         <Calendar size={11} className="text-[#2383C2]" /> Fecha Emisión
                     </span>
                     <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-                        {formatearFechaEmision ? formatearFechaEmision(factura.fchEmis) : (factura.fchEmis || '-')}
+                        {formatearFechaEmision ? formatearFechaEmision(documento.fchEmis) : (documento.fchEmis || '-')}
                     </span>
                 </div>
 
@@ -246,7 +246,7 @@ const DetalleVinculacionOC = ({
                         <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
                     </span>
                     <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-                        {factura.mesImputado || factura.mes_imputado || '-'}
+                        {documento.mesImputado || documento.mes_imputado || '-'}
                     </span>
                 </div>
 
@@ -256,8 +256,8 @@ const DetalleVinculacionOC = ({
                     </span>
                     <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
                         {ocVinculadaActiva
-                            ? `${ocVinculadaActiva.folioCalculado || ocVinculadaActiva.folio || ocVinculadaActiva.id || factura.folioRef || 'N/A'}`
-                            : (factura.folioRef ? `${factura.folioRef}` : "N/A")}
+                            ? `${ocVinculadaActiva.folioCalculado || ocVinculadaActiva.folio || ocVinculadaActiva.id || documento.folioRef || 'N/A'}`
+                            : (documento.folioRef ? `${documento.folioRef}` : "N/A")}
                     </span>
                 </div>
 
@@ -266,7 +266,7 @@ const DetalleVinculacionOC = ({
                         <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
                     </span>
                     <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-                        {formatearMoneda(factura.total)}
+                        {formatearMoneda(documento.total)}
                     </span>
                 </div>
 
@@ -275,7 +275,7 @@ const DetalleVinculacionOC = ({
                         <Activity size={11} className="text-[#2383C2]" /> Estado
                     </span>
                     <div className="mt-0.5">
-                        {renderBadgeEstadoGeneral ? renderBadgeEstadoGeneral(factura.estado) : (factura.estado || '-')}
+                        {renderBadgeEstadoGeneral ? renderBadgeEstadoGeneral(documento.estado) : (documento.estado || '-')}
                     </div>
                 </div>
 
@@ -297,7 +297,7 @@ const DetalleVinculacionOC = ({
                 <div className="flex items-center gap-2 truncate">
                     <Building2 size={13} className="text-[#2383C2] shrink-0" />
                     <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase">Receptor:</span>
-                    <span className="text-[11px] font-medium text-slate-800 dark:text-gray-200 truncate">{factura.rznSoc}</span>
+                    <span className="text-[11px] font-medium text-slate-800 dark:text-gray-200 truncate">{documento.rznSoc}</span>
                 </div>
                 <span className="text-[10px] text-slate-400 font-semibold shrink-0">
                     Total ítems: <strong className="text-slate-700 dark:text-gray-200">{detallesProcesados.length}</strong>
@@ -309,7 +309,7 @@ const DetalleVinculacionOC = ({
                     <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-                            <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-36">Cód. Factura</th>
+                            <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-36">Cód. Documento</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-16 text-center">Cant.</th>
                             <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-16 text-center">Unidad</th>
@@ -329,7 +329,7 @@ const DetalleVinculacionOC = ({
                         {detallesProcesados.length === 0 ? (
                             <tr>
                                 <td colSpan="15" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                                    Esta factura no posee ítems cargados.
+                                    Este documento no posee ítems cargados.
                                 </td>
                             </tr>
                         ) : (

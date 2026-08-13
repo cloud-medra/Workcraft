@@ -1,4 +1,4 @@
-// src/components/facturas/IniciarProceso.jsx
+// src/components/documentos/IniciarProceso.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '../../../../../firebaseConfig';
@@ -9,7 +9,7 @@ import { useUser } from '../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 
 const IniciarProceso = () => {
-  const [facturas, setFacturas] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroAnio, setFiltroAnio] = useState('');
@@ -27,8 +27,8 @@ const IniciarProceso = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/controlFactura";
-  const COL_BASE = "laboratorio_facturasXml";
+  const PATH_VISTA = "/laboratorio/archivosControl";
+  const COL_BASE = "laboratorio_documentos";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '';
@@ -84,12 +84,12 @@ const IniciarProceso = () => {
 
   useEffect(() => {
     if (!filtroAnio) {
-      setFacturas([]);
+      setDocumentos([]);
       setSeleccionadas([]);
       return;
     }
 
-    const cargarFacturasDelAnio = async () => {
+    const cargarDocumentosDelAnio = async () => {
       setLoading(true);
       try {
         const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
@@ -115,35 +115,35 @@ const IniciarProceso = () => {
         }
 
         docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
-        setFacturas(docsAcumulados);
+        setDocumentos(docsAcumulados);
         setSeleccionadas([]);
       } catch (error) {
-        console.error("Error al cargar facturas para iniciar proceso:", error);
-        showToast("Error al obtener las facturas del año", "error");
+        console.error("Error al cargar documentos para iniciar proceso:", error);
+        showToast("Error al obtener los documentos del año", "error");
       } finally {
         setLoading(false);
       }
     };
 
-    cargarFacturasDelAnio();
+    cargarDocumentosDelAnio();
   }, [filtroAnio]);
 
-  const toggleSeleccion = (factura) => {
+  const toggleSeleccion = (documento) => {
     setSeleccionadas(prev => {
-      const existe = prev.some(item => item.id === factura.id);
+      const existe = prev.some(item => item.id === documento.id);
       if (existe) {
-        return prev.filter(item => item.id !== factura.id);
+        return prev.filter(item => item.id !== documento.id);
       } else {
-        return [...prev, factura];
+        return [...prev, documento];
       }
     });
   };
 
   const toggleSeleccionarTodas = () => {
-    if (seleccionadas.length === facturasFiltradas.length) {
+    if (seleccionadas.length === documentosFiltrados.length) {
       setSeleccionadas([]);
     } else {
-      setSeleccionadas([...facturasFiltradas]);
+      setSeleccionadas([...documentosFiltrados]);
     }
   };
 
@@ -179,8 +179,8 @@ const IniciarProceso = () => {
       const ahora = new Date();
       const fechaHoraString = ahora.toLocaleString('es-CL');
 
-      const promesasUpdate = seleccionadas.map(async (f) => {
-        const docRef = doc(db, COL_BASE, filtroAnio, "meses", f.mesId, "documentos", f.id);
+      const promesasUpdate = seleccionadas.map(async (docu) => {
+        const docRef = doc(db, COL_BASE, filtroAnio, "meses", docu.mesId, "documentos", docu.id);
 
         await updateDoc(docRef, {
           estado: "Proceso Iniciado",
@@ -201,27 +201,27 @@ const IniciarProceso = () => {
           const logsRef = collection(docRef, "logs");
           await addDoc(logsRef, {
             accion: "INICIO_PROCESO",
-            detalle: `El proceso ha iniciado para el folio ${f.folio || f.id}, imputado en ${formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}`,
-            estadoAnterior: f.estado || "Iniciar Ingreso",
+            detalle: `El proceso ha iniciado para el folio ${docu.folio || docu.id}, imputado en ${formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}`,
+            estadoAnterior: docu.estado || "Iniciar Ingreso",
             nuevoEstado: "Proceso Iniciado",
             fechaHora: fechaHoraString,
             timestamp: serverTimestamp(),
             usuario: usuarioInfo
           });
         } catch (logError) {
-          console.error(`Error al escribir log para la factura ${f.id}:`, logError);
+          console.error(`Error al escribir log para el documento ${docu.id}:`, logError);
         }
       });
 
       await Promise.all(promesasUpdate);
 
-      const idsProcesados = new Set(seleccionadas.map(f => f.id));
-      setFacturas(prev => prev.filter(f => !idsProcesados.has(f.id)));
+      const idsProcesados = new Set(seleccionadas.map(docu => docu.id));
+      setDocumentos(prev => prev.filter(docu => !idsProcesados.has(docu.id)));
       setSeleccionadas([]);
       setShowModalIniciar(false);
 
       showToast(
-        `${seleccionadas.length} factura(s) pasaron a 'Proceso Iniciado' con imputación en ${formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}`,
+        `${seleccionadas.length} documento(s) pasaron a 'Proceso Iniciado' con imputación en ${formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}`,
         "success"
       );
     } catch (error) {
@@ -232,13 +232,13 @@ const IniciarProceso = () => {
     }
   };
 
-  const facturasFiltradas = facturas.filter(f =>
-    f.folio?.includes(busqueda) ||
-    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.folioRef?.includes(busqueda)
+  const documentosFiltrados = documentos.filter(docu =>
+    docu.folio?.includes(busqueda) ||
+    docu.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docu.folioRef?.includes(busqueda)
   );
 
-  const todasSeleccionadas = facturasFiltradas.length > 0 && seleccionadas.length === facturasFiltradas.length;
+  const todasSeleccionadas = documentosFiltrados.length > 0 && seleccionadas.length === documentosFiltrados.length;
 
   const esPeriodoDiferente = !!filtroAnio && !!periodoAbierto.anio && filtroAnio !== periodoAbierto.anio;
 
@@ -249,7 +249,7 @@ const IniciarProceso = () => {
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-[#2383C2]" />
           <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Iniciar Proceso de Facturas (Selección por Año)
+            Iniciar Proceso de Documentos (Selección por Año)
           </span>
         </div>
       </header>
@@ -303,11 +303,11 @@ const IniciarProceso = () => {
         )}
       </div>
 
-      {hasPermission(PATH_VISTA, "tabla_facturas") && (
+      {hasPermission(PATH_VISTA, "tabla_documentos") && (
         <div className="flex-grow overflow-auto">
           {loading ? (
             <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400">
-              Cargando facturas pendientes del año {filtroAnio}...
+              Cargando documentos pendientes del año {filtroAnio}...
             </div>
           ) : (
             <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[800px]">
@@ -336,22 +336,22 @@ const IniciarProceso = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                {facturasFiltradas.length === 0 ? (
+                {documentosFiltrados.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                       {filtroAnio
-                        ? "No hay facturas pendientes en estado 'Iniciar Ingreso' para este año."
-                        : "Seleccione un año para visualizar las facturas pendientes."}
+                        ? "No hay documentos pendientes en estado 'Iniciar Ingreso' para este año."
+                        : "Seleccione un año para visualizar los documentos pendientes."}
                     </td>
                   </tr>
                 ) : (
-                  facturasFiltradas.map((f) => {
-                    const isSelected = seleccionadas.some(item => item.id === f.id);
+                  documentosFiltrados.map((docu) => {
+                    const isSelected = seleccionadas.some(item => item.id === docu.id);
 
                     return (
                       <tr
-                        key={f.id}
-                        onClick={() => toggleSeleccion(f)}
+                        key={docu.id}
+                        onClick={() => toggleSeleccion(docu)}
                         className={`border-l-2 transition-colors cursor-pointer ${
                           isSelected
                             ? 'border-[#2383C2] bg-blue-50/50 dark:bg-blue-950/30'
@@ -367,23 +367,23 @@ const IniciarProceso = () => {
                           />
                         </td>
                         <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                          {f.folio}
+                          {docu.folio}
                         </td>
                         <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                          {formatearFechaEmision(f.fchEmis)}
+                          {formatearFechaEmision(docu.fchEmis)}
                         </td>
                         <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                          {f.folioRef}
+                          {docu.folioRef}
                         </td>
-                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                          {f.rznSoc}
+                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docu.rznSoc}>
+                          {docu.rznSoc}
                         </td>
                         <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                          ${parseInt(f.total || 0).toLocaleString('es-CL')}
+                          ${parseInt(docu.total || 0).toLocaleString('es-CL')}
                         </td>
                         <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                           <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-                            {f.estado}
+                            {docu.estado}
                           </span>
                         </td>
                       </tr>
@@ -406,7 +406,7 @@ const IniciarProceso = () => {
                 </div>
                 <div>
                   <h3 className="text-[13px] font-bold uppercase tracking-wide">Iniciar Proceso</h3>
-                  <p className="text-[10px] text-slate-500 dark:text-gray-400">Confirmación de procesamiento de facturas</p>
+                  <p className="text-[10px] text-slate-500 dark:text-gray-400">Confirmación de procesamiento de documentos</p>
                 </div>
               </div>
               <button
@@ -436,7 +436,7 @@ const IniciarProceso = () => {
                 <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200 dark:border-amber-800/50 flex items-start gap-2 text-amber-800 dark:text-amber-300">
                   <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                   <p className="text-[10px]">
-                    <strong>Atención:</strong> Estás visualizando facturas del año <strong>{filtroAnio}</strong>, pero la imputación quedará registrada en el período abierto actual (<strong>{formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}</strong>).
+                    <strong>Atención:</strong> Estás visualizando documentos del año <strong>{filtroAnio}</strong>, pero la imputación quedará registrada en el período abierto actual (<strong>{formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}</strong>).
                   </p>
                 </div>
               )}

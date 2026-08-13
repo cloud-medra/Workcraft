@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/solicitudDiferencias/DetalleSolicitudDif.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/solicitudDiferencias/DetalleSolicitudDif.jsx
 import React from 'react';
 import * as XLSX from 'xlsx';
 import {
@@ -18,7 +18,7 @@ import {
 import { useToast } from '../../../../../context/ToastContext';
 
 const DetalleSolicitudDif = ({
-  factura,
+  documento,
   onVolver,
   formatearFechaEmision,
   renderBadgeEstadoGeneral,
@@ -26,7 +26,7 @@ const DetalleSolicitudDif = ({
 }) => {
   const { showToast } = useToast();
 
-  if (!factura) return null;
+  if (!documento) return null;
 
   const copiarAlPortapapeles = (texto, label) => {
     if (!texto) return;
@@ -48,11 +48,11 @@ const DetalleSolicitudDif = ({
 
   const handleExportarExcelLocal = () => {
     if (onExportarExcel) {
-      onExportarExcel(factura);
+      onExportarExcel(documento);
       return;
     }
 
-    const detalles = factura.detalles || [];
+    const detalles = documento.detalles || [];
 
     if (detalles.length === 0) {
       showToast('No hay detalles para exportar', 'warning');
@@ -63,13 +63,13 @@ const DetalleSolicitudDif = ({
       const tagEstado = item.vincuOCTexto || item.estadoItem || 'Sin información';
 
       return {
-        'Folio': factura.folio || '',
-        'Ref. (OC)': factura.folioRef || 'Sin Referencia',
+        'Folio': documento.folio || '',
+        'Ref. (OC)': documento.folioRef || 'Sin Referencia',
         'Cód. Maestro': item.codigoMaestro || item.codigo_maestro || '',
         'Descripción Maestro': item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '',
         'Artículo OC': item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '',
-        'Cant. Factura': item.cantidad ?? 0,
-        'Precio Factura': item.precio ?? 0,
+        'Cant. Documento': item.cantidad ?? 0,
+        'Precio Documento': item.precio ?? 0,
         'Cant. OC': item.cantidadOC ?? 0,
         'Precio OC': item.precioOC ?? 0,
         'Estado Discrepancia': tagEstado
@@ -84,8 +84,8 @@ const DetalleSolicitudDif = ({
       { wch: 16 },
       { wch: 32 },
       { wch: 18 },
-      { wch: 14 },
-      { wch: 14 },
+      { wch: 16 },
+      { wch: 16 },
       { wch: 12 },
       { wch: 12 },
       { wch: 24 }
@@ -94,18 +94,18 @@ const DetalleSolicitudDif = ({
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias');
 
-    const nombreArchivo = `Solicitud_Diferencias_Folio_${factura.folio || 'S-N'}.xlsx`;
+    const nombreArchivo = `Solicitud_Diferencias_Folio_${documento.folio || 'S-N'}.xlsx`;
     XLSX.writeFile(workbook, nombreArchivo);
     showToast('Archivo Excel generado con éxito', 'success');
   };
 
   const observaciones =
-    factura.observacionDiferencia ||
-    factura.motivo ||
-    factura.observacion ||
-    'No se registraron observaciones adicionales para las diferencias de esta factura.';
+    documento.observacionDiferencia ||
+    documento.motivo ||
+    documento.observacion ||
+    'No se registraron observaciones adicionales para las diferencias de este documento.';
 
-  const detalles = factura.detalles || [];
+  const detalles = documento.detalles || [];
 
   return (
     <div className="relative flex flex-col h-full w-full bg-white dark:bg-gray-800 overflow-hidden font-sans">
@@ -122,7 +122,7 @@ const DetalleSolicitudDif = ({
           <span className="text-slate-300 dark:text-gray-600">|</span>
           <FileWarning className="text-amber-500" size={16} />
           <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Detalle Solicitud de Diferencias — Folio N° {factura.folio}
+            Detalle Solicitud de Diferencias — Folio N° {documento.folio}
           </span>
         </div>
       </header>
@@ -133,7 +133,7 @@ const DetalleSolicitudDif = ({
             <Hash size={11} className="text-[#2383C2]" /> Folio
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {factura.folio}
+            {documento.folio}
           </span>
         </div>
 
@@ -143,8 +143,8 @@ const DetalleSolicitudDif = ({
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
             {formatearFechaEmision
-              ? formatearFechaEmision(factura.fchEmis)
-              : factura.fchEmis || '-'}
+              ? formatearFechaEmision(documento.fchEmis)
+              : documento.fchEmis || '-'}
           </span>
         </div>
 
@@ -153,7 +153,7 @@ const DetalleSolicitudDif = ({
             <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 capitalize">
-            {factura.mesImputado || factura.mes_imputado || '-'}
+            {documento.mesImputado || documento.mes_imputado || '-'}
           </span>
         </div>
 
@@ -162,7 +162,7 @@ const DetalleSolicitudDif = ({
             <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {factura.folioRef || 'Sin Referencia'}
+            {documento.folioRef || 'Sin Referencia'}
           </span>
         </div>
 
@@ -171,7 +171,7 @@ const DetalleSolicitudDif = ({
             <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {formatearMoneda(factura.total)}
+            {formatearMoneda(documento.total)}
           </span>
         </div>
 
@@ -181,10 +181,10 @@ const DetalleSolicitudDif = ({
           </span>
           <div className="mt-0.5 truncate">
             {renderBadgeEstadoGeneral ? (
-              renderBadgeEstadoGeneral(factura.estado)
+              renderBadgeEstadoGeneral(documento.estado)
             ) : (
               <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
-                {factura.estado || 'Diferencia Reportada'}
+                {documento.estado || 'Diferencia Reportada'}
               </span>
             )}
           </div>
@@ -213,7 +213,7 @@ const DetalleSolicitudDif = ({
             type="button"
             onClick={() =>
               copiarAlPortapapeles(
-                `Folio: ${factura.folio}\nProveedor: ${factura.rznSoc}\nMonto: $${factura.total}\nObservación: ${observaciones}`,
+                `Folio: ${documento.folio}\nProveedor: ${documento.rznSoc}\nMonto: $${documento.total}\nObservación: ${observaciones}`,
                 'Resumen'
               )
             }
@@ -233,16 +233,16 @@ const DetalleSolicitudDif = ({
           </span>
           <span
             className="text-[11px] font-semibold text-slate-800 dark:text-gray-200 truncate"
-            title={factura.rznSoc}
+            title={documento.rznSoc}
           >
-            {factura.rznSoc || 'Sin Razón Social'}
+            {documento.rznSoc || 'Sin Razón Social'}
           </span>
           <span className="text-slate-400 dark:text-gray-500 text-[11px]">
-            (RUT: {factura.rutEmisor || 'N/A'})
+            (RUT: {documento.rutEmisor || 'N/A'})
           </span>
-          {factura.rutEmisor && (
+          {documento.rutEmisor && (
             <button
-              onClick={() => copiarAlPortapapeles(factura.rutEmisor, 'RUT')}
+              onClick={() => copiarAlPortapapeles(documento.rutEmisor, 'RUT')}
               className="text-slate-400 hover:text-[#2383C2] transition-colors p-0.5 cursor-pointer"
               title="Copiar RUT"
             >
@@ -271,10 +271,10 @@ const DetalleSolicitudDif = ({
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Factura</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Documento</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Documento</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Documento</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
@@ -288,7 +288,7 @@ const DetalleSolicitudDif = ({
               {detalles.length === 0 ? (
                 <tr>
                   <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                    Esta factura no posee ítems cargados.
+                    Este documento no posee ítems cargados.
                   </td>
                 </tr>
               ) : (

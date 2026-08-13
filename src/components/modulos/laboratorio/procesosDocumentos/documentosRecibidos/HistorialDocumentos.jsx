@@ -170,7 +170,7 @@ const HistorialDocumentos = ({
             <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-center px-4">
               <History size={32} className="mb-2 opacity-30" />
               <p className="text-[11px] font-medium">Sin registros</p>
-              <p className="text-[10px]">No hay actividad documentada para esta factura.</p>
+              <p className="text-[10px]">No hay registros de actividad para este documento.</p>
             </div>
           ) : (
             logsList.map((log) => (

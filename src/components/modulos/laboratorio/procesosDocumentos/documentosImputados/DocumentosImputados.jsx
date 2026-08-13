@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/docImputados/DocumentosImputados.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/docImputados/DocumentosImputados.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
@@ -6,21 +6,21 @@ import { FileText, Trash2, Search, Eye, Settings, History } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import DetalleFacturaModal from '../../XmlDetallesDoc';
+import DetalleDocumentoModal from '../../XmlDetallesDoc';
 import EditorDocumentos from '../documentosRecibidos/EditorDocumentos';
 import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
 
 const DocumentosImputados = () => {
-  const [facturas, setFacturas] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
 
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
-  const [facturaParaConfigurar, setFacturaParaConfigurar] = useState(null);
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
+  const [documentoParaConfigurar, setDocumentoParaConfigurar] = useState(null);
 
   const [showLogModal, setShowLogModal] = useState(false);
-  const [selectedFacturaForLog, setSelectedFacturaForLog] = useState(null);
+  const [selectedDocumentoForLog, setSelectedDocumentoForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
@@ -31,8 +31,8 @@ const DocumentosImputados = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/controlFactura";
-  const COL_BASE = "laboratorio_facturasImputadas";
+  const PATH_VISTA = "/laboratorio/archivosControl";
+  const COL_BASE = "laboratorio_imputados";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '-';
@@ -106,10 +106,10 @@ const DocumentosImputados = () => {
   }, [filtroAnio]);
 
   useEffect(() => {
-    if (!filtroAnio || !filtroMes) { setFacturas([]); return; }
+    if (!filtroAnio || !filtroMes) { setDocumentos([]); return; }
     const path = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/documentos`;
     const q = query(collection(db, path), orderBy("fchEmis", "desc"));
-    return onSnapshot(q, (snapshot) => setFacturas(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
+    return onSnapshot(q, (snapshot) => setDocumentos(snapshot.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [filtroAnio, filtroMes]);
 
   const handleDelete = (id) => {
@@ -119,13 +119,13 @@ const DocumentosImputados = () => {
     });
   };
 
-  const abrirHistorialLogs = async (factura) => {
-    setSelectedFacturaForLog(factura);
+  const abrirHistorialLogs = async (documento) => {
+    setSelectedDocumentoForLog(documento);
     setShowLogModal(true);
     setLoadingLogs(true);
 
     try {
-      const logsRef = collection(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", factura.id, "logs");
+      const logsRef = collection(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", documento.id, "logs");
       const q = query(logsRef, orderBy("timestamp", "desc"));
 
       const snapshot = await getDocs(q);
@@ -139,13 +139,13 @@ const DocumentosImputados = () => {
     }
   };
 
-  const facturasFiltradas = facturas.filter(f =>
-    f.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.estado?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (f.orden || f.numOrden)?.toString().toLowerCase().includes(busqueda.toLowerCase()) ||
-    (f.acta || f.numActa)?.toString().toLowerCase().includes(busqueda.toLowerCase())
+  const documentosFiltrados = documentos.filter(doc =>
+    doc.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    doc.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    doc.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    doc.estado?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (doc.orden || doc.numOrden)?.toString().toLowerCase().includes(busqueda.toLowerCase()) ||
+    (doc.acta || doc.numActa)?.toString().toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
@@ -195,7 +195,7 @@ const DocumentosImputados = () => {
         )}
       </div>
 
-      {hasPermission(PATH_VISTA, "tabla_facturas") && (
+      {hasPermission(PATH_VISTA, "tabla_documentos") && (
         <div className="flex-grow overflow-auto">
           <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
             <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
@@ -214,82 +214,82 @@ const DocumentosImputados = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-              {facturasFiltradas.length === 0 ? (
+              {documentosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-8 text-center text-slate-400 dark:text-gray-500 text-[11px]">
                     {!filtroAnio || !filtroMes ? "Selecciona un año y mes para cargar registros." : "No se encontraron documentos con los criterios seleccionados."}
                   </td>
                 </tr>
               ) : (
-                facturasFiltradas.map((f) => (
+                documentosFiltrados.map((docItem) => (
                   <tr
-                    key={f.id}
+                    key={docItem.id}
                     className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                   >
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                      {f.folio || '-'}
+                      {docItem.folio || '-'}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                      {formatearFechaEmision(f.fchEmis)}
+                      {formatearFechaEmision(docItem.fchEmis)}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                      {f.folioRef || '-'}
+                      {docItem.folioRef || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                      {f.rznSoc || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
+                      {docItem.rznSoc || '-'}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                      ${Math.round(Number(f.total) || 0).toLocaleString('es-CL')}
+                      ${Math.round(Number(docItem.total) || 0).toLocaleString('es-CL')}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(f.estado)}`}>
-                        {f.estado || "Iniciar Ingreso"}
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(docItem.estado)}`}>
+                        {docItem.estado || "Iniciar Ingreso"}
                       </span>
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroOrden}>
-                      {f.numeroOrden || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={docItem.numeroOrden}>
+                      {docItem.numeroOrden || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroActa || f.acta || f.numActa}>
-                      {f.numeroActa || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={docItem.numeroActa || docItem.acta || docItem.numActa}>
+                      {docItem.numeroActa || '-'}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={f.numeroSalida || f.salida || f.numSalida}>
-                      {f.numeroSalida || '-'}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={docItem.numeroSalida || docItem.salida || docItem.numSalida}>
+                      {docItem.numeroSalida || '-'}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 capitalize truncate">
-                      {f.mesImputado || f.mesImputacion || '-'}
+                      {docItem.mesImputado || docItem.mesImputacion || '-'}
                     </td>
                     <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                       <div className="flex justify-center gap-1.5">
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_log") && (
+                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_log") && (
                           <button
-                            onClick={() => abrirHistorialLogs(f)}
+                            onClick={() => abrirHistorialLogs(docItem)}
                             className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Ver Historial / Logs"
                           >
                             <History size={13} />
                           </button>
                         )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
+                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
                           <button
-                            onClick={() => setFacturaSeleccionada(f)}
+                            onClick={() => setDocumentoSeleccionado(docItem)}
                             className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Ver Detalle"
                           >
                             <Eye size={13} />
                           </button>
                         )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_configurar") && (
+                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_configurar") && (
                           <button
-                            onClick={() => setFacturaParaConfigurar(f)}
+                            onClick={() => setDocumentoParaConfigurar(docItem)}
                             className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Configurar"
                           >
                             <Settings size={13} />
                           </button>
                         )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
+                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
                           <button
-                            onClick={() => handleDelete(f.id)}
+                            onClick={() => handleDelete(docItem.id)}
                             className="text-slate-400 hover:text-red-500 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
                             title="Eliminar"
                           >
@@ -306,26 +306,26 @@ const DocumentosImputados = () => {
         </div>
       )}
 
-      {facturaSeleccionada && (
-        <DetalleFacturaModal
-          factura={facturaSeleccionada}
-          onClose={() => setFacturaSeleccionada(null)}
+      {documentoSeleccionado && (
+        <DetalleDocumentoModal
+          documento={documentoSeleccionado}
+          onClose={() => setDocumentoSeleccionado(null)}
         />
       )}
 
-      {facturaParaConfigurar && (
+      {documentoParaConfigurar && (
         <EditorDocumentos
-          factura={facturaParaConfigurar}
+          documento={documentoParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}
-          onClose={() => setFacturaParaConfigurar(null)}
+          onClose={() => setDocumentoParaConfigurar(null)}
         />
       )}
 
       <HistorialDocumentos
         showLogModal={showLogModal}
         onClose={() => setShowLogModal(false)}
-        selectedFacturaForLog={selectedFacturaForLog}
+        selectedDocumentoForLog={selectedDocumentoForLog}
         logsList={logsList}
         loadingLogs={loadingLogs}
       />

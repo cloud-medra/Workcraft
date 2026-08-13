@@ -25,7 +25,7 @@ import EmpresasLaboratorio from '../components/modulos/laboratorio/EmpresasLabor
 import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaboratorio';
 import OrdenLaboratorio from '../components/modulos/laboratorio/OrdenLaboratorio';
 import XmlDocLaboratorio from '../components/modulos/laboratorio/XmlDocLaboratorio';
-import ArchivosControl from '../components/modulos/laboratorio/procesosFacturados/ArchivosControl';
+import ArchivosControl from '../components/modulos/laboratorio/procesosDocumentos/ArchivosControl';
 
 // MAESTROS
 import EmpresasMaestros from '../components/modulos/maestros/EmpresasMaestros';
@@ -41,6 +41,10 @@ import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPassword
 // LEGALES
 import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/legales/TerminosServicio';
+
+
+
+
 
 
 // =================================================================

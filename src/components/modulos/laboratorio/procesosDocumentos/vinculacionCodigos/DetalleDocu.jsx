@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/vinculacionCodigos/DetalleFactura.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/vinculacionCodigos/DetalleDocu.jsx
 import React from 'react';
 import {
   ArrowLeft,
@@ -14,8 +14,8 @@ import {
   Loader2
 } from 'lucide-react';
 
-const DetalleFactura = ({
-  factura,
+const DetalleDocumento = ({
+  documento,
   vinculando,
   puedeVincular,
   formatearFechaEmision,
@@ -40,7 +40,7 @@ const DetalleFactura = ({
           <span className="text-slate-300 dark:text-gray-600">|</span>
           <FileText className="text-[#2383C2]" size={15} />
           <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Detalle Factura Electrónica — Folio {factura.folio}
+            Detalle Documento Electrónico — Folio {documento.folio}
           </span>
         </div>
       </header>
@@ -53,7 +53,7 @@ const DetalleFactura = ({
             Folio
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {factura.folio}
+            {documento.folio}
           </span>
         </div>
 
@@ -63,7 +63,7 @@ const DetalleFactura = ({
             Fecha Emisión
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {formatearFechaEmision(factura.fchEmis)}
+            {formatearFechaEmision(documento.fchEmis)}
           </span>
         </div>
 
@@ -73,7 +73,7 @@ const DetalleFactura = ({
             Mes Imputado
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {factura.mesImputado || "N/A"}
+            {documento.mesImputado || "N/A"}
           </span>
         </div>
 
@@ -83,7 +83,7 @@ const DetalleFactura = ({
             Ref. (OC)
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {factura.folioRef || "N/A"}
+            {documento.folioRef || "N/A"}
           </span>
         </div>
 
@@ -93,7 +93,7 @@ const DetalleFactura = ({
             Total Neto
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            ${Math.round(Number(factura.total || 0)).toLocaleString('es-CL')}
+            ${Math.round(Number(documento.total || 0)).toLocaleString('es-CL')}
           </span>
         </div>
 
@@ -103,7 +103,7 @@ const DetalleFactura = ({
             Estado General
           </span>
           <div className="mt-0.5">
-            {renderBadgeEstadoGeneral(factura.estado)}
+            {renderBadgeEstadoGeneral(documento.estado)}
           </div>
         </div>
 
@@ -140,10 +140,10 @@ const DetalleFactura = ({
         <div className="flex items-center gap-2 truncate">
           <Building2 size={13} className="text-[#2383C2] shrink-0" />
           <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase">Receptor:</span>
-          <span className="text-[11px] font-medium text-slate-800 dark:text-gray-200 truncate">{factura.rznSoc}</span>
+          <span className="text-[11px] font-medium text-slate-800 dark:text-gray-200 truncate">{documento.rznSoc}</span>
         </div>
         <span className="text-[10px] text-slate-400 font-semibold shrink-0">
-          Total ítems: <strong className="text-slate-700 dark:text-gray-200">{factura.detalles?.length || 0}</strong>
+          Total ítems: <strong className="text-slate-700 dark:text-gray-200">{documento.detalles?.length || 0}</strong>
         </span>
       </div>
 
@@ -152,7 +152,7 @@ const DetalleFactura = ({
           <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
             <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
               <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Factura</th>
+              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
               <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
               <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant.</th>
               <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Unidad</th>
@@ -165,14 +165,14 @@ const DetalleFactura = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
-            {factura.detalles?.length === 0 || !factura.detalles ? (
+            {documento.detalles?.length === 0 || !documento.detalles ? (
               <tr>
                 <td colSpan="11" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                  Esta factura no posee ítems cargados.
+                  Este documento no posee ítems cargados.
                 </td>
               </tr>
             ) : (
-              factura.detalles.map((item, idx) => (
+              documento.detalles.map((item, idx) => (
                 <tr
                   key={idx}
                   className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors"
@@ -230,4 +230,4 @@ const DetalleFactura = ({
   );
 };
 
-export default DetalleFactura;
+export default DetalleDocumento;

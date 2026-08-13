@@ -28,7 +28,7 @@ const MESES = [
 ];
 
 const COL_CIERRES = "laboratorio_cierres";
-const COL_IMPUTADAS = "laboratorio_facturasImputadas";
+const COL_IMPUTADAS = "laboratorio_imputadas";
 
 const BadgeEstado = ({ estado }) => {
   switch (estado) {
@@ -121,7 +121,7 @@ const CierreMes = () => {
 
         setResumenImputaciones(nuevoResumen);
       } catch (e) {
-        console.error("Error cargando resumen de facturas:", e);
+        console.error("Error cargando resumen de documentos:", e);
       }
     };
 
@@ -132,7 +132,7 @@ const CierreMes = () => {
     const docId = `${anioSeleccionado}_${mesId}`;
     confirmAction(
       "Abrir Período",
-      `¿Deseas habilitar la imputación de facturas para ${mesId.toUpperCase()} ${anioSeleccionado}? Esto cerrará automáticamente cualquier otro período que esté abierto.`,
+      `¿Deseas habilitar la imputación de documentos para ${mesId.toUpperCase()} ${anioSeleccionado}? Esto cerrará automáticamente cualquier otro período que esté abierto.`,
       async () => {
         try {
           const qAbiertos = query(
@@ -180,7 +180,7 @@ const CierreMes = () => {
     const docId = `${anioSeleccionado}_${mesId}`;
     confirmAction(
       "Cerrar Período de Imputación",
-      `Al cerrar ${mesId.toUpperCase()} ${anioSeleccionado}, no se podrán ingresar ni modificar facturas en este mes. ¿Continuar?`,
+      `Al cerrar ${mesId.toUpperCase()} ${anioSeleccionado}, no se podrán ingresar ni modificar documentos en este mes. ¿Continuar?`,
       async () => {
         try {
           const docRef = doc(db, COL_CIERRES, docId);
@@ -243,7 +243,7 @@ const CierreMes = () => {
               Control y Cierre Período de Imputación
             </h2>
             <p className="text-[10px] text-slate-500 dark:text-gray-400">
-              Administra la apertura y cierre de meses para la recepción e imputación contable de facturas
+              Administra la apertura y cierre de meses para la recepción e imputación contable de documentos
             </p>
           </div>
         </div>
@@ -363,7 +363,7 @@ const CierreMes = () => {
             <textarea
               value={motivoReapertura}
               onChange={(e) => setMotivoReapertura(e.target.value)}
-              placeholder="Ej: Ingreso extemporáneo de factura NC del proveedor X autorizada por Jefatura..."
+              placeholder="Ej: Ingreso extemporáneo de documento NC del proveedor X autorizada por Jefatura..."
               className="w-full h-20 p-2 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 text-[11px] outline-none focus:border-amber-500 resize-none"
             />
 

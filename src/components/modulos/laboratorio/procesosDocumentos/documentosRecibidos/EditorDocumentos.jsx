@@ -48,7 +48,7 @@ const EditorDocumentos = ({ documento, filtroAnio, filtroMes, onClose }) => {
       : []
   );
 
-  const COL_BASE = "laboratorio_facturasXml";
+  const COL_BASE = "laboratorio_documentos";
 
   const handleItemChange = (index, field, value) => {
     const nuevosDetalles = [...detalles];

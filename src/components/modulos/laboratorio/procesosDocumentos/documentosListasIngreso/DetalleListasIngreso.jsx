@@ -18,11 +18,11 @@ import { doc, updateDoc, setDoc, collection, addDoc, serverTimestamp } from 'fir
 import { db, auth } from '../../../../../firebaseConfig';
 
 const DetalleListasIngreso = ({
-  factura,
+  documento,
   onVolver,
   formatearFechaEmision,
   renderBadgeEstadoGeneral,
-  onActualizarFactura
+  onActualizarDocumento
 }) => {
   const { showToast } = useToast();
 
@@ -43,16 +43,16 @@ const DetalleListasIngreso = ({
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    if (factura) {
-      setNumeroOrden(factura.numeroOrden || factura.orden || factura.numOrden || '');
-      setNumeroActa(factura.numeroActa || factura.nroActa || '');
-      setNumeroSalida(factura.numeroSalida || factura.nroSalida || '');
-      setFechaActa(factura.fechaActa || factura.fchActa || obtenerFechaActual());
-      setFechaSalida(factura.fechaSalida || factura.fchSalida || obtenerFechaActual());
+    if (documento) {
+      setNumeroOrden(documento.numeroOrden || documento.orden || documento.numOrden || '');
+      setNumeroActa(documento.numeroActa || documento.nroActa || '');
+      setNumeroSalida(documento.numeroSalida || documento.nroSalida || '');
+      setFechaActa(documento.fechaActa || documento.fchActa || obtenerFechaActual());
+      setFechaSalida(documento.fechaSalida || documento.fchSalida || obtenerFechaActual());
     }
-  }, [factura]);
+  }, [documento]);
 
-  if (!factura) return null;
+  if (!documento) return null;
 
   const parseMontoToFloat = (valor) => {
     if (valor === undefined || valor === null || valor === '') return 0;
@@ -67,12 +67,12 @@ const DetalleListasIngreso = ({
   };
 
   const observaciones =
-    factura.observacionDiferencia ||
-    factura.motivo ||
-    factura.observacion ||
-    'No se registraron observaciones adicionales para esta factura.';
+    documento.observacionDiferencia ||
+    documento.motivo ||
+    documento.observacion ||
+    'No se registraron observaciones adicionales para este documento.';
 
-  const detalles = factura.detalles || [];
+  const detalles = documento.detalles || [];
 
   const handleFinalizarActa = async () => {
     if (!numeroOrden.trim() && !numeroActa.trim() && !numeroSalida.trim()) {
@@ -80,13 +80,13 @@ const DetalleListasIngreso = ({
       return;
     }
 
-    if (!factura.anio || !factura.mesId || !factura.id) {
+    if (!documento.anio || !documento.mesId || !documento.id) {
       showToast('No se pudo determinar la ubicación del documento en la base de datos', 'error');
       return;
     }
 
-    if (!factura.mesImputado || !factura.anioImputado) {
-      showToast('Esta factura no tiene un período de imputación asignado. Debe iniciar el proceso primero.', 'error');
+    if (!documento.mesImputado || !documento.anioImputado) {
+      showToast('Este documento no tiene un período de imputación asignado. Debe iniciar el proceso primero.', 'error');
       return;
     }
 
@@ -103,30 +103,30 @@ const DetalleListasIngreso = ({
       };
 
       const refDocumento = doc(
-        db, 'laboratorio_facturasXml',
-        factura.anio, 'meses', factura.mesId, 'documentos', factura.id
+        db, 'laboratorio_documentos',
+        documento.anio, 'meses', documento.mesId, 'documentos', documento.id
       );
 
       await updateDoc(refDocumento, datosActa);
 
       const refImputada = doc(
-        db, 'laboratorio_facturasImputadas',
-        factura.anioImputado, 'meses', factura.mesImputado, 'documentos', factura.id
+        db, 'laboratorio_imputadas',
+        documento.anioImputado, 'meses', documento.mesImputado, 'documentos', documento.id
       );
 
-      const refAnio = doc(db, 'laboratorio_facturasImputadas', factura.anioImputado);
-      const refMes = doc(db, 'laboratorio_facturasImputadas', factura.anioImputado, 'meses', factura.mesImputado);
+      const refAnio = doc(db, 'laboratorio_imputadas', documento.anioImputado);
+      const refMes = doc(db, 'laboratorio_imputadas', documento.anioImputado, 'meses', documento.mesImputado);
 
       await Promise.all([
-        setDoc(refAnio, { anio: factura.anioImputado, activo: true }, { merge: true }),
-        setDoc(refMes, { mes: factura.mesImputado, anio: factura.anioImputado, activo: true }, { merge: true }),
+        setDoc(refAnio, { anio: documento.anioImputado, activo: true }, { merge: true }),
+        setDoc(refMes, { mes: documento.mesImputado, anio: documento.anioImputado, activo: true }, { merge: true }),
       ]);
 
       await setDoc(refImputada, {
-        ...factura,
+        ...documento,
         ...datosActa,
-        origenAnio: factura.anio,
-        origenMes: factura.mesId,
+        origenAnio: documento.anio,
+        origenMes: documento.mesId,
         activo: true,
         fechaImputacionFinal: serverTimestamp(),
       });
@@ -141,7 +141,7 @@ const DetalleListasIngreso = ({
         const logsRef = collection(refDocumento, "logs");
         await addDoc(logsRef, {
           accion: "ACTA INGRESADA",
-          detalle: `Proceso finalizado e imputado a ${factura.mesImputado} ${factura.anioImputado}. Folio ${factura.folio || factura.id}. Orden: ${numeroOrden || 'N/A'} Acta: ${numeroActa || 'N/A'} Salida: ${numeroSalida || 'N/A'}`,
+          detalle: `Proceso finalizado e imputado a ${documento.mesImputado} ${documento.anioImputado}. Folio ${documento.folio || documento.id}. Orden: ${numeroOrden || 'N/A'} Acta: ${numeroActa || 'N/A'} Salida: ${numeroSalida || 'N/A'}`,
           resumen: { numeroOrden: numeroOrden || '-', numeroActa: numeroActa || '-', numeroSalida: numeroSalida || '-', fechaActa: fechaActa || '-', fechaSalida: fechaSalida || '-' },
           fechaHora: new Date().toLocaleString('es-CL'),
           timestamp: serverTimestamp(),
@@ -153,8 +153,8 @@ const DetalleListasIngreso = ({
 
       showToast('Proceso finalizado e imputado correctamente', 'success');
 
-      if (onActualizarFactura) {
-        onActualizarFactura({ ...factura, ...datosActa });
+      if (onActualizarDocumento) {
+        onActualizarDocumento({ ...documento, ...datosActa });
       }
       setPanelActaAbierto(false);
     } catch (error) {
@@ -180,7 +180,7 @@ const DetalleListasIngreso = ({
           <span className="text-slate-300 dark:text-gray-600">|</span>
           <FileText className="text-[#2383C2]" size={16} />
           <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Detalle Lista de Ingreso — Folio N° {factura.folio}
+            Detalle Lista de Ingreso — Folio N° {documento.folio}
           </span>
         </div>
       </header>
@@ -191,7 +191,7 @@ const DetalleListasIngreso = ({
             <Hash size={11} className="text-[#2383C2]" /> Folio
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            #{factura.folio}
+            #{documento.folio}
           </span>
         </div>
 
@@ -201,8 +201,8 @@ const DetalleListasIngreso = ({
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
             {formatearFechaEmision
-              ? formatearFechaEmision(factura.fchEmis)
-              : factura.fchEmis || '-'}
+              ? formatearFechaEmision(documento.fchEmis)
+              : documento.fchEmis || '-'}
           </span>
         </div>
 
@@ -211,7 +211,7 @@ const DetalleListasIngreso = ({
             <CalendarDays size={11} className="text-[#2383C2]" /> Mes Imputado
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 capitalize">
-            {factura.mesImputado || factura.mes_imputado || '-'}
+            {documento.mesImputado || documento.mes_imputado || '-'}
           </span>
         </div>
 
@@ -220,7 +220,7 @@ const DetalleListasIngreso = ({
             <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 font-mono">
-            {factura.folioRef || 'Sin Referencia'}
+            {documento.folioRef || 'Sin Referencia'}
           </span>
         </div>
 
@@ -229,7 +229,7 @@ const DetalleListasIngreso = ({
             <DollarSign size={11} className="text-[#2383C2]" /> Total Neto
           </span>
           <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5">
-            {formatearMoneda(factura.total)}
+            {formatearMoneda(documento.total)}
           </span>
         </div>
 
@@ -239,10 +239,10 @@ const DetalleListasIngreso = ({
           </span>
           <div className="mt-0.5 truncate">
             {renderBadgeEstadoGeneral ? (
-              renderBadgeEstadoGeneral(factura.estado)
+              renderBadgeEstadoGeneral(documento.estado)
             ) : (
               <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300">
-                {factura.estado || 'Registrado'}
+                {documento.estado || 'Registrado'}
               </span>
             )}
           </div>
@@ -270,11 +270,11 @@ const DetalleListasIngreso = ({
           <span className="text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase">
             Proveedor:
           </span>
-          <span className="text-[11px] font-semibold text-slate-800 dark:text-gray-200 truncate" title={factura.rznSoc}>
-            {factura.rznSoc || 'Sin Razón Social'}
+          <span className="text-[11px] font-semibold text-slate-800 dark:text-gray-200 truncate" title={documento.rznSoc}>
+            {documento.rznSoc || 'Sin Razón Social'}
           </span>
           <span className="text-slate-400 dark:text-gray-500 text-[11px]">
-            (RUT: {factura.rutEmisor || 'N/A'})
+            (RUT: {documento.rutEmisor || 'N/A'})
           </span>
         </div>
         <span className="text-[10px] text-slate-400 font-semibold shrink-0">
@@ -298,10 +298,10 @@ const DetalleListasIngreso = ({
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Factura</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Factura</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Documento</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Documento</th>
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Documento</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
                 <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
@@ -315,7 +315,7 @@ const DetalleListasIngreso = ({
               {detalles.length === 0 ? (
                 <tr>
                   <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                    Esta factura no posee ítems cargados.
+                    Este documento no posee ítems cargados.
                   </td>
                 </tr>
               ) : (

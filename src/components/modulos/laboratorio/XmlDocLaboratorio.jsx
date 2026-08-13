@@ -1,4 +1,4 @@
-// src/components/facturas/XmlFacturasLaboratorio.jsx
+// src/components/modulos/laboratorio/XmlDocLaboratorio.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   collection,
@@ -24,12 +24,12 @@ import Spinner from '../../ui/Spinner';
 import DetalleFacturaModal from './XmlDetallesDoc';
 
 const XmlFacturasLaboratorio = () => {
-  const [facturas, setFacturas] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
   const [filtroAnio, setFiltroAnio] = useState("");
   const [filtroMes, setFiltroMes] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -39,8 +39,8 @@ const XmlFacturasLaboratorio = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/facturas";
-  const COL_BASE = "laboratorio_facturasXml";
+  const PATH_VISTA = "/laboratorio/XmlDocLaboratorio";
+  const COL_BASE = "laboratorio_documentos";
 
   // Cargar Años disponibles
   useEffect(() => {
@@ -74,19 +74,19 @@ const XmlFacturasLaboratorio = () => {
     cargarMeses();
   }, [filtroAnio]);
 
-  // Escuchar Facturas del Mes en tiempo real
+  // Escuchar Documentos del Mes en tiempo real
   useEffect(() => {
     if (!filtroAnio || !filtroMes) {
-      setFacturas([]);
+      setDocumentos([]);
       return;
     }
     const path = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/documentos`;
     const q = query(collection(db, path), orderBy("fchEmis", "desc"));
 
     return onSnapshot(q, (snapshot) => {
-      setFacturas(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      setDocumentos(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (error) => {
-      console.error("Error al escuchar facturas:", error);
+      console.error("Error al escuchar documentos:", error);
     });
   }, [filtroAnio, filtroMes]);
 
@@ -158,14 +158,13 @@ const XmlFacturasLaboratorio = () => {
         const usuarioActualEmail = userData?.email || '';
         const fechaActual = new Date();
 
-        // 1. Guardar documento de Factura en Firestore
-        // 1. Guardar documento de Factura en Firestore (incluyendo anio y mes)
-        const docRefFactura = await addDoc(colRef, {
+        // 1. Guardar documento en Firestore (incluyendo anio y mes)
+        const docRefDocumento = await addDoc(colRef, {
           folio: folio ?? "",
           folioRef: folioRef ?? "N/A",
           fchEmis: fchEmis ?? "",
-          anio,                     // <-- Añadido
-          mes: nombreMes,           // <-- Añadido
+          anio,
+          mes: nombreMes,
           rznSoc: xmlDoc.getElementsByTagName("RznSoc")[0]?.textContent || "Sin Razón Social",
           total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent ?? "0",
           estado: "Iniciar Ingreso",
@@ -175,12 +174,12 @@ const XmlFacturasLaboratorio = () => {
           fechaRegistro: fechaActual
         });
 
-        // 2. Generar registro de Log DENTRO de la subcolección de la factura creada
-        const logsSubcollectionRef = collection(db, COL_BASE, anio, "meses", nombreMes, "documentos", docRefFactura.id, "logs");
+        // 2. Generar registro de Log DENTRO de la subcolección del documento creado
+        const logsSubcollectionRef = collection(db, COL_BASE, anio, "meses", nombreMes, "documentos", docRefDocumento.id, "logs");
 
         await addDoc(logsSubcollectionRef, {
           accion: "CREACION",
-          detalle: "Factura cargada e importada mediante archivo XML",
+          detalle: "Documento cargado e importado mediante archivo XML",
           usuario: {
             nombre: usuarioActualNombre,
             email: usuarioActualEmail
@@ -216,24 +215,24 @@ const XmlFacturasLaboratorio = () => {
     accept: { 'application/xml': ['.xml'], 'text/xml': ['.xml'] }
   });
 
-  // Eliminar factura
+  // Eliminar documento
   const handleDelete = (id) => {
-    confirmAction("Eliminar Factura", "¿Estás seguro de eliminar este registro?", async () => {
+    confirmAction("Eliminar Documento", "¿Estás seguro de eliminar este registro?", async () => {
       try {
         await deleteDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", id));
-        showToast("Factura eliminada", "info");
+        showToast("Documento eliminado", "info");
       } catch (error) {
-        console.error("Error al eliminar factura:", error);
-        showToast("Error al eliminar la factura", "error");
+        console.error("Error al eliminar documento:", error);
+        showToast("Error al eliminar el documento", "error");
       }
     });
   };
 
-  const facturasFiltradas = facturas.filter(f =>
-    f.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    f.estado?.toLowerCase().includes(busqueda.toLowerCase())
+  const documentosFiltrados = documentos.filter(docItem =>
+    docItem.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docItem.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docItem.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docItem.estado?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
@@ -253,7 +252,7 @@ const XmlFacturasLaboratorio = () => {
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-[#2383C2]" />
           <span className="text-[12px] font-bold text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Gestión de Facturas XML
+            Gestión de Documentos XML
           </span>
         </div>
 
@@ -311,8 +310,8 @@ const XmlFacturasLaboratorio = () => {
         )}
       </div>
 
-      {/* TABLA DE FACTURAS */}
-      {hasPermission(PATH_VISTA, "tabla_facturas") && (
+      {/* TABLA DE DOCUMENTOS */}
+      {hasPermission(PATH_VISTA, "tabla_documentos") && (
         <div className="flex-grow overflow-auto">
           <table className="w-full text-left text-[11px] border-collapse table-fixed">
             <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
@@ -328,57 +327,57 @@ const XmlFacturasLaboratorio = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-              {facturasFiltradas.length === 0 ? (
+              {documentosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="text-center py-6 text-slate-400 dark:text-gray-500">
                     {!filtroAnio || !filtroMes
-                      ? "Selecciona un año y un mes para visualizar las facturas."
-                      : "No se encontraron facturas registradas para este periodo."}
+                      ? "Selecciona un año y un mes para visualizar los documentos."
+                      : "No se encontraron documentos registrados para este periodo."}
                   </td>
                 </tr>
               ) : (
-                facturasFiltradas.map((f, index) => (
+                documentosFiltrados.map((docItem, index) => (
                   <tr
-                    key={f.id}
+                    key={docItem.id}
                     className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                   >
                     <td className="py-1 px-2 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
                       {index + 1}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-medium text-slate-800 dark:text-gray-100 truncate">
-                      {f.folio}
+                      {docItem.folio}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                      {f.fchEmis}
+                      {docItem.fchEmis}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                      {f.folioRef}
+                      {docItem.folioRef}
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                      {f.rznSoc}
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
+                      {docItem.rznSoc}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
-                      ${parseInt(f.total || 0, 10).toLocaleString('es-CL')}
+                      ${parseInt(docItem.total || 0, 10).toLocaleString('es-CL')}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
                       <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-                        {f.estado || "Iniciar Ingreso"}
+                        {docItem.estado || "Iniciar Ingreso"}
                       </span>
                     </td>
                     <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                       <div className="flex justify-center gap-2">
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_ver") && (
+                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
                           <button
-                            onClick={() => setFacturaSeleccionada({ ...f, anio: filtroAnio, mes: filtroMes })}
+                            onClick={() => setDocumentoSeleccionado({ ...docItem, anio: filtroAnio, mes: filtroMes })}
                             className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition"
                             title="Ver Detalle"
                           >
                             <Eye size={13} />
                           </button>
                         )}
-                        {hasPermission(PATH_VISTA, "tabla_facturas", "btn_eliminar") && (
+                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
                           <button
-                            onClick={() => handleDelete(f.id)}
+                            onClick={() => handleDelete(docItem.id)}
                             className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
                             title="Eliminar"
                           >
@@ -395,11 +394,11 @@ const XmlFacturasLaboratorio = () => {
         </div>
       )}
 
-      {/* MODAL DETALLE DE FACTURA */}
-      {facturaSeleccionada && (
+      {/* MODAL DETALLE DE DOCUMENTO */}
+      {documentoSeleccionado && (
         <DetalleFacturaModal
-          factura={facturaSeleccionada}
-          onClose={() => setFacturaSeleccionada(null)}
+          documento={documentoSeleccionado}
+          onClose={() => setDocumentoSeleccionado(null)}
         />
       )}
 

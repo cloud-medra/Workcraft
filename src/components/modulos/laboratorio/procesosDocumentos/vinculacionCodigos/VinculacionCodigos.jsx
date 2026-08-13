@@ -1,4 +1,4 @@
-// src/components/modulos/laboratorio/procesosFacturados/vinculacionCodigos/VinculacionCodigos.jsx
+// src/components/modulos/laboratorio/procesosDocumentos/vinculacionCodigos/VinculacionCodigos.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../firebaseConfig';
@@ -11,24 +11,24 @@ import {
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import DetalleFactura from './DetalleDocu';
+import DetalleDocumento from './DetalleDocu';
 
 const VinculacionCodigos = () => {
-  const [facturas, setFacturas] = useState([]);
+  const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [filtroAnio, setFiltroAnio] = useState('');
   const [loading, setLoading] = useState(false);
   const [vinculando, setVinculando] = useState(false);
 
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState(null);
+  const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/controlFactura";
-  const COL_BASE = "laboratorio_facturasXml";
+  const PATH_VISTA = "/laboratorio/archivosControl";
+  const COL_BASE = "laboratorio_documentos";
   const COL_MAESTRO = "laboratorio_codigos";
   const ESTADOS_PERMITIDOS = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];
 
@@ -44,8 +44,8 @@ const VinculacionCodigos = () => {
     return fechaStr;
   };
 
-  const obtenerMesImputacion = (factura) => {
-    const valor = factura?.mesImputado;
+  const obtenerMesImputacion = (documento) => {
+    const valor = documento?.mesImputado;
     if (!valor) return '—';
 
     if (typeof valor === 'string') {
@@ -75,9 +75,9 @@ const VinculacionCodigos = () => {
     cargarAnios();
   }, []);
 
-  const cargarFacturasEnProceso = useCallback(async () => {
+  const cargarDocumentosEnProceso = useCallback(async () => {
     if (!filtroAnio) {
-      setFacturas([]);
+      setDocumentos([]);
       return;
     }
 
@@ -98,35 +98,35 @@ const VinculacionCodigos = () => {
       const docsAcumulados = resultadosPorMes.flat();
 
       docsAcumulados.sort((a, b) => new Date(b.fchEmis || 0) - new Date(a.fchEmis || 0));
-      setFacturas(docsAcumulados);
+      setDocumentos(docsAcumulados);
     } catch (error) {
-      console.error("Error al cargar facturas:", error);
-      showToast("Error al obtener las facturas pendientes de vinculación", "error");
+      console.error("Error al cargar documentos:", error);
+      showToast("Error al obtener los documentos pendientes de vinculación", "error");
     } finally {
       setLoading(false);
     }
   }, [filtroAnio, showToast]);
 
   useEffect(() => {
-    cargarFacturasEnProceso();
-  }, [cargarFacturasEnProceso]);
+    cargarDocumentosEnProceso();
+  }, [cargarDocumentosEnProceso]);
 
-  const handleVerDetalles = (factura) => setFacturaSeleccionada(factura);
-  const handleVolverALista = () => setFacturaSeleccionada(null);
+  const handleVerDetalles = (documento) => setDocumentoSeleccionado(documento);
+  const handleVolverALista = () => setDocumentoSeleccionado(null);
 
-  const handleVincularFactura = () => {
-    if (!facturaSeleccionada || !facturaSeleccionada.detalles?.length) {
-      showToast("La factura no contiene ítems para vincular", "error");
+  const handleVincularDocumento = () => {
+    if (!documentoSeleccionado || !documentoSeleccionado.detalles?.length) {
+      showToast("El documento no contiene ítems para vincular", "error");
       return;
     }
 
     confirmAction(
       "Confirmar Vinculación",
-      `¿Está seguro de procesar la vinculación para el folio ${facturaSeleccionada.folio}?`,
+      `¿Está seguro de procesar la vinculación para el folio ${documentoSeleccionado.folio}?`,
       async () => {
         setVinculando(true);
         try {
-          const estadoAnteriorGeneral = facturaSeleccionada.estado || "Proceso Iniciado";
+          const estadoAnteriorGeneral = documentoSeleccionado.estado || "Proceso Iniciado";
           const codigosSnap = await getDocs(collection(db, COL_MAESTRO));
 
           const refMap = new Map();
@@ -141,9 +141,9 @@ const VinculacionCodigos = () => {
           let diferenciasCount = 0;
           let sinDiferenciasCount = 0;
 
-          const nuevosDetalles = facturaSeleccionada.detalles.map(item => {
-            const codFactura = item.codigo ? String(item.codigo).trim().toLowerCase() : '';
-            const coincidencia = refMap.get(codFactura);
+          const nuevosDetalles = documentoSeleccionado.detalles.map(item => {
+            const codDocumento = item.codigo ? String(item.codigo).trim().toLowerCase() : '';
+            const coincidencia = refMap.get(codDocumento);
 
             if (!coincidencia) {
               faltantesCount++;
@@ -156,11 +156,11 @@ const VinculacionCodigos = () => {
               };
             }
 
-            const precioFactura = Math.round(Number(item.precio || 0));
+            const precioDocumento = Math.round(Number(item.precio || 0));
             const precioMaestro = Math.round(Number(coincidencia.precio || 0));
             const descMaestro = coincidencia.descripcion || coincidencia.descripcion_articulo || coincidencia.nombre || '-';
 
-            if (precioFactura !== precioMaestro) {
+            if (precioDocumento !== precioMaestro) {
               diferenciasCount++;
               return {
                 ...item,
@@ -200,9 +200,9 @@ const VinculacionCodigos = () => {
             COL_BASE,
             filtroAnio,
             "meses",
-            facturaSeleccionada.mesId,
+            documentoSeleccionado.mesId,
             "documentos",
-            facturaSeleccionada.id
+            documentoSeleccionado.id
           );
 
           await updateDoc(docRef, {
@@ -214,7 +214,7 @@ const VinculacionCodigos = () => {
             const logsRef = collection(docRef, "logs");
             await addDoc(logsRef, {
               accion: "VINCULACION_CODIGOS",
-              detalle: `Vinculación procesada para el folio ${facturaSeleccionada.folio || facturaSeleccionada.id}`,
+              detalle: `Vinculación procesada para el folio ${documentoSeleccionado.folio || documentoSeleccionado.id}`,
               estadoAnterior: estadoAnteriorGeneral,
               nuevoEstado: nuevoEstadoGeneral,
               resumen: {
@@ -230,19 +230,19 @@ const VinculacionCodigos = () => {
             console.error("Error al escribir log de vinculación:", logError);
           }
 
-          const facturaActualizada = {
-            ...facturaSeleccionada,
+          const documentoActualizado = {
+            ...documentoSeleccionado,
             detalles: nuevosDetalles,
             estado: nuevoEstadoGeneral
           };
 
-          setFacturaSeleccionada(facturaActualizada);
+          setDocumentoSeleccionado(documentoActualizado);
 
-          setFacturas(prev => {
+          setDocumentos(prev => {
             if (nuevoEstadoGeneral === "Procesar OC") {
-              return prev.filter(f => f.id !== facturaActualizada.id);
+              return prev.filter(f => f.id !== documentoActualizado.id);
             }
-            return prev.map(f => f.id === facturaActualizada.id ? facturaActualizada : f);
+            return prev.map(f => f.id === documentoActualizado.id ? documentoActualizado : f);
           });
 
           showToast(
@@ -251,7 +251,7 @@ const VinculacionCodigos = () => {
           );
 
         } catch (error) {
-          console.error("Error al vincular factura:", error);
+          console.error("Error al vincular documento:", error);
           showToast("Error al procesar la vinculación con Códigos Maestro", "error");
         } finally {
           setVinculando(false);
@@ -260,7 +260,7 @@ const VinculacionCodigos = () => {
     );
   };
 
-  const facturasFiltradas = facturas.filter(f =>
+  const documentosFiltrados = documentos.filter(f =>
     f.folio?.includes(busqueda) ||
     f.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
     f.folioRef?.includes(busqueda)
@@ -298,15 +298,15 @@ const VinculacionCodigos = () => {
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
 
-      {facturaSeleccionada ? (
-        <DetalleFactura
-          factura={facturaSeleccionada}
+      {documentoSeleccionado ? (
+        <DetalleDocumento
+          documento={documentoSeleccionado}
           vinculando={vinculando}
           puedeVincular={hasPermission(PATH_VISTA, "acciones_detalle", "btn_vincular")}
           formatearFechaEmision={formatearFechaEmision}
           renderBadgeEstadoGeneral={renderBadgeEstadoGeneral}
           onVolver={handleVolverALista}
-          onVincular={handleVincularFactura}
+          onVincular={handleVincularDocumento}
         />
       ) : (
         <>
@@ -314,7 +314,7 @@ const VinculacionCodigos = () => {
             <div className="flex items-center gap-2">
               <ClipboardList size={16} className="text-[#2383C2]" />
               <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-                Vinculación de Códigos (Facturas Pendientes)
+                Vinculación de Códigos (Documentos Pendientes)
               </span>
             </div>
           </header>
@@ -348,7 +348,7 @@ const VinculacionCodigos = () => {
             </div>
 
             <button
-              onClick={cargarFacturasEnProceso}
+              onClick={cargarDocumentosEnProceso}
               disabled={!filtroAnio || loading}
               className="h-6 px-2 rounded text-[11px] font-medium bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 text-slate-700 dark:text-gray-200 hover:bg-slate-50 dark:hover:bg-gray-700 flex items-center gap-1 transition-colors"
               title="Recargar datos"
@@ -358,11 +358,11 @@ const VinculacionCodigos = () => {
             </button>
           </div>
 
-          {hasPermission(PATH_VISTA, "tabla_facturas") && (
+          {hasPermission(PATH_VISTA, "tabla_documentos") && (
             <div className="flex-grow overflow-auto">
               {loading ? (
                 <div className="w-full h-40 flex items-center justify-center text-xs text-slate-500 dark:text-gray-400">
-                  Cargando facturas del año {filtroAnio}...
+                  Cargando documentos del año {filtroAnio}...
                 </div>
               ) : (
                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
@@ -379,16 +379,16 @@ const VinculacionCodigos = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                    {facturasFiltradas.length === 0 ? (
+                    {documentosFiltrados.length === 0 ? (
                       <tr>
                         <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           {filtroAnio
-                            ? "No hay facturas pendientes de vinculación para este año."
-                            : "Seleccione un año para visualizar las facturas."}
+                            ? "No hay documentos pendientes de vinculación para este año."
+                            : "Seleccione un año para visualizar los documentos."}
                         </td>
                       </tr>
                     ) : (
-                      facturasFiltradas.map((f) => (
+                      documentosFiltrados.map((f) => (
                         <tr
                           key={f.id}
                           onDoubleClick={() => handleVerDetalles(f)}
@@ -423,7 +423,7 @@ const VinculacionCodigos = () => {
                                 handleVerDetalles(f);
                               }}
                               className="p-1 text-slate-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
-                              title="Visualizar factura"
+                              title="Visualizar documento"
                             >
                               <Eye size={14} />
                             </button>

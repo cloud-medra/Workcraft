@@ -1,8 +1,8 @@
 import React from 'react';
 import { X, FileText, Calendar, Hash, Building2, Tag, DollarSign } from 'lucide-react';
 
-const DetalleFacturaModal = ({ factura, onClose }) => {
-  if (!factura) return null;
+const DetalleFacturaModal = ({ documento, onClose }) => {
+  if (!documento) return null;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-[2px] p-3 font-sans text-[11px]">
@@ -14,7 +14,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
           <div className="flex items-center gap-2">
             <FileText className="text-[#2383C2]" size={16} />
             <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wide">
-              Detalle Factura Electrónica
+              Detalle Documento
             </h3>
           </div>
           <button 
@@ -28,10 +28,10 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
         {/* RESUMEN METRICAS (4 TARJETAS ULTRA COMPACTAS) */}
         <div className="px-4 py-2 bg-gray-50/30 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
           {[
-            { label: "Folio", value: factura.folio, icon: Hash },
-            { label: "Fecha Emisión", value: factura.fchEmis, icon: Calendar },
-            { label: "Ref. (OC)", value: factura.folioRef || "N/A", icon: Tag },
-            { label: "Total Neto", value: `$${parseInt(factura.total || 0).toLocaleString('es-CL')}`, icon: DollarSign }
+            { label: "Folio", value: documento.folio, icon: Hash },
+            { label: "Fecha Emisión", value: documento.fchEmis, icon: Calendar },
+            { label: "Ref. (OC)", value: documento.folioRef || "N/A", icon: Tag },
+            { label: "Total Neto", value: `$${parseInt(documento.total || 0).toLocaleString('es-CL')}`, icon: DollarSign }
           ].map((item, i) => {
             const Icon = item.icon;
             return (
@@ -53,10 +53,10 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
           <div className="flex items-center gap-2 truncate">
             <Building2 size={13} className="text-[#2383C2] shrink-0" />
             <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase">Receptor:</span>
-            <span className="text-[11px] font-medium text-gray-800 dark:text-gray-200 truncate">{factura.rznSoc}</span>
+            <span className="text-[11px] font-medium text-gray-800 dark:text-gray-200 truncate">{documento.rznSoc}</span>
           </div>
           <span className="text-[10px] text-gray-400 font-semibold shrink-0">
-            Total ítems: <strong className="text-gray-700 dark:text-gray-200">{factura.detalles?.length || 0}</strong>
+            Total ítems: <strong className="text-gray-700 dark:text-gray-200">{documento.detalles?.length || 0}</strong>
           </span>
         </div>
 
@@ -75,7 +75,7 @@ const DetalleFacturaModal = ({ factura, onClose }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
-              {factura.detalles?.map((item, idx) => (
+              {documento.detalles?.map((item, idx) => (
                 <tr 
                   key={idx} 
                   className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
