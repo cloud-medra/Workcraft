@@ -278,7 +278,7 @@ const DocListasIngreso = () => {
                                                     title="Doble clic para ver el detalle"
                                                 >
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                                                        #{f.folio}
+                                                        {f.folio}
                                                     </td>
                                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
                                                         {formatearFechaEmision(f.fchEmis)}
