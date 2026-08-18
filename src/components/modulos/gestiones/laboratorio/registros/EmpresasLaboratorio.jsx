@@ -1,22 +1,22 @@
-// src/components/maestros/EmpresasMaestros.jsx
+// src/components/facturas/EmpresasLaboratorios.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
-import { Wrench, Plus, Trash2, Search, Pencil, Save, X, History } from 'lucide-react';
-import { useToast } from '../../../context/ToastContext';
-import { useModal } from '../../../context/ModalContext';
-import { useUser } from '../../../context/UserContext';
-import { useGranularPermission } from '../../../hooks/useGranularPermission';
+import { db } from '../../../../../firebaseConfig';
+import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History } from 'lucide-react';
+import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import { useUser } from '../../../../../context/UserContext';
+import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 
-const EmpresasMaestros = () => {
-  const [maestros, setMaestros] = useState([]);
+const EmpresasLaboratorios = () => {
+  const [laboratorios, setLaboratorios] = useState([]);
   const [formData, setFormData] = useState({ nombre: '', rut: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
 
   // Estados para el Drawer Lateral de Historial / Logs
   const [showLogModal, setShowLogModal] = useState(false);
-  const [selectedMaestroForLog, setSelectedMaestroForLog] = useState(null);
+  const [selectedLabForLog, setSelectedLabForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
@@ -25,13 +25,13 @@ const EmpresasMaestros = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/empresas";
-  const COL_BASE = "maestros_empresas";
+  const PATH_VISTA = "/laboratorio/empresas";
+  const COL_BASE = "laboratorio_empresas";
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMaestros(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setLaboratorios(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
@@ -58,9 +58,9 @@ const EmpresasMaestros = () => {
   };
 
   // Helper para auditoría usando subcolección interna
-  const registrarLog = async (maestroId, accion, detalles) => {
+  const registrarLog = async (laboratorioId, accion, detalles) => {
     try {
-      const logsSubcollectionRef = collection(db, COL_BASE, maestroId, "logs");
+      const logsSubcollectionRef = collection(db, COL_BASE, laboratorioId, "logs");
       await addDoc(logsSubcollectionRef, {
         accion,
         detalles,
@@ -84,44 +84,44 @@ const EmpresasMaestros = () => {
     const nombreTrimmed = formData.nombre.trim().toLowerCase();
 
     // 1. Validar RUT duplicado (excluyendo el registro actual si se está editando)
-    const existeRut = maestros.some(m => 
-      m.rut === rutFormateado && m.id !== editingId
+    const existeRut = laboratorios.some(l => 
+      l.rut === rutFormateado && l.id !== editingId
     );
     if (existeRut) {
-      return showToast("Ya existe un maestro registrado con este RUT", "error");
+      return showToast("Ya existe un laboratorio registrado con este RUT", "error");
     }
 
     // 2. Validar Nombre duplicado (excluyendo el registro actual si se está editando)
-    const existeNombre = maestros.some(m => 
-      m.nombre.trim().toLowerCase() === nombreTrimmed && m.id !== editingId
+    const existeNombre = laboratorios.some(l => 
+      l.nombre.trim().toLowerCase() === nombreTrimmed && l.id !== editingId
     );
     if (existeNombre) {
-      return showToast("Ya existe un maestro registrado con este Nombre", "error");
+      return showToast("Ya existe un laboratorio registrado con este Nombre", "error");
     }
 
     try {
       if (editingId) {
-        const maestroExistente = maestros.find(m => m.id === editingId);
+        const labExistente = laboratorios.find(l => l.id === editingId);
         
         const dataAEnviar = {
           ...formData,
           rut: rutFormateado,
-          fechaRegistro: maestroExistente?.fechaRegistro || new Date(),
-          registradoPor: maestroExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
+          fechaRegistro: labExistente?.fechaRegistro || new Date(),
+          registradoPor: labExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
 
         await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
-          nombreAnterior: maestroExistente?.nombre,
+          nombreAnterior: labExistente?.nombre,
           nombreNuevo: formData.nombre,
-          rutAnterior: maestroExistente?.rut,
+          rutAnterior: labExistente?.rut,
           rutNuevo: rutFormateado,
-          estadoAnterior: maestroExistente?.estado,
+          estadoAnterior: labExistente?.estado,
           estadoNuevo: formData.estado
         });
 
-        showToast("Maestro actualizado correctamente", "success");
+        showToast("Laboratorio actualizado correctamente", "success");
       } else {
         const dataAEnviar = {
           ...formData,
@@ -138,7 +138,7 @@ const EmpresasMaestros = () => {
           estado: formData.estado
         });
 
-        showToast("Maestro registrado correctamente", "success");
+        showToast("Laboratorio registrado correctamente", "success");
       }
       setFormData({ nombre: '', rut: '', estado: 'ACTIVO' });
       setEditingId(null);
@@ -148,21 +148,22 @@ const EmpresasMaestros = () => {
   };
 
   const handleDelete = (id) => {
-    const maestroAEliminar = maestros.find(m => m.id === id);
+    const labAEliminar = laboratorios.find(l => l.id === id);
 
     confirmAction(
-      "Eliminar Maestro",
+      "Eliminar Laboratorio",
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
+          // Nota: Opcionalmente puedes registrar el log antes de borrar el documento padre
           await registrarLog(id, 'ELIMINACION', {
-            nombre: maestroAEliminar?.nombre || '',
-            rut: maestroAEliminar?.rut || ''
+            nombre: labAEliminar?.nombre || '',
+            rut: labAEliminar?.rut || ''
           });
 
           await deleteDoc(doc(db, COL_BASE, id));
 
-          showToast("Maestro eliminado correctamente", "info");
+          showToast("Laboratorio eliminado correctamente", "info");
         } catch (error) {
           showToast("Error al eliminar", "error");
         }
@@ -170,19 +171,20 @@ const EmpresasMaestros = () => {
     );
   };
 
-  const iniciarEdicion = (m) => {
-    setEditingId(m.id);
-    setFormData({ nombre: m.nombre, rut: m.rut, estado: m.estado || 'ACTIVO' });
+  const iniciarEdicion = (l) => {
+    setEditingId(l.id);
+    setFormData({ nombre: l.nombre, rut: l.rut, estado: l.estado || 'ACTIVO' });
   };
 
-  const abrirHistorialLogs = async (maestro) => {
-    setSelectedMaestroForLog(maestro);
+  const abrirHistorialLogs = async (lab) => {
+    setSelectedLabForLog(lab);
     setShowLogModal(true);
     setLoadingLogs(true);
 
     try {
+      // Consulta a la subcolección interna: laboratorio_empresas/{lab.id}/logs
       const q = query(
-        collection(db, COL_BASE, maestro.id, "logs"),
+        collection(db, COL_BASE, lab.id, "logs"),
         orderBy("fecha", "desc")
       );
       const snapshot = await getDocs(q);
@@ -196,23 +198,23 @@ const EmpresasMaestros = () => {
     }
   };
 
-  const maestrosFiltrados = maestros.filter(m =>
-    m.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (m.rut && m.rut.toLowerCase().includes(busqueda.toLowerCase()))
+  const laboratoriosFiltrados = laboratorios.filter(l =>
+    l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (l.rut && l.rut.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
       <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 px-3 py-2 flex items-center gap-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
-        <Wrench size={14} className="text-[#2383C2]" /> {editingId ? "EDITAR MAESTRO" : "REGISTRO DE MAESTROS"}
+        <Microscope size={14} className="text-[#2383C2]" /> {editingId ? "EDITAR LABORATORIO" : "REGISTRO DE LABORATORIOS"}
       </h2>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
         <form onSubmit={handleGuardar} className="px-3 py-2 flex flex-wrap items-end gap-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
           {hasPermission(PATH_VISTA, "formulario_registro", "input_nombre") && (
             <div className="w-[240px]">
-              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Maestro</label>
-              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Maestro Juan Pérez" />
+              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Laboratorio</label>
+              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Laboratorio Central" />
             </div>
           )}
 
@@ -274,35 +276,35 @@ const EmpresasMaestros = () => {
               </tr>
             </thead>
             <tbody>
-              {maestrosFiltrados.map((m, index) => (
-                <tr key={m.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+              {laboratoriosFiltrados.map((l, index) => (
+                <tr key={l.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{m.nombre}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{m.rut}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{l.nombre}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{l.rut}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && (
                     <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${m.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
-                        {m.estado || 'ACTIVO'}
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${l.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
+                        {l.estado || 'ACTIVO'}
                       </span>
                     </td>
                   )}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{m.registradoPor || 'N/A'}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(m.fechaRegistro)}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{l.registradoPor || 'N/A'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(l.fechaRegistro)}</td>}
 
                   <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center">
                     <div className="flex justify-center gap-2">
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_log") && (
-                        <button onClick={() => abrirHistorialLogs(m)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
+                        <button onClick={() => abrirHistorialLogs(l)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
                           <History size={13} />
                         </button>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_editar") && (
-                        <button onClick={() => iniciarEdicion(m)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
+                        <button onClick={() => iniciarEdicion(l)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
                           <Pencil size={13} />
                         </button>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_eliminar") && (
-                        <button onClick={() => handleDelete(m.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
+                        <button onClick={() => handleDelete(l.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
                           <Trash2 size={13} />
                         </button>
                       )}
@@ -339,7 +341,7 @@ const EmpresasMaestros = () => {
                 Historial de Cambios
               </h3>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                {selectedMaestroForLog?.nombre}
+                {selectedLabForLog?.nombre}
               </p>
             </div>
           </div>
@@ -367,7 +369,7 @@ const EmpresasMaestros = () => {
             <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-center px-4">
               <History size={32} className="mb-2 opacity-30" />
               <p className="text-[11px] font-medium">Sin registros</p>
-              <p className="text-[10px]">No hay actividad documentada para este maestro.</p>
+              <p className="text-[10px]">No hay actividad documentada para este laboratorio.</p>
             </div>
           ) : (
             logsList.map((log) => (
@@ -458,4 +460,4 @@ const EmpresasMaestros = () => {
   );
 };
 
-export default EmpresasMaestros;
+export default EmpresasLaboratorios;

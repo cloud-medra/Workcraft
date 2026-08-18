@@ -1,4 +1,4 @@
-// src/components/facturas/CodigoHemodinamia.jsx
+// src/components/facturas/CodigoLaboratorio.jsx
 import React, { useState, useEffect } from 'react';
 import {
   collection,
@@ -13,18 +13,18 @@ import {
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
+import { db } from '../../../../../firebaseConfig';
 import { Package, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { useToast } from '../../../context/ToastContext';
-import { useModal } from '../../../context/ModalContext';
-import { useUser } from '../../../context/UserContext';
-import { useGranularPermission } from '../../../hooks/useGranularPermission';
-import Spinner from '../../ui/Spinner';
-import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CodigoHemodinamiaDrawers';
+import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import { useUser } from '../../../../../context/UserContext';
+import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
+import Spinner from '../../../../ui/Spinner';
+import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CodigoLaboratorioDrawers';
 
-const CodigoHemodinamia = () => {
+const CodigoLaboratorio = () => {
   const [codigos, setCodigos] = useState([]);
   const [formData, setFormData] = useState({ referencia: '', codigo: '', precio: '', descripcion: '' });
   const [busqueda, setBusqueda] = useState('');
@@ -45,8 +45,8 @@ const CodigoHemodinamia = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/hemodinamia/codigoHemodinamia";
-  const COL_BASE = "hemodinamia_codigos";
+  const PATH_VISTA = "/laboratorio/codigoLaboratorio";
+  const COL_BASE = "laboratorio_codigos";
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("referencia", "asc"));
@@ -172,6 +172,7 @@ const CodigoHemodinamia = () => {
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
+          // Opcionalmente se registra el log en la subcolección antes de borrar el documento padre
           await registrarLog(id, 'ELIMINACION', {
             referencia: codigoAEliminar?.referencia || '',
             codigo: codigoAEliminar?.codigo || '',
@@ -194,6 +195,7 @@ const CodigoHemodinamia = () => {
     setLoadingLogs(true);
 
     try {
+      // Consulta directa a la subcolección interna: laboratorio_codigos/{item.id}/logs
       const q = query(
         collection(db, COL_BASE, item.id, "logs"),
         orderBy("fecha", "desc")
@@ -226,14 +228,14 @@ const CodigoHemodinamia = () => {
     const worksheet = XLSX.utils.json_to_sheet(dataExportar);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Codigos");
-    XLSX.writeFile(workbook, `codigos_hemodinamia_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(workbook, `codigos_laboratorio_${new Date().toISOString().slice(0,10)}.xlsx`);
 
     showToast("Archivo exportado correctamente", "success");
   };
 
   const handleDescargarPlantilla = () => {
     const headers = ["REFERENCIA", "CODIGO", "PRECIO", "DESCRIPCION"];
-    const ejemplo = ["REF001", "HEMO-101", "15000", "DESCRIPCION DE EJEMPLO"];
+    const ejemplo = ["REF001", "LAB-101", "15000", "DESCRIPCION DE EJEMPLO"];
 
     const csvContent = "\uFEFF" + [headers.join(";"), ejemplo.join(";")].join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -241,7 +243,7 @@ const CodigoHemodinamia = () => {
 
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "plantilla_importacion_codigos_hemodinamia.csv");
+    link.setAttribute("download", "plantilla_importacion_codigos.csv");
     document.body.appendChild(link);
     link.click();
 
@@ -361,6 +363,7 @@ const CodigoHemodinamia = () => {
       const batch = writeBatch(db);
 
       for (const item of chunk) {
+        // Referencia del documento padre generado automáticamente
         const codigoRef = doc(collection(db, COL_BASE));
         batch.set(codigoRef, {
           referencia: item.referencia,
@@ -371,6 +374,7 @@ const CodigoHemodinamia = () => {
           fechaRegistro: new Date()
         });
 
+        // Referencia al log como subcolección interna: laboratorio_codigos/{codigoRef.id}/logs/{logId}
         const logRef = doc(collection(db, COL_BASE, codigoRef.id, "logs"));
         batch.set(logRef, {
           accion: 'CREACION_MASIVA',
@@ -415,7 +419,7 @@ const CodigoHemodinamia = () => {
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
           <Package size={14} className="text-[#2383C2]" />
-          {editingId ? "EDITAR CÓDIGO" : "GESTIÓN DE CÓDIGOS DE HEMODINAMIA"}
+          {editingId ? "EDITAR CÓDIGO" : "GESTIÓN DE CÓDIGOS"}
         </h2>
 
         {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
@@ -563,4 +567,4 @@ const CodigoHemodinamia = () => {
   );
 };
 
-export default CodigoHemodinamia;
+export default CodigoLaboratorio;

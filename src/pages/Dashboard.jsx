@@ -15,35 +15,37 @@ import { MODULES } from '../config/modulesConfig.jsx';
 
 // DASHBOARD
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
-
-// USUARIOS
-import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
-import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
-
-// LABORATORIO
-import EmpresasLaboratorio from '../components/modulos/laboratorio/EmpresasLaboratorio';
-import CodigoLaboratorio from '../components/modulos/laboratorio/CodigoLaboratorio';
-import OrdenLaboratorio from '../components/modulos/laboratorio/OrdenLaboratorio';
-import XmlDocLaboratorio from '../components/modulos/laboratorio/XmlDocLaboratorio';
-import ArchivosControl from '../components/modulos/laboratorio/procesosDocumentos/ArchivosControl';
-
-// MAESTROS
-import EmpresasMaestros from '../components/modulos/maestros/EmpresasMaestros';
-import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
-
 // ADMINISTRACIÓN
 import ControlMensual from '../components/modulos/administracion/controlMensual/ControlMensual';
+// LABORATORIO
+import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
+import CodigoLaboratorio from '../components/modulos/gestiones/laboratorio/registros/CodigoLaboratorio';
+import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/OrdenLaboratorio';
+import XmlDocLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/XmlDocLaboratorio';
+import ArchivosControl from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControl';
+
+
+
+
+
+// USUARIOS
+//import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
+//import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
+
+// MAESTROS
+//import EmpresasMaestros from '../components/modulos/maestros/EmpresasMaestros';
+//import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
 
 // MIS TURNOS
-import MisTurnos from '../components/modulos/misturnos/MisTurnos';
+//import MisTurnos from '../components/modulos/misturnos/MisTurnos';
 
 // AJUSTES & PERFIL
-import Perfil from '../components/modulos/perfil/Perfil';
-import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
+//import Perfil from '../components/modulos/perfil/Perfil';
+//import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
 
 // LEGALES
-import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
-import TerminosServicio from '../components/modulos/legales/TerminosServicio';
+//import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
+//import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 
 
 
@@ -166,34 +168,38 @@ const Dashboard = () => {
     // DASHBOARD
     'dashboard': <ResumenGeneral userData={userData} />,
 
-    // USUARIOS
-    '/usuarios/crear': <CrearUsuario />,
-    '/usuarios/listado': <ListadoUsuarios />,
+    // ADMINISTRACIÓN
+    '/administracion/controlMensual': <ControlMensual />,
 
     // LABORATORIO
-    '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
+    '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />, 
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
     '/laboratorio/xmlDocLaboratorio': <XmlDocLaboratorio />,
     '/laboratorio/archivosControl': <ArchivosControl />,
 
-    // MAESTROS
-    '/maestros/empresasMaestros': <EmpresasMaestros />,
-    '/maestros/prestadoresMaestros': <PrestadoresMaestros />,
 
-    // ADMINISTRACIÓN
-    '/administracion/controlMensual': <ControlMensual />,
+
+
+
+    // USUARIOS
+    //'/usuarios/crear': <CrearUsuario />,
+    //'/usuarios/listado': <ListadoUsuarios />,
+
+    // MAESTROS
+    //'/maestros/empresasMaestros': <EmpresasMaestros />,
+    //'/maestros/prestadoresMaestros': <PrestadoresMaestros />,
 
     // MIS TURNOS
-    '/misturnos/ver': <MisTurnos />,
+    //'/misturnos/ver': <MisTurnos />,
 
     // AJUSTES & PERFIL
-    'perfil': <Perfil userData={userData} />,
-    'password': <CambiarPasswordSeguro />,
+    //'perfil': <Perfil userData={userData} />,
+    //'password': <CambiarPasswordSeguro />,
 
     // LEGALES
-    'privacidad': <PoliticasPrivacidad />,
-    'terminos': <TerminosServicio />,
+    //'privacidad': <PoliticasPrivacidad />,
+    //'terminos': <TerminosServicio />,
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
+import { db } from '../../../../firebaseConfig';
 import { Trash2, User, AtSign, Loader2, Search } from 'lucide-react';
-import { useToast } from '../../../context/ToastContext';
-import { useModal } from '../../../context/ModalContext';
+import { useToast } from '../../../../context/ToastContext';
+import { useModal } from '../../../../context/ModalContext';
 
 const ListadoUsuarios = () => {
   const [usuarios, setUsuarios] = useState([]);

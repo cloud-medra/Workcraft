@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { auth } from '../../../firebaseConfig';
+import { auth } from '../../../../firebaseConfig';
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
 import { CheckCircle2, XCircle, ShieldCheck, Lock } from 'lucide-react';
 

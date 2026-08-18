@@ -23,33 +23,6 @@ export const MODULES = {
     icon: <LayoutDashboard size={18} />,
     path: '/dashboard'
   },
-  usuarios: {
-    label: 'Usuarios',
-    icon: <Users size={18} />,
-    subItems: [
-      { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
-      { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
-    ]
-  },
-  laboratorio: {
-    label: 'Laboratorio',
-    icon: <Microscope size={18} />,
-    subItems: [
-      { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> },
-      { label: 'Maestro Códigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
-      { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> },
-      { label: 'Xml Documentos', path: '/laboratorio/xmlDocLaboratorio', icon: <FileCode size={14} /> },
-      { label: 'Control Procesos', path: '/laboratorio/archivosControl', icon: <FileSpreadsheet size={14} /> },
-    ]
-  },
-  maestros: {
-    label: 'Maestro',
-    icon: <Database size={18} />,
-    subItems: [
-      { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
-      { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
-    ]
-  },
 
   administracion: {
     label: 'Administración',
@@ -62,6 +35,40 @@ export const MODULES = {
       }
     ]
   },
+  laboratorio: {
+    label: 'Laboratorio',
+    icon: <Microscope size={18} />,
+    subItems: [
+      { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> }, 
+      { label: 'Maestro Códigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
+      { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> },
+      { label: 'Xml Documentos', path: '/laboratorio/xmlDocLaboratorio', icon: <FileCode size={14} /> },
+      { label: 'Control Procesos', path: '/laboratorio/archivosControl', icon: <FileSpreadsheet size={14} /> },
+    ]
+  },
+
+
+
+/*
+  usuarios: {
+    label: 'Usuarios',
+    icon: <Users size={18} />,
+    subItems: [
+      { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
+      { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
+    ]
+  },
+  
+  maestros: {
+    label: 'Maestro',
+    icon: <Database size={18} />,
+    subItems: [
+      { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
+      { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
+    ]
+  },
+
+  
 
   misturnos: {
     label: 'Mis Turnos',
@@ -74,4 +81,6 @@ export const MODULES = {
       }
     ]
   }
+
+    */
 };
