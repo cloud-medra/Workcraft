@@ -9,10 +9,12 @@ import {
   BadgeInfo,
   Calendar,
   CalendarDays,
+  CalendarCheck,
   ClipboardList,
+  Settings2,
   FileCode,
   FileSpreadsheet,
-  Database 
+  Database
 } from "lucide-react";
 
 export const MODULES = {
@@ -42,10 +44,22 @@ export const MODULES = {
   },
   maestros: {
     label: 'Maestro',
-    icon: <Database size={18} />, 
+    icon: <Database size={18} />,
     subItems: [
       { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
       { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
+    ]
+  },
+
+  administracion: {
+    label: 'Administración',
+    icon: <Settings2 size={16} />,
+    subItems: [
+      {
+        label: 'Control Mensual',
+        path: '/administracion/controlMensual',
+        icon: <CalendarCheck size={14} />
+      }
     ]
   },
 

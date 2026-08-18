@@ -31,6 +31,9 @@ import ArchivosControl from '../components/modulos/laboratorio/procesosDocumento
 import EmpresasMaestros from '../components/modulos/maestros/EmpresasMaestros';
 import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
 
+// ADMINISTRACIÓN
+import ControlMensual from '../components/modulos/administracion/controlMensual/ControlMensual';
+
 // MIS TURNOS
 import MisTurnos from '../components/modulos/misturnos/MisTurnos';
 
@@ -177,6 +180,9 @@ const Dashboard = () => {
     // MAESTROS
     '/maestros/empresasMaestros': <EmpresasMaestros />,
     '/maestros/prestadoresMaestros': <PrestadoresMaestros />,
+
+    // ADMINISTRACIÓN
+    '/administracion/controlMensual': <ControlMensual />,
 
     // MIS TURNOS
     '/misturnos/ver': <MisTurnos />,

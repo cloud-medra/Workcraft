@@ -30,9 +30,9 @@ const ACCION_LABELS = {
 export const LogDrawer = ({
   show,
   onClose,
-  selectedCodigo,
-  logsList,
-  loadingLogs,
+  selectedCodigoHemodinamia,
+  logsHemodinamiaList,
+  loadingLogsHemodinamia,
   formatearFecha
 }) => {
   return (
@@ -46,14 +46,14 @@ export const LogDrawer = ({
           <History size={15} className="text-[#2383C2] shrink-0" />
           <div className="truncate">
             <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 truncate">
-              Historial de Cambios
+              Historial de Cambios - Hemodinamia
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
               Ref:{' '}
               <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {selectedCodigo?.referencia}
+                {selectedCodigoHemodinamia?.referencia}
               </span>{' '}
-              ({selectedCodigo?.codigo})
+              ({selectedCodigoHemodinamia?.codigo})
             </p>
           </div>
         </div>
@@ -66,19 +66,19 @@ export const LogDrawer = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-        {loadingLogs ? (
+        {loadingLogsHemodinamia ? (
           <div className="flex flex-col items-center justify-center h-48 gap-2">
             <Spinner size="sm" color="#2383C2" />
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Cargando historial...
+              Cargando historial de hemodinamia...
             </p>
           </div>
-        ) : logsList.length === 0 ? (
+        ) : logsHemodinamiaList.length === 0 ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
-            No hay registros de auditoría para este código.
+            No hay registros de auditoría para este código de hemodinamia.
           </div>
         ) : (
-          logsList.map((log) => (
+          logsHemodinamiaList.map((log) => (
             <div
               key={log.id}
               className="p-2.5 border border-gray-200 dark:border-gray-700/80 rounded-md bg-gray-50/60 dark:bg-gray-900/40 text-[10px] space-y-1.5 shadow-sm"
@@ -162,7 +162,7 @@ export const LogDrawer = ({
 
                 {log.accion === 'ELIMINACION' && (
                   <p className="text-red-500 font-medium">
-                    Registro eliminado ({log.detalles?.referencia} -{' '}
+                    Insumo de hemodinamia eliminado ({log.detalles?.referencia} -{' '}
                     {log.detalles?.codigo})
                   </p>
                 )}
@@ -173,7 +173,7 @@ export const LogDrawer = ({
       </div>
 
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900 shrink-0 text-[10px] text-gray-500">
-        <span>{logsList.length} registros</span>
+        <span>{logsHemodinamiaList.length} registros</span>
         <button
           onClick={onClose}
           className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded font-bold transition"
@@ -188,13 +188,13 @@ export const LogDrawer = ({
 export const ConfigDrawer = ({
   show,
   onClose,
-  totalCodigos,
-  onExportar,
-  onDescargarPlantilla,
+  totalCodigosHemodinamia,
+  onExportarHemodinamia,
+  onDescargarPlantillaHemodinamia,
   importFile,
   onSelectFile,
   importing,
-  onEjecutarImportacion
+  onEjecutarImportacionHemodinamia
 }) => {
   return (
     <div
@@ -207,10 +207,10 @@ export const ConfigDrawer = ({
           <Settings size={16} className="text-[#2383C2]" />
           <div>
             <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100">
-              Configuración de Códigos
+              Configuración de Hemodinamia
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Herramientas de importación y exportación
+              Herramientas de importación y exportación de insumos
             </p>
           </div>
         </div>
@@ -226,37 +226,37 @@ export const ConfigDrawer = ({
         <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2">
           <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
             <Download size={14} className="text-emerald-600 dark:text-emerald-400" />
-            <span>Exportar Códigos</span>
+            <span>Exportar Códigos Hemodinamia</span>
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Descarga la lista actual de códigos registrados ({totalCodigos}{' '}
+            Descarga la lista actual de códigos de hemodinamia ({totalCodigosHemodinamia}{' '}
             registros) en un archivo compatible con Excel (CSV/XLSX).
           </p>
           <button
-            onClick={onExportar}
+            onClick={onExportarHemodinamia}
             className="w-full h-8 mt-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded text-[11px] flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
           >
             <FileSpreadsheet size={14} />
-            <span>Exportar a Excel / CSV</span>
+            <span>Exportar Hemodinamia a Excel / CSV</span>
           </button>
         </div>
 
         <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2.5">
           <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
             <Upload size={14} className="text-[#2383C2]" />
-            <span>Importación Masiva</span>
+            <span>Importación Masiva Hemodinamia</span>
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Carga masivamente nuevos códigos seleccionando un archivo
+            Carga masivamente nuevos códigos de hemodinamia seleccionando un archivo
             formateado en Excel o CSV.
           </p>
           <button
-            onClick={onDescargarPlantilla}
+            onClick={onDescargarPlantillaHemodinamia}
             type="button"
             className="w-full h-7 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 font-semibold rounded text-[10px] flex items-center justify-center gap-1.5 border border-gray-300 dark:border-gray-600 transition cursor-pointer"
           >
             <FileDown size={13} className="text-[#2383C2]" />
-            <span>Descargar Plantilla CSV</span>
+            <span>Descargar Plantilla Hemodinamia (.CSV)</span>
           </button>
 
           <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center bg-white dark:bg-gray-900 hover:border-[#2383C2] transition-colors cursor-pointer relative">
@@ -273,19 +273,19 @@ export const ConfigDrawer = ({
             <span className="block text-[10px] font-semibold text-gray-600 dark:text-gray-300 truncate">
               {importFile
                 ? importFile.name
-                : 'Haz clic para seleccionar archivo (.xlsx, .csv)'}
+                : 'Haz clic para seleccionar archivo de hemodinamia (.xlsx, .csv)'}
             </span>
           </div>
 
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
-            <strong>Formato de columnas requerido:</strong>
+            <strong>Formato de columnas requerido (Hemodinamia):</strong>
             <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400">
               REFERENCIA | CODIGO | PRECIO | DESCRIPCION
             </div>
           </div>
 
           <button
-            onClick={onEjecutarImportacion}
+            onClick={onEjecutarImportacionHemodinamia}
             disabled={!importFile || importing}
             className={`w-full h-8 font-bold rounded text-[11px] flex items-center justify-center gap-1.5 transition ${
               !importFile || importing
@@ -294,7 +294,7 @@ export const ConfigDrawer = ({
             }`}
           >
             {importing ? <Spinner size="sm" color="#ffffff" /> : <Upload size={14} />}
-            <span>{importing ? 'Procesando...' : 'Cargar Registro'}</span>
+            <span>{importing ? 'Procesando...' : 'Cargar Registros Hemodinamia'}</span>
           </button>
         </div>
       </div>
