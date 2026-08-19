@@ -1,4 +1,4 @@
-// src/components/modulos/gestiones/laboratorio/procesos/fases/documentoImputados/DocumentosImputados.jsx
+// src/components/modulos/gestiones/laboratorio/procesos/fases/documentosImputados/DocumentosImputados.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
@@ -7,8 +7,8 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 
-import VizualizadorDetallesImputados from './VizualizadorDetallesImputados'; 
-import EditarDocumentoImputado from './EditarDocumentoImputado';
+import DetalleDocumentoModal from '../../../vizualizador/XmlDetallesDoc';
+import EditorDocumentos from '../documentosRecibidos/EditorDocumentos';
 import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
 
 const DocumentosImputados = () => {
@@ -308,14 +308,14 @@ const DocumentosImputados = () => {
       )}
 
       {documentoSeleccionado && (
-        <VizualizadorDetallesImputados
+        <DetalleDocumentoModal
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />
       )}
 
       {documentoParaConfigurar && (
-        <EditarDocumentoImputado
+        <EditorDocumentos
           documento={documentoParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}

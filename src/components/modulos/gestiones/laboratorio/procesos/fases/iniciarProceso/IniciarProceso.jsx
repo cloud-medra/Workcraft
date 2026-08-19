@@ -1,6 +1,6 @@
 // src/components/documentos/IniciarProceso.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, onSnapshot, query, where } from 'firebase/firestore';
 import { db, auth } from '../../../../../../../firebaseConfig';
 import { FileText, Search, PlayCircle, CheckSquare, Square, X, Play, AlertTriangle } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
@@ -20,7 +20,15 @@ const IniciarProceso = () => {
   const [showModalIniciar, setShowModalIniciar] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
-  const [periodoAbierto, setPeriodoAbierto] = useState({ mes: '', anio: '', cargando: true });
+  // Módulo al que pertenece esta vista. Debe coincidir con el "id" usado
+  // en MODULOS (constants.js) del módulo de Control Mensual.
+  const MODULO_ID = 'laboratorio';
+
+  // periodoAbierto ahora se deriva directamente de la colección cierres_periodos,
+  // consultando el documento cuyo estado sea ABIERTO o REABIERTO para este módulo.
+  // Esto evita depender de un doc "caché" (configuracion_periodos/periodo_activo_*)
+  // que podía quedar desincronizado al cerrar/reabrir períodos.
+  const [periodoAbierto, setPeriodoAbierto] = useState({ mes: '', anio: '', estado: '', cargando: true });
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -29,6 +37,7 @@ const IniciarProceso = () => {
 
   const PATH_VISTA = "/laboratorio/archivosControl";
   const COL_BASE = "laboratorio_documentos";
+  const COL_CIERRES = "cierres_periodos";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '';
@@ -48,25 +57,38 @@ const IniciarProceso = () => {
     return `${mesNom} ${anio}`;
   };
 
+  // Escucha en tiempo real el período ABIERTO o REABIERTO para el módulo de laboratorio.
+  // Fuente de verdad única: cierres_periodos (la misma que usa ControlMensual.jsx).
   useEffect(() => {
-    const docRef = doc(db, "configuracion_periodos", "periodo_activo");
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setPeriodoAbierto({
-          mes: data.mes || '',
-          anio: data.anio || '',
-          cargando: false
-        });
-      } else {
-        setPeriodoAbierto({ mes: '', anio: '', cargando: false });
+    const q = query(
+      collection(db, COL_CIERRES),
+      where("modulo", "==", MODULO_ID),
+      where("estado", "in", ["ABIERTO", "REABIERTO"])
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        setPeriodoAbierto({ mes: '', anio: '', estado: '', cargando: false });
+        return;
       }
+
+      // En teoría solo debería existir un período ABIERTO/REABIERTO por módulo a la vez
+      // (handleAbrirMes se encarga de cerrar los anteriores). Tomamos el primero.
+      const data = snapshot.docs[0].data();
+      setPeriodoAbierto({
+        mes: data.mes || '',
+        anio: data.anio || '',
+        estado: data.estado || '',
+        cargando: false
+      });
     }, (error) => {
       console.error("Error al obtener el período abierto:", error);
-      setPeriodoAbierto({ mes: '', anio: '', cargando: false });
+      showToast("Error al verificar el período de imputación abierto", "error");
+      setPeriodoAbierto({ mes: '', anio: '', estado: '', cargando: false });
     });
 
     return () => unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -153,7 +175,7 @@ const IniciarProceso = () => {
     if (seleccionadas.length === 0) return;
 
     if (!hayPeriodoActivo) {
-      showToast("No hay ningún período de imputación abierto actualmente", "error");
+      showToast("No hay ningún período de imputación abierto para Laboratorio actualmente", "error");
       return;
     }
 
@@ -162,7 +184,7 @@ const IniciarProceso = () => {
 
   const handleConfirmarInicioProceso = async () => {
     if (!hayPeriodoActivo) {
-      showToast("No hay ningún período de imputación abierto actualmente", "error");
+      showToast("No hay ningún período de imputación abierto para Laboratorio actualmente", "error");
       return;
     }
 
@@ -298,7 +320,7 @@ const IniciarProceso = () => {
         ) : (
           <span className="h-6 px-2.5 flex items-center gap-1.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400 animate-fade-in">
             <AlertTriangle size={12} />
-            No hay período de imputación abierto
+            No hay período de imputación abierto para Laboratorio
           </span>
         )}
       </div>

@@ -24,7 +24,12 @@ import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/import
 import XmlDocLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/XmlDocLaboratorio';
 import ArchivosControl from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControl';
 
+// AJUSTES & PERFIL
+import Perfil from '../components/modulos/general/perfil/Perfil';
 
+// LEGALES
+import PoliticasPrivacidad from '../components/modulos/general/legales/PoliticasPrivacidad';
+import TerminosServicio from '../components/modulos/general/legales/TerminosServicio';
 
 
 
@@ -40,12 +45,8 @@ import ArchivosControl from '../components/modulos/gestiones/laboratorio/proceso
 //import MisTurnos from '../components/modulos/misturnos/MisTurnos';
 
 // AJUSTES & PERFIL
-//import Perfil from '../components/modulos/perfil/Perfil';
 //import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
 
-// LEGALES
-//import PoliticasPrivacidad from '../components/modulos/legales/PoliticasPrivacidad';
-//import TerminosServicio from '../components/modulos/legales/TerminosServicio';
 
 
 
@@ -179,7 +180,11 @@ const Dashboard = () => {
     '/laboratorio/archivosControl': <ArchivosControl />,
 
 
-
+    // AJUSTES & PERFIL
+    'perfil': <Perfil userData={userData} />,
+    // LEGALES
+    'privacidad': <PoliticasPrivacidad />,
+    'terminos': <TerminosServicio />,
 
 
     // USUARIOS
@@ -194,12 +199,9 @@ const Dashboard = () => {
     //'/misturnos/ver': <MisTurnos />,
 
     // AJUSTES & PERFIL
-    //'perfil': <Perfil userData={userData} />,
     //'password': <CambiarPasswordSeguro />,
 
-    // LEGALES
-    //'privacidad': <PoliticasPrivacidad />,
-    //'terminos': <TerminosServicio />,
+
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
