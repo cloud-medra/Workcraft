@@ -1,37 +1,56 @@
-// src/components/facturas/EmpresasLaboratorios.jsx
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../../firebaseConfig';
-import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History } from 'lucide-react';
-import { useToast } from '../../../context/ToastContext';
-import { useModal } from '../../../context/ModalContext';
-import { useUser } from '../../../context/UserContext';
-import { useGranularPermission } from '../../../hooks/useGranularPermission';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  getDocs,
+  writeBatch,
+  serverTimestamp
+} from 'firebase/firestore';
+import { db } from '../../../../firebaseConfig';
+import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+import { useToast } from '../../../../context/ToastContext';
+import { useModal } from '../../../../context/ModalContext';
+import { useUser } from '../../../../context/UserContext';
+import { useGranularPermission } from '../../../../hooks/useGranularPermission';
+import Spinner from '../../../ui/Spinner';
+import { DrawersOverlay, LogDrawer, ConfigDrawer } from './EmpresasMaestrosDrawers';
 
-const EmpresasLaboratorios = () => {
-  const [laboratorios, setLaboratorios] = useState([]);
+const EmpresasMaestros = () => {
+  const [maestros, setMaestros] = useState([]);
   const [formData, setFormData] = useState({ nombre: '', rut: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [cargando, setCargando] = useState(false);
 
-  // Estados para el Drawer Lateral de Historial / Logs
-  const [showLogModal, setShowLogModal] = useState(false);
+  const [showLogDrawer, setShowLogDrawer] = useState(false);
   const [selectedLabForLog, setSelectedLabForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const [showConfigDrawer, setShowConfigDrawer] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/empresas";
-  const COL_BASE = "laboratorio_empresas";
+  const PATH_VISTA = "/maestros/empresas";
+  const COL_BASE = "maestros_empresas";
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLaboratorios(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setMaestros(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
@@ -48,19 +67,18 @@ const EmpresasLaboratorios = () => {
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
     const date = fecha.toDate ? fecha.toDate() : new Date(fecha);
-    return date.toLocaleString('es-ES', { 
-      day: '2-digit', 
-      month: '2-digit', 
+    return date.toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
   };
 
-  // Helper para auditoría usando subcolección interna
-  const registrarLog = async (laboratorioId, accion, detalles) => {
+  const registrarLog = async (maestroId, accion, detalles) => {
     try {
-      const logsSubcollectionRef = collection(db, COL_BASE, laboratorioId, "logs");
+      const logsSubcollectionRef = collection(db, COL_BASE, maestroId, "logs");
       await addDoc(logsSubcollectionRef, {
         accion,
         detalles,
@@ -83,26 +101,25 @@ const EmpresasLaboratorios = () => {
     const rutFormateado = formatearRut(formData.rut);
     const nombreTrimmed = formData.nombre.trim().toLowerCase();
 
-    // 1. Validar RUT duplicado (excluyendo el registro actual si se está editando)
-    const existeRut = laboratorios.some(l => 
+    const existeRut = maestros.some(l =>
       l.rut === rutFormateado && l.id !== editingId
     );
     if (existeRut) {
-      return showToast("Ya existe un laboratorio registrado con este RUT", "error");
+      return showToast("Ya existe un maestro registrado con este RUT", "error");
     }
 
-    // 2. Validar Nombre duplicado (excluyendo el registro actual si se está editando)
-    const existeNombre = laboratorios.some(l => 
+    const existeNombre = maestros.some(l =>
       l.nombre.trim().toLowerCase() === nombreTrimmed && l.id !== editingId
     );
     if (existeNombre) {
-      return showToast("Ya existe un laboratorio registrado con este Nombre", "error");
+      return showToast("Ya existe un maestro registrado con este Nombre", "error");
     }
 
+    setCargando(true);
     try {
       if (editingId) {
-        const labExistente = laboratorios.find(l => l.id === editingId);
-        
+        const labExistente = maestros.find(l => l.id === editingId);
+
         const dataAEnviar = {
           ...formData,
           rut: rutFormateado,
@@ -121,7 +138,7 @@ const EmpresasLaboratorios = () => {
           estadoNuevo: formData.estado
         });
 
-        showToast("Laboratorio actualizado correctamente", "success");
+        showToast("Maestro actualizado correctamente", "success");
       } else {
         const dataAEnviar = {
           ...formData,
@@ -138,24 +155,25 @@ const EmpresasLaboratorios = () => {
           estado: formData.estado
         });
 
-        showToast("Laboratorio registrado correctamente", "success");
+        showToast("Maestro registrado correctamente", "success");
       }
       setFormData({ nombre: '', rut: '', estado: 'ACTIVO' });
       setEditingId(null);
     } catch (error) {
       showToast("Error al guardar: " + error.message, "error");
+    } finally {
+      setCargando(false);
     }
   };
 
   const handleDelete = (id) => {
-    const labAEliminar = laboratorios.find(l => l.id === id);
+    const labAEliminar = maestros.find(l => l.id === id);
 
     confirmAction(
-      "Eliminar Laboratorio",
+      "Eliminar Maestro",
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
-          // Nota: Opcionalmente puedes registrar el log antes de borrar el documento padre
           await registrarLog(id, 'ELIMINACION', {
             nombre: labAEliminar?.nombre || '',
             rut: labAEliminar?.rut || ''
@@ -163,7 +181,7 @@ const EmpresasLaboratorios = () => {
 
           await deleteDoc(doc(db, COL_BASE, id));
 
-          showToast("Laboratorio eliminado correctamente", "info");
+          showToast("Maestro eliminado correctamente", "info");
         } catch (error) {
           showToast("Error al eliminar", "error");
         }
@@ -176,13 +194,17 @@ const EmpresasLaboratorios = () => {
     setFormData({ nombre: l.nombre, rut: l.rut, estado: l.estado || 'ACTIVO' });
   };
 
+  const cancelarEdicion = () => {
+    setEditingId(null);
+    setFormData({ nombre: '', rut: '', estado: 'ACTIVO' });
+  };
+
   const abrirHistorialLogs = async (lab) => {
     setSelectedLabForLog(lab);
-    setShowLogModal(true);
+    setShowLogDrawer(true);
     setLoadingLogs(true);
 
     try {
-      // Consulta a la subcolección interna: laboratorio_empresas/{lab.id}/logs
       const q = query(
         collection(db, COL_BASE, lab.id, "logs"),
         orderBy("fecha", "desc")
@@ -193,28 +215,258 @@ const EmpresasLaboratorios = () => {
     } catch (error) {
       console.error("Error cargando logs:", error);
       showToast("Error al cargar el historial", "error");
-    } finally { 
+    } finally {
       setLoadingLogs(false);
     }
   };
 
-  const laboratoriosFiltrados = laboratorios.filter(l =>
+  const handleAbrirConfiguracion = () => { setShowConfigDrawer(true); };
+
+  const handleExportarDatos = () => {
+    if (maestros.length === 0) {
+      return showToast("No hay datos para exportar", "error");
+    }
+
+    const dataExportar = maestros.map(l => ({
+      NOMBRE: l.nombre || '',
+      RUT: l.rut || '',
+      ESTADO: l.estado || 'ACTIVO'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataExportar);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Maestros");
+    XLSX.writeFile(workbook, `empresas_maestros_${new Date().toISOString().slice(0,10)}.xlsx`);
+
+    showToast("Archivo exportado correctamente", "success");
+  };
+
+  const handleDescargarPlantilla = () => {
+    const headers = ["NOMBRE", "RUT", "ESTADO"];
+    const ejemplo = ["Maestro Central", "12345678-9", "ACTIVO"];
+
+    const csvContent = "\uFEFF" + [headers.join(";"), ejemplo.join(";")].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "plantilla_importacion_maestros.csv");
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast("Plantilla descargada correctamente", "success");
+  };
+
+  const handleEjecutarImportacion = async () => {
+    if (!importFile) {
+      return showToast("Por favor selecciona un archivo para importar", "error");
+    }
+
+    setImporting(true);
+    const fileName = importFile.name.toLowerCase();
+
+    try {
+      let registros = [];
+
+      if (fileName.endsWith('.csv')) {
+        registros = await parsearCSV(importFile);
+      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+        registros = await parsearExcel(importFile);
+      } else {
+        throw new Error("Formato de archivo no soportado. Usa .csv o .xlsx");
+      }
+
+      if (registros.length === 0) {
+        throw new Error("El archivo no contiene registros válidos para importar");
+      }
+
+      const registrosNuevos = filtrarDuplicados(registros);
+
+      if (registrosNuevos.length === 0) {
+        throw new Error("Todos los registros del archivo ya existen (RUT o Nombre duplicado)");
+      }
+
+      await guardarRegistrosMasivos(registrosNuevos);
+
+      const omitidos = registros.length - registrosNuevos.length;
+      const mensaje = omitidos > 0
+        ? `Se importaron ${registrosNuevos.length} registros con éxito (${omitidos} omitidos por duplicado)`
+        : `Se importaron ${registrosNuevos.length} registros con éxito`;
+
+      showToast(mensaje, "success");
+      setImportFile(null);
+      setShowConfigDrawer(false);
+    } catch (error) {
+      console.error("Error durante la importación:", error);
+      showToast("Error al importar: " + error.message, "error");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const parsearCSV = (file) => {
+    return new Promise((resolve, reject) => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: false,
+        complete: (results) => {
+          const procesados = normalizarYValidarDatos(results.data);
+          resolve(procesados);
+        },
+        error: (err) => reject(err)
+      });
+    });
+  };
+
+  const parsearExcel = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.SheetNames[0];
+          const rawData = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet]);
+          const procesados = normalizarYValidarDatos(rawData);
+          resolve(procesados);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const normalizarYValidarDatos = (rows) => {
+    const mapeados = [];
+
+    for (const row of rows) {
+      const keys = Object.keys(row);
+      const getVal = (colName) => {
+        const keyMatch = keys.find(k => k.trim().toUpperCase() === colName);
+        return keyMatch ? row[keyMatch] : null;
+      };
+
+      const nombre = String(getVal('NOMBRE') || '').trim();
+      const rutRaw = String(getVal('RUT') || '').trim();
+      const rut = rutRaw ? formatearRut(rutRaw) : '';
+      const estadoRaw = String(getVal('ESTADO') || '').trim().toUpperCase();
+      const estado = estadoRaw === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO';
+
+      if (nombre && rut) {
+        mapeados.push({ nombre, rut, estado });
+      }
+    }
+
+    return mapeados;
+  };
+
+  const filtrarDuplicados = (registros) => {
+    const rutsExistentes = new Set(maestros.map(l => l.rut));
+    const nombresExistentes = new Set(maestros.map(l => l.nombre.trim().toLowerCase()));
+    const rutsVistos = new Set();
+    const nombresVistos = new Set();
+    const resultado = [];
+
+    for (const item of registros) {
+      const nombreKey = item.nombre.trim().toLowerCase();
+      if (
+        rutsExistentes.has(item.rut) || nombresExistentes.has(nombreKey) ||
+        rutsVistos.has(item.rut) || nombresVistos.has(nombreKey)
+      ) {
+        continue;
+      }
+      rutsVistos.add(item.rut);
+      nombresVistos.add(nombreKey);
+      resultado.push(item);
+    }
+
+    return resultado;
+  };
+
+  const guardarRegistrosMasivos = async (registros) => {
+    const BATCH_SIZE = 250;
+    let index = 0;
+
+    while (index < registros.length) {
+      const chunk = registros.slice(index, index + BATCH_SIZE);
+      const batch = writeBatch(db);
+
+      for (const item of chunk) {
+        const labRef = doc(collection(db, COL_BASE));
+        batch.set(labRef, {
+          nombre: item.nombre,
+          rut: item.rut,
+          estado: item.estado,
+          registradoPor: userData?.nombreCompleto || 'Importación Masiva',
+          fechaRegistro: new Date()
+        });
+
+        const logRef = doc(collection(db, COL_BASE, labRef.id, "logs"));
+        batch.set(logRef, {
+          accion: 'CREACION_MASIVA',
+          detalles: {
+            nombre: item.nombre,
+            rut: item.rut,
+            estado: item.estado
+          },
+          usuario: userData?.nombreCompleto || 'Importación Masiva',
+          usuarioEmail: userData?.email || '',
+          fecha: new Date(),
+          timestamp: serverTimestamp()
+        });
+      }
+
+      await batch.commit();
+      index += BATCH_SIZE;
+    }
+  };
+
+  const maestrosFiltrados = maestros.filter(l =>
     l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (l.rut && l.rut.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
-      <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 px-3 py-2 flex items-center gap-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
-        <Microscope size={14} className="text-[#2383C2]" /> {editingId ? "EDITAR LABORATORIO" : "REGISTRO DE LABORATORIOS"}
-      </h2>
+      {cargando && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
+          <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-xl shadow-xl flex flex-col items-center gap-3">
+            <Spinner size="md" color="#2383C2" />
+            <h3 className="text-[#2383C2] font-bold text-[13px]">Procesando...</h3>
+          </div>
+        </div>
+      )}
+
+      <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
+        <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
+          <Microscope size={14} className="text-[#2383C2]" />
+          {editingId ? "EDITAR MAESTRO" : "REGISTRO DE MAESTROS"}
+        </h2>
+
+        {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+          <button
+            onClick={handleAbrirConfiguracion}
+            className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            title="Configuración de Maestros (Importar/Exportar)"
+          >
+            <Settings size={15} />
+          </button>
+        )}
+      </div>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
         <form onSubmit={handleGuardar} className="px-3 py-2 flex flex-wrap items-end gap-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
           {hasPermission(PATH_VISTA, "formulario_registro", "input_nombre") && (
             <div className="w-[240px]">
-              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Laboratorio</label>
-              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Laboratorio Central" />
+              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Maestro</label>
+              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Maestro Central" />
             </div>
           )}
 
@@ -243,7 +495,7 @@ const EmpresasLaboratorios = () => {
             )}
 
           {editingId && (
-            <button type="button" onClick={() => { setEditingId(null); setFormData({ nombre: '', rut: '', estado: 'ACTIVO' }) }} className="h-7 px-3 bg-gray-200 dark:bg-gray-700 rounded font-bold text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+            <button type="button" onClick={cancelarEdicion} className="h-7 px-3 bg-gray-200 dark:bg-gray-700 rounded font-bold text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
               <X size={13} /> Cancelar
             </button>
           )}
@@ -276,7 +528,7 @@ const EmpresasLaboratorios = () => {
               </tr>
             </thead>
             <tbody>
-              {laboratoriosFiltrados.map((l, index) => (
+              {maestrosFiltrados.map((l, index) => (
                 <tr key={l.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{l.nombre}</td>}
@@ -317,147 +569,36 @@ const EmpresasLaboratorios = () => {
         </div>
       )}
 
-      {/* Backdrop y Panel Lateral Derecha (Drawer) */}
-      <div 
-        className={`fixed inset-0 z-50 bg-black/30 backdrop-blur-[1px] transition-opacity duration-300 ${
-          showLogModal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setShowLogModal(false)}
+      <DrawersOverlay
+        show={showLogDrawer || showConfigDrawer}
+        onClick={() => {
+          setShowLogDrawer(false);
+          setShowConfigDrawer(false);
+        }}
       />
 
-      <aside 
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transition-transform duration-300 ease-in-out text-[11px] ${
-          showLogModal ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Cabecera Fija del Panel */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50/80 dark:bg-gray-900/80 shrink-0">
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="p-1.5 rounded-md bg-[#2383C2]/10 dark:bg-[#2383C2]/20 text-[#2383C2]">
-              <History size={16} />
-            </div>
-            <div className="truncate">
-              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100 truncate">
-                Historial de Cambios
-              </h3>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                {selectedLabForLog?.nombre}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full font-semibold">
-              {logsList.length} logs
-            </span>
-            <button 
-              onClick={() => setShowLogModal(false)} 
-              className="p-1 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
+      <LogDrawer
+        show={showLogDrawer}
+        onClose={() => setShowLogDrawer(false)}
+        selectedLab={selectedLabForLog}
+        logsList={logsList}
+        loadingLogs={loadingLogs}
+        formatearFecha={formatearFecha}
+      />
 
-        {/* Contenido con Scroll Vertical */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {loadingLogs ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-500 dark:text-gray-400">
-              <div className="w-6 h-6 border-2 border-[#2383C2] border-t-transparent rounded-full animate-spin mb-2" />
-              <p className="text-[10px]">Cargando historial...</p>
-            </div>
-          ) : logsList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-center px-4">
-              <History size={32} className="mb-2 opacity-30" />
-              <p className="text-[11px] font-medium">Sin registros</p>
-              <p className="text-[10px]">No hay actividad documentada para este laboratorio.</p>
-            </div>
-          ) : (
-            logsList.map((log) => (
-              <div key={log.id} className="p-3 border border-gray-200 dark:border-gray-700/80 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 text-[10px] space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                    log.accion === 'CREACION' ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400' :
-                    log.accion === 'EDICION' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400' :
-                    'bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-400'
-                  }`}>
-                    {log.accion}
-                  </span>
-                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
-                    {formatearFecha(log.fecha)}
-                  </span>
-                </div>
-
-                <p className="text-gray-700 dark:text-gray-300 font-semibold">
-                  Usuario: <span className="font-normal text-gray-600 dark:text-gray-400">{log.usuario}</span>
-                </p>
-
-                <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-200/80 dark:border-gray-700 text-[10px]">
-                  {log.accion === 'CREACION' && (
-                    <div className="space-y-1">
-                      <p><strong className="text-gray-500 dark:text-gray-400">Nombre:</strong> {log.detalles?.nombre}</p>
-                      <p><strong className="text-gray-500 dark:text-gray-400">RUT:</strong> {log.detalles?.rut}</p>
-                      <p><strong className="text-gray-500 dark:text-gray-400">Estado:</strong> {log.detalles?.estado}</p>
-                    </div>
-                  )}
-
-                  {log.accion === 'EDICION' && (
-                    <ul className="space-y-1">
-                      {log.detalles?.nombreAnterior !== log.detalles?.nombreNuevo && (
-                        <li className="flex flex-col gap-0.5">
-                          <span className="text-gray-400 text-[9px] font-bold">Nombre</span>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.nombreAnterior}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.nombreNuevo}</span>
-                          </div>
-                        </li>
-                      )}
-                      {log.detalles?.rutAnterior !== log.detalles?.rutNuevo && (
-                        <li className="flex flex-col gap-0.5">
-                          <span className="text-gray-400 text-[9px] font-bold">RUT</span>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.rutAnterior}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.rutNuevo}</span>
-                          </div>
-                        </li>
-                      )}
-                      {log.detalles?.estadoAnterior !== log.detalles?.estadoNuevo && (
-                        <li className="flex flex-col gap-0.5">
-                          <span className="text-gray-400 text-[9px] font-bold">Estado</span>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.estadoAnterior}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.estadoNuevo}</span>
-                          </div>
-                        </li>
-                      )}
-                    </ul>
-                  )}
-
-                  {log.accion === 'ELIMINACION' && (
-                    <p className="text-red-500 dark:text-red-400 font-medium">
-                      Registro eliminado ({log.detalles?.nombre} - {log.detalles?.rut})
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Pie Fijo del Panel */}
-        <div className="px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900/80 shrink-0">
-          <button 
-            onClick={() => setShowLogModal(false)} 
-            className="px-4 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-bold transition"
-          >
-            Cerrar
-          </button>
-        </div>
-      </aside>
+      <ConfigDrawer
+        show={showConfigDrawer}
+        onClose={() => setShowConfigDrawer(false)}
+        totalMaestros={maestros.length}
+        onExportar={handleExportarDatos}
+        onDescargarPlantilla={handleDescargarPlantilla}
+        importFile={importFile}
+        onSelectFile={setImportFile}
+        importing={importing}
+        onEjecutarImportacion={handleEjecutarImportacion}
+      />
     </div>
   );
 };
 
-export default EmpresasLaboratorios;
+export default EmpresasMaestros;

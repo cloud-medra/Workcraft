@@ -47,7 +47,6 @@ export const MODULES = {
       { label: 'Control Procesos', path: '/laboratorio/archivosControlLaboratorio', icon: <FileSpreadsheet size={14} /> },
     ]
   },
-
     vacunatorio: {
     label: 'Vacunatorio',
     icon: <Syringe size={18} />,
@@ -59,6 +58,14 @@ export const MODULES = {
       { label: 'Control Procesos', path: '/vacunatorio/archivosControlVacunatorio', icon: <FileSpreadsheet size={14} /> },
     ]
   },
+  maestros: {
+    label: 'Maestro',
+    icon: <Database size={18} />,
+    subItems: [
+      { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
+      // { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
+    ]
+  }
 
 
 
@@ -72,14 +79,7 @@ export const MODULES = {
     ]
   },
   
-  maestros: {
-    label: 'Maestro',
-    icon: <Database size={18} />,
-    subItems: [
-      { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
-      { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
-    ]
-  },
+  ,
 
   
 

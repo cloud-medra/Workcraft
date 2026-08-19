@@ -30,7 +30,7 @@ const ACCION_LABELS = {
 export const LogDrawer = ({
   show,
   onClose,
-  selectedCodigo,
+  selectedLab,
   logsList,
   loadingLogs,
   formatearFecha
@@ -49,11 +49,10 @@ export const LogDrawer = ({
               Historial de Cambios
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-              Ref:{' '}
+              {selectedLab?.nombre}{' '}
               <span className="font-semibold text-gray-700 dark:text-gray-300">
-                {selectedCodigo?.referencia}
-              </span>{' '}
-              ({selectedCodigo?.codigo})
+                ({selectedLab?.rut})
+              </span>
             </p>
           </div>
         </div>
@@ -75,7 +74,7 @@ export const LogDrawer = ({
           </div>
         ) : logsList.length === 0 ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
-            No hay registros de auditoría para este código.
+            No hay registros de auditoría para este maestro.
           </div>
         ) : (
           logsList.map((log) => (
@@ -111,50 +110,64 @@ export const LogDrawer = ({
                 {(log.accion === 'CREACION' || log.accion === 'CREACION_MASIVA') && (
                   <div className="space-y-0.5">
                     <p>
-                      <strong>Referencia:</strong> {log.detalles?.referencia}
+                      <strong>Nombre:</strong> {log.detalles?.nombre}
                     </p>
                     <p>
-                      <strong>Código:</strong> {log.detalles?.codigo}
+                      <strong>RUT:</strong> {log.detalles?.rut}
                     </p>
                     <p>
-                      <strong>Precio:</strong> ${' '}
-                      {Number(log.detalles?.precio || 0).toLocaleString('es-CL')}
+                      <strong>Estado:</strong> {log.detalles?.estado}
                     </p>
-                    <p>
-                      <strong>Descripción:</strong>{' '}
-                      {log.detalles?.descripcion || 'N/A'}
-                    </p>
-                    <p>
-                      <strong>Método:</strong>{' '}
-                      {log.detalles?.metodoRegistro === 'IMPORTACION'
-                        ? 'Importación'
-                        : 'Manual'}
-                    </p>
+                    {log.accion === 'CREACION_MASIVA' && (
+                      <p>
+                        <strong>Método:</strong> Importación
+                      </p>
+                    )}
                   </div>
                 )}
 
                 {log.accion === 'EDICION' && (
-                  <ul className="space-y-0.5">
-                    {log.detalles?.referencia !== undefined && (
-                      <li>
-                        <strong>Referencia:</strong> {log.detalles.referencia}
+                  <ul className="space-y-1">
+                    {log.detalles?.nombreAnterior !== log.detalles?.nombreNuevo && (
+                      <li className="flex flex-col gap-0.5">
+                        <span className="text-gray-400 text-[9px] font-bold">Nombre</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-red-500 dark:text-red-400 font-medium">
+                            {log.detalles?.nombreAnterior}
+                          </span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-green-600 dark:text-green-400 font-medium">
+                            {log.detalles?.nombreNuevo}
+                          </span>
+                        </div>
                       </li>
                     )}
-                    {log.detalles?.codigo !== undefined && (
-                      <li>
-                        <strong>Código:</strong> {log.detalles.codigo}
+                    {log.detalles?.rutAnterior !== log.detalles?.rutNuevo && (
+                      <li className="flex flex-col gap-0.5">
+                        <span className="text-gray-400 text-[9px] font-bold">RUT</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-red-500 dark:text-red-400 font-medium">
+                            {log.detalles?.rutAnterior}
+                          </span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-green-600 dark:text-green-400 font-medium">
+                            {log.detalles?.rutNuevo}
+                          </span>
+                        </div>
                       </li>
                     )}
-                    {log.detalles?.precio !== undefined && (
-                      <li>
-                        <strong>Precio:</strong> ${' '}
-                        {Number(log.detalles.precio).toLocaleString('es-CL')}
-                      </li>
-                    )}
-                    {log.detalles?.descripcion !== undefined && (
-                      <li>
-                        <strong>Descripción:</strong>{' '}
-                        {log.detalles.descripcion || 'Vacío'}
+                    {log.detalles?.estadoAnterior !== log.detalles?.estadoNuevo && (
+                      <li className="flex flex-col gap-0.5">
+                        <span className="text-gray-400 text-[9px] font-bold">Estado</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-red-500 dark:text-red-400 font-medium">
+                            {log.detalles?.estadoAnterior}
+                          </span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-green-600 dark:text-green-400 font-medium">
+                            {log.detalles?.estadoNuevo}
+                          </span>
+                        </div>
                       </li>
                     )}
                   </ul>
@@ -162,8 +175,7 @@ export const LogDrawer = ({
 
                 {log.accion === 'ELIMINACION' && (
                   <p className="text-red-500 font-medium">
-                    Registro eliminado ({log.detalles?.referencia} -{' '}
-                    {log.detalles?.codigo})
+                    Registro eliminado ({log.detalles?.nombre} - {log.detalles?.rut})
                   </p>
                 )}
               </div>
@@ -188,7 +200,7 @@ export const LogDrawer = ({
 export const ConfigDrawer = ({
   show,
   onClose,
-  totalCodigos,
+  totalMaestros,
   onExportar,
   onDescargarPlantilla,
   importFile,
@@ -207,7 +219,7 @@ export const ConfigDrawer = ({
           <Settings size={16} className="text-[#2383C2]" />
           <div>
             <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100">
-              Configuración de Códigos
+              Configuración de Maestros
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
               Herramientas de importación y exportación
@@ -226,10 +238,10 @@ export const ConfigDrawer = ({
         <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2">
           <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
             <Download size={14} className="text-emerald-600 dark:text-emerald-400" />
-            <span>Exportar Códigos</span>
+            <span>Exportar Maestros</span>
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Descarga la lista actual de códigos registrados ({totalCodigos}{' '}
+            Descarga la lista actual de maestros registrados ({totalMaestros}{' '}
             registros) en un archivo compatible con Excel (CSV/XLSX).
           </p>
           <button
@@ -247,7 +259,7 @@ export const ConfigDrawer = ({
             <span>Importación Masiva</span>
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Carga masivamente nuevos códigos seleccionando un archivo
+            Carga masivamente nuevos maestros seleccionando un archivo
             formateado en Excel o CSV.
           </p>
           <button
@@ -280,7 +292,7 @@ export const ConfigDrawer = ({
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
             <strong>Formato de columnas requerido:</strong>
             <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400">
-              REFERENCIA | CODIGO | PRECIO | DESCRIPCION
+              NOMBRE | RUT | ESTADO
             </div>
           </div>
 

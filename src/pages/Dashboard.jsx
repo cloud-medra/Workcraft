@@ -29,23 +29,23 @@ import CodigoVacunatorio from '../components/modulos/gestiones/vacunatorio/regis
 import OrdenVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/OrdenVacunatorio';
 import XmlDocVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/XmlDocVacunatorio';
 import ArchivosControlVacunatorio from '../components/modulos/gestiones/vacunatorio/procesos/ArchivosControlVacunatorio';
+// MAESTROS
+import EmpresasMaestros from '../components/modulos/maestros/empresasMaestros/EmpresasMaestros';
+//import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
 
 // AJUSTES & PERFIL
 import Perfil from '../components/modulos/general/perfil/Perfil';
-
 // LEGALES
 import PoliticasPrivacidad from '../components/modulos/general/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/general/legales/TerminosServicio';
 
 
 
+
+
 // USUARIOS
 //import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
 //import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
-
-// MAESTROS
-//import EmpresasMaestros from '../components/modulos/maestros/EmpresasMaestros';
-//import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
 
 // MIS TURNOS
 //import MisTurnos from '../components/modulos/misturnos/MisTurnos';
@@ -174,39 +174,35 @@ const Dashboard = () => {
   const VIEW_MAP = {
     // DASHBOARD
     'dashboard': <ResumenGeneral userData={userData} />,
-
     // ADMINISTRACIÓN
     '/administracion/controlMensual': <ControlMensual />,
-
     // LABORATORIO
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />, 
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
     '/laboratorio/xmlDocLaboratorio': <XmlDocLaboratorio />,
     '/laboratorio/archivosControlLaboratorio': <ArchivosControlLaboratorio />,
-
     // VACUNATORIO
     '/vacunatorio/empresasVacunatorio': <EmpresasVacunatorio />, 
     '/vacunatorio/codigoVacunatorio': <CodigoVacunatorio />,
     '/vacunatorio/ordenVacunatorio': <OrdenVacunatorio />,
     '/vacunatorio/xmlDocVacunatorio': <XmlDocVacunatorio />,
     '/vacunatorio/archivosControlVacunatorio': <ArchivosControlVacunatorio />,
-
-
     // AJUSTES & PERFIL
     'perfil': <Perfil userData={userData} />,
     // LEGALES
     'privacidad': <PoliticasPrivacidad />,
     'terminos': <TerminosServicio />,
+    
+    // MAESTROS
+    '/maestros/empresasMaestros': <EmpresasMaestros />,
+    //'/maestros/prestadoresMaestros': <PrestadoresMaestros />,
 
 
     // USUARIOS
     //'/usuarios/crear': <CrearUsuario />,
     //'/usuarios/listado': <ListadoUsuarios />,
 
-    // MAESTROS
-    //'/maestros/empresasMaestros': <EmpresasMaestros />,
-    //'/maestros/prestadoresMaestros': <PrestadoresMaestros />,
 
     // MIS TURNOS
     //'/misturnos/ver': <MisTurnos />,
