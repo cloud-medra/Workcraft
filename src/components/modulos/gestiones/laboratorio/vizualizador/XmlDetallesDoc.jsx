@@ -6,10 +6,8 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-[2px] p-3 font-sans text-[11px]">
-      {/* SE AMPLIÓ EL ANCHO A max-w-6xl Y EL ALTO HASTA 92vh */}
       <div className="bg-white dark:bg-gray-800 w-full max-w-6xl rounded-lg shadow-xl overflow-hidden flex flex-col h-[92vh] border border-gray-200 dark:border-gray-700">
 
-        {/* CABECERA COMPACTA */}
         <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-800/80 shrink-0">
           <div className="flex items-center gap-2">
             <FileText className="text-[#2383C2]" size={16} />
@@ -25,7 +23,6 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
           </button>
         </div>
 
-        {/* RESUMEN METRICAS (4 TARJETAS ULTRA COMPACTAS) */}
         <div className="px-4 py-2 bg-gray-50/30 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700 grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0">
           {[
             { label: "Folio", value: documento.folio, icon: Hash },
@@ -48,7 +45,6 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
           })}
         </div>
 
-        {/* INFORMACIÓN RECEPTOR / PROVEEDOR */}
         <div className="px-4 py-1.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 truncate">
             <Building2 size={13} className="text-[#2383C2] shrink-0" />
@@ -60,7 +56,6 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
           </span>
         </div>
 
-        {/* CONTENEDOR CON SCROLL OPTIMIZADO PARA MÚLTIPLES FILAS */}
         <div className="flex-grow overflow-y-auto">
           <table className="w-full text-left border-collapse text-[11px]">
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-20 shadow-sm">
@@ -107,7 +102,6 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
           </table>
         </div>
 
-        {/* PIE DE MODAL FIXO */}
         <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex justify-between items-center shrink-0">
           <p className="text-[9px] text-gray-400 italic">Documento procesado desde archivo XML.</p>
           <button

@@ -12,14 +12,13 @@ const PanelAperturaPeriodo = ({
     modulosSeleccionados,
     setModulosSeleccionados,
     onConfirm,
-    estadosModulos // Recibe los estados globales cargados desde Firebase
+    estadosModulos 
 }) => {
     if (!isOpen) return null;
 
     const anioActual = new Date().getFullYear();
     const listaAnios = [anioActual, anioActual + 1];
 
-    // Validación: Verifica si hay al menos un módulo con estado ABIERTO o REABIERTO en el año seleccionado
     const hayMesAbiertoEnAnio = Object.values(estadosModulos || {}).some(modulosObj => {
         return Object.values(modulosObj || {}).some(datosMes => {
             const anioEfectivo = datosMes.anio || anioApertura;
@@ -29,7 +28,6 @@ const PanelAperturaPeriodo = ({
         });
     });
 
-    // Filtrado de meses: Oculta el mes si CUALQUIER módulo ya tiene un estado registrado para el año seleccionado.
     const mesesDisponibles = MESES.filter(mes => {
         const yaTieneEstadoEnAlgunModulo = MODULOS.some(mod => {
             const datosModuloMes = estadosModulos?.[mod.id]?.[mes.id];
@@ -37,7 +35,6 @@ const PanelAperturaPeriodo = ({
             const anioDelDato = datosModuloMes?.anio;
 
             const tieneEstadoValido = estado && estado !== 'SIN_INICIAR';
-            // Si el registro no tiene año guardado explícitamente, asumimos el año actual o el de apertura
             const anioEfectivo = anioDelDato || anioApertura;
             const esDelAnioSeleccionado = String(anioEfectivo) === String(anioApertura);
 
@@ -67,7 +64,6 @@ const PanelAperturaPeriodo = ({
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px] flex justify-end">
             <div className="w-full max-w-sm bg-white dark:bg-gray-800 h-full shadow-2xl border-l border-slate-200 dark:border-gray-700 flex flex-col font-sans animate-in slide-in-from-right duration-200">
 
-                {/* Header del Panel */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900">
                     <div className="flex items-center gap-2 text-[#2383C2]">
                         <Calendar size={18} />
@@ -81,17 +77,14 @@ const PanelAperturaPeriodo = ({
                     </button>
                 </div>
 
-                {/* Cuerpo del Panel */}
                 <div className="p-4 flex-1 overflow-y-auto space-y-4 text-[11px]">
 
-                    {/* Alerta si ya existe un mes abierto en el año */}
                     {hayMesAbiertoEnAnio && (
                         <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded text-rose-800 dark:text-rose-300 text-[10px]">
                             ⚠️ No es posible abrir un nuevo período porque ya existe un mes abierto o reabierto en el año {anioApertura}. Debes cerrar los períodos activos primero.
                         </div>
                     )}
 
-                    {/* Selección de Año */}
                     <div className="space-y-1.5">
                         <label className="font-bold text-slate-700 dark:text-gray-300 block">Año del Período</label>
                         <select
@@ -105,7 +98,6 @@ const PanelAperturaPeriodo = ({
                         </select>
                     </div>
 
-                    {/* Selección de Mes */}
                     <div className="space-y-1.5">
                         <label className="font-bold text-slate-700 dark:text-gray-300 block">Mes a Abrir</label>
                         {mesesDisponibles.length === 0 ? (
@@ -126,7 +118,6 @@ const PanelAperturaPeriodo = ({
                         <p className="text-[9px] text-slate-400">Nota: Los meses ya abiertos para este año se ocultan automáticamente.</p>
                     </div>
 
-                    {/* Selección de Módulos */}
                     <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
                             <label className="font-bold text-slate-700 dark:text-gray-300">Módulos Afectados</label>
@@ -164,7 +155,6 @@ const PanelAperturaPeriodo = ({
 
                 </div>
 
-                {/* Footer con Acciones */}
                 <div className="p-3 border-t border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 flex justify-end gap-2">
                     <button
                         onClick={onClose}

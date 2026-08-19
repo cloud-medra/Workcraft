@@ -24,8 +24,7 @@ import VinculacionCodigos from './fases/vinculacionCodigos/VinculacionCodigos';
 import VinculacionOrden from './fases/vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './fases/solicitudDiferencias/SolicitudDiferencias';
 import DocumentosListasIngreso from './fases/documentosListasIngreso/DocListasIngreso';
-import DocImputados from './fases/documentosImputados/DocumentosImputados';/*
-import GestionPeriodo from './fases/PanelPeriodos/GestionPeriodo'; */
+import DocImputados from './fases/documentosImputados/DocumentosImputados';
 
 const ALL_TABS = [
   { id: 'documentos_recibidos', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_documentos_recibidos' },
@@ -34,9 +33,7 @@ const ALL_TABS = [
   { id: 'vinculacion_ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_vinculacion_ordenes' },
   { id: 'solicitud_diferencias', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_solicitud_diferencias' },
   { id: 'documentos_listos', label: 'Documentos Listos', Icon: CheckSquare, perm: 'tab_documentos_listos' },
-  { id: 'documentos_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_documentos_imputados' },/*
-  { id: 'gestor_periodos', label: 'Gestor Periodos', Icon: CalendarCheck, perm: 'tab_gestor_periodos' },
-  { id: 'edicion', label: 'Modificación y Edición', Icon: Edit3, perm: 'tab_edicion' }, */
+  { id: 'documentos_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_documentos_imputados' },
 ];
 
 const PATH_VISTA = "/Vacunatorio/archivosControl";
@@ -174,7 +171,6 @@ const ArchivosControl = () => {
         {currentTabObj.id === 'solicitud_diferencias' && <SolicitudDiferencias />}
         {currentTabObj.id === 'documentos_listos' && <DocumentosListasIngreso />}
         {currentTabObj.id === 'documentos_imputados' && <DocImputados />}
-        {currentTabObj.id === 'gestor_periodos' && <GestionPeriodo />}
 
         {!['documentos_recibidos', 'iniciar_procesos', 'vinculacion_codigos', 'vinculacion_ordenes', 'solicitud_diferencias', 'documentos_listos', 'documentos_imputados', 'gestor_periodos', 'edicion'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">

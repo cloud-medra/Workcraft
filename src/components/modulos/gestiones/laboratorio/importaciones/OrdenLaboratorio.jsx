@@ -10,13 +10,13 @@ import {
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
 import { db } from '../../../../../firebaseConfig';
-import { 
-    ClipboardList, 
-    Search, 
-    Upload, 
-    X, 
-    Eye, 
-    ArrowLeft, 
+import {
+    ClipboardList,
+    Search,
+    Upload,
+    X,
+    Eye,
+    ArrowLeft,
     FileSpreadsheet,
     Calendar,
     Building2,
@@ -185,12 +185,11 @@ const OrdenLaboratorio = () => {
                 </div>
             )}
 
-            {/* CABECERA CORPORATIVA */}
             <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
                 {ordenSeleccionada ? (
                     <div className="flex items-center gap-3 w-full">
-                        <button 
-                            onClick={() => setOrdenSeleccionada(null)} 
+                        <button
+                            onClick={() => setOrdenSeleccionada(null)}
                             className="p-1 rounded-md text-slate-500 hover:text-[#2383C2] hover:bg-slate-100 dark:hover:bg-gray-700 transition"
                             title="Volver al listado"
                         >
@@ -213,8 +212,8 @@ const OrdenLaboratorio = () => {
                 )}
 
                 {!ordenSeleccionada && hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar") && (
-                    <button 
-                        onClick={() => setShowModal(true)} 
+                    <button
+                        onClick={() => setShowModal(true)}
                         className="bg-[#2383C2] hover:bg-[#1c6fa6] text-white px-2.5 py-1 rounded text-[10px] font-normal flex items-center gap-1.5 transition shadow-sm"
                     >
                         <Upload size={11} /> Importar Excel
@@ -222,12 +221,10 @@ const OrdenLaboratorio = () => {
                 )}
             </header>
 
-            {/* TARJETA INFORMATIVA CORPORATIVA (Solo en vista Detalle) */}
             {ordenSeleccionada && (
                 <div className="bg-white dark:bg-gray-800/90 border-b border-slate-200 dark:border-gray-700/80 px-3 py-2">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        
-                        {/* N° Orden */}
+
                         <div className="bg-slate-50 dark:bg-gray-900/60 p-1.5 rounded border border-slate-200/80 dark:border-gray-700/50 flex items-center gap-2">
                             <div className="p-1 bg-[#2383C2]/10 rounded text-[#2383C2]">
                                 <Hash size={13} />
@@ -238,7 +235,6 @@ const OrdenLaboratorio = () => {
                             </div>
                         </div>
 
-                        {/* Fecha */}
                         <div className="bg-slate-50 dark:bg-gray-900/60 p-1.5 rounded border border-slate-200/80 dark:border-gray-700/50 flex items-center gap-2">
                             <div className="p-1 bg-slate-200/60 dark:bg-gray-700 text-slate-600 dark:text-gray-300 rounded">
                                 <Calendar size={13} />
@@ -249,7 +245,6 @@ const OrdenLaboratorio = () => {
                             </div>
                         </div>
 
-                        {/* RUT Proveedor */}
                         <div className="bg-slate-50 dark:bg-gray-900/60 p-1.5 rounded border border-slate-200/80 dark:border-gray-700/50 flex items-center gap-2">
                             <div className="p-1 bg-slate-200/60 dark:bg-gray-700 text-slate-600 dark:text-gray-300 rounded">
                                 <Building2 size={13} />
@@ -260,7 +255,6 @@ const OrdenLaboratorio = () => {
                             </div>
                         </div>
 
-                        {/* Razon Social / Proveedor */}
                         <div className="bg-slate-50 dark:bg-gray-900/60 p-1.5 rounded border border-slate-200/80 dark:border-gray-700/50 flex items-center gap-2">
                             <div className="p-1 bg-slate-200/60 dark:bg-gray-700 text-slate-600 dark:text-gray-300 rounded">
                                 <PackageCheck size={13} />
@@ -277,7 +271,6 @@ const OrdenLaboratorio = () => {
                 </div>
             )}
 
-            {/* FILTROS COMPACTOS (Vista Principal) */}
             {!ordenSeleccionada && (
                 <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center border-b border-slate-200 dark:border-gray-700">
                     <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]">
@@ -297,10 +290,8 @@ const OrdenLaboratorio = () => {
                 </div>
             )}
 
-            {/* CONTENEDOR DE TABLAS */}
             <div className="flex-grow overflow-auto">
                 {!ordenSeleccionada ? (
-                    /* TABLA LISTADO PRINCIPAL */
                     <table className="w-full text-left text-[11px] border-collapse table-fixed">
                         <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                             <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
@@ -319,9 +310,9 @@ const OrdenLaboratorio = () => {
                                 o["Proveedor"]?.toLowerCase().includes(busqueda.toLowerCase()) ||
                                 o["Rut proveedor"]?.toLowerCase().includes(busqueda.toLowerCase())
                             ).map((o) => (
-                                <tr 
-                                    key={o.id} 
-                                    onDoubleClick={() => setOrdenSeleccionada(o)} 
+                                <tr
+                                    key={o.id}
+                                    onDoubleClick={() => setOrdenSeleccionada(o)}
                                     className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 cursor-pointer group border-l-2 border-l-transparent hover:border-l-[#2383C2]"
                                 >
                                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-700 dark:text-gray-200 truncate">{o["Nro.Orden"]}</td>
@@ -340,7 +331,6 @@ const OrdenLaboratorio = () => {
                         </tbody>
                     </table>
                 ) : (
-                    /* TABLA DETALLE DE ORDEN ESTILIZADA Y CORPORATIVA */
                     <div className="flex flex-col h-full justify-between">
                         <table className="w-full text-left text-[11px] border-collapse table-fixed">
                             <thead className="bg-slate-100/90 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
@@ -359,33 +349,28 @@ const OrdenLaboratorio = () => {
                                     const totalLinea = cantidad * precioUnidad;
 
                                     return (
-                                        <tr 
-                                            key={i} 
+                                        <tr
+                                            key={i}
                                             className="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-all duration-150 group border-l-2 border-l-transparent hover:border-l-[#2383C2]"
                                         >
-                                            {/* Código */}
                                             <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-[10px] text-slate-600 dark:text-gray-300">
                                                 <span className="font-normal text-slate-700 dark:text-gray-200">
                                                     {item["Cod.Artículo"] || "N/A"}
                                                 </span>
                                             </td>
 
-                                            {/* Descripción */}
                                             <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-800 dark:text-gray-200 font-normal truncate" title={item["Artículo"]}>
                                                 {item["Artículo"] || "Sin Descripción"}
                                             </td>
 
-                                            {/* Cantidad */}
                                             <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-700 dark:text-gray-300 text-center font-normal">
                                                 {cantidad}
                                             </td>
 
-                                            {/* P. Unitario */}
                                             <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-600 dark:text-gray-300 text-right whitespace-nowrap text-[10px]">
                                                 ${precioUnidad.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
                                             </td>
 
-                                            {/* Total Línea */}
                                             <td className="px-3 py-1 text-slate-900 dark:text-gray-100 font-normal text-right whitespace-nowrap">
                                                 ${totalLinea.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
                                             </td>
@@ -395,7 +380,6 @@ const OrdenLaboratorio = () => {
                             </tbody>
                         </table>
 
-                        {/* RESUMEN FINANCIERO / FOOTER DE LA TABLA */}
                         <div className="bg-slate-100 dark:bg-gray-900 border-t border-slate-200 dark:border-gray-700 p-2.5 flex items-center justify-between sticky bottom-0">
                             <div className="flex items-center gap-4 text-[10px] text-slate-500 dark:text-gray-400">
                                 <span>Líneas: <strong className="text-slate-800 dark:text-gray-200 font-normal">{detalle.length}</strong></span>
@@ -412,7 +396,6 @@ const OrdenLaboratorio = () => {
                 )}
             </div>
 
-            {/* MODAL IMPORTACIÓN */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
                     <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-700">

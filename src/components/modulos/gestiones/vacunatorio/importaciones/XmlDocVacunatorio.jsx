@@ -227,7 +227,6 @@ const XmlFacturasVacunatorio = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden p-0 relative font-sans text-[11px]">
-      {/* SPINNER DE CARGA */}
       {cargando && (
         <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-900/30 dark:bg-black/50 backdrop-blur-[2px]">
           <div className="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-xl flex flex-col items-center gap-2 border border-slate-100 dark:border-gray-700">
@@ -237,7 +236,6 @@ const XmlFacturasVacunatorio = () => {
         </div>
       )}
 
-      {/* CABECERA */}
       <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-[#2383C2]" />
@@ -256,7 +254,6 @@ const XmlFacturasVacunatorio = () => {
         )}
       </header>
 
-      {/* FILTROS Y BÚSQUEDA */}
       <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center border-b border-slate-200 dark:border-gray-700">
         {hasPermission(PATH_VISTA, "filtros_busqueda", "select_anio") && (
           <select
@@ -300,7 +297,6 @@ const XmlFacturasVacunatorio = () => {
         )}
       </div>
 
-      {/* TABLA DE DOCUMENTOS */}
       {hasPermission(PATH_VISTA, "tabla_documentos") && (
         <div className="flex-grow overflow-auto">
           <table className="w-full text-left text-[11px] border-collapse table-fixed">
@@ -384,7 +380,6 @@ const XmlFacturasVacunatorio = () => {
         </div>
       )}
 
-      {/* MODAL DETALLE DE DOCUMENTO */}
       {documentoSeleccionado && (
         <DetalleFacturaModal
           documento={documentoSeleccionado}
@@ -392,7 +387,6 @@ const XmlFacturasVacunatorio = () => {
         />
       )}
 
-      {/* MODAL IMPORTACIÓN XML */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">
           <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-700">

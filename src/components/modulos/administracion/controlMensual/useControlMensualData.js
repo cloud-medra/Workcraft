@@ -17,7 +17,6 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     email: userData?.email || ''
   }), [userData]);
 
-  // Escuchar estado de cierres
   useEffect(() => {
     setCargando(true);
     const q = query(
@@ -45,7 +44,6 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     return () => unsubscribe();
   }, [anioSeleccionado, showToast]);
 
-  // Cargar resumen de documentos e imputaciones
   useEffect(() => {
     let isMounted = true;
 
@@ -59,9 +57,8 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
           for (const mesObj of MESES) {
             consultas.push((async () => {
               try {
-                const docsRef = collection(db, COLECCIONES.IMPUTACIONES, anioSeleccionado, "meses", mesObj.id, "documentos");
-                const qDocs = query(docsRef, where("modulo", "==", mod.id));
-                const snap = await getDocs(qDocs);
+                const docsRef = collection(db, `${mod.id}_imputadas`, String(anioSeleccionado), "meses", mesObj.id, "documentos");
+                const snap = await getDocs(docsRef);
                 
                 let totalMonto = 0;
                 snap.docs.forEach(d => { totalMonto += Number(d.data().total || 0); });
@@ -91,7 +88,6 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     return () => { isMounted = false; };
   }, [anioSeleccionado]);
 
-  // Handlers de Acciones
   const handleAbrirMes = (mesId, modTarget, anioTarget = anioSeleccionado, setAnioSeleccionadoCallback) => {
     const modulosAfectados = Array.isArray(modTarget) 
       ? MODULOS.filter(m => modTarget.includes(m.id))
@@ -198,7 +194,6 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     );
   };
 
-  // NUEVA FUNCIÓN: Cerrar TODOS los módulos de un mes a la vez
   const handleCerrarTodos = (mesId) => {
     confirmAction(
       "Cierre Masivo de Período",

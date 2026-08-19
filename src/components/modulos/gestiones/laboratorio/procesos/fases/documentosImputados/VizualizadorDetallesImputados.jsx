@@ -72,7 +72,6 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
       <div className="bg-white dark:bg-gray-900 w-full max-w-6xl max-h-[92vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-gray-800 font-sans">
         
-        {/* Header Corporativo */}
         <div className="px-6 py-3.5 border-b border-slate-200 dark:border-gray-800 flex justify-between items-center bg-slate-50 dark:bg-gray-900/90">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-[#2383C2]/10 text-[#2383C2] rounded-lg">
@@ -101,10 +100,8 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
           </button>
         </div>
 
-        {/* Content Body */}
         <div className="p-6 overflow-y-auto flex-grow space-y-6 text-xs bg-slate-50/50 dark:bg-gray-900/40">
           
-          {/* SECCIÓN 1: Datos Generales */}
           <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs">
             <h3 className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-1.5 border-b border-slate-200 dark:border-gray-700 pb-2">
               <Building2 size={14} className="text-[#2383C2]" /> Datos Generales del Documento
@@ -132,7 +129,6 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
                 <span className="font-bold text-emerald-600 dark:text-emerald-400">${Number(documento.total || 0).toLocaleString('es-CL')}</span>
               </div>
 
-              {/* Referencias operativas */}
               <div>
                 <span className="text-slate-400 dark:text-gray-500 block">N° Orden</span>
                 <span className="font-semibold text-slate-700 dark:text-gray-200">{documento.numeroOrden || '-'}</span>
@@ -148,7 +144,6 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
             </div>
           </div>
 
-          {/* SECCIÓN 2: Tabla de Ítems Vinculados */}
           <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs">
             <h3 className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-3 flex items-center gap-1.5 border-b border-slate-200 dark:border-gray-700 pb-2">
               <Package size={14} className="text-[#2383C2]" /> Ítems Vinculados y Detalle
@@ -190,10 +185,8 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
             </div>
           </div>
 
-          {/* SECCIÓN 3: Información de Registro y OC Vinculada */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* Registro */}
             <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs">
               <h4 className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-200 dark:border-gray-700 pb-1.5">
                 <User size={14} className="text-[#2383C2]" /> Información de Registro
@@ -205,7 +198,6 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
               </div>
             </div>
 
-            {/* OC Vinculada */}
             {documento.ordenCompraVinculada && (
               <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs">
                 <h4 className="text-xs font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-2 flex items-center gap-1.5 border-b border-slate-200 dark:border-gray-700 pb-1.5">

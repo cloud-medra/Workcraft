@@ -1,4 +1,3 @@
-// Colecciones unificadas en Firestore
 export const COLECCIONES = {
   CIERRES: 'cierres_periodos',
   IMPUTACIONES: 'imputaciones_periodos',

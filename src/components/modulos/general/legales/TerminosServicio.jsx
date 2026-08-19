@@ -30,7 +30,6 @@ const Section = ({ number, title, children, highlight }) => {
 const TerminosServicio = () => {
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
-      {/* Encabezado */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-1 h-6 bg-indigo-500 rounded-full" />
@@ -221,7 +220,6 @@ const TerminosServicio = () => {
 
       </div>
 
-      {/* Footer */}
       <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
         <p className="text-xs text-gray-400">
           Marco legal: Ley N° 19.628 · República de Chile

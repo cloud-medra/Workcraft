@@ -46,7 +46,6 @@ const MonthRow = ({
 
   return (
     <>
-      {/* FILA PRINCIPAL DEL MES */}
       <tr className="border-b border-slate-200 dark:border-gray-800 hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors text-xs text-slate-700 dark:text-gray-200">
         <td className="py-3 px-4 font-semibold flex items-center gap-2">
           {moduloFiltro === 'TODOS' && (
@@ -104,7 +103,6 @@ const MonthRow = ({
         </td>
       </tr>
 
-      {/* DETALLE DESPLEGABLE POR MÓDULO */}
       {desplegado && moduloFiltro === 'TODOS' && (
         <tr className="bg-slate-50/50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-800">
           <td colSpan={5} className="py-2 px-8">
