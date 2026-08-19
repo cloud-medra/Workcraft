@@ -31,8 +31,8 @@ const SolicitudDiferencias = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
-  const COL_BASE = "laboratorio_documentos";
+  const PATH_VISTA = "/vacunatorio/archivosControl";
+  const COL_BASE = "vacunatorio_documentos";
   
   const ESTADOS_PERMITIDOS = [
     "Diferencia Reportada",

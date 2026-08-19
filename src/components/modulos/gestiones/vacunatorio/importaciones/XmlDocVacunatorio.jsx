@@ -22,7 +22,7 @@ import { useGranularPermission } from '../../../../../hooks/useGranularPermissio
 import Spinner from '../../../../ui/Spinner';
 import DetalleFacturaModal from '../vizualizador/XmlDetallesDoc';
 
-const XmlFacturasLaboratorio = () => {
+const XmlFacturasVacunatorio = () => {
   const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -38,8 +38,8 @@ const XmlFacturasLaboratorio = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/XmlDocLaboratorio";
-  const COL_BASE = "laboratorio_documentos";
+  const PATH_VISTA = "/vacunatorio/XmlDocVacunatorio";
+  const COL_BASE = "vacunatorio_documentos";
 
   useEffect(() => {
     const cargarAnios = async () => {
@@ -443,4 +443,4 @@ const XmlFacturasLaboratorio = () => {
   );
 };
 
-export default XmlFacturasLaboratorio;
+export default XmlFacturasVacunatorio;

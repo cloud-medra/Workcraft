@@ -31,8 +31,8 @@ const DocumentosImputados = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
-  const COL_BASE = "laboratorio_imputadas";
+  const PATH_VISTA = "/Vacunatorio/archivosControl";
+  const COL_BASE = "Vacunatorio_imputadas";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '-';

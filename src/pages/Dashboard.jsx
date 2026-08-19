@@ -22,7 +22,13 @@ import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/reg
 import CodigoLaboratorio from '../components/modulos/gestiones/laboratorio/registros/CodigoLaboratorio';
 import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/OrdenLaboratorio';
 import XmlDocLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/XmlDocLaboratorio';
-import ArchivosControl from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControl';
+import ArchivosControlLaboratorio from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControlLaboratorio';
+// VACUNATORIO
+import EmpresasVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/EmpresasVacunatorio';
+import CodigoVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/CodigoVacunatorio';
+import OrdenVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/OrdenVacunatorio';
+import XmlDocVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/XmlDocVacunatorio';
+import ArchivosControlVacunatorio from '../components/modulos/gestiones/vacunatorio/procesos/ArchivosControlVacunatorio';
 
 // AJUSTES & PERFIL
 import Perfil from '../components/modulos/general/perfil/Perfil';
@@ -177,7 +183,14 @@ const Dashboard = () => {
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
     '/laboratorio/xmlDocLaboratorio': <XmlDocLaboratorio />,
-    '/laboratorio/archivosControl': <ArchivosControl />,
+    '/laboratorio/archivosControlLaboratorio': <ArchivosControlLaboratorio />,
+
+    // VACUNATORIO
+    '/vacunatorio/empresasVacunatorio': <EmpresasVacunatorio />, 
+    '/vacunatorio/codigoVacunatorio': <CodigoVacunatorio />,
+    '/vacunatorio/ordenVacunatorio': <OrdenVacunatorio />,
+    '/vacunatorio/xmlDocVacunatorio': <XmlDocVacunatorio />,
+    '/vacunatorio/archivosControlVacunatorio': <ArchivosControlVacunatorio />,
 
 
     // AJUSTES & PERFIL

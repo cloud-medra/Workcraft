@@ -10,7 +10,7 @@ import {
     Loader2
 } from 'lucide-react';
 
-const COL_ORDENES = "laboratorio_ordenes";
+const COL_ORDENES = "vacunatorio_ordenes";
 
 const NOMBRES_MESES = {
     '01': 'Enero', '1': 'Enero',

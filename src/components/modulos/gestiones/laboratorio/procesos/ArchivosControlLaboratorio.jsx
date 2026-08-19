@@ -1,4 +1,3 @@
-// src/components/modulos/laboratorio/procesosDocumentos/ArchivosControl.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Inbox, 

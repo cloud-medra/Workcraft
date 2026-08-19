@@ -7,8 +7,8 @@ import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 
-const EmpresasLaboratorios = () => {
-  const [laboratorios, setLaboratorios] = useState([]);
+const EmpresasVacunatorio = () => {
+  const [vacunatorio, setVacunatorio] = useState([]);
   const [formData, setFormData] = useState({ nombre: '', rut: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -23,13 +23,13 @@ const EmpresasLaboratorios = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/empresas";
-  const COL_BASE = "laboratorio_empresas";
+  const PATH_VISTA = "/vacunatorio/empresas";
+  const COL_BASE = "vacunatorio_empresas";
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLaboratorios(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setVacunatorio(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
@@ -55,9 +55,9 @@ const EmpresasLaboratorios = () => {
     });
   };
 
-  const registrarLog = async (laboratorioId, accion, detalles) => {
+  const registrarLog = async (vacunatorioId, accion, detalles) => {
     try {
-      const logsSubcollectionRef = collection(db, COL_BASE, laboratorioId, "logs");
+      const logsSubcollectionRef = collection(db, COL_BASE, vacunatorioId, "logs");
       await addDoc(logsSubcollectionRef, {
         accion,
         detalles,
@@ -80,23 +80,23 @@ const EmpresasLaboratorios = () => {
     const rutFormateado = formatearRut(formData.rut);
     const nombreTrimmed = formData.nombre.trim().toLowerCase();
 
-    const existeRut = laboratorios.some(l => 
+    const existeRut = vacunatorio.some(l => 
       l.rut === rutFormateado && l.id !== editingId
     );
     if (existeRut) {
-      return showToast("Ya existe un laboratorio registrado con este RUT", "error");
+      return showToast("Ya existe un vacunatorio registrado con este RUT", "error");
     }
 
-    const existeNombre = laboratorios.some(l => 
+    const existeNombre = vacunatorio.some(l => 
       l.nombre.trim().toLowerCase() === nombreTrimmed && l.id !== editingId
     );
     if (existeNombre) {
-      return showToast("Ya existe un laboratorio registrado con este Nombre", "error");
+      return showToast("Ya existe un vacunatorio registrado con este Nombre", "error");
     }
 
     try {
       if (editingId) {
-        const labExistente = laboratorios.find(l => l.id === editingId);
+        const labExistente = vacunatorio.find(l => l.id === editingId);
         
         const dataAEnviar = {
           ...formData,
@@ -116,7 +116,7 @@ const EmpresasLaboratorios = () => {
           estadoNuevo: formData.estado
         });
 
-        showToast("Laboratorio actualizado correctamente", "success");
+        showToast("Vacunatorio actualizado correctamente", "success");
       } else {
         const dataAEnviar = {
           ...formData,
@@ -133,7 +133,7 @@ const EmpresasLaboratorios = () => {
           estado: formData.estado
         });
 
-        showToast("Laboratorio registrado correctamente", "success");
+        showToast("Vacunatorio registrado correctamente", "success");
       }
       setFormData({ nombre: '', rut: '', estado: 'ACTIVO' });
       setEditingId(null);
@@ -143,10 +143,10 @@ const EmpresasLaboratorios = () => {
   };
 
   const handleDelete = (id) => {
-    const labAEliminar = laboratorios.find(l => l.id === id);
+    const labAEliminar = vacunatorio.find(l => l.id === id);
 
     confirmAction(
-      "Eliminar Laboratorio",
+      "Eliminar Vacunatorio",
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
@@ -157,7 +157,7 @@ const EmpresasLaboratorios = () => {
 
           await deleteDoc(doc(db, COL_BASE, id));
 
-          showToast("Laboratorio eliminado correctamente", "info");
+          showToast("Vacunatorio eliminado correctamente", "info");
         } catch (error) {
           showToast("Error al eliminar", "error");
         }
@@ -191,7 +191,7 @@ const EmpresasLaboratorios = () => {
     }
   };
 
-  const laboratoriosFiltrados = laboratorios.filter(l =>
+  const vacunatorioFiltrados = vacunatorio.filter(l =>
     l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
     (l.rut && l.rut.toLowerCase().includes(busqueda.toLowerCase()))
   );
@@ -199,15 +199,15 @@ const EmpresasLaboratorios = () => {
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
       <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 px-3 py-2 flex items-center gap-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
-        <Microscope size={14} className="text-[#2383C2]" /> {editingId ? "EDITAR LABORATORIO" : "REGISTRO DE LABORATORIOS"}
+        <Microscope size={14} className="text-[#2383C2]" /> {editingId ? "EDITAR VACUNATORIO" : "REGISTRO DE VACUNATORIO"}
       </h2>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (
         <form onSubmit={handleGuardar} className="px-3 py-2 flex flex-wrap items-end gap-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
           {hasPermission(PATH_VISTA, "formulario_registro", "input_nombre") && (
             <div className="w-[240px]">
-              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Laboratorio</label>
-              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Laboratorio Central" />
+              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Vacunatorio</label>
+              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Vacunatorio Central" />
             </div>
           )}
 
@@ -269,7 +269,7 @@ const EmpresasLaboratorios = () => {
               </tr>
             </thead>
             <tbody>
-              {laboratoriosFiltrados.map((l, index) => (
+              {vacunatorioFiltrados.map((l, index) => (
                 <tr key={l.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{l.nombre}</td>}
@@ -362,7 +362,7 @@ const EmpresasLaboratorios = () => {
             <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500 text-center px-4">
               <History size={32} className="mb-2 opacity-30" />
               <p className="text-[11px] font-medium">Sin registros</p>
-              <p className="text-[10px]">No hay actividad documentada para este laboratorio.</p>
+              <p className="text-[10px]">No hay actividad documentada para este vacunatorio.</p>
             </div>
           ) : (
             logsList.map((log) => (
@@ -453,4 +453,4 @@ const EmpresasLaboratorios = () => {
   );
 };
 
-export default EmpresasLaboratorios;
+export default EmpresasVacunatorio;

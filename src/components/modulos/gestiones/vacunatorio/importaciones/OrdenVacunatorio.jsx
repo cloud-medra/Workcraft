@@ -28,7 +28,7 @@ import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 
-const OrdenLaboratorio = () => {
+const OrdenVacunatorio = () => {
     const [ordenes, setOrdenes] = useState([]);
     const [detalle, setDetalle] = useState([]);
     const [aniosDisponibles, setAniosDisponibles] = useState([]);
@@ -43,8 +43,8 @@ const OrdenLaboratorio = () => {
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
 
-    const PATH_VISTA = "/laboratorio/ordenLaboratorio";
-    const COL_BASE = "laboratorio_ordenes";
+    const PATH_VISTA = "/vacunatorio/ordenVacunatorio";
+    const COL_BASE = "vacunatorio_ordenes";
 
     const getMesNombre = (index) => ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][index];
 
@@ -207,7 +207,7 @@ const OrdenLaboratorio = () => {
                     <div className="flex items-center gap-2">
                         <ClipboardList size={16} className="text-[#2383C2]" />
                         <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-                            Órdenes de Laboratorio
+                            Órdenes de Vacunatorio
                         </span>
                     </div>
                 )}
@@ -451,4 +451,4 @@ const OrdenLaboratorio = () => {
     );
 };
 
-export default OrdenLaboratorio;
+export default OrdenVacunatorio;

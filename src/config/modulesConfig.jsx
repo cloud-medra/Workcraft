@@ -14,7 +14,8 @@ import {
   Settings2,
   FileCode,
   FileSpreadsheet,
-  Database
+  Database,
+  Syringe
 } from "lucide-react";
 
 export const MODULES = {
@@ -43,7 +44,19 @@ export const MODULES = {
       { label: 'Maestro Códigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
       { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> },
       { label: 'Xml Documentos', path: '/laboratorio/xmlDocLaboratorio', icon: <FileCode size={14} /> },
-      { label: 'Control Procesos', path: '/laboratorio/archivosControl', icon: <FileSpreadsheet size={14} /> },
+      { label: 'Control Procesos', path: '/laboratorio/archivosControlLaboratorio', icon: <FileSpreadsheet size={14} /> },
+    ]
+  },
+
+    vacunatorio: {
+    label: 'Vacunatorio',
+    icon: <Syringe size={18} />,
+    subItems: [
+      { label: 'Registro Empresas', path: '/vacunatorio/empresasVacunatorio', icon: <Building2 size={14} /> }, 
+      { label: 'Maestro Códigos', path: '/vacunatorio/codigoVacunatorio', icon: <BadgeInfo size={14} /> },
+      { label: 'Ordenes', path: '/vacunatorio/ordenVacunatorio', icon: <ClipboardList size={14} /> },
+      { label: 'Xml Documentos', path: '/vacunatorio/xmlDocVacunatorio', icon: <FileCode size={14} /> },
+      { label: 'Control Procesos', path: '/vacunatorio/archivosControlVacunatorio', icon: <FileSpreadsheet size={14} /> },
     ]
   },
 

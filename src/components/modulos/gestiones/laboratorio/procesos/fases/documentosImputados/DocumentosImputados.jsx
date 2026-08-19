@@ -1,4 +1,3 @@
-// src/components/modulos/gestiones/laboratorio/procesos/fases/documentoImputados/DocumentosImputados.jsx
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';

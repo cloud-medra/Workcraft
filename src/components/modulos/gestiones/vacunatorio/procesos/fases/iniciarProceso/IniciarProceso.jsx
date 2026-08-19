@@ -19,7 +19,7 @@ const IniciarProceso = () => {
   const [showModalIniciar, setShowModalIniciar] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
-  const MODULO_ID = 'laboratorio';
+  const MODULO_ID = 'vacunatorio';
   const [periodoAbierto, setPeriodoAbierto] = useState({ mes: '', anio: '', estado: '', cargando: true });
 
   const { showToast } = useToast();
@@ -27,8 +27,8 @@ const IniciarProceso = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
-  const COL_BASE = "laboratorio_documentos";
+  const PATH_VISTA = "/vacunatorio/archivosControl";
+  const COL_BASE = "vacunatorio_documentos";
   const COL_CIERRES = "cierres_periodos";
 
   const formatearFechaEmision = (fechaStr) => {
@@ -162,7 +162,7 @@ const IniciarProceso = () => {
     if (seleccionadas.length === 0) return;
 
     if (!hayPeriodoActivo) {
-      showToast("No hay ningún período de imputación abierto para Laboratorio actualmente", "error");
+      showToast("No hay ningún período de imputación abierto para Vacunatorio actualmente", "error");
       return;
     }
 
@@ -171,7 +171,7 @@ const IniciarProceso = () => {
 
   const handleConfirmarInicioProceso = async () => {
     if (!hayPeriodoActivo) {
-      showToast("No hay ningún período de imputación abierto para Laboratorio actualmente", "error");
+      showToast("No hay ningún período de imputación abierto para Vacunatorio actualmente", "error");
       return;
     }
 
@@ -307,7 +307,7 @@ const IniciarProceso = () => {
         ) : (
           <span className="h-6 px-2.5 flex items-center gap-1.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400 animate-fade-in">
             <AlertTriangle size={12} />
-            No hay período de imputación abierto para Laboratorio
+            No hay período de imputación abierto para Vacunatorio
           </span>
         )}
       </div>

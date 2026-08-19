@@ -6,8 +6,8 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 
-import DetalleDocumentoModal from '../../../vizualizador/XmlDetallesDoc';
-import EditorDocumentos from '../documentosRecibidos/EditorDocumentos';
+import VizualizadorDetallesImputados from './VizualizadorDetallesImputados'; 
+import EditarDocumentoImputado from './EditarDocumentoImputado';
 import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
 
 const DocumentosImputados = () => {
@@ -31,8 +31,8 @@ const DocumentosImputados = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
-  const COL_BASE = "laboratorio_imputadas";
+  const PATH_VISTA = "/Vacunatorio/archivosControl";
+  const COL_BASE = "Vacunatorio_imputadas";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '-';
@@ -307,14 +307,14 @@ const DocumentosImputados = () => {
       )}
 
       {documentoSeleccionado && (
-        <DetalleDocumentoModal
+        <VizualizadorDetallesImputados
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />
       )}
 
       {documentoParaConfigurar && (
-        <EditorDocumentos
+        <EditarDocumentoImputado
           documento={documentoParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}

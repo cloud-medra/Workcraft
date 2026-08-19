@@ -27,8 +27,8 @@ const DocListasIngreso = () => {
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
 
-    const PATH_VISTA = "/laboratorio/archivosControl";
-    const COL_BASE = "laboratorio_documentos";
+    const PATH_VISTA = "/vacunatorio/archivosControl";
+    const COL_BASE = "vacunatorio_documentos";
 
     const ESTADOS_PERMITIDOS = [
         "Listo para Ingreso",

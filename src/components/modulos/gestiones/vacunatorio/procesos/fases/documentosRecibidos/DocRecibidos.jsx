@@ -5,12 +5,11 @@ import { FileText, Trash2, Search, Eye, Settings, History } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
+import DetalleFacturaModal from '../../../vizualizador/XmlDetallesDoc';
+import EditorDocumentos from './EditorDocumentos';
+import HistorialDocumentos from './HistorialDocumentos'; 
 
-import DetalleDocumentoModal from '../../../vizualizador/XmlDetallesDoc';
-import EditorDocumentos from '../documentosRecibidos/EditorDocumentos';
-import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
-
-const DocumentosImputados = () => {
+const DocumentosRecibidos = () => {
   const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -31,8 +30,8 @@ const DocumentosImputados = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
-  const COL_BASE = "laboratorio_imputadas";
+  const PATH_VISTA = "/vacunatorio/archivosControl";
+  const COL_BASE = "vacunatorio_documentos";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '-';
@@ -139,13 +138,13 @@ const DocumentosImputados = () => {
     }
   };
 
-  const documentosFiltrados = documentos.filter(doc =>
-    doc.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    doc.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    doc.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    doc.estado?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (doc.orden || doc.numOrden)?.toString().toLowerCase().includes(busqueda.toLowerCase()) ||
-    (doc.acta || doc.numActa)?.toString().toLowerCase().includes(busqueda.toLowerCase())
+  const documentosFiltrados = documentos.filter(docItem =>
+    docItem.folio?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docItem.rznSoc?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docItem.folioRef?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    docItem.estado?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (docItem.orden || docItem.numOrden)?.toString().toLowerCase().includes(busqueda.toLowerCase()) ||
+    (docItem.acta || docItem.numActa)?.toString().toLowerCase().includes(busqueda.toLowerCase())
   );
 
   return (
@@ -154,7 +153,7 @@ const DocumentosImputados = () => {
         <div className="flex items-center gap-2">
           <FileText size={16} className="text-[#2383C2]" />
           <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-            Documentos Imputados
+            Documentos Recibidos (XML)
           </span>
         </div>
       </header>
@@ -307,7 +306,7 @@ const DocumentosImputados = () => {
       )}
 
       {documentoSeleccionado && (
-        <DetalleDocumentoModal
+        <DetalleFacturaModal
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />
@@ -325,7 +324,7 @@ const DocumentosImputados = () => {
       <HistorialDocumentos
         showLogModal={showLogModal}
         onClose={() => setShowLogModal(false)}
-        selectedDocumentoForLog={selectedDocumentoForLog}
+        selectedFacturaForLog={selectedDocumentoForLog}
         logsList={logsList}
         loadingLogs={loadingLogs}
       />
@@ -333,4 +332,4 @@ const DocumentosImputados = () => {
   );
 };
 
-export default DocumentosImputados;
+export default DocumentosRecibidos;

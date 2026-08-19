@@ -21,9 +21,9 @@ import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
-import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CodigoLaboratorioDrawers';
+import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CodigoVacunatorioDrawers';
 
-const CodigoLaboratorio = () => {
+const CodigoVacunatorio = () => {
   const [codigos, setCodigos] = useState([]);
   const [formData, setFormData] = useState({ referencia: '', codigo: '', precio: '', descripcion: '' });
   const [busqueda, setBusqueda] = useState('');
@@ -44,8 +44,8 @@ const CodigoLaboratorio = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/codigoLaboratorio";
-  const COL_BASE = "laboratorio_codigos";
+  const PATH_VISTA = "/vacunatorio/codigoVacunatorio";
+  const COL_BASE = "vacunatorio_codigos";
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("referencia", "asc"));
@@ -224,7 +224,7 @@ const CodigoLaboratorio = () => {
     const worksheet = XLSX.utils.json_to_sheet(dataExportar);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Codigos");
-    XLSX.writeFile(workbook, `codigos_laboratorio_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(workbook, `codigos_vacunatorio_${new Date().toISOString().slice(0,10)}.xlsx`);
 
     showToast("Archivo exportado correctamente", "success");
   };
@@ -561,4 +561,4 @@ const CodigoLaboratorio = () => {
   );
 };
 
-export default CodigoLaboratorio;
+export default CodigoVacunatorio;
