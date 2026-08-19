@@ -1,21 +1,27 @@
 import React from 'react';
 import {
-  Users,
-  LayoutDashboard,
-  UserPlus,
-  UserSearch,
-  Building2,
-  Microscope,
   BadgeInfo,
+  Building2,
   Calendar,
   CalendarDays,
   CalendarCheck,
   ClipboardList,
-  Settings2,
+  Database,
+  Factory,
   FileCode,
   FileSpreadsheet,
-  Database,
-  Syringe
+  Microscope,
+  Handshake,
+  Hospital,
+  LayoutDashboard,
+  Settings2,
+  ShieldCheck,
+  Syringe,
+  Users,
+  UserPlus,
+  UserSearch,
+  UserRound
+  
 } from "lucide-react";
 
 export const MODULES = {
@@ -59,11 +65,14 @@ export const MODULES = {
     ]
   },
   maestros: {
-    label: 'Maestro',
+    label: 'Maestros',
     icon: <Database size={18} />,
     subItems: [
-      { label: 'Registro Empresas', path: '/maestros/empresasMaestros', icon: <Building2 size={14} /> },
-      // { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <Building2 size={14} /> },
+      { label: 'Empresas', path: '/maestros/empresasMaestros', icon: <Factory size={14} /> },
+      { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <UserRound size={14} /> },
+      { label: 'Centros', path: '/maestros/centrosMaestros', icon: <Hospital size={14} /> },
+      { label: 'Previsiones', path: '/maestros/previsionesMaestros', icon: <ShieldCheck size={14} /> },
+      { label: 'Convenios', path: '/maestros/conveniosMaestros', icon: <Handshake size={14} /> },
     ]
   }
 

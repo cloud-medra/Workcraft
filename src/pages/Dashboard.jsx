@@ -31,7 +31,10 @@ import XmlDocVacunatorio from '../components/modulos/gestiones/vacunatorio/impor
 import ArchivosControlVacunatorio from '../components/modulos/gestiones/vacunatorio/procesos/ArchivosControlVacunatorio';
 // MAESTROS
 import EmpresasMaestros from '../components/modulos/maestros/empresasMaestros/EmpresasMaestros';
-//import PrestadoresMaestros from '../components/modulos/maestros/PrestadoresMaestros';
+import PrestadoresMaestros from '../components/modulos/maestros/prestadoresMaestro/PrestadoresMaestros';
+import CentrosMaestros from '../components/modulos/maestros/centrosMaestros/CentrosMaestros';
+import PrevisionesMaestros from '../components/modulos/maestros/previsionesMaestros/PrevisionesMaestros';
+import ConveniosMaestros from '../components/modulos/maestros/conveniosMaestros/ConveniosMaestros';
 
 // AJUSTES & PERFIL
 import Perfil from '../components/modulos/general/perfil/Perfil';
@@ -193,10 +196,12 @@ const Dashboard = () => {
     // LEGALES
     'privacidad': <PoliticasPrivacidad />,
     'terminos': <TerminosServicio />,
-    
     // MAESTROS
     '/maestros/empresasMaestros': <EmpresasMaestros />,
-    //'/maestros/prestadoresMaestros': <PrestadoresMaestros />,
+    '/maestros/prestadoresMaestros': <PrestadoresMaestros />,
+    '/maestros/centrosMaestros': <CentrosMaestros />,
+    '/maestros/previsionesMaestros': <PrevisionesMaestros />,
+    '/maestros/conveniosMaestros': <ConveniosMaestros />,
 
 
     // USUARIOS

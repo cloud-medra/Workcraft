@@ -13,7 +13,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useToast } from '../../../../context/ToastContext';
@@ -21,17 +21,17 @@ import { useModal } from '../../../../context/ModalContext';
 import { useUser } from '../../../../context/UserContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import Spinner from '../../../ui/Spinner';
-import { DrawersOverlay, LogDrawer, ConfigDrawer } from './EmpresasMaestrosDrawers';
+import { DrawersOverlay, LogDrawer, ConfigDrawer } from './PrevisionesMaestrosDrawers';
 
-const EmpresasMaestros = () => {
-  const [empresas, setEmpresas] = useState([]);
-  const [formData, setFormData] = useState({ nombre: '', rut: '', estado: 'ACTIVO' });
+const PrevisionesMaestros = () => {
+  const [previsiones, setPrevisiones] = useState([]);
+  const [formData, setFormData] = useState({ nombre: '', comentario: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [cargando, setCargando] = useState(false);
 
   const [showLogDrawer, setShowLogDrawer] = useState(false);
-  const [selectedEmpresaForLog, setSelectedEmpresaForLog] = useState(null);
+  const [selectedPrevisionForLog, setSelectedPrevisionForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
@@ -44,25 +44,16 @@ const EmpresasMaestros = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/empresas";
-  const COL_BASE = "maestros_empresas";
+  const PATH_VISTA = "/maestros/previsiones";
+  const COL_BASE = "maestros_previsiones";
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setEmpresas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setPrevisiones(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
-
-  const formatearRut = (rut) => {
-    let valor = rut.replace(/[^0-9kK]/g, '');
-    if (valor.length < 2) return valor;
-    const cuerpo = valor.slice(0, -1);
-    const dv = valor.slice(-1).toUpperCase();
-    const cuerpoFormateado = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-    return `${cuerpoFormateado}-${dv}`;
-  };
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
@@ -76,9 +67,9 @@ const EmpresasMaestros = () => {
     });
   };
 
-  const registrarLog = async (empresaId, accion, detalles) => {
+  const registrarLog = async (previsionId, accion, detalles) => {
     try {
-      const logsSubcollectionRef = collection(db, COL_BASE, empresaId, "logs");
+      const logsSubcollectionRef = collection(db, COL_BASE, previsionId, "logs");
       await addDoc(logsSubcollectionRef, {
         accion,
         detalles,
@@ -94,55 +85,45 @@ const EmpresasMaestros = () => {
 
   const handleGuardar = async (e) => {
     e.preventDefault();
-    if (!formData.nombre.trim() || !formData.rut.trim()) {
-      return showToast("Nombre y RUT son obligatorios", "error");
+    if (!formData.nombre.trim()) {
+      return showToast("El nombre de la previsión es obligatorio", "error");
     }
 
-    const rutFormateado = formatearRut(formData.rut);
     const nombreTrimmed = formData.nombre.trim().toLowerCase();
 
-    const existeRut = empresas.some(l =>
-      l.rut === rutFormateado && l.id !== editingId
-    );
-    if (existeRut) {
-      return showToast("Ya existe una empresa registrada con este RUT", "error");
-    }
-
-    const existeNombre = empresas.some(l =>
-      l.nombre.trim().toLowerCase() === nombreTrimmed && l.id !== editingId
+    const existeNombre = previsiones.some(p =>
+      p.nombre.trim().toLowerCase() === nombreTrimmed && p.id !== editingId
     );
     if (existeNombre) {
-      return showToast("Ya existe una empresa registrada con este Nombre", "error");
+      return showToast("Ya existe una previsión registrada con este Nombre", "error");
     }
 
     setCargando(true);
     try {
       if (editingId) {
-        const empresaExistente = empresas.find(l => l.id === editingId);
+        const previsionExistente = previsiones.find(p => p.id === editingId);
 
         const dataAEnviar = {
           ...formData,
-          rut: rutFormateado,
-          fechaRegistro: empresaExistente?.fechaRegistro || new Date(),
-          registradoPor: empresaExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
+          fechaRegistro: previsionExistente?.fechaRegistro || new Date(),
+          registradoPor: previsionExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
 
         await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
-          nombreAnterior: empresaExistente?.nombre,
+          nombreAnterior: previsionExistente?.nombre,
           nombreNuevo: formData.nombre,
-          rutAnterior: empresaExistente?.rut,
-          rutNuevo: rutFormateado,
-          estadoAnterior: empresaExistente?.estado,
+          comentarioAnterior: previsionExistente?.comentario,
+          comentarioNuevo: formData.comentario,
+          estadoAnterior: previsionExistente?.estado,
           estadoNuevo: formData.estado
         });
 
-        showToast("Empresa actualizada correctamente", "success");
+        showToast("Previsión actualizada correctamente", "success");
       } else {
         const dataAEnviar = {
           ...formData,
-          rut: rutFormateado,
           fechaRegistro: new Date(),
           registradoPor: userData?.nombreCompleto || 'Usuario'
         };
@@ -151,13 +132,13 @@ const EmpresasMaestros = () => {
 
         await registrarLog(docRef.id, 'CREACION', {
           nombre: formData.nombre,
-          rut: rutFormateado,
+          comentario: formData.comentario,
           estado: formData.estado
         });
 
-        showToast("Empresa registrada correctamente", "success");
+        showToast("Previsión registrada correctamente", "success");
       }
-      setFormData({ nombre: '', rut: '', estado: 'ACTIVO' });
+      setFormData({ nombre: '', comentario: '', estado: 'ACTIVO' });
       setEditingId(null);
     } catch (error) {
       showToast("Error al guardar: " + error.message, "error");
@@ -167,21 +148,20 @@ const EmpresasMaestros = () => {
   };
 
   const handleDelete = (id) => {
-    const empresaAEliminar = empresas.find(l => l.id === id);
+    const previsionAEliminar = previsiones.find(p => p.id === id);
 
     confirmAction(
-      "Eliminar Empresa",
+      "Eliminar Previsión",
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
           await registrarLog(id, 'ELIMINACION', {
-            nombre: empresaAEliminar?.nombre || '',
-            rut: empresaAEliminar?.rut || ''
+            nombre: previsionAEliminar?.nombre || ''
           });
 
           await deleteDoc(doc(db, COL_BASE, id));
 
-          showToast("Empresa eliminada correctamente", "info");
+          showToast("Previsión eliminada correctamente", "info");
         } catch (error) {
           showToast("Error al eliminar", "error");
         }
@@ -189,24 +169,28 @@ const EmpresasMaestros = () => {
     );
   };
 
-  const iniciarEdicion = (l) => {
-    setEditingId(l.id);
-    setFormData({ nombre: l.nombre, rut: l.rut, estado: l.estado || 'ACTIVO' });
+  const iniciarEdicion = (p) => {
+    setEditingId(p.id);
+    setFormData({
+      nombre: p.nombre,
+      comentario: p.comentario || '',
+      estado: p.estado || 'ACTIVO'
+    });
   };
 
   const cancelarEdicion = () => {
     setEditingId(null);
-    setFormData({ nombre: '', rut: '', estado: 'ACTIVO' });
+    setFormData({ nombre: '', comentario: '', estado: 'ACTIVO' });
   };
 
-  const abrirHistorialLogs = async (empresa) => {
-    setSelectedEmpresaForLog(empresa);
+  const abrirHistorialLogs = async (prevision) => {
+    setSelectedPrevisionForLog(prevision);
     setShowLogDrawer(true);
     setLoadingLogs(true);
 
     try {
       const q = query(
-        collection(db, COL_BASE, empresa.id, "logs"),
+        collection(db, COL_BASE, prevision.id, "logs"),
         orderBy("fecha", "desc")
       );
       const snapshot = await getDocs(q);
@@ -223,27 +207,27 @@ const EmpresasMaestros = () => {
   const handleAbrirConfiguracion = () => { setShowConfigDrawer(true); };
 
   const handleExportarDatos = () => {
-    if (empresas.length === 0) {
+    if (previsiones.length === 0) {
       return showToast("No hay datos para exportar", "error");
     }
 
-    const dataExportar = empresas.map(l => ({
-      NOMBRE: l.nombre || '',
-      RUT: l.rut || '',
-      ESTADO: l.estado || 'ACTIVO'
+    const dataExportar = previsiones.map(p => ({
+      NOMBRE: p.nombre || '',
+      COMENTARIO: p.comentario || '',
+      ESTADO: p.estado || 'ACTIVO'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataExportar);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Empresas");
-    XLSX.writeFile(workbook, `empresas_maestros_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Previsiones");
+    XLSX.writeFile(workbook, `previsiones_maestros_${new Date().toISOString().slice(0,10)}.xlsx`);
 
     showToast("Archivo exportado correctamente", "success");
   };
 
   const handleDescargarPlantilla = () => {
-    const headers = ["NOMBRE", "RUT", "ESTADO"];
-    const ejemplo = ["Empresa Central", "12345678-9", "ACTIVO"];
+    const headers = ["NOMBRE", "COMENTARIO", "ESTADO"];
+    const ejemplo = ["FONASA", "Fondo Nacional de Salud", "ACTIVO"];
 
     const csvContent = "\uFEFF" + [headers.join(";"), ejemplo.join(";")].join("\r\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -251,7 +235,7 @@ const EmpresasMaestros = () => {
 
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", "plantilla_importacion_empresas.csv");
+    link.setAttribute("download", "plantilla_importacion_previsiones.csv");
     document.body.appendChild(link);
     link.click();
 
@@ -287,7 +271,7 @@ const EmpresasMaestros = () => {
       const registrosNuevos = filtrarDuplicados(registros);
 
       if (registrosNuevos.length === 0) {
-        throw new Error("Todos los registros del archivo ya existen (RUT o Nombre duplicado)");
+        throw new Error("Todos los registros del archivo ya existen (Nombre duplicado)");
       }
 
       await guardarRegistrosMasivos(registrosNuevos);
@@ -354,13 +338,12 @@ const EmpresasMaestros = () => {
       };
 
       const nombre = String(getVal('NOMBRE') || '').trim();
-      const rutRaw = String(getVal('RUT') || '').trim();
-      const rut = rutRaw ? formatearRut(rutRaw) : '';
+      const comentario = String(getVal('COMENTARIO') || '').trim();
       const estadoRaw = String(getVal('ESTADO') || '').trim().toUpperCase();
       const estado = estadoRaw === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO';
 
-      if (nombre && rut) {
-        mapeados.push({ nombre, rut, estado });
+      if (nombre) {
+        mapeados.push({ nombre, comentario, estado });
       }
     }
 
@@ -368,21 +351,18 @@ const EmpresasMaestros = () => {
   };
 
   const filtrarDuplicados = (registros) => {
-    const rutsExistentes = new Set(empresas.map(l => l.rut));
-    const nombresExistentes = new Set(empresas.map(l => l.nombre.trim().toLowerCase()));
-    const rutsVistos = new Set();
+    const nombresExistentes = new Set(previsiones.map(p => p.nombre.trim().toLowerCase()));
     const nombresVistos = new Set();
     const resultado = [];
 
     for (const item of registros) {
       const nombreKey = item.nombre.trim().toLowerCase();
       if (
-        rutsExistentes.has(item.rut) || nombresExistentes.has(nombreKey) ||
-        rutsVistos.has(item.rut) || nombresVistos.has(nombreKey)
+        nombresExistentes.has(nombreKey) ||
+        nombresVistos.has(nombreKey)
       ) {
         continue;
       }
-      rutsVistos.add(item.rut);
       nombresVistos.add(nombreKey);
       resultado.push(item);
     }
@@ -399,21 +379,21 @@ const EmpresasMaestros = () => {
       const batch = writeBatch(db);
 
       for (const item of chunk) {
-        const empresaRef = doc(collection(db, COL_BASE));
-        batch.set(empresaRef, {
+        const previsionRef = doc(collection(db, COL_BASE));
+        batch.set(previsionRef, {
           nombre: item.nombre,
-          rut: item.rut,
+          comentario: item.comentario,
           estado: item.estado,
           registradoPor: userData?.nombreCompleto || 'Importación Masiva',
           fechaRegistro: new Date()
         });
 
-        const logRef = doc(collection(db, COL_BASE, empresaRef.id, "logs"));
+        const logRef = doc(collection(db, COL_BASE, previsionRef.id, "logs"));
         batch.set(logRef, {
           accion: 'CREACION_MASIVA',
           detalles: {
             nombre: item.nombre,
-            rut: item.rut,
+            comentario: item.comentario,
             estado: item.estado
           },
           usuario: userData?.nombreCompleto || 'Importación Masiva',
@@ -428,9 +408,9 @@ const EmpresasMaestros = () => {
     }
   };
 
-  const empresasFiltradas = empresas.filter(l =>
-    l.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (l.rut && l.rut.toLowerCase().includes(busqueda.toLowerCase()))
+  const previsionesFiltradas = previsiones.filter(p =>
+    p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (p.comentario && p.comentario.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   return (
@@ -446,15 +426,15 @@ const EmpresasMaestros = () => {
 
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
-          <Microscope size={14} className="text-[#2383C2]" />
-          {editingId ? "EDITAR EMPRESA" : "REGISTRO DE EMPRESAS"}
+          <ShieldCheck size={14} className="text-[#2383C2]" />
+          {editingId ? "EDITAR PREVISIÓN" : "REGISTRO DE PREVISIONES"}
         </h2>
 
         {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
           <button
             onClick={handleAbrirConfiguracion}
             className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            title="Configuración de Empresas (Importar/Exportar)"
+            title="Configuración de Previsiones (Importar/Exportar)"
           >
             <Settings size={15} />
           </button>
@@ -465,20 +445,20 @@ const EmpresasMaestros = () => {
         <form onSubmit={handleGuardar} className="px-3 py-2 flex flex-wrap items-end gap-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
           {hasPermission(PATH_VISTA, "formulario_registro", "input_nombre") && (
             <div className="w-[240px]">
-              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre Empresa</label>
-              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Empresa Central" />
+              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Nombre de la Previsión</label>
+              <input required value={formData.nombre} onChange={e => setFormData({ ...formData, nombre: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: FONASA" />
             </div>
           )}
 
-          {hasPermission(PATH_VISTA, "formulario_registro", "input_rut") && (
-            <div className="w-[150px]">
-              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">RUT</label>
-              <input required value={formData.rut} onChange={e => setFormData({ ...formData, rut: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: 123456789" />
+          {hasPermission(PATH_VISTA, "formulario_registro", "input_comentario") && (
+            <div className="w-[220px]">
+              <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Comentario</label>
+              <input value={formData.comentario} onChange={e => setFormData({ ...formData, comentario: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Nota opcional" />
             </div>
           )}
 
           {editingId && hasPermission(PATH_VISTA, "formulario_registro", "select_estado") && (
-            <div className="w-[100px]">
+            <div className="w-[90px]">
               <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Estado</label>
               <select value={formData.estado} onChange={e => setFormData({ ...formData, estado: e.target.value })} className="w-full h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
                 <option value="ACTIVO">ACTIVO</option>
@@ -507,7 +487,7 @@ const EmpresasMaestros = () => {
           {hasPermission(PATH_VISTA, "barra_busqueda", "input_buscar") && (
             <div className="relative w-60">
               <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />
-              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]" placeholder="Buscar por nombre o rut..." />
+              <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]" placeholder="Buscar por nombre, comentario..." />
             </div>
           )}
         </div>
@@ -519,8 +499,8 @@ const EmpresasMaestros = () => {
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8 text-center">#</th>
-                {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Nombre</th>}
-                {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">RUT</th>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Nombre de la Previsión</th>}
+                {hasPermission(PATH_VISTA, "tabla_datos", "col_comentario") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Comentario</th>}
                 {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>}
                 {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Registrado por</th>}
                 {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Fecha</th>}
@@ -528,35 +508,35 @@ const EmpresasMaestros = () => {
               </tr>
             </thead>
             <tbody>
-              {empresasFiltradas.map((l, index) => (
-                <tr key={l.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
+              {previsionesFiltradas.map((p, index) => (
+                <tr key={p.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{l.nombre}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{l.rut}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{p.nombre}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_comentario") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{p.comentario || '-'}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && (
                     <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${l.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
-                        {l.estado || 'ACTIVO'}
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${p.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
+                        {p.estado || 'ACTIVO'}
                       </span>
                     </td>
                   )}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{l.registradoPor || 'N/A'}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(l.fechaRegistro)}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_registrador") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{p.registradoPor || 'N/A'}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_fecha") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(p.fechaRegistro)}</td>}
 
                   <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center">
                     <div className="flex justify-center gap-2">
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_log") && (
-                        <button onClick={() => abrirHistorialLogs(l)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
+                        <button onClick={() => abrirHistorialLogs(p)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
                           <History size={13} />
                         </button>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_editar") && (
-                        <button onClick={() => iniciarEdicion(l)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
+                        <button onClick={() => iniciarEdicion(p)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
                           <Pencil size={13} />
                         </button>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "action_eliminar") && (
-                        <button onClick={() => handleDelete(l.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
+                        <button onClick={() => handleDelete(p.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
                           <Trash2 size={13} />
                         </button>
                       )}
@@ -580,7 +560,7 @@ const EmpresasMaestros = () => {
       <LogDrawer
         show={showLogDrawer}
         onClose={() => setShowLogDrawer(false)}
-        selectedLab={selectedEmpresaForLog}
+        selectedLab={selectedPrevisionForLog}
         logsList={logsList}
         loadingLogs={loadingLogs}
         formatearFecha={formatearFecha}
@@ -589,7 +569,7 @@ const EmpresasMaestros = () => {
       <ConfigDrawer
         show={showConfigDrawer}
         onClose={() => setShowConfigDrawer(false)}
-        totalLaboratorios={empresas.length}
+        totalLaboratorios={previsiones.length}
         onExportar={handleExportarDatos}
         onDescargarPlantilla={handleDescargarPlantilla}
         importFile={importFile}
@@ -601,4 +581,4 @@ const EmpresasMaestros = () => {
   );
 };
 
-export default EmpresasMaestros;
+export default PrevisionesMaestros;

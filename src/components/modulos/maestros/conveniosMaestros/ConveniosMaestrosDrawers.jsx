@@ -30,7 +30,7 @@ const ACCION_LABELS = {
 export const LogDrawer = ({
   show,
   onClose,
-  selectedLab,
+  selectedConvenio,
   logsList,
   loadingLogs,
   formatearFecha
@@ -49,10 +49,7 @@ export const LogDrawer = ({
               Historial de Cambios
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-              {selectedLab?.nombre}{' '}
-              <span className="font-semibold text-gray-700 dark:text-gray-300">
-                ({selectedLab?.rut})
-              </span>
+              {selectedConvenio?.nombre || selectedConvenio?.codigo}
             </p>
           </div>
         </div>
@@ -74,7 +71,7 @@ export const LogDrawer = ({
           </div>
         ) : logsList.length === 0 ? (
           <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
-            No hay registros de auditoría para esta empresa.
+            No hay registros de auditoría para este convenio maestro.
           </div>
         ) : (
           logsList.map((log) => (
@@ -113,7 +110,7 @@ export const LogDrawer = ({
                       <strong>Nombre:</strong> {log.detalles?.nombre}
                     </p>
                     <p>
-                      <strong>RUT:</strong> {log.detalles?.rut}
+                      <strong>Comentario:</strong> {log.detalles?.comentario || '-'}
                     </p>
                     <p>
                       <strong>Estado:</strong> {log.detalles?.estado}
@@ -142,16 +139,16 @@ export const LogDrawer = ({
                         </div>
                       </li>
                     )}
-                    {log.detalles?.rutAnterior !== log.detalles?.rutNuevo && (
+                    {log.detalles?.comentarioAnterior !== log.detalles?.comentarioNuevo && (
                       <li className="flex flex-col gap-0.5">
-                        <span className="text-gray-400 text-[9px] font-bold">RUT</span>
+                        <span className="text-gray-400 text-[9px] font-bold">Comentario</span>
                         <div className="flex items-center gap-1 flex-wrap">
                           <span className="text-red-500 dark:text-red-400 font-medium">
-                            {log.detalles?.rutAnterior}
+                            {log.detalles?.comentarioAnterior || '-'}
                           </span>
                           <span className="text-gray-400">→</span>
                           <span className="text-green-600 dark:text-green-400 font-medium">
-                            {log.detalles?.rutNuevo}
+                            {log.detalles?.comentarioNuevo || '-'}
                           </span>
                         </div>
                       </li>
@@ -175,7 +172,7 @@ export const LogDrawer = ({
 
                 {log.accion === 'ELIMINACION' && (
                   <p className="text-red-500 font-medium">
-                    Registro eliminado ({log.detalles?.nombre} - {log.detalles?.rut})
+                    Registro eliminado ({log.detalles?.nombre})
                   </p>
                 )}
               </div>
@@ -197,10 +194,10 @@ export const LogDrawer = ({
   );
 };
 
-export const ConfigDrawer = ({
+export const ConfigDrawer  = ({
   show,
   onClose,
-  totalLaboratorios,
+  totalConvenios,
   onExportar,
   onDescargarPlantilla,
   importFile,
@@ -219,7 +216,7 @@ export const ConfigDrawer = ({
           <Settings size={16} className="text-[#2383C2]" />
           <div>
             <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100">
-              Configuración de Empresas
+              Configuración de Convenios Maestros
             </h3>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
               Herramientas de importación y exportación
@@ -238,10 +235,10 @@ export const ConfigDrawer = ({
         <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2">
           <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
             <Download size={14} className="text-emerald-600 dark:text-emerald-400" />
-            <span>Exportar Empresas</span>
+            <span>Exportar Convenios Maestros</span>
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Descarga la lista actual de empresas registradas ({totalLaboratorios}{' '}
+            Descarga la lista actual de convenios maestros registrados ({totalConvenios}{' '}
             registros) en un archivo compatible con Excel (CSV/XLSX).
           </p>
           <button
@@ -259,7 +256,7 @@ export const ConfigDrawer = ({
             <span>Importación Masiva</span>
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-            Carga masivamente nuevas empresas seleccionando un archivo
+            Carga masivamente nuevos convenios maestros seleccionando un archivo
             formateado en Excel o CSV.
           </p>
           <button
@@ -292,7 +289,7 @@ export const ConfigDrawer = ({
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
             <strong>Formato de columnas requerido:</strong>
             <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400">
-              NOMBRE | RUT | ESTADO
+              NOMBRE | COMENTARIO | ESTADO
             </div>
           </div>
 
