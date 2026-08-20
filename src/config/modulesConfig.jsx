@@ -80,6 +80,14 @@ export const MODULES = {
       { label: 'Calculador', path: '/maestros/calculadorMaestros', icon: <Calculator size={14} /> },
       { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <Hash size={14} /> },
     ]
+  },
+  consignacion: {
+    label: 'Consignación',
+    icon: <Database size={18} />,
+    subItems: [
+      { label: 'Empresas', path: '/consignacion/guiasConsigna', icon: <Factory size={14} /> },
+
+    ]
   }
 
 

@@ -38,9 +38,10 @@ import ConveniosMaestros from '../components/modulos/maestros/conveniosMaestros/
 import RecargosMaestros from '../components/modulos/maestros/recargosMaestros/RecargosMaestros';
 import CalculadorMaestros from '../components/modulos/maestros/calculadorMaestros/CalculadorMaestros';
 import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/CodigosMaestros';
+// CONSIGNACION
+import GuiasConsigna from '../components/modulos/gestiones/consignacion/guiasConsigna/GuiasConsigna';
 
-
-// AJUSTES & PERFIL
+// AJUSTES & PERFIL 
 import Perfil from '../components/modulos/general/perfil/Perfil';
 // LEGALES
 import PoliticasPrivacidad from '../components/modulos/general/legales/PoliticasPrivacidad';
@@ -209,7 +210,8 @@ const Dashboard = () => {
     '/maestros/recargosMaestros': <RecargosMaestros />,
     '/maestros/calculadorMaestros': <CalculadorMaestros />,
     '/maestros/codigosMaestros': <CodigosMaestros />,
-
+    // CONSIGNACION
+    '/consignacion/guiasConsigna': <GuiasConsigna />,
 
     // USUARIOS
     //'/usuarios/crear': <CrearUsuario />,
