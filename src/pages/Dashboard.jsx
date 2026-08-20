@@ -40,6 +40,12 @@ import CalculadorMaestros from '../components/modulos/maestros/calculadorMaestro
 import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/CodigosMaestros';
 // CONSIGNACION
 import GuiasConsigna from '../components/modulos/gestiones/consignacion/guiasConsigna/GuiasConsigna';
+// INVENTARIO
+import GeneralInventario from '../components/modulos/inventario/generalInventario/GeneralInventario';
+// import PabellonInventario from '../components/modulos/inventario/pabellonInventario/PabellonInventario';
+// import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
+// import SalidasInventario from '../components/modulos/inventario/salidasInventario/SalidasInventario';
+// import TransitoInventario from '../components/modulos/inventario/transitoInventario/TransitoInventario';
 
 // AJUSTES & PERFIL 
 import Perfil from '../components/modulos/general/perfil/Perfil';
@@ -212,6 +218,16 @@ const Dashboard = () => {
     '/maestros/codigosMaestros': <CodigosMaestros />,
     // CONSIGNACION
     '/consignacion/guiasConsigna': <GuiasConsigna />,
+    // INVENTARIO
+    '/inventario/generalInventario': <GeneralInventario />,
+    // '/inventario/pabellonInventario': <PabellonInventario />,
+    // '/inventario/ingresosInventario': <IngresosInventario />,
+    // '/inventario/salidasInventario': <SalidasInventario />,
+    // '/inventario/transitoInventario': <TransitoInventario />,
+
+
+
+
 
     // USUARIOS
     //'/usuarios/crear': <CrearUsuario />,

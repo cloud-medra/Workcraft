@@ -2,6 +2,7 @@ import React from 'react';
 import {
   BadgeInfo,
   Building2,
+  Boxes,
   Calendar,
   CalendarDays,
   CalendarCheck,
@@ -17,14 +18,20 @@ import {
   Hospital,
   LayoutDashboard,
   Percent,
+  PackageCheck,
+  PackagePlus,
+  PackageMinus,
   Settings2,
   ShieldCheck,
   Syringe,
+  ScanBarcode,
+  Truck,
   Users,
   UserPlus,
   UserSearch,
-  UserRound
-  
+  UserRound,
+  Warehouse,
+
 } from "lucide-react";
 
 export const MODULES = {
@@ -49,18 +56,18 @@ export const MODULES = {
     label: 'Laboratorio',
     icon: <Microscope size={18} />,
     subItems: [
-      { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> }, 
+      { label: 'Registro Empresas', path: '/laboratorio/empresasLaboratorio', icon: <Building2 size={14} /> },
       { label: 'Maestro Códigos', path: '/laboratorio/codigoLaboratorio', icon: <BadgeInfo size={14} /> },
       { label: 'Ordenes', path: '/laboratorio/ordenLaboratorio', icon: <ClipboardList size={14} /> },
       { label: 'Xml Documentos', path: '/laboratorio/xmlDocLaboratorio', icon: <FileCode size={14} /> },
       { label: 'Control Procesos', path: '/laboratorio/archivosControlLaboratorio', icon: <FileSpreadsheet size={14} /> },
     ]
   },
-    vacunatorio: {
+  vacunatorio: {
     label: 'Vacunatorio',
     icon: <Syringe size={18} />,
     subItems: [
-      { label: 'Registro Empresas', path: '/vacunatorio/empresasVacunatorio', icon: <Building2 size={14} /> }, 
+      { label: 'Registro Empresas', path: '/vacunatorio/empresasVacunatorio', icon: <Building2 size={14} /> },
       { label: 'Maestro Códigos', path: '/vacunatorio/codigoVacunatorio', icon: <BadgeInfo size={14} /> },
       { label: 'Ordenes', path: '/vacunatorio/ordenVacunatorio', icon: <ClipboardList size={14} /> },
       { label: 'Xml Documentos', path: '/vacunatorio/xmlDocVacunatorio', icon: <FileCode size={14} /> },
@@ -83,40 +90,50 @@ export const MODULES = {
   },
   consignacion: {
     label: 'Consignación',
-    icon: <Database size={18} />,
+    icon: <PackageCheck size={18} />,
     subItems: [
-      { label: 'Empresas', path: '/consignacion/guiasConsigna', icon: <Factory size={14} /> },
-
-    ]
-  }
-
-
-
-/*
-  usuarios: { 
-    label: 'Usuarios',
-    icon: <Users size={18} />,
-    subItems: [
-      { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
-      { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
+      { label: 'Guias', path: '/consignacion/guiasConsigna', icon: <ScanBarcode size={14} /> },
     ]
   },
-  
-  ,
-
-  
-
-  misturnos: {
-    label: 'Mis Turnos',
-    icon: <CalendarDays size={18} />,
+  inventario: {
+    label: 'Inventario',
+    icon: <Warehouse size={18} />,
     subItems: [
-      {
-        label: 'Ver Turnos',
-        path: '/misturnos/ver',
-        icon: <Calendar size={14} />
-      }
+      { label: 'Stock General', path: '/inventario/generalInventario', icon: <Boxes size={14} /> },
+      // { label: 'Stock Pabellón', path: '/inventario/stockPabellon', icon: <Building2 size={14} /> },
+      // { label: 'Ingresos', path: '/inventario/ingresos', icon: <PackagePlus size={14} /> },
+      // { label: 'Salidas', path: '/inventario/salidas', icon: <PackageMinus size={14} /> },
+      // { label: 'En Tránsito', path: '/inventario/enTransito', icon: <Truck size={14} /> },
     ]
   }
 
-    */
+
+
+  /*
+    usuarios: { 
+      label: 'Usuarios',
+      icon: <Users size={18} />,
+      subItems: [
+        { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
+        { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
+      ]
+    },
+    
+    ,
+  
+    
+  
+    misturnos: {
+      label: 'Mis Turnos',
+      icon: <CalendarDays size={18} />,
+      subItems: [
+        {
+          label: 'Ver Turnos',
+          path: '/misturnos/ver',
+          icon: <Calendar size={14} />
+        }
+      ]
+    }
+  
+      */
 };
