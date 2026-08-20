@@ -35,6 +35,10 @@ import PrestadoresMaestros from '../components/modulos/maestros/prestadoresMaest
 import CentrosMaestros from '../components/modulos/maestros/centrosMaestros/CentrosMaestros';
 import PrevisionesMaestros from '../components/modulos/maestros/previsionesMaestros/PrevisionesMaestros';
 import ConveniosMaestros from '../components/modulos/maestros/conveniosMaestros/ConveniosMaestros';
+import RecargosMaestros from '../components/modulos/maestros/recargosMaestros/RecargosMaestros';
+import CalculadorMaestros from '../components/modulos/maestros/calculadorMaestros/CalculadorMaestros';
+import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/CodigosMaestros';
+
 
 // AJUSTES & PERFIL
 import Perfil from '../components/modulos/general/perfil/Perfil';
@@ -202,11 +206,14 @@ const Dashboard = () => {
     '/maestros/centrosMaestros': <CentrosMaestros />,
     '/maestros/previsionesMaestros': <PrevisionesMaestros />,
     '/maestros/conveniosMaestros': <ConveniosMaestros />,
+    '/maestros/recargosMaestros': <RecargosMaestros />,
+    '/maestros/calculadorMaestros': <CalculadorMaestros />,
+    '/maestros/codigosMaestros': <CodigosMaestros />,
 
 
     // USUARIOS
     //'/usuarios/crear': <CrearUsuario />,
-    //'/usuarios/listado': <ListadoUsuarios />,
+    //'/usuarios/listado': <ListadoUsuarios />, 
 
 
     // MIS TURNOS

@@ -5,6 +5,7 @@ import {
   Calendar,
   CalendarDays,
   CalendarCheck,
+  Calculator,
   ClipboardList,
   Database,
   Factory,
@@ -14,6 +15,7 @@ import {
   Handshake,
   Hospital,
   LayoutDashboard,
+  Percent,
   Settings2,
   ShieldCheck,
   Syringe,
@@ -73,13 +75,16 @@ export const MODULES = {
       { label: 'Centros', path: '/maestros/centrosMaestros', icon: <Hospital size={14} /> },
       { label: 'Previsiones', path: '/maestros/previsionesMaestros', icon: <ShieldCheck size={14} /> },
       { label: 'Convenios', path: '/maestros/conveniosMaestros', icon: <Handshake size={14} /> },
+      { label: 'Recargos', path: '/maestros/recargosMaestros', icon: <Percent size={14} /> },
+      { label: 'Calculador', path: '/maestros/calculadorMaestros', icon: <Calculator size={14} /> },
+      { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <Calculator size={14} /> },
     ]
   }
 
 
 
 /*
-  usuarios: {
+  usuarios: { 
     label: 'Usuarios',
     icon: <Users size={18} />,
     subItems: [
