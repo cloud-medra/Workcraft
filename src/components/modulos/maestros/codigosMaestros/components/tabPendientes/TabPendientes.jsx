@@ -8,15 +8,21 @@ import {
   doc,
   query,
   orderBy,
+  getDocs,
   serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../../../../../firebaseConfig';
-import { Clock, Plus, Trash2, Search, Pencil, Save, X, ChevronDown } from 'lucide-react';
-import { useToast } from '../../../../../context/ToastContext';
-import { useModal } from '../../../../../context/ModalContext';
-import { useUser } from '../../../../../context/UserContext';
-import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import Spinner from '../../../../ui/Spinner';
+import { db } from '../../../../../../firebaseConfig';
+import { Clock, Plus, Trash2, Search, Save, X, ChevronDown, History, Settings, Tag } from 'lucide-react';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useModal } from '../../../../../../context/ModalContext';
+import { useUser } from '../../../../../../context/UserContext';
+import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import Spinner from '../../../../../ui/Spinner';
+import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabPendientesDrawers';
+import AsignarCodigoDrawer from './AsignarCodigoDrawer';
+import { useImportExportPendientes } from './useImportExportPendientes';
+
+const COL_BASE = "maestros_codigos";
 
 const TabPendientes = () => {
   const [registros, setRegistros] = useState([]);
@@ -34,11 +40,20 @@ const TabPendientes = () => {
     observacion: ''
   });
   const [busqueda, setBusqueda] = useState('');
-  const [editingId, setEditingId] = useState(null);
   const [cargando, setCargando] = useState(false);
 
   // Estado para controlar la visibilidad del desplegable de empresas
   const [mostrarDropdownEmpresa, setMostrarDropdownEmpresa] = useState(false);
+
+  // Estado para el drawer de historial / logs
+  const [showLogDrawer, setShowLogDrawer] = useState(false);
+  const [selectedPendienteForLog, setSelectedPendienteForLog] = useState(null);
+  const [logsList, setLogsList] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
+  // Estados para el drawer de asignar código definitivo
+  const [showAsignarCodigoDrawer, setShowAsignarCodigoDrawer] = useState(false);
+  const [selectedItemParaCodigo, setSelectedItemParaCodigo] = useState(null);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -46,7 +61,19 @@ const TabPendientes = () => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/maestros/codigos-pendientes";
-  const COL_BASE = "maestros_codigos";
+
+  // Toda la lógica de importar / exportar / plantilla vive en este hook
+  const {
+    showConfigDrawer,
+    setShowConfigDrawer,
+    importFile,
+    setImportFile,
+    importing,
+    handleAbrirConfiguracion,
+    handleExportarDatos,
+    handleDescargarPlantilla,
+    handleEjecutarImportacion
+  } = useImportExportPendientes({ registros, userData, showToast, colBase: COL_BASE });
 
   const formatearMiles = (valor) => {
     if (valor === null || valor === undefined || valor === '') return '';
@@ -96,6 +123,22 @@ const TabPendientes = () => {
     });
   };
 
+  const registrarLog = async (pendienteId, accion, detalles) => {
+    try {
+      const logsSubcollectionRef = collection(db, COL_BASE, pendienteId, "logs");
+      await addDoc(logsSubcollectionRef, {
+        accion,
+        detalles,
+        usuario: userData?.nombreCompleto || 'Usuario Desconocido',
+        usuarioEmail: userData?.email || '',
+        fecha: new Date(),
+        timestamp: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error al registrar log de auditoría:", err);
+    }
+  };
+
   const handleGuardar = async (e) => {
     e.preventDefault();
     if (!formData.referencia.trim() || !formData.empresa.trim()) {
@@ -111,29 +154,30 @@ const TabPendientes = () => {
 
       const precioLimpio = parseFloat(dataUpper.precioNeto.toString().replace(/\./g, '')) || 0;
 
-      if (editingId) {
-        const registroExistente = registros.find(l => l.id === editingId);
-        const dataAEnviar = {
-          ...dataUpper,
-          precioNeto: precioLimpio,
-          fechaRegistro: registroExistente?.fechaRegistro || new Date(),
-          registradoPor: registroExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
-        };
+      const dataAEnviar = {
+        ...dataUpper,
+        precioNeto: precioLimpio,
+        codigo: '',
+        fechaRegistro: serverTimestamp(),
+        registradoPor: userData?.nombreCompleto || 'Usuario'
+      };
 
-        await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
-        showToast("Registro pendiente actualizado correctamente", "success");
-      } else {
-        const dataAEnviar = {
-          ...dataUpper,
-          precioNeto: precioLimpio,
-          codigo: '', 
-          fechaRegistro: serverTimestamp(),
-          registradoPor: userData?.nombreCompleto || 'Usuario'
-        };
+      const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
 
-        await addDoc(collection(db, COL_BASE), dataAEnviar);
-        showToast("Registro pendiente guardado correctamente", "success");
-      }
+      await registrarLog(docRef.id, 'CREACION', {
+        referencia: dataUpper.referencia,
+        descriptorEmpresa: dataUpper.descriptorEmpresa,
+        empresa: dataUpper.empresa,
+        tipo: dataUpper.tipo,
+        segmento: dataUpper.segmento,
+        clase: dataUpper.clase,
+        precioNeto: precioLimpio,
+        cx: dataUpper.cx,
+        observacion: dataUpper.observacion,
+        metodoRegistro: 'MANUAL'
+      });
+
+      showToast("Registro pendiente guardado correctamente", "success");
 
       setFormData({
         referencia: '',
@@ -147,7 +191,6 @@ const TabPendientes = () => {
         cx: '',
         observacion: ''
       });
-      setEditingId(null);
     } catch (error) {
       showToast("Error al guardar: " + error.message, "error");
     } finally {
@@ -155,12 +198,45 @@ const TabPendientes = () => {
     }
   };
 
+  const handleGuardarCodigoDefinitivo = async (id, datosActualizados) => {
+    setCargando(true);
+    try {
+      const precioLimpio = parseFloat(datosActualizados.precioNeto.toString().replace(/\./g, '')) || 0;
+      
+      const dataAEnviar = {
+        ...datosActualizados,
+        precioNeto: precioLimpio,
+        fechaAsignacionCodigo: serverTimestamp(),
+        asignadoPor: userData?.nombreCompleto || 'Usuario'
+      };
+
+      await updateDoc(doc(db, COL_BASE, id), dataAEnviar);
+      await registrarLog(id, 'ASIGNACION_CODIGO', { codigoAsignado: datosActualizados.codigo });
+
+      showToast("Código asignado correctamente", "success");
+      setShowAsignarCodigoDrawer(false);
+      setSelectedItemParaCodigo(null);
+    } catch (error) {
+      showToast("Error al asignar código: " + error.message, "error");
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const handleDelete = (id) => {
+    const pendienteAEliminar = registros.find(l => l.id === id);
+
     confirmAction(
       "Eliminar Pendiente",
       "¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.",
       async () => {
         try {
+          await registrarLog(id, 'ELIMINACION', {
+            referencia: pendienteAEliminar?.referencia || '',
+            empresa: pendienteAEliminar?.empresa || '',
+            precioNeto: pendienteAEliminar?.precioNeto || 0
+          });
+
           await deleteDoc(doc(db, COL_BASE, id));
           showToast("Registro eliminado correctamente", "info");
         } catch (error) {
@@ -170,36 +246,25 @@ const TabPendientes = () => {
     );
   };
 
-  const iniciarEdicion = (item) => {
-    setEditingId(item.id);
-    setFormData({
-      referencia: item.referencia || '',
-      descriptorEmpresa: item.descriptorEmpresa || '',
-      empresa: item.empresa || '',
-      tipo: item.tipo || '',
-      segmento: item.segmento || '',
-      clase: item.clase || '',
-      descriptorAuto: item.descriptorAuto || '',
-      precioNeto: formatearMiles(item.precioNeto),
-      cx: item.cx || '',
-      observacion: item.observacion || ''
-    });
-  };
+  const abrirHistorialLogs = async (item) => {
+    setSelectedPendienteForLog(item);
+    setShowLogDrawer(true);
+    setLoadingLogs(true);
 
-  const cancelarEdicion = () => {
-    setEditingId(null);
-    setFormData({
-      referencia: '',
-      descriptorEmpresa: '',
-      empresa: '',
-      tipo: '',
-      segmento: '',
-      clase: '',
-      descriptorAuto: '',
-      precioNeto: '',
-      cx: '',
-      observacion: ''
-    });
+    try {
+      const q = query(
+        collection(db, COL_BASE, item.id, "logs"),
+        orderBy("fecha", "desc")
+      );
+      const snapshot = await getDocs(q);
+      const logsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLogsList(logsData);
+    } catch (error) {
+      console.error("Error cargando logs:", error);
+      showToast("Error al cargar el historial", "error");
+    } finally {
+      setLoadingLogs(false);
+    }
   };
 
   const empresasFiltradasLista = empresasMaestro.filter(emp =>
@@ -227,11 +292,21 @@ const TabPendientes = () => {
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
           <Clock size={14} className="text-[#2383C2]" />
-          {editingId ? "EDITAR REGISTRO PENDIENTE" : "REGISTROS SIN CÓDIGO (PENDIENTES)"}
+          REGISTROS SIN CÓDIGO (PENDIENTES)
         </h2>
+
+        {hasPermission(PATH_VISTA, "btn_configuracion") && (
+          <button
+            onClick={handleAbrirConfiguracion}
+            className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            title="Configuración de Pendientes (Importar/Exportar)"
+          >
+            <Settings size={15} />
+          </button>
+        )}
       </div>
 
-      {/* Formulario */}
+      {/* Formulario (Exclusivo para creación de nuevos registros) */}
       {hasPermission(PATH_VISTA, "formulario_registro") && (
         <form onSubmit={handleGuardar} className="px-3 py-2 flex flex-wrap items-end gap-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
           <div className="w-[150px]">
@@ -248,18 +323,18 @@ const TabPendientes = () => {
           <div className="w-[160px] relative">
             <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Empresa</label>
             <div className="relative flex items-center">
-              <input 
-                required 
+              <input
+                required
                 type="text"
-                value={formData.empresa} 
+                value={formData.empresa}
                 onChange={e => {
                   setFormData({ ...formData, empresa: e.target.value.toUpperCase() });
                   setMostrarDropdownEmpresa(true);
                 }}
                 onFocus={() => setMostrarDropdownEmpresa(true)}
                 onBlur={() => setTimeout(() => setMostrarDropdownEmpresa(false), 200)}
-                className="w-full h-7 pl-2 pr-6 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]" 
-                placeholder="Buscar empresa..." 
+                className="w-full h-7 pl-2 pr-6 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]"
+                placeholder="Buscar empresa..."
               />
               <ChevronDown size={12} className="absolute right-2 text-gray-400 pointer-events-none" />
             </div>
@@ -323,15 +398,15 @@ const TabPendientes = () => {
 
           <div className="w-[110px]">
             <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Precio Neto</label>
-            <input 
-              type="text" 
-              value={formData.precioNeto} 
+            <input
+              type="text"
+              value={formData.precioNeto}
               onChange={e => {
                 const valorRaw = e.target.value.replace(/\D/g, '');
                 setFormData({ ...formData, precioNeto: formatearMiles(valorRaw) });
-              }} 
-              className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" 
-              placeholder="0" 
+              }}
+              className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+              placeholder="0"
             />
           </div>
 
@@ -346,15 +421,9 @@ const TabPendientes = () => {
           </div>
 
           <div className="flex items-center gap-1.5 mt-1">
-            <button type="submit" className={`h-7 px-3 rounded font-bold text-[11px] flex items-center gap-1.5 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} text-white transition`}>
-              {editingId ? <><Save size={13} /> Actualizar</> : <><Plus size={13} /> Registrar</>}
+            <button type="submit" className="h-7 px-3 rounded font-bold text-[11px] flex items-center gap-1.5 bg-[#2383C2] hover:bg-[#369BCE] text-white transition">
+              <Plus size={13} /> Registrar
             </button>
-
-            {editingId && (
-              <button type="button" onClick={cancelarEdicion} className="h-7 px-3 bg-gray-200 dark:bg-gray-700 rounded font-bold text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
-                <X size={13} /> Cancelar
-              </button>
-            )}
           </div>
         </form>
       )}
@@ -413,8 +482,20 @@ const TabPendientes = () => {
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(item.fechaRegistro)}</td>
                   <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center">
                     <div className="flex justify-center gap-2">
-                      <button onClick={() => iniciarEdicion(item)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
-                        <Pencil size={13} />
+                      {hasPermission(PATH_VISTA, "btn_log") && (
+                        <button onClick={() => abrirHistorialLogs(item)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
+                          <History size={13} />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => {
+                          setSelectedItemParaCodigo(item);
+                          setShowAsignarCodigoDrawer(true);
+                        }} 
+                        title="Asignar Código Definitivo" 
+                        className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 transition"
+                      >
+                        <Tag size={13} />
                       </button>
                       <button onClick={() => handleDelete(item.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
                         <Trash2 size={13} />
@@ -427,6 +508,48 @@ const TabPendientes = () => {
           </table>
         </div>
       )}
+
+      <DrawersOverlay
+        show={showLogDrawer || showConfigDrawer || showAsignarCodigoDrawer}
+        onClick={() => {
+          setShowLogDrawer(false);
+          setShowConfigDrawer(false);
+          setShowAsignarCodigoDrawer(false);
+        }}
+      />
+
+      <LogDrawer
+        show={showLogDrawer}
+        onClose={() => setShowLogDrawer(false)}
+        selectedPendiente={selectedPendienteForLog}
+        logsList={logsList}
+        loadingLogs={loadingLogs}
+        formatearFecha={formatearFecha}
+      />
+
+      <ConfigDrawer
+        show={showConfigDrawer}
+        onClose={() => setShowConfigDrawer(false)}
+        totalPendientes={registros.length}
+        onExportar={handleExportarDatos}
+        onDescargarPlantilla={handleDescargarPlantilla}
+        importFile={importFile}
+        onSelectFile={setImportFile}
+        importing={importing}
+        onEjecutarImportacion={handleEjecutarImportacion}
+      />
+
+      <AsignarCodigoDrawer
+        show={showAsignarCodigoDrawer}
+        onClose={() => {
+          setShowAsignarCodigoDrawer(false);
+          setSelectedItemParaCodigo(null);
+        }}
+        itemSeleccionado={selectedItemParaCodigo}
+        empresasMaestro={empresasMaestro}
+        onGuardarCodigo={handleGuardarCodigoDefinitivo}
+        cargando={cargando}
+      />
     </div>
   );
 };

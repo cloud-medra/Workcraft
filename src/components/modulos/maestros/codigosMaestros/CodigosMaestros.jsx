@@ -14,9 +14,9 @@ import { db } from '../../../../firebaseConfig';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 
 // Importación de los componentes de las pestañas
-import TabPendientes from './components/TabPendientes';
-import TabConCodigo from './components/TabConCodigo';
-import TabVistaGeneral from './components/TabVistaGeneral';
+import TabPendientes from './components/tabPendientes/TabPendientes';
+import TabConCodigo from './components/tabConCodigo/TabConCodigo';
+import TabVistaGeneral from './components/tabVistaGeneral/TabVistaGeneral';
 
 const ALL_TABS = [
   { id: 'pendientes', label: 'Sin Código / Pendientes', Icon: Clock, perm: 'tab_codigos_pendientes' },

@@ -12,6 +12,7 @@ import {
   FileCode,
   FileSpreadsheet,
   Microscope,
+  Hash,
   Handshake,
   Hospital,
   LayoutDashboard,
@@ -77,7 +78,7 @@ export const MODULES = {
       { label: 'Convenios', path: '/maestros/conveniosMaestros', icon: <Handshake size={14} /> },
       { label: 'Recargos', path: '/maestros/recargosMaestros', icon: <Percent size={14} /> },
       { label: 'Calculador', path: '/maestros/calculadorMaestros', icon: <Calculator size={14} /> },
-      { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <Calculator size={14} /> },
+      { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <Hash size={14} /> },
     ]
   }
 
