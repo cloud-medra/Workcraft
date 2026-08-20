@@ -22,7 +22,7 @@ const OcrGuiasLaboratorio = () => {
   const [showModal, setShowModal] = useState(false);
   const [cargando, setCargando] = useState(false);
   const [progreso, setProgreso] = useState('');
-  const [expandidoId, setExpandidoId] = useState(null); // Para ver el detalle de los ítems de cada guía
+  const [expandidoId, setExpandidoId] = useState(null);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -43,43 +43,42 @@ const OcrGuiasLaboratorio = () => {
     return () => unsubscribe();
   }, [showToast]);
 
-  // Función para parsear el texto estilo "Packing List" en múltiples ítems
+  // Parseador flexible que limpia la basura visual de la foto y busca cualquier fecha o dato útil
   const parsearPackingList = (text) => {
-    const lineas = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    // Limpiar líneas vacías o con puros símbolos extraños de la cámara
+    const lineas = text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(l => l.length > 3 && /[a-zA-Z0-9]/.test(l)); // Filtra líneas que tengan contenido real
+
     const itemsDetectados = [];
 
-    // Ejemplo de lógica para recorrer y agrupar filas de tablas escaneadas
-    // Buscamos patrones comunes en tu documento (códigos de lote, fechas UBD como DD.MM.YYYY)
     lineas.forEach((linea, index) => {
-      // Detectar fechas de vencimiento (ej: 31.05.2031 o 31/05/2031)
-      const fechaUbdMatch = linea.match(/(\d{2}[-./]\d{2}[-./]\d{4})/);
-      
-      if (fechaUbdMatch) {
-        // Si encontramos una línea con fecha, intentamos rescatar contexto de las líneas cercanas
-        const fechaVencimiento = fechaUbdMatch[1];
-        
-        // Buscamos hacia arriba o en la misma línea un posible lote (ej: códigos alfanuméricos largos como J6F3487Y)
-        // O tomamos información de la línea previa como descripción
-        const descripcionPrev = lineas[index - 1] || "Producto escaneado";
-        
+      // Buscar patrones de fecha flexibles (ej: 31.05.2031, 31-05-2031, etc.)
+      const fechaMatch = linea.match(/(\d{2}[-./]\d{2}[-./]\d{4})/);
+
+      if (fechaMatch) {
+        const vencimiento = fechaMatch[1];
+        const descripcionPrev = lineas[index - 1] || "Línea de producto detectada";
+
         itemsDetectados.push({
           id: Math.random().toString(36).substring(2, 9),
-          item: `Item ${itemsDetectados.length + 1}`,
+          item: `Ítem ${itemsDetectados.length + 1}`,
           descripcion: descripcionPrev,
-          lote: "Detectado en línea", 
-          vencimiento: fechaVencimiento
+          lote: "Ver texto completo",
+          vencimiento: vencimiento
         });
       }
     });
 
-    // Si el OCR no detectó filas por fecha exacta, guardamos al menos el texto completo desglosado
+    // Si la foto está muy inclinada o no detectó fechas, estructuramos el texto legible limpio
     if (itemsDetectados.length === 0) {
       itemsDetectados.push({
         id: "1",
-        item: "General",
-        descripcion: "Texto general extraído (revisar texto completo)",
-        lote: "No especificado",
-        vencimiento: "No especificado"
+        item: "Texto Capturado",
+        descripcion: lineas.slice(0, 15).join(" | "), // Muestra las primeras líneas limpias del documento
+        lote: "No detectado automáticamente",
+        vencimiento: "Revisar imagen original"
       });
     }
 
@@ -88,40 +87,36 @@ const OcrGuiasLaboratorio = () => {
 
   const onDrop = useCallback(async (acceptedFiles) => {
     setCargando(true);
-    setProgreso("Iniciando escaneo con IA...");
+    setProgreso("Analizando imagen de la cámara...");
 
     try {
       for (const file of acceptedFiles) {
         if (file.type === 'application/pdf') {
-          showToast(`El archivo ${file.name} es un PDF. Por ahora solo se admiten imágenes de la cámara.`, "error");
+          showToast(`El archivo ${file.name} es un PDF. Sube una imagen.`, "error");
           continue;
         }
 
-        setProgreso(`Analizando imagen: ${file.name}`);
+        setProgreso(`Leyendo: ${file.name}`);
 
-        // 1. OCR con Tesseract (optimizado para español)
         const { data: { text } } = await Tesseract.recognize(file, 'spa');
-
-        // 2. Desglosar los ítems del Packing List
         const itemsList = parsearPackingList(text);
 
         const nuevaGuia = {
           nombreArchivo: file.name,
-          items: itemsList, // Guardamos la lista de productos desglosados
+          items: itemsList,
           textoCompleto: text,
           registeredPor: userData?.nombreCompleto || 'Usuario',
           fechaRegistro: serverTimestamp()
         };
 
-        // 3. Guardar en Firestore
         await addDoc(collection(db, COL_BASE), nuevaGuia);
       }
 
-      showToast("Documento escaneado y desglosado con éxito", "success");
+      showToast("¡Documento procesado con éxito!", "success");
       setShowModal(false);
     } catch (error) {
       console.error("Error en OCR:", error);
-      showToast("Error al procesar el documento", "error");
+      showToast("Error al procesar la imagen", "error");
     } finally {
       setCargando(false);
       setProgreso('');
@@ -175,7 +170,6 @@ const OcrGuiasLaboratorio = () => {
         </button>
       </header>
 
-      {/* Tabla Principal de Documentos Escaneados */}
       <div className="flex-grow overflow-auto p-2">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-100 dark:bg-gray-800 text-slate-700 dark:text-slate-200">
@@ -208,7 +202,7 @@ const OcrGuiasLaboratorio = () => {
                     </td>
                     <td className="p-2 border border-slate-200 dark:border-gray-700">
                       <span className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded-full font-bold text-[10px]">
-                        {docItem.items?.length || 0} productos desglosados
+                        {docItem.items?.length || 0} productos detectados
                       </span>
                     </td>
                     <td className="p-2 border border-slate-200 dark:border-gray-700">{docItem.registeredPor}</td>
@@ -226,7 +220,6 @@ const OcrGuiasLaboratorio = () => {
                     </td>
                   </tr>
 
-                  {/* Subtabla desplegable con el desglose exacto de los ítems de la hoja */}
                   {expandidoId === docItem.id && (
                     <tr>
                       <td colSpan="4" className="bg-slate-100/80 dark:bg-gray-800/80 p-3 border border-slate-200 dark:border-gray-700">
@@ -237,7 +230,7 @@ const OcrGuiasLaboratorio = () => {
                           <thead>
                             <tr className="bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-slate-200">
                               <th className="p-1.5 border">Ítem</th>
-                              <th className="p-1.5 border">Descripción / Material</th>
+                              <th className="p-1.5 border">Descripción / Línea Limpia</th>
                               <th className="p-1.5 border">Lote / Batch</th>
                               <th className="p-1.5 border">Vencimiento (UBD)</th>
                             </tr>
@@ -253,6 +246,14 @@ const OcrGuiasLaboratorio = () => {
                             ))}
                           </tbody>
                         </table>
+
+                        {/* Texto completo opcional por si se quiere consultar el escaneo bruto */}
+                        <div className="mt-3">
+                          <span className="font-bold text-slate-600 dark:text-slate-400 text-[10px]">Texto completo detectado por la cámara:</span>
+                          <div className="bg-white dark:bg-gray-900 p-2 rounded border border-slate-300 dark:border-gray-700 max-h-24 overflow-y-auto text-[9px] text-slate-600 dark:text-slate-400 mt-1 whitespace-pre-wrap font-mono">
+                            {docItem.textoCompleto}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )}
