@@ -21,6 +21,7 @@ import {
   PackageCheck,
   PackagePlus,
   PackageMinus,
+  PackageSearch,
   Settings2,
   ShieldCheck,
   Syringe,
@@ -100,6 +101,7 @@ export const MODULES = {
     icon: <Warehouse size={18} />,
     subItems: [
       { label: 'Stock General', path: '/inventario/generalInventario', icon: <Boxes size={14} /> },
+      { label: 'Existencias', path: '/inventario/existenciasInventario', icon: <PackageSearch size={14} /> },
       // { label: 'Stock Pabellón', path: '/inventario/stockPabellon', icon: <Building2 size={14} /> },
       // { label: 'Ingresos', path: '/inventario/ingresos', icon: <PackagePlus size={14} /> },
       // { label: 'Salidas', path: '/inventario/salidas', icon: <PackageMinus size={14} /> },

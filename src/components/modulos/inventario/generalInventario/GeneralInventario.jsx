@@ -24,6 +24,7 @@ import Spinner from '../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './GeneralInventarioDrawers';
 import InventarioForm from './InventarioForm';
 import InventarioTable from './InventarioTable';
+import ExistenciasInventario from '../existenciasInventario/ExistenciasInventario'; // 1. IMPORTACIÓN AQUÍ
 
 const COL_BASE = "inventario_general";
 const COL_MAESTRO_CODIGOS = "maestros_codigos";
@@ -540,6 +541,11 @@ const GeneralInventario = () => {
         onSeleccionarCodigo={seleccionarCodigoCatalogo}
         onCancelar={limpiarFormulario}
       />
+
+      {/* 2. TABLA RESUMEN DE EXISTENCIAS CONSOLIDADAS */}
+      <div className="px-3">
+        <ExistenciasInventario cajas={cajas} />
+      </div>
 
       <InventarioTable
         cajasFiltradas={cajasFiltradas}

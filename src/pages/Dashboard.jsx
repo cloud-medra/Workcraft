@@ -42,6 +42,7 @@ import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/Codi
 import GuiasConsigna from '../components/modulos/gestiones/consignacion/guiasConsigna/GuiasConsigna';
 // INVENTARIO
 import GeneralInventario from '../components/modulos/inventario/generalInventario/GeneralInventario';
+import ExistenciasInventario from '../components/modulos/inventario/existenciasInventario/ExistenciasInventario';
 // import PabellonInventario from '../components/modulos/inventario/pabellonInventario/PabellonInventario';
 // import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
 // import SalidasInventario from '../components/modulos/inventario/salidasInventario/SalidasInventario';
@@ -220,6 +221,7 @@ const Dashboard = () => {
     '/consignacion/guiasConsigna': <GuiasConsigna />,
     // INVENTARIO
     '/inventario/generalInventario': <GeneralInventario />,
+    '/inventario/existenciasInventario': <ExistenciasInventario />,
     // '/inventario/pabellonInventario': <PabellonInventario />,
     // '/inventario/ingresosInventario': <IngresosInventario />,
     // '/inventario/salidasInventario': <SalidasInventario />,
