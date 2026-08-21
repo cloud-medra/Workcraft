@@ -43,6 +43,7 @@ import GuiasConsigna from '../components/modulos/gestiones/consignacion/guiasCon
 // INVENTARIO
 import GeneralInventario from '../components/modulos/inventario/generalInventario/GeneralInventario';
 import ExistenciasInventario from '../components/modulos/inventario/existenciasInventario/ExistenciasInventario';
+import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
 // import PabellonInventario from '../components/modulos/inventario/pabellonInventario/PabellonInventario';
 // import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
 // import SalidasInventario from '../components/modulos/inventario/salidasInventario/SalidasInventario';
@@ -222,6 +223,7 @@ const Dashboard = () => {
     // INVENTARIO
     '/inventario/generalInventario': <GeneralInventario />,
     '/inventario/existenciasInventario': <ExistenciasInventario />,
+    '/inventario/ingresosInventario': <IngresosInventario />,
     // '/inventario/pabellonInventario': <PabellonInventario />,
     // '/inventario/ingresosInventario': <IngresosInventario />,
     // '/inventario/salidasInventario': <SalidasInventario />,

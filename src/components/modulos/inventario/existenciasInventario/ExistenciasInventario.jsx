@@ -1,18 +1,79 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Layers, Search, PackageCheck, AlertCircle, DollarSign } from 'lucide-react';
+import { Layers, Search, PackageCheck, AlertCircle, DollarSign, Info, Calendar } from 'lucide-react';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import Spinner from '../../../ui/Spinner';
+import DetalleLotesDrawer from './DetalleLotesDrawer';
 
 /**
- * Muestra el resumen de existencias consolidadas mapeando el arreglo 'items' 
- * de la colección 'inventario_general' directamente desde Firestore.
+ * Función auxiliar para calcular el estado de vencimiento según la fecha más próxima.
+ * Retorna un estado de severidad (0: OK, 1: En 3 meses, 2: En 1 mes, 3: Vencido) y estilos Tailwind.
  */
+const calcularEstadoVencimiento = (fechaVencimientoStr) => {
+  if (!fechaVencimientoStr) {
+    return { 
+      severidad: 0, 
+      label: 'Sin Fecha', 
+      colorBadge: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', 
+      colorFila: '',
+      borderLeft: 'border-l-transparent'
+    };
+  }
+
+  const fechaVenc = new Date(fechaVencimientoStr);
+  const hoy = new Date();
+  
+  // Normalizar horas a medianoche para comparar solo fechas
+  hoy.setHours(0, 0, 0, 0);
+  
+  // Calcular la diferencia en días
+  const diffTiempo = fechaVenc - hoy;
+  const diffDias = Math.ceil(diffTiempo / (1000 * 60 * 60 * 24));
+
+  if (diffDias < 0) {
+    return {
+      severidad: 3,
+      label: 'VENCIDO',
+      colorBadge: 'bg-red-100 text-red-700 dark:bg-red-900/60 dark:text-red-300 border border-red-300 dark:border-red-700',
+      colorFila: 'bg-red-50/70 dark:bg-red-950/20 hover:bg-red-100/80 dark:hover:bg-red-900/40',
+      borderLeft: 'border-l-red-500'
+    };
+  } else if (diffDias <= 30) {
+    return {
+      severidad: 2,
+      label: `Vence en ${diffDias} d`,
+      colorBadge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700',
+      colorFila: 'bg-amber-50/70 dark:bg-amber-950/20 hover:bg-amber-100/80 dark:hover:bg-amber-900/40',
+      borderLeft: 'border-l-amber-500'
+    };
+  } else if (diffDias <= 90) {
+    return {
+      severidad: 1,
+      label: `Vence en ${Math.ceil(diffDias / 30)} mes(es)`,
+      colorBadge: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/60 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700',
+      colorFila: 'bg-yellow-50/60 dark:bg-yellow-950/10 hover:bg-yellow-100/70 dark:hover:bg-yellow-900/30',
+      borderLeft: 'border-l-yellow-400'
+    };
+  }
+
+  return {
+    severidad: 0,
+    label: 'OK',
+    colorBadge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300',
+    colorFila: 'hover:bg-gray-100/70 dark:hover:bg-gray-700/50',
+    borderLeft: 'border-l-transparent hover:border-l-sky-500'
+  };
+};
+
 const ExistenciasInventario = ({ cajas: cajasProp }) => {
   const [cajasState, setCajasState] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState('');
+
+  // Estados para controlar el Drawer lateral de Info
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const { hasPermission } = useGranularPermission();
 
@@ -57,7 +118,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
 
   const cajas = Array.isArray(cajasProp) && cajasProp.length > 0 ? cajasProp : cajasState;
 
-  // 2. Consolidar ítems agrupándolos e integrando Precio y Valor Total
+  // 2. Consolidar ítems agrupándolos e integrando Precio, Valor Total y Estado de Vencimiento Crítico
   const existenciasConsolidadas = useMemo(() => {
     const mapaResumen = {};
 
@@ -74,6 +135,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
           const cantidadNum = Number(item.cantidad) || 0;
           const precioNum = Number(item.precio || item.precioUnitario) || 0;
           const loteTexto = (item.lote || '').toString().trim();
+          const fechaVencItem = item.fechaVencimiento || item.vencimiento || item.fechaVenc || null;
 
           const ref = refRaw !== '' ? refRaw.toUpperCase() : 'SIN REFERENCIA';
           const claveAgrupacion = ref !== 'SIN REFERENCIA' 
@@ -91,11 +153,12 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
               valorTotal: 0,
               totalRegistros: 0,
               lotes: new Set(),
-              cajas: new Set()
+              cajas: new Set(),
+              fechaVencimientoProxima: null,
+              estadoCritico: { severidad: -1, colorFila: '', colorBadge: '', label: '', borderLeft: 'border-l-transparent' }
             };
           }
 
-          // Si el registro actual tiene precio y el guardado era 0, actualiza el precio de referencia
           if (mapaResumen[claveAgrupacion].precioUnitario === 0 && precioNum > 0) {
             mapaResumen[claveAgrupacion].precioUnitario = precioNum;
           }
@@ -106,6 +169,22 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
 
           if (loteTexto) mapaResumen[claveAgrupacion].lotes.add(loteTexto);
           if (caja.nombreCaja) mapaResumen[claveAgrupacion].cajas.add(caja.nombreCaja);
+
+          // Evaluar vencimiento MÁS CRÍTICO
+          if (fechaVencItem) {
+            const estadoItem = calcularEstadoVencimiento(fechaVencItem);
+            const estadoActual = mapaResumen[claveAgrupacion].estadoCritico;
+
+            if (estadoItem.severidad > estadoActual.severidad) {
+              mapaResumen[claveAgrupacion].estadoCritico = estadoItem;
+              mapaResumen[claveAgrupacion].fechaVencimientoProxima = fechaVencItem;
+            } else if (estadoItem.severidad === estadoActual.severidad && fechaVencItem) {
+              const fechaPrev = new Date(mapaResumen[claveAgrupacion].fechaVencimientoProxima || '9999-12-31');
+              if (new Date(fechaVencItem) < fechaPrev) {
+                mapaResumen[claveAgrupacion].fechaVencimientoProxima = fechaVencItem;
+              }
+            }
+          }
         });
       }
     });
@@ -137,6 +216,12 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
   const totalRegistros = useMemo(() => {
     return existenciasFiltradas.reduce((acc, curr) => acc + curr.totalRegistros, 0);
   }, [existenciasFiltradas]);
+
+  // Abrir panel lateral con la información del producto
+  const handleAbrirDetalle = (item) => {
+    setProductoSeleccionado(item);
+    setIsDrawerOpen(true);
+  };
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -206,66 +291,113 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_referencia") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Código</th>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_descripcion") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción / Tipo</th>}
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">Estado / Vencimiento</th>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_ubicacion") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">Ubicación</th>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_entradas") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">N° Entradas</th>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-right">Precio Unit.</th>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_cantidad") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-right">Cantidad</th>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_total") && <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 text-right">Total Valor</th>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_total") && <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-right">Total Valor</th>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_acciones") && <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 text-center">Info</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700/70">
-                {existenciasFiltradas.map((item) => (
-                  <tr key={item.clave} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_referencia") && (
-                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-[#2383C2] dark:text-sky-400">
-                        {item.referencia}
-                      </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && (
-                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-gray-600 dark:text-gray-400 text-[10px]">
-                        {item.codigo}
-                      </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_descripcion") && (
-                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200">
-                        {item.tipo}
-                      </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_ubicacion") && (
+                {existenciasFiltradas.map((item) => {
+                  const estado = item.estadoCritico;
+                  
+                  return (
+                    <tr 
+                      key={item.clave} 
+                      className={`border-l-4 transition-all duration-150 ${
+                        estado.borderLeft || 'border-l-transparent'
+                      } ${
+                        estado.colorFila || 'hover:bg-gray-100/80 dark:hover:bg-gray-700/50'
+                      }`}
+                    >
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_referencia") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-[#2383C2] dark:text-sky-400">
+                          {item.referencia}
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-gray-600 dark:text-gray-400 text-[10px]">
+                          {item.codigo}
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_descripcion") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200">
+                          {item.tipo}
+                        </td>
+                      )}
+
+                      {/* Columna de Estado / Vencimiento */}
                       <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center">
-                        <span className="px-1.5 py-0.2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded font-medium text-[9px]">
-                          {item.cajas.size} Caja(s)
-                        </span>
+                        {estado.severidad > 0 ? (
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] flex items-center gap-1 ${estado.colorBadge}`}>
+                              <Calendar size={10} />
+                              {estado.label}
+                            </span>
+                            {item.fechaVencimientoProxima && (
+                              <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono">
+                                {item.fechaVencimientoProxima}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500 text-[10px]">—</span>
+                        )}
                       </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_entradas") && (
-                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center">
-                        <span className="px-1.5 py-0.2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded font-medium text-[9px]">
-                          {item.totalRegistros}
-                        </span>
-                      </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && (
-                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right text-gray-600 dark:text-gray-300 font-mono">
-                        ${item.precioUnitario.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                      </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_cantidad") && (
-                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right font-bold text-emerald-600 dark:text-emerald-400">
-                        {item.cantidadTotal.toLocaleString('es-ES')}
-                      </td>
-                    )}
-                    {hasPermission(PATH_VISTA, "tabla_datos", "col_total") && (
-                      <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700/70 text-right font-bold text-blue-600 dark:text-blue-400 font-mono">
-                        ${item.valorTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
-                      </td>
-                    )}
-                  </tr>
-                ))}
+
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_ubicacion") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center">
+                          <span className="px-1.5 py-0.2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded font-medium text-[9px]">
+                            {item.cajas.size} Caja(s)
+                          </span>
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_entradas") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center">
+                          <span className="px-1.5 py-0.2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded font-medium text-[9px]">
+                            {item.totalRegistros}
+                          </span>
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right text-gray-600 dark:text-gray-300 font-mono">
+                          ${item.precioUnitario.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_cantidad") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                          {item.cantidadTotal.toLocaleString('es-ES')}
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_total") && (
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right font-bold text-blue-600 dark:text-blue-400 font-mono">
+                          ${item.valorTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                        </td>
+                      )}
+                      {hasPermission(PATH_VISTA, "tabla_datos", "col_acciones") && (
+                        <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700/70 text-center">
+                          {hasPermission(PATH_VISTA, "tabla_datos", "btn_info") && (
+                            <button
+                              type="button"
+                              onClick={() => handleAbrirDetalle(item)}
+                              title="Ver información de lotes y cajas"
+                              className="p-1 text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-sky-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                            >
+                              <Info size={14} />
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
               <tfoot className="bg-gray-100 dark:bg-gray-900 font-bold sticky bottom-0 z-10 border-t border-gray-300 dark:border-gray-700 text-[10px]">
                 <tr>
-                  <td colSpan={4} className="py-1.5 px-2 text-gray-700 dark:text-gray-200 uppercase">
+                  <td colSpan={5} className="py-1.5 px-2 text-gray-700 dark:text-gray-200 uppercase">
                     TOTAL GENERAL CONSOLIDADO:
                   </td>
                   <td className="py-1.5 px-2 text-center text-gray-700 dark:text-gray-200">
@@ -280,12 +412,23 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                   <td className="py-1.5 px-2 text-right text-blue-600 dark:text-blue-400 text-[11px] font-mono">
                     ${totalValorizadoGeneral.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                   </td>
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_acciones") && (
+                    <td className="py-1.5 px-2 text-center"></td>
+                  )}
                 </tr>
               </tfoot>
             </table>
           )}
         </div>
       )}
+
+      {/* Drawer Lateral Deslizable */}
+      <DetalleLotesDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        producto={productoSeleccionado}
+        cajas={cajas}
+      />
     </div>
   );
 };
