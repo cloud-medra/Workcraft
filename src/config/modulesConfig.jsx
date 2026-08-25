@@ -103,11 +103,9 @@ export const MODULES = {
       { label: 'Stock General', path: '/inventario/generalInventario', icon: <Boxes size={14} /> },
       { label: 'Existencias', path: '/inventario/existenciasInventario', icon: <PackageSearch size={14} /> },
       { label: 'Ingresos', path: '/inventario/ingresosInventario', icon: <PackagePlus size={14} /> },
-
+      { label: 'Egresos', path: '/inventario/egresosInventario', icon: <PackageMinus size={14} /> },
+      { label: 'En Tránsito', path: '/inventario/transitoInventario', icon: <Truck size={14} /> },
       // { label: 'Stock Pabellón', path: '/inventario/stockPabellon', icon: <Building2 size={14} /> },
-      // { label: 'Ingresos', path: '/inventario/ingresos', icon: <PackagePlus size={14} /> },
-      // { label: 'Salidas', path: '/inventario/salidas', icon: <PackageMinus size={14} /> },
-      // { label: 'En Tránsito', path: '/inventario/enTransito', icon: <Truck size={14} /> },
     ]
   }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '../schemas/loginSchema';
 import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
@@ -8,6 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import loginIllustration from '../assets/login.svg';
+import logoMedra from '../assets/logo_medra_login/android-chrome-192x192.png';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const LoginForm = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -88,6 +89,15 @@ const LoginForm = () => {
       <div className={`bg-white rounded-3xl shadow-2xl flex w-full max-w-4xl overflow-hidden min-h-[500px] ${shakeError ? 'shake-error' : ''}`}>
 
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
+
+          <div className="flex justify-center mb-6">
+            <img
+              src={logoMedra}
+              alt="Medra Sistema Integral"
+              className="h-32 max-w-full w-auto object-contain"
+            />
+          </div>
+
           <h2 className="text-2xl font-bold mb-2">Iniciar Sesión</h2>
           <p className="text-gray-500 mb-8">Ingresa tus credenciales para acceder al sistema.</p>
 
@@ -142,9 +152,27 @@ const LoginForm = () => {
                   Validando...
                 </>
               ) : (
-                "Ingresar al Sistema →"
+                "Ingresar →"
               )}
             </button>
+
+            <div className="mt-6 text-center space-y-2">
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-gray-200 w-full absolute"></div>
+                <span className="bg-white px-3 text-xs text-gray-400 relative z-10">
+                  ¿Olvidaste tu contraseña?
+                </span>
+              </div>
+              <div>
+                <Link
+                  to="/recuperar-password"
+                  className="text-sm font-semibold text-[#2383C2] hover:underline"
+                >
+                  Recuperar acceso
+                </Link>
+              </div>
+            </div>
+
           </form>
         </div>
 
@@ -159,16 +187,22 @@ const LoginForm = () => {
           </div>
 
           <div className="relative z-10">
-            <h2 className="text-4xl font-bold mb-4 leading-tight">Optimiza tu gestión</h2>
-            <p className="text-lg opacity-90">Accede a herramientas avanzadas para controlar tu sistema con total eficiencia.</p>
+            <h2 className="text-3xl font-bold mb-4 leading-tight whitespace-nowrap">
+              Gestiona tu operación
+            </h2>
+            <p className="text-lg opacity-90">
+              Accede a las herramientas del Sistema Integral Medra desde un solo lugar.
+            </p>
           </div>
+
           <div className="relative z-10 flex justify-center my-8">
             <img src={loginIllustration} alt="Gestión" className="w-full max-w-xs object-contain" />
           </div>
+
           <div className="relative z-10 bg-white/10 backdrop-blur-sm border border-white/20 p-4 rounded-2xl flex items-center gap-4">
             <div className="text-white"><ShieldCheck size={32} /></div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider">Sistema Integral Medra</p>
+              <p className="text-xs font-medium uppercase tracking-wider">SISTEMA INTEGRAL MEDRA</p>
               <p className="font-bold">Productividad garantizada</p>
             </div>
           </div>

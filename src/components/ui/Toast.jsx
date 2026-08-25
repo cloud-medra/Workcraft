@@ -1,7 +1,7 @@
 import React from 'react';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react'; 
+import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
-const Toast = ({ message, type = 'success', onClose }) => {
+const Toast = ({ message, type = 'success', isLeaving, onClose }) => {
   const styles = {
     success: {
       border: 'border-l-green-500',
@@ -13,7 +13,7 @@ const Toast = ({ message, type = 'success', onClose }) => {
       border: 'border-l-red-500',
       text: 'text-gray-800 dark:text-gray-200',
       bar: 'bg-red-500',
-      icon: <AlertCircle className="w-5 h-5 text-red-500 mr-3" /> // Cambiado a AlertCircle por consistencia
+      icon: <AlertCircle className="w-5 h-5 text-red-500 mr-3" />
     },
     info: {
       border: 'border-l-blue-500',
@@ -26,7 +26,11 @@ const Toast = ({ message, type = 'success', onClose }) => {
   const current = styles[type] || styles.info;
 
   return (
-    <div className={`w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 border-l-4 ${current.border} overflow-hidden transition-all duration-300`}>
+    <div
+      className={`w-80 mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 border-l-4 ${current.border} overflow-hidden ${
+        isLeaving ? 'animate-toast-out' : 'animate-toast-in'
+      }`}
+    >
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center flex-1">
           {current.icon}
