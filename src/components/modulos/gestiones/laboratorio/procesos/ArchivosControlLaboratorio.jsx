@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Inbox, 
   FileText, 
@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   Layers,
   ChevronRight,
+  ChevronLeft,
   Link2,
   CalendarCheck,
   FileSpreadsheet,
@@ -25,6 +26,7 @@ import VinculacionOrden from './fases/vinculacionOrden/VinculacionOrden';
 import SolicitudDiferencias from './fases/solicitudDiferencias/SolicitudDiferencias';
 import DocumentosListasIngreso from './fases/documentosListasIngreso/DocListasIngreso';
 import DocImputados from './fases/documentosImputados/DocumentosImputados';
+import DocumentosEditor from './fases/documentosEditor/DocumentosEditor';
 
 const ALL_TABS = [
   { id: 'documentos_recibidos', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_documentos_recibidos' },
@@ -34,6 +36,7 @@ const ALL_TABS = [
   { id: 'solicitud_diferencias', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_solicitud_diferencias' },
   { id: 'documentos_listos', label: 'Documentos Listos', Icon: CheckSquare, perm: 'tab_documentos_listos' },
   { id: 'documentos_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_documentos_imputados' },
+  { id: 'documentos_edicion', label: 'Edición', Icon: Edit3, perm: 'tab_documentos_edicion' },
 ];
 
 const PATH_VISTA = "/laboratorio/archivosControl";
@@ -41,6 +44,9 @@ const PATH_VISTA = "/laboratorio/archivosControl";
 const ArchivosControl = () => {
   const { hasPermission } = useGranularPermission();
   const [periodoAbierto, setPeriodoAbierto] = useState(null);
+  const tabsRef = useRef(null);
+  const [showLeftScroll, setShowLeftScroll] = useState(false);
+  const [showRightScroll, setShowRightScroll] = useState(false);
 
   useEffect(() => {
     const refPeriodo = doc(db, "configuracion_periodos", "periodo_activo");
@@ -67,6 +73,27 @@ const ArchivosControl = () => {
   const currentTabObj = useMemo(() => {
     return tabs.find(t => t.id === activeTab) || tabs[0] || null;
   }, [tabs, activeTab]);
+
+  const checkScroll = () => {
+    if (tabsRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+      setShowLeftScroll(scrollLeft > 5);
+      setShowRightScroll(scrollLeft < scrollWidth - clientWidth - 5);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, [tabs]);
+
+  const scrollTabs = (direction) => {
+    if (tabsRef.current) {
+      const scrollAmount = direction === 'left' ? -200 : 200;
+      tabsRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   if (tabs.length === 0 || !currentTabObj) {
     return (
@@ -127,7 +154,6 @@ const ArchivosControl = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               En línea
             </span>
-
           </div>
 
           <p className="text-[11px] text-slate-500 dark:text-gray-400">
@@ -136,8 +162,24 @@ const ArchivosControl = () => {
         </div>
       </div>
 
-      <div className="bg-slate-100/60 dark:bg-gray-800/60 px-5 py-1.5 border-b border-slate-200/80 dark:border-gray-700 overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-1 min-w-max">
+      <div className="relative bg-slate-100/60 dark:bg-gray-800/60 px-2 py-1.5 border-b border-slate-200/80 dark:border-gray-700 flex items-center">
+        
+        {showLeftScroll && (
+          <button
+            onClick={() => scrollTabs('left')}
+            className="absolute left-1 z-10 p-1 rounded-full bg-white dark:bg-gray-800 text-slate-600 dark:text-gray-300 shadow-md border border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700 transition"
+            title="Desplazar a la izquierda"
+          >
+            <ChevronLeft size={16} />
+          </button>
+        )}
+
+        <div 
+          ref={tabsRef}
+          onScroll={checkScroll}
+          className="flex items-center gap-1 overflow-x-auto scrollbar-none scroll-smooth w-full px-3 py-0.5"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
           {tabs.map((tab) => {
             const isActive = currentTabObj.id === tab.id;
             const TabIcon = tab.Icon;
@@ -146,7 +188,7 @@ const ArchivosControl = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 type="button"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md select-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-1 focus-visible:ring-blue-400/50 transition-colors duration-75
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md select-none whitespace-nowrap outline-none focus:outline-none transition-colors duration-75 flex-shrink-0
                   ${isActive
                     ? 'bg-white dark:bg-gray-900 text-[#2383C2] dark:text-[#369BCE] font-semibold shadow-xs border border-slate-200/80 dark:border-gray-700'
                     : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:bg-white/60 dark:hover:bg-gray-700/40 border border-transparent'
@@ -161,6 +203,16 @@ const ArchivosControl = () => {
             );
           })}
         </div>
+
+        {showRightScroll && (
+          <button
+            onClick={() => scrollTabs('right')}
+            className="absolute right-1 z-10 p-1 rounded-full bg-white dark:bg-gray-800 text-slate-600 dark:text-gray-300 shadow-md border border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-700 transition"
+            title="Desplazar a la derecha"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
       </div>
 
       <div className="flex-grow p-4 overflow-auto">
@@ -171,8 +223,9 @@ const ArchivosControl = () => {
         {currentTabObj.id === 'solicitud_diferencias' && <SolicitudDiferencias />}
         {currentTabObj.id === 'documentos_listos' && <DocumentosListasIngreso />}
         {currentTabObj.id === 'documentos_imputados' && <DocImputados />}
+        {currentTabObj.id === 'documentos_edicion' && <DocumentosEditor />}
 
-        {!['documentos_recibidos', 'iniciar_procesos', 'vinculacion_codigos', 'vinculacion_ordenes', 'solicitud_diferencias', 'documentos_listos', 'documentos_imputados', 'gestor_periodos', 'edicion'].includes(currentTabObj.id) && (
+        {!['documentos_recibidos', 'iniciar_procesos', 'vinculacion_codigos', 'vinculacion_ordenes', 'solicitud_diferencias', 'documentos_listos', 'documentos_imputados', 'gestor_periodos', 'documentos_edicion'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">
             <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-[#2383C2] dark:text-[#369BCE] flex items-center justify-center mb-3 border border-blue-100 dark:border-blue-900/40">
               <ActiveIcon size={20} />
