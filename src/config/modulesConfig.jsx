@@ -1,5 +1,7 @@
 import React from 'react';
 import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
   BadgeInfo,
   Building2,
   Boxes,
@@ -16,6 +18,7 @@ import {
   Hash,
   Handshake,
   Hospital,
+  History,
   LayoutDashboard,
   Percent,
   PackageCheck,
@@ -102,9 +105,10 @@ export const MODULES = {
     subItems: [
       { label: 'Stock General', path: '/inventario/generalInventario', icon: <Boxes size={14} /> },
       { label: 'Existencias', path: '/inventario/existenciasInventario', icon: <PackageSearch size={14} /> },
-      { label: 'Ingresos', path: '/inventario/ingresosInventario', icon: <PackagePlus size={14} /> },
-      { label: 'Egresos', path: '/inventario/egresosInventario', icon: <PackageMinus size={14} /> },
+      { label: 'Ingresos', path: '/inventario/ingresosInventario', icon: <ArrowDownToLine size={14} /> },
+      { label: 'Egresos', path: '/inventario/egresosInventario', icon: <ArrowUpFromLine size={14} /> },
       { label: 'En Tránsito', path: '/inventario/transitoInventario', icon: <Truck size={14} /> },
+      { label: 'Historial', path: '/inventario/historialInventario', icon: <History size={14} /> },
       // { label: 'Stock Pabellón', path: '/inventario/stockPabellon', icon: <Building2 size={14} /> },
     ]
   }

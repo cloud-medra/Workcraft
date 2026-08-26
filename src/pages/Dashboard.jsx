@@ -46,10 +46,9 @@ import ExistenciasInventario from '../components/modulos/inventario/existenciasI
 import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
 import EgresosInventario from '../components/modulos/inventario/egresosInventario/EgresosInventario';
 import TransitoInventario from '../components/modulos/inventario/transitoInventario/TransitoInventario';
+import HistorialInventario from '../components/modulos/inventario/historialInventario/HistorialInventario';
 // import PabellonInventario from '../components/modulos/inventario/pabellonInventario/PabellonInventario';
-// import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
-// import SalidasInventario from '../components/modulos/inventario/salidasInventario/SalidasInventario';
-// import TransitoInventario from '../components/modulos/inventario/transitoInventario/TransitoInventario';
+
 
 // AJUSTES & PERFIL 
 import Perfil from '../components/modulos/general/perfil/Perfil';
@@ -228,9 +227,9 @@ const Dashboard = () => {
     '/inventario/ingresosInventario': <IngresosInventario />,
     '/inventario/egresosInventario': <EgresosInventario />,
     '/inventario/transitoInventario': <TransitoInventario />,
+    '/inventario/historialInventario': <HistorialInventario />,
     // '/inventario/pabellonInventario': <PabellonInventario />,
-    // '/inventario/ingresosInventario': <IngresosInventario />,
-    // '/inventario/salidasInventario': <SalidasInventario />,
+
 
 
 

@@ -11,7 +11,7 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Search, Plus, Trash2, ArrowRightLeft, AlertCircle, ShoppingBag, FileText } from 'lucide-react';
+import { Search, Plus, Trash2, ArrowRightLeft, AlertCircle, ShoppingBag, FileText, UserCheck } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useUser } from '../../../../context/UserContext';
@@ -30,7 +30,7 @@ const EgresosInventario = () => {
 
   // Formulario de Selección Temporal
   const [itemIndexSeleccionado, setItemIndexSeleccionado] = useState('');
-  const [cantidadRetiro, setCantidadRetiro] = useState(1);
+  const [cantidadRetiro, setCantidadRetiro] = useState('');
 
   // Lista de Traspaso (Carrito de Salida)
   const [listaTraspaso, setListaTraspaso] = useState([]);
@@ -40,6 +40,9 @@ const EgresosInventario = () => {
   const [motivo, setMotivo] = useState('Traspaso a Tránsito');
   const [solicitante, setSolicitante] = useState('');
   const [observaciones, setObservaciones] = useState('');
+  
+  // DESTINO (Inicia vacío en '' para forzar la selección obligatoria)
+  const [tipoDestino, setTipoDestino] = useState(''); // 'stock' o 'cliente'
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -100,7 +103,7 @@ const EgresosInventario = () => {
   const handleSeleccionarCaja = (caja) => {
     setCajaSeleccionada(caja);
     setItemIndexSeleccionado('');
-    setCantidadRetiro(1);
+    setCantidadRetiro(''); 
   };
 
   const itemActual = (cajaSeleccionada && itemIndexSeleccionado !== '') 
@@ -113,7 +116,7 @@ const EgresosInventario = () => {
     if (itemIndexSeleccionado === '') return showToast("Selecciona un ítem/lote", "error");
 
     const cant = Number(cantidadRetiro);
-    if (isNaN(cant) || cant <= 0) return showToast("Ingresa una cantidad válida", "error");
+    if (isNaN(cant) || cant <= 0) return showToast("Ingresa una cantidad válida a retirar", "error");
 
     const yaAgregadoEnCarrito = listaTraspaso
       .filter(linea => linea.cajaId === cajaSeleccionada.id && linea.itemIndex === Number(itemIndexSeleccionado))
@@ -136,7 +139,7 @@ const EgresosInventario = () => {
     };
 
     setListaTraspaso([...listaTraspaso, nuevaLinea]);
-    setCantidadRetiro(1);
+    setCantidadRetiro(''); 
     showToast("Ítem y lote agregados a la lista de tránsito", "success");
   };
 
@@ -152,6 +155,11 @@ const EgresosInventario = () => {
 
     if (!numeroDocumento.trim()) {
       return showToast("Esperando generación de número de documento...", "error");
+    }
+
+    // Validación obligatoria del destino
+    if (!tipoDestino) {
+      return showToast("Por favor, selecciona el destino del tránsito (Stock General o Cliente Específico)", "error");
     }
 
     confirmAction(
@@ -193,6 +201,7 @@ const EgresosInventario = () => {
               numeroDocumento: numeroDocumento.trim(),
               detalles: {
                 motivo,
+                tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
                 solicitante: solicitante.trim() || 'No especificado',
                 observaciones: observaciones.trim(),
                 itemsTrasladados: lineasDeEstaCaja.map(l => ({
@@ -207,7 +216,7 @@ const EgresosInventario = () => {
             });
           }
 
-          const transitoRef = doc(collection(db, COL_TRANSITO));
+          const transitoRef = doc(collection(db, COL_TRANSITO)); 
           
           const itemsFinalesTransito = listaTraspaso.map(linea => ({
             ...linea.itemOriginal,
@@ -222,6 +231,7 @@ const EgresosInventario = () => {
             numeroDocumento: numeroDocumento.trim(),
             estado: 'EN_TRANSITO',
             motivo,
+            tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
             solicitante: solicitante.trim() || 'No especificado',
             observaciones: observaciones.trim(),
             items: itemsFinalesTransito,
@@ -237,11 +247,11 @@ const EgresosInventario = () => {
 
           setListaTraspaso([]);
           setItemIndexSeleccionado('');
-          setCantidadRetiro(1);
+          setCantidadRetiro('');
           setSolicitante('');
           setObservaciones('');
+          setTipoDestino(''); // Reinicia limpio para la siguiente operación
 
-          // Generar automáticamente el correlativo para el próximo documento
           await generarSiguienteDocumento();
         } catch (error) {
           console.error("Error al procesar el traspaso:", error);
@@ -374,8 +384,9 @@ const EgresosInventario = () => {
                 <input
                   type="number"
                   min="1"
-                  max={itemActual ? itemActual.cantidad : 1}
+                  max={itemActual ? itemActual.cantidad : undefined}
                   value={cantidadRetiro}
+                  placeholder="Ej: 5"
                   onChange={(e) => setCantidadRetiro(e.target.value)}
                   className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 font-bold"
                 />
@@ -470,6 +481,38 @@ const EgresosInventario = () => {
               </div>
             </div>
 
+            {/* SECCIÓN DE DESTINO: Inicia sin marcar para forzar revisión */}
+            <div className="bg-gray-50 dark:bg-gray-700/30 p-1.5 rounded border border-gray-200 dark:border-gray-600 space-y-1">
+              <label className="font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                <UserCheck size={12} className="text-amber-600" />
+                Destino del Tránsito * (Obligatorio seleccionar)
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-1 cursor-pointer text-gray-700 dark:text-gray-300">
+                  <input
+                    type="radio"
+                    name="tipoDestino"
+                    value="stock"
+                    checked={tipoDestino === 'stock'}
+                    onChange={() => setTipoDestino('stock')}
+                    className="text-amber-600 focus:ring-amber-500"
+                  />
+                  Stock General
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer text-gray-700 dark:text-gray-300">
+                  <input
+                    type="radio"
+                    name="tipoDestino"
+                    value="cliente"
+                    checked={tipoDestino === 'cliente'}
+                    onChange={() => setTipoDestino('cliente')}
+                    className="text-amber-600 focus:ring-amber-500"
+                  />
+                  Cliente Específico
+                </label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-1.5">
               <input
                 type="text"
@@ -480,7 +523,7 @@ const EgresosInventario = () => {
               />
               <input
                 type="text"
-                placeholder="Observaciones"
+                placeholder="Observaciones (Incluir cliente si aplica)"
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
                 className="w-full p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-[10px]"
