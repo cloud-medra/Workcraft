@@ -39,7 +39,7 @@ const ResumenGeneral = ({ userData }) => {
   const diasMes = Array.from({ length: totalDiasMes }, (_, i) => i + 1);
 
   const avancesInventario = [
-    { id: 1, tarea: 'completando Modulo Inventario', estado: 'En Progreso'' },
+    { id: 1, tarea: 'completando Modulo Inventario', estado: 'En Progreso:' },
     { id: 2, tarea: 'actualzaicion de Resumen Menu principal', estado: 'Actu. v 1.01.03' }
   ];
 
