@@ -20,9 +20,9 @@ import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
-import DetalleFacturaModal from '../vizualizador/XmlDetallesDoc';
+import DetalleDocModal from '../vizualizador/XmlDetallesDoc';
 
-const XmlFacturasLaboratorio = () => {
+const XmlDocLaboratorio = () => {
   const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -40,6 +40,33 @@ const XmlFacturasLaboratorio = () => {
 
   const PATH_VISTA = "/laboratorio/XmlDocLaboratorio";
   const COL_BASE = "laboratorio_documentos";
+
+  const getEstadoBadgeStyle = (estado) => {
+    switch (estado) {
+      case "Iniciar Ingreso":
+        return "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600";
+      case "Proceso Iniciado":
+        return "bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800";
+      case "Procesar OC":
+        return "bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800";
+      case "Falta Vinculación":
+        return "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800";
+      case "Diferencia Precios":
+        return "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800";
+      case "Listo para Ingreso":
+        return "bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300 dark:border-teal-800";
+      case "Diferencia Reportada":
+        return "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800";
+      case "Rechazada":
+        return "bg-red-100 text-red-800 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800";
+      case "Solicitud Enviada":
+        return "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800";
+      case "Finalizado":
+        return "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800";
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+    }
+  };
 
   useEffect(() => {
     const cargarAnios = async () => {
@@ -322,58 +349,61 @@ const XmlFacturasLaboratorio = () => {
                   </td>
                 </tr>
               ) : (
-                documentosFiltrados.map((docItem, index) => (
-                  <tr
-                    key={docItem.id}
-                    className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
-                  >
-                    <td className="py-1 px-2 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
-                      {index + 1}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-medium text-slate-800 dark:text-gray-100 truncate">
-                      {docItem.folio}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                      {docItem.fchEmis}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                      {docItem.folioRef}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
-                      {docItem.rznSoc}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
-                      ${parseInt(docItem.total || 0, 10).toLocaleString('es-CL')}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-                        {docItem.estado || "Iniciar Ingreso"}
-                      </span>
-                    </td>
-                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
-                      <div className="flex justify-center gap-2">
-                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
-                          <button
-                            onClick={() => setDocumentoSeleccionado({ ...docItem, anio: filtroAnio, mes: filtroMes })}
-                            className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition"
-                            title="Ver Detalle"
-                          >
-                            <Eye size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
-                          <button
-                            onClick={() => handleDelete(docItem.id)}
-                            className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                documentosFiltrados.map((docItem, index) => {
+                  const estadoActual = docItem.estado || "Iniciar Ingreso";
+                  return (
+                    <tr
+                      key={docItem.id}
+                      className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
+                    >
+                      <td className="py-1 px-2 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
+                        {index + 1}
+                      </td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-medium text-slate-800 dark:text-gray-100 truncate">
+                        {docItem.folio}
+                      </td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                        {docItem.fchEmis}
+                      </td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                        {docItem.folioRef}
+                      </td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
+                        {docItem.rznSoc}
+                      </td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
+                        ${parseInt(docItem.total || 0, 10).toLocaleString('es-CL')}
+                      </td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeStyle(estadoActual)}`}>
+                          {estadoActual}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
+                        <div className="flex justify-center gap-2">
+                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
+                            <button
+                              onClick={() => setDocumentoSeleccionado({ ...docItem, anio: filtroAnio, mes: filtroMes })}
+                              className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition"
+                              title="Ver Detalle"
+                            >
+                              <Eye size={13} />
+                            </button>
+                          )}
+                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
+                            <button
+                              onClick={() => handleDelete(docItem.id)}
+                              className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -381,7 +411,7 @@ const XmlFacturasLaboratorio = () => {
       )}
 
       {documentoSeleccionado && (
-        <DetalleFacturaModal
+        <DetalleDocModal
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />
@@ -437,4 +467,4 @@ const XmlFacturasLaboratorio = () => {
   );
 };
 
-export default XmlFacturasLaboratorio;
+export default XmlDocLaboratorio;

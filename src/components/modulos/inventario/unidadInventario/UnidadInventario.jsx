@@ -3,89 +3,67 @@ import {
   collection,
   onSnapshot,
   query,
-  orderBy,
-  where,
-  Timestamp
+  orderBy
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { History, Search, X, Boxes } from 'lucide-react';
+import {
+  Boxes,
+  Search,
+  X,
+  Truck
+} from 'lucide-react';
 import Spinner from '../../../ui/Spinner';
 
-const COL_EGRESOS = "inventario_egresos";
+const COL_TRANSITO = "inventario_transito";
 
-const getPrimerDiaMesActual = () => {
-  const hoy = new Date();
-  const year = hoy.getFullYear();
-  const month = String(hoy.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}-01`;
-};
-
-const getHoy = () => {
-  const hoy = new Date();
-  const year = hoy.getFullYear();
-  const month = String(hoy.getMonth() + 1).padStart(2, '0');
-  const day = String(hoy.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const HistorialInventario = () => {
-  const [historialDocs, setHistorialDocs] = useState([]);
+const UnidadInventario = () => {
+  const [transitoDocs, setTransitoDocs] = useState([]);
   const [cargando, setCargando] = useState(true);
 
   const [filtroTexto, setFiltroTexto] = useState('');
-  const [fechaDesde, setFechaDesde] = useState(getPrimerDiaMesActual());
-  const [fechaHasta, setFechaHasta] = useState(getHoy());
+  const [fechaDesde, setFechaDesde] = useState('');
+  const [fechaHasta, setFechaHasta] = useState('');
 
-  // SE EJECUTA CADA VEZ QUE CAMBIAN 'fechaDesde' O 'fechaHasta'
   useEffect(() => {
-    setCargando(true);
-
-    const condiciones = [];
-
-    // Convertimos las fechas strings en Timestamps de Firestore
-    if (fechaDesde) {
-      const desdeDate = new Date(`${fechaDesde}T00:00:00`);
-      condiciones.push(where("fechaEfectivaEgreso", ">=", Timestamp.fromDate(desdeDate)));
-    }
-
-    if (fechaHasta) {
-      const hastaDate = new Date(`${fechaHasta}T23:59:59`);
-      condiciones.push(where("fechaEfectivaEgreso", "<=", Timestamp.fromDate(hastaDate)));
-    }
-
-    // Consulta filtrada directamente en el Servidor
-    const qHistorial = query(
-      collection(db, COL_EGRESOS),
-      ...condiciones,
-      orderBy("fechaEfectivaEgreso", "desc")
-    );
-
-    const unsub = onSnapshot(qHistorial, (snapshot) => {
+    // Ordenamos por la fecha de registro o creación del documento en tránsito
+    const qTransito = query(collection(db, COL_TRANSITO), orderBy("fechaRegistro", "desc"));
+    const unsub = onSnapshot(qTransito, (snapshot) => {
       const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setHistorialDocs(docs);
+      setTransitoDocs(docs);
       setCargando(false);
     }, (error) => {
-      console.error("Error al cargar historial de egresos:", error);
+      console.error("Error al cargar inventario en tránsito:", error);
       setCargando(false);
     });
 
     return () => unsub();
-  }, [fechaDesde, fechaHasta]); // Recarga si la fecha cambia
+  }, []);
 
-  // Filtro de texto secundario (en memoria local, ya con pocos datos)
   const filas = useMemo(() => {
     const texto = filtroTexto.trim().toLowerCase();
+    const desde = fechaDesde ? new Date(`${fechaDesde}T00:00:00`) : null;
+    const hasta = fechaHasta ? new Date(`${fechaHasta}T23:59:59`) : null;
+
     const resultado = [];
 
-    historialDocs.forEach((docItem) => {
-      const fechaCierreDate = docItem.fechaEfectivaEgreso?.toDate ? docItem.fechaEfectivaEgreso.toDate() : null;
+    transitoDocs.forEach((docItem) => {
+      // Leemos la fecha del documento de tránsito
+      const rawFecha = docItem.fechaRegistro || docItem.fecha;
+      const fechaCierreDate = rawFecha?.toDate ? rawFecha.toDate() : null;
 
-      const itemsCoincidentes = (docItem.itemsEgresados || []).filter((item) => {
+      if (desde && (!fechaCierreDate || fechaCierreDate < desde)) return;
+      if (hasta && (!fechaCierreDate || fechaCierreDate > hasta)) return;
+
+      // Leemos la lista de ítems de tránsito
+      const itemsList = docItem.items || docItem.itemsEgresados || [];
+
+      const itemsCoincidentes = itemsList.filter((item) => {
         if (!texto) return true;
         return (
           item.codigo?.toLowerCase().includes(texto) ||
           item.referencia?.toLowerCase().includes(texto) ||
-          item.tipo?.toLowerCase().includes(texto)
+          item.tipo?.toLowerCase().includes(texto) ||
+          item.descripcion?.toLowerCase().includes(texto)
         );
       });
 
@@ -96,34 +74,32 @@ const HistorialInventario = () => {
           rowId: `${docItem.id}-${idx}`,
           docId: docItem.id,
           numeroDocumento: docItem.numeroDocumento || docItem.folio || '—',
-          solicitante: docItem.solicitante || 'N/A',
+          solicitante: docItem.solicitante || docItem.usuarioTransito || 'N/A',
           destino: docItem.destino || docItem.tipoDestino || 'N/A',
           fechaCierre: fechaCierreDate,
-          procesadoPor: docItem.procesadoPor || 'Usuario',
+          procesadoPor: docItem.procesadoPor || docItem.usuario || 'Usuario',
           codigo: item.codigo || '—',
           referencia: item.referencia || '—',
           descripcion: item.tipo || item.descripcion || item.codigo || '—',
           lote: item.lote || 'S/L',
           vencimiento: item.vencimiento || 'S/V',
-          cantidadEgresada: item.cantidadEgresada ?? item.cantidad ?? 0,
+          // Usamos cantidadTraspasada como Cantidad Stock
+          cantidadStock: item.cantidadTraspasada ?? item.cantidadEgresada ?? item.cantidad ?? 0,
           observacionInsumo: item.observacionInsumo || item.observacion || '—'
         });
       });
     });
 
     return resultado;
-  }, [historialDocs, filtroTexto]);
+  }, [transitoDocs, filtroTexto, fechaDesde, fechaHasta]);
 
   const limpiarFiltros = () => {
     setFiltroTexto('');
-    setFechaDesde(getPrimerDiaMesActual());
-    setFechaHasta(getHoy());
+    setFechaDesde('');
+    setFechaHasta('');
   };
 
-  const hayFiltrosActivos = 
-    filtroTexto.trim() !== '' || 
-    fechaDesde !== getPrimerDiaMesActual() || 
-    fechaHasta !== getHoy();
+  const hayFiltrosActivos = filtroTexto.trim() !== '' || fechaDesde !== '' || fechaHasta !== '';
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -132,15 +108,15 @@ const HistorialInventario = () => {
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
           <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-xl shadow-xl flex flex-col items-center gap-3">
             <Spinner size="md" color="#2383C2" />
-            <h3 className="text-[#2383C2] font-bold text-[13px]">Cargando...</h3>
+            <h3 className="text-[#2383C2] font-bold text-[13px]">Cargando tránsito...</h3>
           </div>
         </div>
       )}
 
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
-          <History size={14} className="text-[#2383C2]" />
-          HISTORIAL DE INSUMOS
+          <Truck size={14} className="text-[#2383C2]" />
+          UNIDAD DE INVENTARIO (EN TRÁNSITO)
         </h2>
       </div>
 
@@ -194,7 +170,7 @@ const HistorialInventario = () => {
           <div className="h-full flex flex-col items-center justify-center text-gray-400 dark:text-gray-500 p-8 text-center">
             <Boxes size={36} className="mb-2 text-gray-300 dark:text-gray-600" />
             <p className="font-semibold text-[12px]">
-              {hayFiltrosActivos ? 'No hay resultados para los filtros aplicados' : 'No se encontraron registros de historial'}
+              {hayFiltrosActivos ? 'No hay resultados para los filtros aplicados' : 'No se encontraron registros en tránsito'}
             </p>
           </div>
         ) : (
@@ -206,7 +182,7 @@ const HistorialInventario = () => {
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Código</th>
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">Cantidad Egresada</th>
+                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">Cantidad Stock</th>
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Lote</th>
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Vencimiento</th>
                 <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Destino</th>
@@ -224,7 +200,7 @@ const HistorialInventario = () => {
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{fila.referencia}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{fila.codigo}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{fila.descripcion}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-700 dark:text-gray-200">{fila.cantidadEgresada}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-700 dark:text-gray-200 font-semibold">{fila.cantidadStock}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{fila.lote}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{fila.vencimiento}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
@@ -246,4 +222,4 @@ const HistorialInventario = () => {
   );
 };
 
-export default HistorialInventario;
+export default UnidadInventario;

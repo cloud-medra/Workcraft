@@ -13,7 +13,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
+import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings, Copy } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useToast } from '../../../../../context/ToastContext';
@@ -90,6 +90,12 @@ const EmpresasLaboratorios = () => {
     } catch (err) {
       console.error("Error al registrar log de auditoría:", err);
     }
+  };
+
+  const handleCopiarRut = (rut) => {
+    if (!rut) return;
+    navigator.clipboard.writeText(rut);
+    showToast("RUT copiado al portapapeles", "success");
   };
 
   const handleGuardar = async (e) => {
@@ -532,7 +538,22 @@ const EmpresasLaboratorios = () => {
                 <tr key={l.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{l.nombre}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{l.rut}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center justify-between gap-1">
+                        <span>{l.rut}</span>
+                        {hasPermission(PATH_VISTA, "tabla_datos", "btn_copiar_rut") && (
+                          <button
+                            onClick={() => handleCopiarRut(l.rut)}
+                            title="Copiar RUT"
+                            className="p-1 rounded text-gray-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400 hover:bg-gray-200/80 dark:hover:bg-gray-600/60 transition"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && (
                     <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
                       <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${l.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>

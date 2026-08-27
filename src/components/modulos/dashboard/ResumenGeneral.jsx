@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, Layers, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Calendar as CalendarIcon, ChevronLeft, ChevronRight, CheckCircle2, Clock, AlertCircle, Layers, Image as ImageIcon } from 'lucide-react';
 import logoMedra from '../../../assets/logo_medra_login/android-chrome-192x192.png';
 
 const ResumenGeneral = ({ userData }) => {
@@ -39,13 +39,41 @@ const ResumenGeneral = ({ userData }) => {
   const diasMes = Array.from({ length: totalDiasMes }, (_, i) => i + 1);
 
   const avancesInventario = [
-    { id: 1, tarea: 'completando Modulo Inventario', estado: 'En Progreso:' },
-    { id: 2, tarea: 'actualzaicion de Resumen Menu principal', estado: 'Actu. v 1.01.03' }
+    { id: 1, tarea: 'Integración de icono copiar rut - Módulo Laboratorio -> Empresas', estado: 'Completado' },
+    { id: 2, tarea: 'Integrar icono copiar rut - Módulo Vacunatorio / Maestros -> Empresas', estado: 'Pendiente' },
+    { id: 3, tarea: 'Integrar input de texto para ingresar notas en Resumen General en base a rol', estado: 'Pendiente' },
+    { id: 4, tarea: 'Actualizar Módulo Laboratorio / Vacunatorio - para rechazar facturas', estado: 'En Progreso' },
+    { id: 5, tarea: 'Integrar configuración - Para Ordenar los módulos según cada usuario', estado: 'Pendiente' },
+    { id: 6, tarea: 'Nuevo Items de historial unidad, actualizacion de Historial, dashbaord y config.', estado: 'Completado' }
   ];
+
+  const renderEstadoBadge = (estado) => {
+    switch (estado) {
+      case 'Completado':
+        return (
+          <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 px-1.5 py-0.5 rounded shrink-0 uppercase">
+            <CheckCircle2 size={10} /> {estado}
+          </span>
+        );
+      case 'En Progreso':
+        return (
+          <span className="flex items-center gap-1 text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded shrink-0 uppercase">
+            <Clock size={10} /> {estado}
+          </span>
+        );
+      case 'Pendiente':
+      default:
+        return (
+          <span className="flex items-center gap-1 text-[9px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 px-1.5 py-0.5 rounded shrink-0 uppercase">
+            <AlertCircle size={10} /> {estado}
+          </span>
+        );
+    }
+  };
 
   return (
     <div className="w-full h-full flex flex-col gap-3 overflow-y-auto pr-1">
-      
+
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-between p-2.5 flex-shrink-0">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2 uppercase tracking-wider">
           <LayoutDashboard size={14} className="text-[#2383C2]" /> Panel de Control General
@@ -56,10 +84,10 @@ const ResumenGeneral = ({ userData }) => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-grow items-stretch">
-        
+
         {/* Columna Principal Izquierda */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex flex-col justify-between p-4">
-          
+
           <div className="flex flex-col gap-3">
             {/* Contenedor Superior: Saludo y Bienvenida */}
             <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 rounded-lg p-4">
@@ -74,9 +102,9 @@ const ResumenGeneral = ({ userData }) => {
             {/* Contenedor para Logo PNG y MEDRA CLOUD */}
             <div className="bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-950/20 dark:to-transparent border border-blue-100/60 dark:border-blue-900/30 rounded-lg p-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
-                <img 
-                  src={logoMedra} 
-                  alt="Medra Cloud Logo" 
+                <img
+                  src={logoMedra}
+                  alt="Medra Cloud Logo"
                   className="w-7 h-7 object-contain"
                   onError={(e) => {
                     e.target.style.display = 'none';
@@ -110,18 +138,18 @@ const ResumenGeneral = ({ userData }) => {
 
         {/* Columna Lateral Derecha */}
         <div className="flex flex-col gap-3">
-          
+
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-3 flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2 mb-2">
               <span className="text-[11px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1 uppercase tracking-wide">
                 <CalendarIcon size={13} className="text-[#2383C2]" /> Agenda
               </span>
-              
+
               <div className="flex items-center gap-1">
                 <button onClick={handlePrevMonth} className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors">
                   <ChevronLeft size={13} />
                 </button>
-                
+
                 <select value={month} onChange={handleMonthChange} className="text-[10px] font-bold text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5 cursor-pointer focus:outline-none">
                   {nombreMeses.map((m, index) => (<option key={index} value={index}>{m.substring(0, 3)}</option>))}
                 </select>
@@ -170,8 +198,8 @@ const ResumenGeneral = ({ userData }) => {
 
             <div className="flex flex-col gap-1.5 w-full">
               {avancesInventario.map((item) => (
-                <div 
-                  key={item.id} 
+                <div
+                  key={item.id}
                   className="flex items-center justify-between gap-2 p-1.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 rounded"
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -183,9 +211,7 @@ const ResumenGeneral = ({ userData }) => {
                     </span>
                   </div>
 
-                  <span className="flex items-center gap-1 text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 px-1.5 py-0.5 rounded shrink-0 uppercase">
-                    <CheckCircle2 size={10} /> {item.estado}
-                  </span>
+                  {renderEstadoBadge(item.estado)}
                 </div>
               ))}
             </div>

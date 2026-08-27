@@ -9,27 +9,18 @@ import {
 } from 'lucide-react';
 import { MODULES } from '../config/modulesConfig.jsx';
 
-// =================================================================
-// IMPORTACIÓN DE COMPONENTES POR MÓDULOS
-// =================================================================
-
-// DASHBOARD
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
-// ADMINISTRACIÓN
 import ControlMensual from '../components/modulos/administracion/controlMensual/ControlMensual';
-// LABORATORIO
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
 import CodigoLaboratorio from '../components/modulos/gestiones/laboratorio/registros/CodigoLaboratorio';
 import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/OrdenLaboratorio';
 import XmlDocLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/XmlDocLaboratorio';
 import ArchivosControlLaboratorio from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControlLaboratorio';
-// VACUNATORIO
 import EmpresasVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/EmpresasVacunatorio';
 import CodigoVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/CodigoVacunatorio';
 import OrdenVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/OrdenVacunatorio';
 import XmlDocVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/XmlDocVacunatorio';
 import ArchivosControlVacunatorio from '../components/modulos/gestiones/vacunatorio/procesos/ArchivosControlVacunatorio';
-// MAESTROS
 import EmpresasMaestros from '../components/modulos/maestros/empresasMaestros/EmpresasMaestros';
 import PrestadoresMaestros from '../components/modulos/maestros/prestadoresMaestro/PrestadoresMaestros';
 import CentrosMaestros from '../components/modulos/maestros/centrosMaestros/CentrosMaestros';
@@ -38,47 +29,28 @@ import ConveniosMaestros from '../components/modulos/maestros/conveniosMaestros/
 import RecargosMaestros from '../components/modulos/maestros/recargosMaestros/RecargosMaestros';
 import CalculadorMaestros from '../components/modulos/maestros/calculadorMaestros/CalculadorMaestros';
 import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/CodigosMaestros';
-// CONSIGNACION
 import GuiasConsigna from '../components/modulos/gestiones/consignacion/guiasConsigna/GuiasConsigna';
-// INVENTARIO
+
 import GeneralInventario from '../components/modulos/inventario/generalInventario/GeneralInventario';
 import ExistenciasInventario from '../components/modulos/inventario/existenciasInventario/ExistenciasInventario';
 import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
 import EgresosInventario from '../components/modulos/inventario/egresosInventario/EgresosInventario';
 import TransitoInventario from '../components/modulos/inventario/transitoInventario/TransitoInventario';
 import HistorialInventario from '../components/modulos/inventario/historialInventario/HistorialInventario';
-// import PabellonInventario from '../components/modulos/inventario/pabellonInventario/PabellonInventario';
+import UnidadInventario from '../components/modulos/inventario/unidadInventario/UnidadInventario';
 
-
-// AJUSTES & PERFIL 
 import Perfil from '../components/modulos/general/perfil/Perfil';
-// LEGALES
 import PoliticasPrivacidad from '../components/modulos/general/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/general/legales/TerminosServicio';
-
-
-
-
 
 // USUARIOS
 //import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
 //import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
-
 // MIS TURNOS
 //import MisTurnos from '../components/modulos/misturnos/MisTurnos';
-
 // AJUSTES & PERFIL
 //import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
 
-
-
-
-
-
-
-// =================================================================
-// CONFIGURACIÓN DE VISTAS ESPECIALES
-// =================================================================
 const SPECIAL_VIEWS = {
   dashboard: { label: 'Inicio', icon: <Home size={13} /> },
   perfil: { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
@@ -185,32 +157,22 @@ const Dashboard = () => {
 
   const breadcrumb = getBreadcrumb();
 
-  // =================================================================
-  // MAPEO DE RUTAS A COMPONENTES POR MÓDULOS
-  // =================================================================
   const VIEW_MAP = {
-    // DASHBOARD
     'dashboard': <ResumenGeneral userData={userData} />,
-    // ADMINISTRACIÓN
     '/administracion/controlMensual': <ControlMensual />,
-    // LABORATORIO
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />, 
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
     '/laboratorio/xmlDocLaboratorio': <XmlDocLaboratorio />,
     '/laboratorio/archivosControlLaboratorio': <ArchivosControlLaboratorio />,
-    // VACUNATORIO
     '/vacunatorio/empresasVacunatorio': <EmpresasVacunatorio />, 
     '/vacunatorio/codigoVacunatorio': <CodigoVacunatorio />,
     '/vacunatorio/ordenVacunatorio': <OrdenVacunatorio />,
     '/vacunatorio/xmlDocVacunatorio': <XmlDocVacunatorio />,
     '/vacunatorio/archivosControlVacunatorio': <ArchivosControlVacunatorio />,
-    // AJUSTES & PERFIL
     'perfil': <Perfil userData={userData} />,
-    // LEGALES
     'privacidad': <PoliticasPrivacidad />,
     'terminos': <TerminosServicio />,
-    // MAESTROS
     '/maestros/empresasMaestros': <EmpresasMaestros />,
     '/maestros/prestadoresMaestros': <PrestadoresMaestros />,
     '/maestros/centrosMaestros': <CentrosMaestros />,
@@ -219,35 +181,23 @@ const Dashboard = () => {
     '/maestros/recargosMaestros': <RecargosMaestros />,
     '/maestros/calculadorMaestros': <CalculadorMaestros />,
     '/maestros/codigosMaestros': <CodigosMaestros />,
-    // CONSIGNACION
     '/consignacion/guiasConsigna': <GuiasConsigna />,
-    // INVENTARIO
+
     '/inventario/generalInventario': <GeneralInventario />,
     '/inventario/existenciasInventario': <ExistenciasInventario />,
     '/inventario/ingresosInventario': <IngresosInventario />,
     '/inventario/egresosInventario': <EgresosInventario />,
     '/inventario/transitoInventario': <TransitoInventario />,
     '/inventario/historialInventario': <HistorialInventario />,
-    // '/inventario/pabellonInventario': <PabellonInventario />,
-
-
-
-
-
-
+    '/inventario/unidadInventario': <UnidadInventario />,
 
     // USUARIOS
     //'/usuarios/crear': <CrearUsuario />,
     //'/usuarios/listado': <ListadoUsuarios />, 
-
-
     // MIS TURNOS
     //'/misturnos/ver': <MisTurnos />,
-
     // AJUSTES & PERFIL
     //'password': <CambiarPasswordSeguro />,
-
-
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
@@ -270,7 +220,6 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
 
-      {/* SIDEBAR CON ANCHO BLOQUEADO FIJO */}
       <aside className={`${
         isSidebarCollapsed ? 'w-16 min-w-[64px] max-w-[64px]' : 'w-56 min-w-[190px] max-w-[190px]'
       } bg-[#2383C2] dark:bg-gray-800 text-white transition-all duration-300 ease-in-out hidden md:flex flex-col shadow-xl h-screen sticky top-0 flex-shrink-0 z-30 select-none overflow-x-hidden`}>
@@ -393,7 +342,6 @@ const Dashboard = () => {
         </div>
       </aside>
 
-      {/* ÁREA PRINCIPAL */}
       <div className="flex-grow flex flex-col h-screen overflow-hidden gap-2">
 
         <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
