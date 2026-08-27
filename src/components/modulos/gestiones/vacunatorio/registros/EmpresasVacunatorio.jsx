@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, query, orderBy, getDocs, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History } from 'lucide-react';
+import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Copy } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
@@ -53,6 +53,13 @@ const EmpresasVacunatorio = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const copiarTexto = (texto, etiqueta = 'Texto') => {
+    if (!texto) return;
+    navigator.clipboard.writeText(texto)
+      .then(() => showToast(`${etiqueta} copiado al portapapeles`, "info"))
+      .catch(() => showToast("Error al copiar", "error"));
   };
 
   const registrarLog = async (vacunatorioId, accion, detalles) => {
@@ -186,7 +193,7 @@ const EmpresasVacunatorio = () => {
     } catch (error) {
       console.error("Error cargando logs:", error);
       showToast("Error al cargar el historial", "error");
-    } finally { 
+    } finally {
       setLoadingLogs(false);
     }
   };
@@ -273,7 +280,20 @@ const EmpresasVacunatorio = () => {
                 <tr key={l.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{l.nombre}</td>}
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{l.rut}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_rut") && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      <div className="flex items-center justify-between gap-2 group">
+                        <span>{l.rut}</span>
+                        <button 
+                          onClick={() => copiarTexto(l.rut, "RUT")} 
+                          title="Copiar RUT" 
+                          className="text-gray-400 opacity-60 group-hover:opacity-100 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition shrink-0"
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && (
                     <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
                       <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${l.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>

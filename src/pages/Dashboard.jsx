@@ -11,6 +11,8 @@ import { MODULES } from '../config/modulesConfig.jsx';
 
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
 import ControlMensual from '../components/modulos/administracion/controlMensual/ControlMensual';
+import NotasAdmin from '../components/modulos/administracion/notasAdmin/NotasAdmin';
+
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
 import CodigoLaboratorio from '../components/modulos/gestiones/laboratorio/registros/CodigoLaboratorio';
 import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/OrdenLaboratorio';
@@ -160,6 +162,7 @@ const Dashboard = () => {
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} />,
     '/administracion/controlMensual': <ControlMensual />,
+    '/administracion/notasAdmin': <NotasAdmin />,
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />, 
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,

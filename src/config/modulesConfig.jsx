@@ -27,6 +27,7 @@ import {
   PackageSearch,
   Settings2,
   ShieldCheck,
+  StickyNote,
   Syringe,
   ScanBarcode,
   Truck,
@@ -49,11 +50,8 @@ export const MODULES = {
     label: 'Administración',
     icon: <Settings2 size={16} />,
     subItems: [
-      {
-        label: 'Control Mensual',
-        path: '/administracion/controlMensual',
-        icon: <CalendarCheck size={14} />
-      }
+      { label: 'Control Mensual', path: '/administracion/controlMensual', icon: <CalendarCheck size={14} /> },
+      { label: 'Notas Admin', path: '/administracion/notasAdmin', icon: <StickyNote size={14} /> }
     ]
   },
   laboratorio: {
