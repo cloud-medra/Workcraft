@@ -71,8 +71,21 @@ const AgendaCalendar = ({
         {diasMes.map((dia) => {
           const seleccionado = esSeleccionado(dia);
           const hoy = esHoy(dia);
+
+          let estilosEstado = 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
+
+          if (seleccionado) {
+            estilosEstado = 'bg-[#2383C2] text-white font-bold shadow-xs';
+          } else if (hoy) {
+            estilosEstado = 'border border-[#2383C2] text-[#2383C2] dark:text-sky-400 bg-blue-50/50 dark:bg-blue-900/20 font-bold';
+          }
+
           return (
-            <button key={dia} onClick={() => setSelectedDate(new Date(year, month, dia))} className={`h-5.5 w-5.5 rounded flex items-center justify-center font-mono text-[10px] transition-all ${(seleccionado || hoy) ? 'bg-[#2383C2] text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+            <button 
+              key={dia} 
+              onClick={() => setSelectedDate(new Date(year, month, dia))} 
+              className={`h-5.5 w-5.5 rounded flex items-center justify-center font-mono text-[10px] transition-all ${estilosEstado}`}
+            >
               {dia}
             </button>
           );

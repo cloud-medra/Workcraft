@@ -7,7 +7,8 @@ import {
   LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
   Settings, Home, ShieldCheck, Menu, Shield, Moon, Sun
 } from 'lucide-react';
-import { MODULES } from '../config/modulesConfig.jsx';
+
+import { MODULES, AJUSTES_ITEMS, SPECIAL_VIEWS } from '../config/modulesConfig.jsx';
 
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
 import ControlMensual from '../components/modulos/administracion/controlMensual/ControlMensual';
@@ -18,11 +19,13 @@ import CodigoLaboratorio from '../components/modulos/gestiones/laboratorio/regis
 import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/OrdenLaboratorio';
 import XmlDocLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/XmlDocLaboratorio';
 import ArchivosControlLaboratorio from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControlLaboratorio';
+
 import EmpresasVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/EmpresasVacunatorio';
 import CodigoVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/CodigoVacunatorio';
 import OrdenVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/OrdenVacunatorio';
 import XmlDocVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/XmlDocVacunatorio';
 import ArchivosControlVacunatorio from '../components/modulos/gestiones/vacunatorio/procesos/ArchivosControlVacunatorio';
+
 import EmpresasMaestros from '../components/modulos/maestros/empresasMaestros/EmpresasMaestros';
 import PrestadoresMaestros from '../components/modulos/maestros/prestadoresMaestro/PrestadoresMaestros';
 import CentrosMaestros from '../components/modulos/maestros/centrosMaestros/CentrosMaestros';
@@ -45,21 +48,14 @@ import Perfil from '../components/modulos/general/perfil/Perfil';
 import PoliticasPrivacidad from '../components/modulos/general/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/general/legales/TerminosServicio';
 
-// USUARIOS
-//import CrearUsuario from '../components/modulos/usuarios/CrearUsuario';
-//import ListadoUsuarios from '../components/modulos/usuarios/ListadoUsuarios';
-// MIS TURNOS
-//import MisTurnos from '../components/modulos/misturnos/MisTurnos';
-// AJUSTES & PERFIL
-//import CambiarPasswordSeguro from '../components/modulos/ajustes/CambiarPasswordSeguro';
-
-const SPECIAL_VIEWS = {
-  dashboard: { label: 'Inicio', icon: <Home size={13} /> },
-  perfil: { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
-  password: { label: 'Cambiar Contraseña', icon: <Shield size={13} /> },
-  privacidad: { label: 'Política de Privacidad', icon: <ShieldCheck size={13} /> },
-  terminos: { label: 'Términos de Servicio', icon: <FileText size={13} /> },
-};
+// --- COMPONENTES DE AJUSTES DEL SISTEMA (Importados formalmente) ---
+// import AjusteDatosPersonales from '../components/modulos/ajustes/AjusteDatosPersonales';
+// import CambiarPassword from '../components/modulos/ajustes/CambiarPassword';
+// import AjusteTema from '../components/modulos/ajustes/AjusteTema';
+// import AjustePrivacidad from '../components/modulos/ajustes/AjustePrivacidad';
+// import ModulosVisibles from '../components/modulos/ajustes/ModulosVisibles';
+// import OrdenModulos from '../components/modulos/ajustes/OrdenModulos';
+// import PreferenciasGenerales from '../components/modulos/ajustes/PreferenciasGenerales';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -68,6 +64,7 @@ const Dashboard = () => {
   const [activeModule, setActiveModule] = useState(null);
   const [activeView, setActiveView] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isAjustesMode, setIsAjustesMode] = useState(false);
 
   const menuRef = useRef(null);
 
@@ -131,11 +128,23 @@ const Dashboard = () => {
     fetchUserData();
   }, []);
 
+  const abrirAjustesGenerales = () => {
+    setIsAjustesMode(true);
+    setActiveModule(null);
+    setActiveView('/ajustes/datosPersonales');
+    setIsMenuOpen(false);
+  };
+
+  const salirDeAjustes = () => {
+    setIsAjustesMode(false);
+    setActiveView('dashboard');
+  };
+
   const getBreadcrumb = () => {
     if (SPECIAL_VIEWS[activeView]) {
       return {
-        moduloLabel: null,
-        moduloIcon: null,
+        moduloLabel: isAjustesMode ? 'Ajustes Generales' : null,
+        moduloIcon: isAjustesMode ? <Settings size={13} /> : null,
         vistaLabel: SPECIAL_VIEWS[activeView].label,
         vistaIcon: SPECIAL_VIEWS[activeView].icon,
       };
@@ -163,12 +172,12 @@ const Dashboard = () => {
     'dashboard': <ResumenGeneral userData={userData} />,
     '/administracion/controlMensual': <ControlMensual />,
     '/administracion/notasAdmin': <NotasAdmin />,
-    '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />, 
+    '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
     '/laboratorio/xmlDocLaboratorio': <XmlDocLaboratorio />,
     '/laboratorio/archivosControlLaboratorio': <ArchivosControlLaboratorio />,
-    '/vacunatorio/empresasVacunatorio': <EmpresasVacunatorio />, 
+    '/vacunatorio/empresasVacunatorio': <EmpresasVacunatorio />,
     '/vacunatorio/codigoVacunatorio': <CodigoVacunatorio />,
     '/vacunatorio/ordenVacunatorio': <OrdenVacunatorio />,
     '/vacunatorio/xmlDocVacunatorio': <XmlDocVacunatorio />,
@@ -194,13 +203,14 @@ const Dashboard = () => {
     '/inventario/historialInventario': <HistorialInventario />,
     '/inventario/unidadInventario': <UnidadInventario />,
 
-    // USUARIOS
-    //'/usuarios/crear': <CrearUsuario />,
-    //'/usuarios/listado': <ListadoUsuarios />, 
-    // MIS TURNOS
-    //'/misturnos/ver': <MisTurnos />,
-    // AJUSTES & PERFIL
-    //'password': <CambiarPasswordSeguro />,
+    // --- RUTAS DE COMPONENTES DE AJUSTES ---
+    // '/ajustes/datosPersonales': <AjusteDatosPersonales userData={userData} />,
+    // '/ajustes/cambiarPassword': <CambiarPassword />,
+    // '/ajustes/temaApariencia': <AjusteTema isDarkMode={isDarkMode} toggleModoPantalla={toggleModoPantalla} />,
+    // '/ajustes/configPrivacidad': <AjustePrivacidad />,
+    // '/ajustes/modulosVisibles': <ModulosVisibles userData={userData} />,
+    // '/ajustes/ordenModulos': <OrdenModulos />,
+    // '/ajustes/preferenciasGenerales': <PreferenciasGenerales />,
   };
 
   const fechaActual = new Date().toLocaleDateString('es-CL', {
@@ -223,13 +233,19 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
 
-      <aside className={`${
-        isSidebarCollapsed ? 'w-16 min-w-[64px] max-w-[64px]' : 'w-56 min-w-[190px] max-w-[190px]'
-      } bg-[#2383C2] dark:bg-gray-800 text-white transition-all duration-300 ease-in-out hidden md:flex flex-col shadow-xl h-screen sticky top-0 flex-shrink-0 z-30 select-none overflow-x-hidden`}>
+      <aside className={`${isSidebarCollapsed ? 'w-16 min-w-[64px] max-w-[64px]' : 'w-56 min-w-[190px] max-w-[190px]'
+        } bg-[#2383C2] dark:bg-gray-800 text-white transition-all duration-300 ease-in-out hidden md:flex flex-col shadow-xl h-screen sticky top-0 flex-shrink-0 z-30 select-none overflow-x-hidden`}>
 
         <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden flex-shrink-0">
-          <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
-            Cloud - Medra
+          <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+            {isAjustesMode ? (
+              <>
+                <Settings size={18} className="flex-shrink-0" />
+                <span>Ajustes Sistema</span>
+              </>
+            ) : (
+              'Cloud - Medra'
+            )}
           </span>
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -240,74 +256,124 @@ const Dashboard = () => {
           </button>
         </div>
 
-        <nav className="flex-1 p-2 text-xs overflow-y-auto overflow-x-hidden space-y-1">
-          <div className="mb-2">
-            <button
-              onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
-              className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}
-            >
-              <Home size={16} className="flex-shrink-0" />
-              <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
-                Inicio
-              </span>
-            </button>
-            <div className="border-t border-white/10 my-2"></div>
-          </div>
+        <nav className="flex-1 p-2 text-xs overflow-y-auto overflow-x-hidden relative">
 
-          {!activeModule ? (
-            <div className="space-y-1">
-              {modulosPermitidos.map((key) => (
+          {isAjustesMode ? (
+            <div key="ajustes-menu">
+
+              <div className="mb-2">
                 <button
-                  key={key}
-                  onClick={() => setActiveModule(key)}
-                  className={`w-full flex items-center rounded-lg hover:bg-white/10 transition-all p-2 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
-                  title={isSidebarCollapsed ? MODULES[key].label : ""}
+                  onClick={salirDeAjustes}
+                  className={`w-full flex items-center gap-2 p-2 bg-white/15 hover:bg-white/25 active:scale-95 rounded-lg font-bold transition-all text-white shadow-xs ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                  title="Volver al Sistema"
                 >
-                  <div className="flex items-center gap-3 overflow-hidden min-w-0">
-                    <div className="flex-shrink-0">{MODULES[key].icon}</div>
-                    <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
-                      {MODULES[key].label}
-                    </span>
-                  </div>
-                  {!isSidebarCollapsed && <ChevronRight size={14} className="flex-shrink-0 opacity-60 ml-1" />}
+                  <ArrowLeft size={16} className="flex-shrink-0" />
+                  <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                    Volver al Sistema
+                  </span>
                 </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <button
-                onClick={() => setActiveModule(null)}
-                className={`flex items-center mb-4 text-[10px] text-white/60 hover:text-white transition-colors p-1 w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-1'}`}
-                title="Volver a módulos"
-              >
-                <ArrowLeft size={12} className="flex-shrink-0" />
-                <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
-                  Volver a módulos
-                </span>
-              </button>
 
-              <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
-                {MODULES[activeModule].label}
+                <div className="border-t border-white/10 my-2"></div>
               </div>
 
-              {MODULES[activeModule].subItems?.map((sub, idx) => {
-                if (!userData.permisos[activeModule]?.includes(sub.path)) return null;
-                return (
+              <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+                Configuración
+              </div>
+
+              <div className="space-y-1">
+                {AJUSTES_ITEMS.map((item) => (
                   <button
-                    key={idx}
-                    onClick={() => setActiveView(sub.path)}
-                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                    title={isSidebarCollapsed ? sub.label : ""}
+                    key={item.path}
+                    onClick={() => setActiveView(item.path)}
+                    className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all duration-150 ${activeView === item.path
+                        ? 'bg-white/25 font-bold shadow-xs'
+                        : 'hover:bg-white/10'
+                      } ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                    title={isSidebarCollapsed ? item.label : ""}
                   >
-                    <div className="flex-shrink-0">{sub.icon}</div>
+                    <div className="flex-shrink-0">{item.icon}</div>
                     <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
-                      {sub.label}
+                      {item.label}
                     </span>
                   </button>
-                );
-              })}
+                ))}
+              </div>
+            </div>
+          ) : (
+
+            <div key="normal-menu">
+
+              <div className="mb-2">
+                <button
+                  onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
+                  className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors ${activeView === 'dashboard' ? 'bg-white/20 font-semibold' : ''} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                >
+                  <Home size={16} className="flex-shrink-0" />
+                  <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                    Inicio
+                  </span>
+                </button>
+
+                <div className="border-t border-white/10 my-2"></div>
+              </div>
+
+              {!activeModule ? (
+                <div className="space-y-1">
+                  {modulosPermitidos.map((key) => (
+                    <button
+                      key={key}
+                      onClick={() => setActiveModule(key)}
+                      className={`w-full flex items-center rounded-lg hover:bg-white/10 transition-all p-2 ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
+                      title={isSidebarCollapsed ? MODULES[key].label : ""}
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                        <div className="flex-shrink-0">{MODULES[key].icon}</div>
+                        <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                          {MODULES[key].label}
+                        </span>
+                      </div>
+                      {!isSidebarCollapsed && <ChevronRight size={14} className="flex-shrink-0 opacity-60 ml-1" />}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <button
+                    onClick={() => setActiveModule(null)}
+                    className={`flex items-center mb-4 text-[10px] text-white/60 hover:text-white transition-colors p-1 w-full ${isSidebarCollapsed ? 'justify-center' : 'gap-1'}`}
+                    title="Volver a módulos"
+                  >
+                    <ArrowLeft size={12} className="flex-shrink-0" />
+                    <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                      Volver a módulos
+                    </span>
+                  </button>
+
+                  <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+                    {MODULES[activeModule].label}
+                  </div>
+
+                  {MODULES[activeModule].subItems?.map((sub, idx) => {
+                    if (!userData.permisos[activeModule]?.includes(sub.path)) return null;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveView(sub.path)}
+                        className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                        title={isSidebarCollapsed ? sub.label : ""}
+                      >
+                        <div className="flex-shrink-0">{sub.icon}</div>
+                        <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                          {sub.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
+
         </nav>
 
         <div className="p-2 m-2 bg-white/5 dark:bg-black/20 rounded-xl border border-white/10 dark:border-gray-800 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
@@ -315,14 +381,14 @@ const Dashboard = () => {
             <div className="transition-all duration-300 opacity-100 flex flex-col gap-2">
               <div className="flex flex-col gap-1.5 border-b border-white/5 pb-1.5">
                 <button
-                  onClick={() => { setActiveView('privacidad'); setActiveModule(null); }}
+                  onClick={() => { setIsAjustesMode(false); setActiveView('privacidad'); setActiveModule(null); }}
                   className="hover:text-white transition-colors text-left flex items-center gap-1.5 truncate"
                 >
                   <ShieldCheck size={12} className="opacity-70 flex-shrink-0" />
                   <span className="truncate">Política de Privacidad</span>
                 </button>
                 <button
-                  onClick={() => { setActiveView('terminos'); setActiveModule(null); }}
+                  onClick={() => { setIsAjustesMode(false); setActiveView('terminos'); setActiveModule(null); }}
                   className="hover:text-white transition-colors text-left flex items-center gap-1.5 truncate"
                 >
                   <FileText size={12} className="opacity-70 flex-shrink-0" />
@@ -365,7 +431,7 @@ const Dashboard = () => {
 
             <nav className="flex items-center gap-1.5 text-[12px] font-medium text-gray-700 dark:text-gray-200 truncate">
               <button
-                onClick={() => { setActiveView('dashboard'); setActiveModule(null); }}
+                onClick={salirDeAjustes}
                 className="flex items-center gap-1 text-[#2383C2] hover:text-[#1a6aa0] dark:text-blue-400 dark:hover:text-blue-300 transition-colors font-semibold flex-shrink-0"
               >
                 <Home size={13} />
@@ -403,7 +469,7 @@ const Dashboard = () => {
                 ? userData.nombreCompleto
                   .trim()
                   .split(' ')
-                  .filter(Boolean) 
+                  .filter(Boolean)
                   .map(palabra => palabra.charAt(0).toUpperCase())
                   .slice(0, 2)
                   .join('')
@@ -412,37 +478,47 @@ const Dashboard = () => {
 
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-2 z-50 text-gray-700 dark:text-gray-200">
+
                 <button
-                  onClick={() => { setActiveView('perfil'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                  onClick={() => { setIsAjustesMode(false); setActiveView('perfil'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <UserCircle size={16} /> Mi Perfil
+                  <UserCircle size={16} className="text-blue-500 dark:text-blue-400" /> Mi Perfil
                 </button>
+
                 <button
-                  onClick={() => { setActiveView('password'); setIsMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                  onClick={() => { setIsAjustesMode(false); setActiveView('/ajustes/cambiarPassword'); setIsMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <Shield size={16} /> Cambiar Contraseña
+                  <Shield size={16} className="text-emerald-500 dark:text-emerald-400" /> Cambiar Contraseña
                 </button>
+
                 <button
                   onClick={toggleModoPantalla}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                  {isDarkMode ? (
+                    <Sun size={16} className="text-amber-400" />
+                  ) : (
+                    <Moon size={16} className="text-indigo-500 dark:text-indigo-400" />
+                  )}
                   {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
                 </button>
+
                 <button
-                  disabled
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
+                  onClick={abrirAjustesGenerales}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold transition-colors"
                 >
-                  <Settings size={16} /> Ajustes Generales
+                  <Settings size={16} className="text-[#2383C2]" /> Ajustes Generales
                 </button>
+
                 <div className="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition-colors"
                 >
-                  <LogOut size={16} /> Cerrar Sesión
+                  <LogOut size={16} className="text-red-500" /> Cerrar Sesión
                 </button>
               </div>
             )}

@@ -36,7 +36,16 @@ import {
   UserSearch,
   UserRound,
   Warehouse,
-
+  UserCircle,
+  Shield,
+  Sun,
+  Lock,
+  Eye,
+  ArrowUpDown,
+  Sliders,
+  HelpCircle,
+  Home,
+  FileText
 } from "lucide-react";
 
 export const MODULES = {
@@ -45,7 +54,6 @@ export const MODULES = {
     icon: <LayoutDashboard size={18} />,
     path: '/dashboard'
   },
-
   administracion: {
     label: 'Administración',
     icon: <Settings2 size={16} />,
@@ -110,34 +118,63 @@ export const MODULES = {
       { label: 'Stock Unidad', path: '/inventario/unidadInventario', icon: <Building2 size={14} /> },
     ]
   }
-
-
-
-  /*
-    usuarios: { 
-      label: 'Usuarios',
-      icon: <Users size={18} />,
-      subItems: [
-        { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
-        { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
-      ]
-    },
-    
-    ,
-  
-    
-  
-    misturnos: {
-      label: 'Mis Turnos',
-      icon: <CalendarDays size={18} />,
-      subItems: [
-        {
-          label: 'Ver Turnos',
-          path: '/misturnos/ver',
-          icon: <Calendar size={14} />
-        }
-      ]
-    }
-  
-      */
 };
+
+export const AJUSTES_ITEMS = [
+  { path: '/ajustes/datosPersonales', label: 'Datos Personales', icon: <UserCircle size={15} /> },
+  { path: '/ajustes/cambiarPassword', label: 'Cambiar Contraseña', icon: <Shield size={15} /> },
+  { path: '/ajustes/temaApariencia', label: 'Tema y Apariencia', icon: <Sun size={15} /> },
+  { path: '/ajustes/configPrivacidad', label: 'Config. Privacidad', icon: <Lock size={15} /> },
+  { path: '/ajustes/modulosVisibles', label: 'Módulos Visibles', icon: <Eye size={15} /> },
+  { path: '/ajustes/ordenModulos', label: 'Orden de Módulos', icon: <ArrowUpDown size={15} /> },
+  { path: '/ajustes/preferenciasGenerales', label: 'Preferencias Generales', icon: <Sliders size={15} /> },
+  { path: '/ajustes/ayudaSoporte', label: 'Ayuda y Soporte', icon: <HelpCircle size={15} /> },
+];
+
+export const SPECIAL_VIEWS = {
+  'dashboard': { label: 'Inicio', icon: <Home size={13} /> },
+  'perfil': { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
+  'privacidad': { label: 'Política de Privacidad', icon: <ShieldCheck size={13} /> },
+  'terminos': { label: 'Términos de Servicio', icon: <FileText size={13} /> },
+  '/ajustes/datosPersonales': { label: 'Datos Personales', icon: <UserCircle size={13} /> },
+  '/ajustes/cambiarPassword': { label: 'Cambiar Contraseña', icon: <Shield size={13} /> },
+  '/ajustes/temaApariencia': { label: 'Tema y Apariencia', icon: <Sun size={13} /> },
+  '/ajustes/configPrivacidad': { label: 'Configuración de Privacidad', icon: <Lock size={13} /> },
+  '/ajustes/modulosVisibles': { label: 'Módulos Visibles', icon: <Eye size={13} /> },
+  '/ajustes/ordenModulos': { label: 'Orden de Módulos', icon: <ArrowUpDown size={13} /> },
+  '/ajustes/preferenciasGenerales': { label: 'Preferencias Generales', icon: <Sliders size={13} /> },
+  '/ajustes/ayudaSoporte': { label: 'Centro de Ayuda', icon: <HelpCircle size={13} /> },
+};
+
+
+
+/*
+  usuarios: { 
+    label: 'Usuarios',
+    icon: <Users size={18} />,
+    subItems: [
+      { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
+      { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
+    ]
+  },
+  
+  ,
+ 
+  
+ 
+  misturnos: {
+    label: 'Mis Turnos',
+    icon: <CalendarDays size={18} />,
+    subItems: [
+      {
+        label: 'Ver Turnos',
+        path: '/misturnos/ver',
+        icon: <Calendar size={14} />
+      }
+    ]
+  }
+ 
+    
+};
+
+*/

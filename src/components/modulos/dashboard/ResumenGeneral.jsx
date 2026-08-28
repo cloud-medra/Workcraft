@@ -20,7 +20,7 @@ const ResumenGeneral = ({ userData }) => {
   const handleYearChange = (e) => setCurrentDate(new Date(parseInt(e.target.value), month, 1));
 
   return (
-    <div className="w-full h-full flex flex-col gap-3 overflow-y-auto pr-1">
+    <div className="w-full h-full flex flex-col gap-3 overflow-hidden pr-1">
 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-between p-2.5 flex-shrink-0">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2 uppercase tracking-wider">
@@ -31,16 +31,16 @@ const ResumenGeneral = ({ userData }) => {
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-grow items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-grow min-h-0 items-stretch">
 
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex flex-col justify-between p-4 min-h-0">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex flex-col justify-between p-4 min-h-0 h-full">
 
-          <div className="flex flex-col gap-3 flex-1 min-h-0">
+          <div className="flex flex-col gap-3 flex-1 min-h-0 h-full">
             <BienvenidaCard userData={userData} />
 
             <BrandingCard />
 
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
               <NuevoModuloCard />
             </div>
           </div>
@@ -53,7 +53,7 @@ const ResumenGeneral = ({ userData }) => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 min-h-0">
           <AgendaCalendar
             currentDate={currentDate}
             selectedDate={selectedDate}

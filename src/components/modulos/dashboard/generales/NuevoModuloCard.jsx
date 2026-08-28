@@ -43,7 +43,7 @@ const NuevoModuloCard = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm flex flex-col gap-2 h-full min-h-0">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm flex flex-col gap-2 h-full min-h-0 overflow-hidden">
       <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2 flex-shrink-0">
         <span className="text-[11px] font-bold text-gray-700 dark:text-gray-200 flex items-center gap-1.5 uppercase tracking-wide">
           <StickyNote size={13} className="text-[#2383C2]" /> Notas del Panel
@@ -53,7 +53,7 @@ const NuevoModuloCard = () => {
         </span>
       </div>
 
-      <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1">
+      <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1 h-full">
         {notas.length === 0 ? (
           <p className="text-[10.5px] text-gray-400 dark:text-gray-500 italic py-3 text-center">
             No hay notas ingresadas aún.
