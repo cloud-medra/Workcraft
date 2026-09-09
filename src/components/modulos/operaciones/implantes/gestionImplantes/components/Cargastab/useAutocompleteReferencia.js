@@ -1,40 +1,49 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
 
-// --- Caché en memoria a nivel de módulo ---
-// Firestore no soporta búsquedas "contiene" nativas (solo rangos de prefijo
-// con >= / <=), así que la única forma de encontrar "008" dentro de
-// "292.008" es filtrar en el cliente sobre el set completo de códigos.
-// Por eso se trae la colección UNA sola vez y se cachea acá (fuera del
-// hook), compartida entre todas las instancias del autocompletado que haya
-// montadas en la app (Cargas, edición de ítems de PAD, etc.), en vez de
-// repetir la lectura completa por cada input o cada tecleo.
-let cacheCodigosMaestros = null;
-let promesaCargaCodigos = null;
+// --- Caché en memoria compartida, mantenida en vivo con onSnapshot ---
+// Antes se cargaba una sola vez con getDocs() y quedaba "congelada": un
+// código nuevo o editado en Códigos Maestros no aparecía en el autocompletado
+// de Cargas hasta refrescar la página. Ahora hay un listener en tiempo real
+// compartido entre todas las instancias del autocompletado montadas en la
+// app; cualquier cambio en "maestros_codigos" (crear, editar, importar, o
+// modificar precio desde Vista General) actualiza la caché al instante,
+// sin depender de que cada punto de escritura recuerde invalidarla.
+let cacheCodigosMaestros = [];
+let hayDatosCache = false;
+let unsubscribeGlobal = null;
+let suscriptoresActivos = 0;
+const listenersCache = new Set();
 
-const cargarCodigosMaestros = async () => {
-  if (cacheCodigosMaestros) return cacheCodigosMaestros;
-  if (!promesaCargaCodigos) {
-    promesaCargaCodigos = getDocs(collection(db, "maestros_codigos"))
-      .then(snap => {
+const notificarSuscriptores = () => listenersCache.forEach(cb => cb());
+
+const conectarListenerGlobal = () => {
+  suscriptoresActivos++;
+  if (!unsubscribeGlobal) {
+    unsubscribeGlobal = onSnapshot(
+      collection(db, "maestros_codigos"),
+      (snap) => {
         cacheCodigosMaestros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        return cacheCodigosMaestros;
-      })
-      .catch(err => {
-        promesaCargaCodigos = null; // permite reintentar si la carga falló
-        throw err;
-      });
+        hayDatosCache = true;
+        notificarSuscriptores();
+      },
+      (error) => console.error("Error al escuchar maestros_codigos:", error)
+    );
   }
-  return promesaCargaCodigos;
 };
 
-// Por si en algún flujo (ej. después de crear/editar un código maestro desde
-// otra pantalla) hace falta forzar una recarga en vez de usar la caché vieja.
-export const invalidarCacheCodigosMaestros = () => {
-  cacheCodigosMaestros = null;
-  promesaCargaCodigos = null;
+const desconectarListenerGlobal = () => {
+  suscriptoresActivos = Math.max(0, suscriptoresActivos - 1);
+  if (suscriptoresActivos === 0 && unsubscribeGlobal) {
+    unsubscribeGlobal();
+    unsubscribeGlobal = null;
+  }
 };
+
+// Se mantiene por compatibilidad si la llamas desde algún lado; ya no hace
+// falta porque la caché se mantiene sola vía onSnapshot.
+export const invalidarCacheCodigosMaestros = () => {};
 
 export const useAutocompleteReferencia = (referenciaTexto) => {
   const [sugerencias, setSugerencias] = useState([]);
@@ -42,6 +51,12 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
   const [mostrarSug, setMostrarSug] = useState(false);
   const containerRef = useRef(null);
   const skipNext = useRef(false);
+  const ultimoTextoRef = useRef('');
+
+  useEffect(() => {
+    conectarListenerGlobal();
+    return () => desconectarListenerGlobal();
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -50,6 +65,32 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const recalcularSugerencias = (texto) => {
+    const t = (texto || '').trim();
+    ultimoTextoRef.current = t;
+    if (t.length < 2) {
+      setSugerencias([]);
+      setBuscando(false);
+      return;
+    }
+    const upper = t.toUpperCase();
+    const coincidencias = cacheCodigosMaestros.filter(item => {
+      const ref = (item.referencia || '').toUpperCase();
+      const cod = (item.codigo || '').toUpperCase();
+      return ref.includes(upper) || cod.includes(upper);
+    });
+    coincidencias.sort((a, b) => {
+      const refA = (a.referencia || '').toUpperCase();
+      const refB = (b.referencia || '').toUpperCase();
+      const empiezaA = refA.startsWith(upper) ? 0 : 1;
+      const empiezaB = refB.startsWith(upper) ? 0 : 1;
+      if (empiezaA !== empiezaB) return empiezaA - empiezaB;
+      return refA.localeCompare(refB);
+    });
+    setSugerencias(coincidencias.slice(0, 8));
+    setBuscando(false);
+  };
 
   useEffect(() => {
     if (skipNext.current) {
@@ -62,42 +103,24 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
       setMostrarSug(false);
       return;
     }
-    const timeoutId = setTimeout(async () => {
-      setBuscando(true);
-      try {
-        const upper = t.toUpperCase();
-        const todos = await cargarCodigosMaestros();
-
-        // Coincidencia: la referencia o el código CONTIENEN el texto buscado,
-        // en cualquier posición (no solo al inicio).
-        const coincidencias = todos.filter(item => {
-          const ref = (item.referencia || '').toUpperCase();
-          const cod = (item.codigo || '').toUpperCase();
-          return ref.includes(upper) || cod.includes(upper);
-        });
-
-        // Orden de relevancia: primero las que EMPIEZAN con el texto
-        // (lo más probable que se esté buscando), después el resto
-        // alfabéticamente por referencia.
-        coincidencias.sort((a, b) => {
-          const refA = (a.referencia || '').toUpperCase();
-          const refB = (b.referencia || '').toUpperCase();
-          const empiezaA = refA.startsWith(upper) ? 0 : 1;
-          const empiezaB = refB.startsWith(upper) ? 0 : 1;
-          if (empiezaA !== empiezaB) return empiezaA - empiezaB;
-          return refA.localeCompare(refB);
-        });
-
-        setSugerencias(coincidencias.slice(0, 8));
-        setMostrarSug(true);
-      } catch (error) {
-        console.error("Error al buscar referencias:", error);
-      } finally {
-        setBuscando(false);
-      }
+    setBuscando(!hayDatosCache);
+    const timeoutId = setTimeout(() => {
+      recalcularSugerencias(referenciaTexto);
+      setMostrarSug(true);
     }, 350);
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [referenciaTexto]);
+
+  // Si el dropdown está abierto y llega un cambio de la caché (p.ej. alguien
+  // más acaba de crear el código que estás buscando), refresca sola.
+  useEffect(() => {
+    const cb = () => {
+      if (ultimoTextoRef.current.length >= 2) recalcularSugerencias(ultimoTextoRef.current);
+    };
+    listenersCache.add(cb);
+    return () => listenersCache.delete(cb);
+  }, []);
 
   return { sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, skipNext };
 };

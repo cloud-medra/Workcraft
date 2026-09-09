@@ -105,7 +105,8 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       fecha: reg.fecha || reg.fechaAgenda || reg.fecha_agenda || '',
       costo: reg.costo ?? reg.monto ?? 0,
       cotizaciones: Array.isArray(reg.cotizaciones) ? reg.cotizaciones : [],
-      solicitud: reg.solicitud || 'PENDIENTE'
+      solicitud: reg.solicitud || 'PENDIENTE',
+      estado: reg.estado || 'AGENDADO' // Estado propio de este bloque (empresa/fecha)
     }));
 
     return {
@@ -114,7 +115,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       convenio: item?.convenio || '',
       prevision: item?.prevision || '',
       medico: item?.medico || item?.nombreMedico || '',
-      estado: item?.estado || 'AGENDADO',
       informe: item?.informe || 'PENDIENTE',
       atributo: item?.atributo || '',
       centro: item?.centro || item?.centroMedico || '',
@@ -284,40 +284,50 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
     });
   };
 
-  // Estado Operativo (ej. INCOMPLETO / PENDIENTE / CARGADO / ...).
+  // Estado Operativo (ej. INCOMPLETO / PENDIENTE / CARGADO / ...), calculado
+  // POR BLOQUE (no global): cada empresa/fecha de la misma admisión tiene su
+  // propio avance de carga. Si Empresa A ya está CARGADA y Empresa B no
+  // tiene nada cargado, cada una debe reflejar SU propio estado, no el de
+  // toda la admisión junta.
   // Un PAD ("estadoCarga" = 'PAD') se considera un ítem completo/cargado, al
   // mismo nivel que 'CARGADO' — por eso se normaliza con esEstadoCargaCompleto
   // antes de comparar, así un bloque con ítems CARGADO + PAD no cae en
   // INCOMPLETO solo por tener dos etiquetas de estadoCarga distintas.
   useEffect(() => {
-    const todosLosItems = formData.bloques.flatMap(b =>
-      (b.cotizaciones || []).flatMap(cot => cot.items || [])
-    );
+    setFormData(prev => {
+      let huboCambios = false;
+      const nuevosBloques = prev.bloques.map(bloque => {
+        const items = (bloque.cotizaciones || []).flatMap(cot => cot.items || []);
+        if (items.length === 0) return bloque; // sin ítems, no se toca
 
-    if (todosLosItems.length === 0) return;
+        const hayItemsSinCodigo = items.some(it => it.sinCodigo);
+        if (hayItemsSinCodigo) {
+          if (bloque.estado !== 'INCOMPLETO') {
+            huboCambios = true;
+            return { ...bloque, estado: 'INCOMPLETO' };
+          }
+          return bloque;
+        }
 
-    const hayItemsSinCodigo = todosLosItems.some(it => it.sinCodigo);
-    if (hayItemsSinCodigo) {
-      if (formData.estado !== 'INCOMPLETO') {
-        setFormData(prev => ({ ...prev, estado: 'INCOMPLETO' }));
-      }
-      return;
-    }
+        if (bloque.estado === 'AGENDADO' || bloque.estado === 'AGENDANDO') {
+          huboCambios = true;
+          return { ...bloque, estado: 'PENDIENTE' };
+        }
 
-    if (formData.estado === 'AGENDADO' || formData.estado === 'AGENDANDO') {
-      setFormData(prev => ({ ...prev, estado: 'PENDIENTE' }));
-      return;
-    }
+        const estadosNormalizados = [...new Set(items.map(it => {
+          const estado = (it.estadoCarga || 'PENDIENTE').toUpperCase();
+          return esEstadoCargaCompleto(estado) ? 'CARGADO' : estado;
+        }))];
+        const nuevoEstado = estadosNormalizados.length === 1 ? estadosNormalizados[0] : 'INCOMPLETO';
 
-    const estadosNormalizados = [...new Set(todosLosItems.map(it => {
-      const estado = (it.estadoCarga || 'PENDIENTE').toUpperCase();
-      return esEstadoCargaCompleto(estado) ? 'CARGADO' : estado;
-    }))];
-    const nuevoEstado = estadosNormalizados.length === 1 ? estadosNormalizados[0] : 'INCOMPLETO';
-
-    if (nuevoEstado !== formData.estado) {
-      setFormData(prev => ({ ...prev, estado: nuevoEstado }));
-    }
+        if (nuevoEstado !== bloque.estado) {
+          huboCambios = true;
+          return { ...bloque, estado: nuevoEstado };
+        }
+        return bloque;
+      });
+      return huboCambios ? { ...prev, bloques: nuevosBloques } : prev;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.bloques]);
 
@@ -389,18 +399,16 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
         convenio: formData.convenio,
         prevision: formData.prevision,
         medico: formData.medico,
-        estado: formData.estado,
         informe: formData.informe,
         atributo: formData.atributo,
         centro: formData.centro,
         descripcion: formData.descripcion,
         notaLibre: formData.notaLibre
+        // estado ya NO va acá: ahora es por bloque
       },
       registrosActualizados: formData.bloques.map((b, idx) => {
         const idsOriginales = idsItemsOriginalesRef.current[idx] || [];
         const idsActuales = new Set((b.cotizaciones?.[0]?.items || []).map(it => it.id));
-        // Ítems que existían al abrir el detalle y ya no están: se deben borrar
-        // también de implantes_imputadas al guardar (ver useGestionesImplantesData).
         const itemsEliminados = idsOriginales.filter(orig => !idsActuales.has(orig.id));
 
         return {
@@ -412,6 +420,7 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
           costo: b.costo,
           cotizaciones: b.cotizaciones || [],
           solicitud: b.solicitud || 'PENDIENTE',
+          estado: b.estado || 'AGENDADO', // Estado propio del bloque
           itemsEliminados,
           nombre: formData.nombre,
           medico: formData.medico,
@@ -427,6 +436,15 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
     guardarTodo: handleSubmit,
     hayCambiosSinGuardar: () => hayCambios
   }));
+
+  // Resumen del estado a nivel de admisión (para mostrar en el panel lateral,
+  // ya que ahora cada bloque tiene su propio estado). Si todos los bloques
+  // comparten el mismo estado, se muestra ese; si no, "INCOMPLETO".
+  const estadoResumenAdmision = useMemo(() => {
+    if (!formData.bloques || formData.bloques.length === 0) return 'AGENDADO';
+    const estadosUnicos = [...new Set(formData.bloques.map(b => b.estado || 'AGENDADO'))];
+    return estadosUnicos.length === 1 ? estadosUnicos[0] : 'INCOMPLETO';
+  }, [formData.bloques]);
 
   return (
     <div className="flex-grow flex flex-col bg-slate-50/50 dark:bg-gray-900 overflow-hidden text-[10px]">
@@ -448,91 +466,91 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
 
       <div className="flex-grow flex overflow-hidden">
 
-      <div className="w-40 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col">
-        <div className="p-2 border-b border-slate-200 dark:border-gray-700">
-          <h2 className="text-[10px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
-            Menú de Opción
-          </h2>
+        <div className="w-40 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col">
+          <div className="p-2 border-b border-slate-200 dark:border-gray-700">
+            <h2 className="text-[10px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
+              Menú de Opción
+            </h2>
+          </div>
+
+          <div className="p-1.5 space-y-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('detalles')}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'detalles'
+                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
+                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                }`}
+            >
+              <ListFilter size={13} />
+              <span className="truncate">Detalles</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('informacion')}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'informacion'
+                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
+                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                }`}
+            >
+              <Info size={13} />
+              <span className="truncate">Información</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('cargas')}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'cargas'
+                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
+                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                }`}
+            >
+              <UploadCloud size={13} />
+              <span className="truncate">Cargas</span>
+            </button>
+          </div>
         </div>
 
-        <div className="p-1.5 space-y-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('detalles')}
-            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'detalles'
-              ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-              : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-              }`}
-          >
-            <ListFilter size={13} />
-            <span className="truncate">Detalles</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('informacion')}
-            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'informacion'
-              ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-              : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-              }`}
-          >
-            <Info size={13} />
-            <span className="truncate">Información</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('cargas')}
-            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'cargas'
-              ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-              : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-              }`}
-          >
-            <UploadCloud size={13} />
-            <span className="truncate">Cargas</span>
-          </button>
-        </div>
-      </div>
-
-      {(activeTab === 'informacion' || activeTab === 'cargas') && (
-        <EmpresasFechasPanel
-          bloques={formData.bloques}
-          bloqueActivoIndex={bloqueActivoIndex}
-          setBloqueActivoIndex={setBloqueActivoIndex}
-          erroresFecha={erroresFecha}
-          estadoActual={formData.estado}
-        />
-      )}
-
-      <div className="flex-grow flex flex-col overflow-auto">
-
-        {activeTab === 'informacion' && (
-          <InformacionTab
-            formData={formData}
-            handleGeneralChange={handleGeneralChange}
-            handleBloqueChange={handleBloqueChange}
+        {(activeTab === 'informacion' || activeTab === 'cargas') && (
+          <EmpresasFechasPanel
+            bloques={formData.bloques}
             bloqueActivoIndex={bloqueActivoIndex}
+            setBloqueActivoIndex={setBloqueActivoIndex}
             erroresFecha={erroresFecha}
+            estadoActual={estadoResumenAdmision}
           />
         )}
 
-        {activeTab === 'detalles' && (
-          <DetallesTab formData={formData} />
-        )}
+        <div className="flex-grow flex flex-col overflow-auto">
 
-        {activeTab === 'cargas' && (
-          <CargasTab
-            formData={formData}
-            bloqueActivoIndex={bloqueActivoIndex}
-            onAgregarItem={handleAgregarItemCotizacion}
-            onEliminarItem={handleEliminarItem}
-            onEliminarCotizacion={handleEliminarCotizacion}
-            onActualizarEstadoItem={handleActualizarEstadoItem}
-            onEditarItem={handleEditarItem}
-          />
-        )}
+          {activeTab === 'informacion' && (
+            <InformacionTab
+              formData={formData}
+              handleGeneralChange={handleGeneralChange}
+              handleBloqueChange={handleBloqueChange}
+              bloqueActivoIndex={bloqueActivoIndex}
+              erroresFecha={erroresFecha}
+            />
+          )}
 
-      </div>
+          {activeTab === 'detalles' && (
+            <DetallesTab formData={formData} />
+          )}
+
+          {activeTab === 'cargas' && (
+            <CargasTab
+              formData={formData}
+              bloqueActivoIndex={bloqueActivoIndex}
+              onAgregarItem={handleAgregarItemCotizacion}
+              onEliminarItem={handleEliminarItem}
+              onEliminarCotizacion={handleEliminarCotizacion}
+              onActualizarEstadoItem={handleActualizarEstadoItem}
+              onEditarItem={handleEditarItem}
+            />
+          )}
+
+        </div>
       </div>
     </div>
   );

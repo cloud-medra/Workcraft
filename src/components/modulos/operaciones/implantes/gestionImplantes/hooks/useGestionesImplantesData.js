@@ -431,7 +431,7 @@ export const useGestionesImplantesData = () => {
           descripcion: paciente.descripcion || 'P',
           centro: paciente.centro || 'PABELLON',
           atributo: paciente.atributo || 'IMPLANTES',
-          estado: paciente.estado || 'AGENDANDO',
+          estado: registro.estado || 'AGENDADO', // CAMBIO: antes era paciente.estado (global)
           costo: Number(registro.costo) || 0,
           cotizaciones: registro.cotizaciones || [],
           solicitud: registro.solicitud || 'PENDIENTE',
