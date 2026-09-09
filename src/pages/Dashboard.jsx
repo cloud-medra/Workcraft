@@ -8,24 +8,32 @@ import {
   Settings, Home, ShieldCheck, Menu, Shield, Moon, Sun
 } from 'lucide-react';
 
+// Importación unificada de configuración de módulos y vistas
 import { MODULES, AJUSTES_ITEMS, SPECIAL_VIEWS } from '../config/modulesConfig.jsx';
 
+// --- VISTAS GENERALES Y ADMINISTRACIÓN ---
 import ResumenGeneral from '../components/modulos/dashboard/ResumenGeneral';
 import ControlMensual from '../components/modulos/administracion/controlMensual/ControlMensual';
+import ResumenPeriodoAbierto from '../components/modulos/administracion/resumenPeriodoAbierto/ResumenPeriodoAbierto.jsx';
 import NotasAdmin from '../components/modulos/administracion/notasAdmin/NotasAdmin';
+import CrearUsuario from '../components/modulos/administracion/usuarios/CrearUsuario';
+import ListadoUsuario from '../components/modulos/administracion/usuarios/ListadoUsuario';
 
+// --- LABORATORIO ---
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
 import CodigoLaboratorio from '../components/modulos/gestiones/laboratorio/registros/CodigoLaboratorio';
 import OrdenLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/OrdenLaboratorio';
 import XmlDocLaboratorio from '../components/modulos/gestiones/laboratorio/importaciones/XmlDocLaboratorio';
 import ArchivosControlLaboratorio from '../components/modulos/gestiones/laboratorio/procesos/ArchivosControlLaboratorio';
 
+// --- VACUNATORIO ---
 import EmpresasVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/EmpresasVacunatorio';
 import CodigoVacunatorio from '../components/modulos/gestiones/vacunatorio/registros/CodigoVacunatorio';
 import OrdenVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/OrdenVacunatorio';
 import XmlDocVacunatorio from '../components/modulos/gestiones/vacunatorio/importaciones/XmlDocVacunatorio';
 import ArchivosControlVacunatorio from '../components/modulos/gestiones/vacunatorio/procesos/ArchivosControlVacunatorio';
 
+// --- MAESTROS ---
 import EmpresasMaestros from '../components/modulos/maestros/empresasMaestros/EmpresasMaestros';
 import PrestadoresMaestros from '../components/modulos/maestros/prestadoresMaestro/PrestadoresMaestros';
 import CentrosMaestros from '../components/modulos/maestros/centrosMaestros/CentrosMaestros';
@@ -34,8 +42,12 @@ import ConveniosMaestros from '../components/modulos/maestros/conveniosMaestros/
 import RecargosMaestros from '../components/modulos/maestros/recargosMaestros/RecargosMaestros';
 import CalculadorMaestros from '../components/modulos/maestros/calculadorMaestros/CalculadorMaestros';
 import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/CodigosMaestros';
-import GuiasConsigna from '../components/modulos/gestiones/consignacion/guiasConsigna/GuiasConsigna';
+import PadMaestros from '../components/modulos/maestros/padMaestros/PadMaestros';
+import ListadoMaestros from '../components/modulos/maestros/listadoMaestros/ListadoMaestros';
 
+
+
+// --- INVENTARIO ---
 import GeneralInventario from '../components/modulos/inventario/generalInventario/GeneralInventario';
 import ExistenciasInventario from '../components/modulos/inventario/existenciasInventario/ExistenciasInventario';
 import IngresosInventario from '../components/modulos/inventario/ingresosInventario/IngresosInventario';
@@ -44,17 +56,35 @@ import TransitoInventario from '../components/modulos/inventario/transitoInventa
 import HistorialInventario from '../components/modulos/inventario/historialInventario/HistorialInventario';
 import UnidadInventario from '../components/modulos/inventario/unidadInventario/UnidadInventario';
 
+// --- DOCUMENTOS ---
+import ReportesInfo from '../components/modulos/operaciones/documentos/reportesInfo/ReportesInfo';
+
+// --- IMPLANTES ---
+import GestionImplantes from '../components/modulos/operaciones/implantes/gestionImplantes/GestionImplantes';
+import SolicitudImplantes from '../components/modulos/operaciones/implantes/solicitudImplantes/SolicitudImplantes';
+import ResumenImplantes from '../components/modulos/operaciones/implantes/resumenImplantes/ResumenImplantes.jsx';
+
+// --- CONSIGNACION ---
+import IngresarGuiaDespacho from '../components/modulos/operaciones/consignacion/ingresarGuiaDespacho/IngresarGuiaDespacho';
+import Listadoguiasconsignacion from '../components/modulos/operaciones/consignacion/listadoguiasconsignacion/Listadoguiasconsignacion';
+import RegistroConsignacion from '../components/modulos/operaciones/consignacion/registroConsignacion/RegistroConsignacion';
+import CargasConsignacion from '../components/modulos/operaciones/consignacion/cargasConsignacion/CargasConsignacion';
+import SolicitudConsignacion from '../components/modulos/operaciones/consignacion/solicitudConsignacion/SolicitudConsignacion';
+import ResumenConsignacion from '../components/modulos/operaciones/consignacion/resumenConsignacion/ResumenConsignacion';
+
+
+
+// --- PERFIL Y LEGALES ---
 import Perfil from '../components/modulos/general/perfil/Perfil';
 import PoliticasPrivacidad from '../components/modulos/general/legales/PoliticasPrivacidad';
 import TerminosServicio from '../components/modulos/general/legales/TerminosServicio';
 
-// --- COMPONENTES DE AJUSTES DEL SISTEMA (Importados formalmente) ---
-// import AjusteDatosPersonales from '../components/modulos/ajustes/AjusteDatosPersonales';
-// import CambiarPassword from '../components/modulos/ajustes/CambiarPassword';
-// import AjusteTema from '../components/modulos/ajustes/AjusteTema';
-// import AjustePrivacidad from '../components/modulos/ajustes/AjustePrivacidad';
-// import ModulosVisibles from '../components/modulos/ajustes/ModulosVisibles';
-// import OrdenModulos from '../components/modulos/ajustes/OrdenModulos';
+import DatosUsuarios from '../components/modulos/general/settings/datosUsuarios/DatosUsuarios';
+import CambiarPasswordAjustes from '../components/modulos/general/settings/cambiarPassword/CambiarPasswordAjustes';
+import AjusteTema from '../components/modulos/general/settings/ajusteTema/AjusteTema';
+import ModulosVisibles from '../components/modulos/general/settings/modulosVisibles/ModulosVisibles';
+import OrdenModulos from '../components/modulos/general/settings/ordenModulos/OrdenModulos';
+
 // import PreferenciasGenerales from '../components/modulos/ajustes/PreferenciasGenerales';
 
 const Dashboard = () => {
@@ -73,7 +103,9 @@ const Dashboard = () => {
     nombreUsuario: '',
     email: '',
     rol: '',
-    permisos: {}
+    permisos: {},
+    ordenModulos: [],
+    ordenSubItems: {}
   });
 
   const applyDarkMode = (enabled) => {
@@ -171,7 +203,11 @@ const Dashboard = () => {
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} />,
     '/administracion/controlMensual': <ControlMensual />,
+    '/administracion/ResumenPeriodoAbierto': <ResumenPeriodoAbierto />,
     '/administracion/notasAdmin': <NotasAdmin />,
+    '/administracion/crearUsuario': <CrearUsuario />,
+    '/administracion/listadoUsuario': <ListadoUsuario />,
+   
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,
@@ -193,7 +229,14 @@ const Dashboard = () => {
     '/maestros/recargosMaestros': <RecargosMaestros />,
     '/maestros/calculadorMaestros': <CalculadorMaestros />,
     '/maestros/codigosMaestros': <CodigosMaestros />,
-    '/consignacion/guiasConsigna': <GuiasConsigna />,
+    '/maestros/padMaestros': <PadMaestros />,
+    '/maestros/listadoMaestros': <ListadoMaestros />,
+    '/consignacion/ingresarGuiaDespacho': <IngresarGuiaDespacho />,
+    '/consignacion/listadoguiasconsignacion': <Listadoguiasconsignacion />,
+    '/consignacion/registroConsignacion': <RegistroConsignacion />,
+    '/consignacion/cargasConsignacion': <CargasConsignacion />,
+    '/consignacion/solicitudConsignacion': <SolicitudConsignacion />,
+    '/consignacion/resumenConsignacion': <ResumenConsignacion />,
 
     '/inventario/generalInventario': <GeneralInventario />,
     '/inventario/existenciasInventario': <ExistenciasInventario />,
@@ -203,13 +246,18 @@ const Dashboard = () => {
     '/inventario/historialInventario': <HistorialInventario />,
     '/inventario/unidadInventario': <UnidadInventario />,
 
-    // --- RUTAS DE COMPONENTES DE AJUSTES ---
-    // '/ajustes/datosPersonales': <AjusteDatosPersonales userData={userData} />,
-    // '/ajustes/cambiarPassword': <CambiarPassword />,
-    // '/ajustes/temaApariencia': <AjusteTema isDarkMode={isDarkMode} toggleModoPantalla={toggleModoPantalla} />,
-    // '/ajustes/configPrivacidad': <AjustePrivacidad />,
-    // '/ajustes/modulosVisibles': <ModulosVisibles userData={userData} />,
-    // '/ajustes/ordenModulos': <OrdenModulos />,
+    '/documentos/reportesInfo': <ReportesInfo />,
+
+    '/implantes/gestionImplantes': <GestionImplantes />,
+    '/implantes/solicitudImplantes': <SolicitudImplantes />,
+    '/implantes/resumenImplantes': <ResumenImplantes />,
+
+    '/settings/datosUsuarios': <DatosUsuarios userData={userData} />,
+    '/settings/cambiarPasswordAjustes': <CambiarPasswordAjustes userData={userData} />,
+    '/settings/ajusteTema': <AjusteTema userData={userData} />,
+    '/settings/modulosVisibles': <ModulosVisibles userData={userData} />,
+    '/settings/ordenModulos': ( <OrdenModulos userData={userData} onOrderSaved={(cambios) => setUserData(prev => ({ ...prev, ...cambios }))} /> ),
+    
     // '/ajustes/preferenciasGenerales': <PreferenciasGenerales />,
   };
 
@@ -217,9 +265,31 @@ const Dashboard = () => {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
 
-  const modulosPermitidos = Object.keys(MODULES).filter(
-    (mKey) => (userData.permisos[mKey] || []).length > 0
-  );
+  // --- ORDEN DE MÓDULOS APLICADO (usa userData.ordenModulos si existe) ---
+  const modulosPermitidos = (() => {
+    const base = Object.keys(MODULES).filter(
+      (mKey) => (userData.permisos[mKey] || []).length > 0
+    );
+    const orden = userData.ordenModulos;
+    if (!orden || !orden.length) return base;
+    const ordenados = orden.filter((k) => base.includes(k));
+    const faltantes = base.filter((k) => !ordenados.includes(k));
+    return [...ordenados, ...faltantes];
+  })();
+
+  // --- ORDEN DE SUBITEMS APLICADO (usa userData.ordenSubItems[modulo] si existe) ---
+  const getSubItemsOrdenados = (moduleKey) => {
+    const subItems = MODULES[moduleKey]?.subItems || [];
+    const permitidosSub = userData.permisos[moduleKey] || [];
+    const visibles = subItems.filter((s) => permitidosSub.includes(s.path));
+    const ordenGuardado = userData.ordenSubItems?.[moduleKey];
+    if (!ordenGuardado || !ordenGuardado.length) return visibles;
+    const ordenados = ordenGuardado
+      .map((path) => visibles.find((s) => s.path === path))
+      .filter(Boolean);
+    const faltantes = visibles.filter((s) => !ordenGuardado.includes(s.path));
+    return [...ordenados, ...faltantes];
+  };
 
   const handleLogout = async () => {
     try {
@@ -233,9 +303,11 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen flex overflow-hidden bg-gray-50 dark:bg-gray-900">
 
+      {/* SIDEBAR LATERAL */}
       <aside className={`${isSidebarCollapsed ? 'w-16 min-w-[64px] max-w-[64px]' : 'w-56 min-w-[190px] max-w-[190px]'
         } bg-[#2383C2] dark:bg-gray-800 text-white transition-all duration-300 ease-in-out hidden md:flex flex-col shadow-xl h-screen sticky top-0 flex-shrink-0 z-30 select-none overflow-x-hidden`}>
 
+        {/* HEADER DE LA BARRA LATERAL */}
         <div className="p-4 h-16 flex items-center justify-between border-b border-white/10 overflow-hidden flex-shrink-0">
           <span className={`text-sm font-bold tracking-tight whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
             {isAjustesMode ? (
@@ -256,11 +328,14 @@ const Dashboard = () => {
           </button>
         </div>
 
+        {/* NAV PRINCIPAL DE LA BARRA LATERAL */}
         <nav className="flex-1 p-2 text-xs overflow-y-auto overflow-x-hidden relative">
 
+          {/* MODO AJUSTES */}
           {isAjustesMode ? (
             <div key="ajustes-menu">
 
+              {/* VOLVER AL SISTEMA */}
               <div className="mb-2">
                 <button
                   onClick={salirDeAjustes}
@@ -276,6 +351,7 @@ const Dashboard = () => {
                 <div className="border-t border-white/10 my-2"></div>
               </div>
 
+              {/* SECCIÓN CONFIGURACIÓN E ÍTEMS */}
               <div className={`px-2 mb-2 font-bold uppercase text-[9px] tracking-wider text-white/50 transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
                 Configuración
               </div>
@@ -301,6 +377,7 @@ const Dashboard = () => {
             </div>
           ) : (
 
+            /* MODO SISTEMA NORMAL */
             <div key="normal-menu">
 
               <div className="mb-2">
@@ -317,6 +394,7 @@ const Dashboard = () => {
                 <div className="border-t border-white/10 my-2"></div>
               </div>
 
+              {/* SECCIÓN MÓDULOS */}
               {!activeModule ? (
                 <div className="space-y-1">
                   {modulosPermitidos.map((key) => (
@@ -353,22 +431,19 @@ const Dashboard = () => {
                     {MODULES[activeModule].label}
                   </div>
 
-                  {MODULES[activeModule].subItems?.map((sub, idx) => {
-                    if (!userData.permisos[activeModule]?.includes(sub.path)) return null;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveView(sub.path)}
-                        className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
-                        title={isSidebarCollapsed ? sub.label : ""}
-                      >
-                        <div className="flex-shrink-0">{sub.icon}</div>
-                        <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
-                          {sub.label}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {getSubItemsOrdenados(activeModule).map((sub, idx) => (
+                    <button
+                      key={sub.path ?? idx}
+                      onClick={() => setActiveView(sub.path)}
+                      className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${activeView === sub.path ? 'bg-white/20 font-semibold' : 'hover:bg-white/10'} ${isSidebarCollapsed ? 'justify-center' : ''}`}
+                      title={isSidebarCollapsed ? sub.label : ""}
+                    >
+                      <div className="flex-shrink-0">{sub.icon}</div>
+                      <span className={`transition-all duration-300 truncate ${isSidebarCollapsed ? 'opacity-0 w-0 pointer-events-none' : 'opacity-100 w-auto'}`}>
+                        {sub.label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -376,6 +451,7 @@ const Dashboard = () => {
 
         </nav>
 
+        {/* PIE DE PÁGINA LATERAL */}
         <div className="p-2 m-2 bg-white/5 dark:bg-black/20 rounded-xl border border-white/10 dark:border-gray-800 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
           {!isSidebarCollapsed ? (
             <div className="transition-all duration-300 opacity-100 flex flex-col gap-2">
@@ -411,6 +487,7 @@ const Dashboard = () => {
         </div>
       </aside>
 
+      {/* ÁREA PRINCIPAL */}
       <div className="flex-grow flex flex-col h-screen overflow-hidden gap-2">
 
         <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">

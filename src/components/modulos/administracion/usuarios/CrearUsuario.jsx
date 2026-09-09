@@ -1,467 +1,585 @@
-import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
+import React, { useState } from 'react';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { db, firebaseConfig } from "../../../firebaseConfig";
-import { MODULES } from '../../../config/modulesConfig.jsx';
-import { COMPONENT_MAPS } from '../../../config/componentMaps.jsx';
-import { enviarCredenciales } from '../../../services/emailService';
-import { useToast } from '../../../context/ToastContext';
-import { useModal } from '../../../context/ModalContext';
-import { User, Plus, Trash2, Search, Pencil, Save, X, ShieldCheck, Loader2, Eye, EyeOff, LayoutGrid } from 'lucide-react';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+
+// ⚠️ Ajusta estas rutas según dónde ubiques finalmente este archivo dentro de
+// components/modulos/... (mismo nivel de anidamiento que NotasAdmin.jsx).
+import { db, auth, firebaseConfig } from '../../../../firebaseConfig';
+import { MODULES } from '../../../../config/modulesConfig.jsx';
+import { COMPONENT_MAPS } from '../../../../config/componentMaps.jsx';
+
+import { useToast } from '../../../../context/ToastContext';
+import Spinner from '../../../../components/ui/Spinner';
+
+import {
+  UserPlus,
+  User,
+  AtSign,
+  Mail,
+  Lock,
+  Shield,
+  ChevronDown,
+  ChevronRight,
+  SlidersHorizontal,
+} from 'lucide-react';
+
+// TODO: ajusta esta lista a los roles reales que maneja el sistema.
+const ROLES = [
+  { value: 'admin', label: 'Administrador' },
+  { value: 'dev', label: 'Desarrollador' },
+  { value: 'encargado', label: 'Encargado' },
+  { value: 'operador', label: 'Operador' },
+];
+
+const ESTADO_INICIAL = {
+  nombreCompleto: '',
+  nombreUsuario: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  rol: 'operador',
+};
 
 const CrearUsuario = () => {
-  const [usuarios, setUsuarios] = useState([]);
-  const [formData, setFormData] = useState({
-    nombreCompleto: '',
-    nombreUsuario: '',
-    email: '',
-    rol: 'usuario',
-    estado: 'ACTIVO',
-    permisos: {},
-    permisosGranulares: {},
-    modoPantalla: 'claro'
-  });
-  const [busqueda, setBusqueda] = useState('');
-  const [editingId, setEditingId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [vistaActivaGranular, setVistaActivaGranular] = useState(null);
-
-  useEffect(() => {
-    const q = query(collection(db, "usuarios"), orderBy("nombreCompleto"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const listaUsuarios = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setUsuarios(listaUsuarios);
-    });
-    return () => unsubscribe();
-  }, []);
-
   const { showToast } = useToast();
-  const { confirmAction } = useModal();
 
-  const formatearFecha = (fechaStr) => {
-    if (!fechaStr) return 'N/A';
-    const date = new Date(fechaStr);
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  };
+  const [formData, setFormData] = useState(ESTADO_INICIAL);
+  // permisos: { moduloKey: ['/ruta/subitem1', '/ruta/subitem2', ...] }
+  // Misma forma que ya lee Dashboard.jsx (userData.permisos[mKey]) — define
+  // qué ítems ve el usuario en el menú lateral.
+  const [permisos, setPermisos] = useState({});
+  // permisosGranulares: { '/ruta/vista': { seccionKey: { visible, elements: { elementoKey: bool } } } }
+  // Misma forma que lee useGranularPermission — define qué ve/hace el
+  // usuario DENTRO de cada vista. Se genera automáticamente (con acceso
+  // total) apenas se marca un ítem que tenga entrada en COMPONENT_MAPS.
+  const [permisosGranulares, setPermisosGranulares] = useState({});
+  const [modulosExpandidos, setModulosExpandidos] = useState({});
+  const [vistasExpandidas, setVistasExpandidas] = useState({});
+  const [cargando, setCargando] = useState(false);
 
-  const handleRolChange = (nuevoRol) => {
-    setFormData(prev => {
-      const nuevosPermisos = { ...prev.permisos };
-
-      if (nuevoRol !== 'dev') {
-        Object.keys(nuevosPermisos).forEach(moduloKey => {
-          nuevosPermisos[moduloKey] = nuevosPermisos[moduloKey].filter(
-            path => path !== '/configuracion/crear-usuario'
-          );
-        });
-      }
-
-      return {
-        ...prev,
-        rol: nuevoRol,
-        permisos: nuevosPermisos,
-        ...(vistaActivaGranular === '/configuracion/crear-usuario' && { vistaActivaGranular: null })
-      };
-    });
-
-    if (vistaActivaGranular === '/configuracion/crear-usuario' && nuevoRol !== 'dev') {
-      setVistaActivaGranular(null);
-    }
-  };
-
-  const toggleSubItem = (moduloKey, subItemPath) => {
-    setFormData(prev => {
-      const currentModuloPermisos = prev.permisos[moduloKey] || [];
-      const yaEstaMarcado = currentModuloPermisos.includes(subItemPath);
-
-      const updatedPermisos = yaEstaMarcado
-        ? currentModuloPermisos.filter(path => path !== subItemPath)
-        : [...currentModuloPermisos, subItemPath];
-
-      let updatedGranulares = { ...prev.permisosGranulares };
-
-      if (!yaEstaMarcado && COMPONENT_MAPS[subItemPath]) {
-        const secciones = COMPONENT_MAPS[subItemPath].sections || {};
-        const granularInicial = {};
-
-        Object.keys(secciones).forEach(secKey => {
-          const elementos = secciones[secKey].elements || {};
-          granularInicial[secKey] = {
-            visible: true,
-            elements: Object.keys(elementos).reduce((acc, elKey) => {
-              acc[elKey] = true;
-              return acc;
-            }, {})
-          };
-        });
-
-        updatedGranulares[subItemPath] = granularInicial;
-      }
-
-      if (yaEstaMarcado) {
-        delete updatedGranulares[subItemPath];
-      }
-
-      return {
-        ...prev,
-        permisos: { ...prev.permisos, [moduloKey]: updatedPermisos },
-        permisosGranulares: updatedGranulares
-      };
-    });
-  };
-
-  const toggleGranularSection = (viewPath, sectionKey) => {
-    setFormData(prev => {
-      const granular = JSON.parse(JSON.stringify(prev.permisosGranulares || {}));
-
-      if (!granular[viewPath]) granular[viewPath] = {};
-      if (!granular[viewPath][sectionKey]) granular[viewPath][sectionKey] = { visible: true, elements: {} };
-
-      const nuevoEstadoVisible = !granular[viewPath][sectionKey].visible;
-      granular[viewPath][sectionKey].visible = nuevoEstadoVisible;
-
-      if (!nuevoEstadoVisible) {
-        granular[viewPath][sectionKey].elements = {};
-      } else {
-        const elementosDelMapa = COMPONENT_MAPS[viewPath]?.sections[sectionKey]?.elements || {};
-        granular[viewPath][sectionKey].elements = {};
-        Object.keys(elementosDelMapa).forEach(elKey => {
-          granular[viewPath][sectionKey].elements[elKey] = true;
-        });
-      }
-
-      return { ...prev, permisosGranulares: granular };
-    });
-  };
-
-  const toggleGranularElement = (viewPath, sectionKey, elementKey) => {
-    setFormData(prev => {
-      const granular = JSON.parse(JSON.stringify(prev.permisosGranulares || {}));
-
-      if (!granular[viewPath]) granular[viewPath] = {};
-      if (!granular[viewPath][sectionKey]) granular[viewPath][sectionKey] = { visible: true, elements: {} };
-      if (!granular[viewPath][sectionKey].elements) granular[viewPath][sectionKey].elements = {};
-
-      const estadoActual = granular[viewPath][sectionKey].elements[elementKey] !== false;
-      granular[viewPath][sectionKey].elements[elementKey] = !estadoActual;
-
-      return { ...prev, permisosGranulares: granular };
-    });
-  };
-
-  const handleGuardar = async (e) => {
-    e.preventDefault();
-
-    if (!formData.nombreCompleto.trim() || !formData.email.trim() || !formData.nombreUsuario.trim()) {
-      return showToast("Todos los campos principales son obligatorios", "error");
-    }
-
-    setLoading(true);
-
-    try {
-      const payload = {
-        nombreCompleto: formData.nombreCompleto,
-        nombreUsuario: formData.nombreUsuario,
-        rol: formData.rol,
-        permisos: formData.permisos || {},
-        permisosGranulares: formData.permisosGranulares || {}
-      };
-
-      if (editingId) {
-        await updateDoc(doc(db, "usuarios", editingId), {
-          ...payload,
-          estado: formData.estado
-        });
-        showToast("Usuario y permisos avanzados actualizados", "success");
-        cancelarEdicion();
-      } else {
-        const passwordTemporal = "Medra2026*";
-        const secondaryApp = initializeApp(firebaseConfig, 'secondary');
-        const secondaryAuth = getAuth(secondaryApp);
-
-        const userCredential = await createUserWithEmailAndPassword(
-          secondaryAuth,
-          formData.email.trim(),
-          passwordTemporal
-        );
-        const uid = userCredential.user.uid;
-        await secondaryAuth.signOut();
-        await deleteApp(secondaryApp);
-
-        const dataToSave = {
-          ...payload,
-          email: formData.email.trim(),
-          estado: 'ACTIVO',
-          modoPantalla: 'claro',
-          passwordChanged: false,
-          createdAt: new Date().toISOString()
-        };
-
-        await setDoc(doc(db, "usuarios", uid), dataToSave);
-
-        await enviarCredenciales({
-          nombre: formData.nombreCompleto,
-          email: formData.email.trim(),
-          passwordTemporal,
-        });
-
-        showToast("¡Usuario creado con éxito!", "success");
-        cancelarEdicion();
-      }
-    } catch (error) {
-      console.error("[Guardar] Error crítico en la transacción:", error);
-      showToast(`Error al guardar: ${error.message}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = (id) => {
-    confirmAction(
-      "Eliminar Usuario",
-      "¿Estás seguro de eliminar este usuario de la base de datos?",
-      async () => {
-        try {
-          await deleteDoc(doc(db, "usuarios", id));
-          showToast("Usuario eliminado correctamente", "info");
-        } catch (error) {
-          showToast("Error al eliminar", "error");
-        }
-      }
-    );
-  };
-
-  const iniciarEdicion = (u) => {
-    setEditingId(u.id);
-    setFormData({
-      nombreCompleto: u.nombreCompleto || '',
-      nombreUsuario: u.nombreUsuario || '',
-      email: u.email || '',
-      rol: u.rol || 'usuario',
-      estado: u.estado || 'ACTIVO',
-      permisos: u.permisos || {},
-      permisosGranulares: u.permisosGranulares || {},
-      modoPantalla: u.modoPantalla || 'claro'
-    });
-    setVistaActivaGranular(null);
-  };
-
-  const cancelarEdicion = () => {
-    setEditingId(null);
-    setVistaActivaGranular(null);
-    setFormData({ nombreCompleto: '', nombreUsuario: '', email: '', rol: 'usuario', estado: 'ACTIVO', permisos: {}, permisosGranulares: {} });
-  };
-
-  const usuariosFiltrados = usuarios.filter(u =>
-    u.nombreCompleto?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    u.nombreUsuario?.toLowerCase().includes(busqueda.toLowerCase()) ||
-    u.email?.toLowerCase().includes(busqueda.toLowerCase())
+  const modulosConPermisos = Object.entries(MODULES).filter(
+    ([, modulo]) => modulo.subItems?.length
   );
 
-  return (
-    <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0">
-      <h2 className="text-[14px] font-bold text-gray-700 dark:text-gray-100 p-4 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-        <User size={16} className="text-[#2383C2]" /> {editingId ? "EDITAR USUARIO Y PERMISOS" : "REGISTRO Y CONTROL DE USUARIOS"}
-      </h2>
+  // Todas las rutas actualmente marcadas en "permisos", sin importar el módulo.
+  const pathsSeleccionados = [...new Set(Object.values(permisos).flat())];
 
-      <form onSubmit={handleGuardar} className="p-4 flex flex-col gap-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="w-[220px]">
-            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Nombre Completo</label>
-            <input required value={formData.nombreCompleto} onChange={e => setFormData({ ...formData, nombreCompleto: e.target.value })} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: Juan Pérez" />
+  // De esas rutas, solo las que tienen mapa de componentes (requieren config granular).
+  const vistasConfigurables = pathsSeleccionados.filter((path) => COMPONENT_MAPS[path]);
+
+  // 🔍 DEBUG TEMPORAL — borra este bloque una vez que confirmes que funciona.
+  console.log('permisos:', permisos);
+  console.log('pathsSeleccionados:', pathsSeleccionados);
+  console.log('keys en COMPONENT_MAPS:', Object.keys(COMPONENT_MAPS));
+  console.log('vistasConfigurables:', vistasConfigurables);
+
+  const generarAccesoTotal = (path) => {
+    const config = COMPONENT_MAPS[path];
+    if (!config) return null;
+    const secciones = {};
+    Object.entries(config.sections).forEach(([sectionKey, section]) => {
+      const elementos = {};
+      Object.keys(section.elements || {}).forEach((elKey) => {
+        elementos[elKey] = true;
+      });
+      secciones[sectionKey] = { visible: true, elements: elementos };
+    });
+    return secciones;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const toggleExpandido = (moduloKey) => {
+    setModulosExpandidos((prev) => ({ ...prev, [moduloKey]: !prev[moduloKey] }));
+  };
+
+  const toggleModuloCompleto = (moduloKey, subItems) => {
+    const total = subItems.length;
+    const yaCompleto = (permisos[moduloKey]?.length || 0) === total;
+
+    setPermisos((prev) => ({
+      ...prev,
+      [moduloKey]: yaCompleto ? [] : subItems.map((s) => s.path),
+    }));
+
+    setPermisosGranulares((prev) => {
+      const copia = { ...prev };
+      subItems.forEach((s) => {
+        if (yaCompleto) {
+          delete copia[s.path];
+        } else if (!copia[s.path]) {
+          const accesoTotal = generarAccesoTotal(s.path);
+          if (accesoTotal) copia[s.path] = accesoTotal;
+        }
+      });
+      return copia;
+    });
+  };
+
+  const toggleSubItem = (moduloKey, path) => {
+    const actuales = permisos[moduloKey] || [];
+    const existeAhora = actuales.includes(path);
+
+    setPermisos((prev) => {
+      const arr = prev[moduloKey] || [];
+      const nuevos = existeAhora ? arr.filter((p) => p !== path) : [...arr, path];
+      return { ...prev, [moduloKey]: nuevos };
+    });
+
+    setPermisosGranulares((prev) => {
+      if (existeAhora) {
+        // Se está desmarcando el ítem -> se elimina su configuración granular.
+        const { [path]: _omit, ...resto } = prev;
+        return resto;
+      }
+      if (prev[path]) return prev;
+      const accesoTotal = generarAccesoTotal(path);
+      if (!accesoTotal) return prev; // vista sin COMPONENT_MAPS, no requiere granularidad
+      return { ...prev, [path]: accesoTotal };
+    });
+  };
+
+  const toggleVistaExpandida = (path) => {
+    setVistasExpandidas((prev) => ({ ...prev, [path]: !prev[path] }));
+  };
+
+  const toggleSeccionVisible = (path, sectionKey) => {
+    setPermisosGranulares((prev) => {
+      const vista = prev[path];
+      if (!vista) return prev;
+      const seccion = vista[sectionKey];
+      return {
+        ...prev,
+        [path]: { ...vista, [sectionKey]: { ...seccion, visible: !seccion.visible } },
+      };
+    });
+  };
+
+  const toggleElementoVisible = (path, sectionKey, elementKey) => {
+    setPermisosGranulares((prev) => {
+      const vista = prev[path];
+      if (!vista) return prev;
+      const seccion = vista[sectionKey];
+      return {
+        ...prev,
+        [path]: {
+          ...vista,
+          [sectionKey]: {
+            ...seccion,
+            elements: { ...seccion.elements, [elementKey]: !seccion.elements[elementKey] },
+          },
+        },
+      };
+    });
+  };
+
+  const resetFormulario = () => {
+    setFormData(ESTADO_INICIAL);
+    setPermisos({});
+    setPermisosGranulares({});
+    setModulosExpandidos({});
+    setVistasExpandidas({});
+  };
+
+  const validar = () => {
+    if (!formData.nombreCompleto.trim()) return 'El nombre completo es obligatorio.';
+    if (!formData.nombreUsuario.trim()) return 'El nombre de usuario es obligatorio.';
+    if (!formData.email.trim()) return 'El correo es obligatorio.';
+    if (formData.password.length < 6) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (formData.password !== formData.confirmPassword) return 'Las contraseñas no coinciden.';
+    return '';
+  };
+
+  const handleGuardarUsuario = async (e) => {
+    e.preventDefault();
+
+    const mensajeValidacion = validar();
+    if (mensajeValidacion) {
+      showToast(mensajeValidacion, 'error');
+      return;
+    }
+
+    setCargando(true);
+
+    // Se crea una instancia secundaria de Firebase para poder registrar al
+    // nuevo usuario SIN cerrar la sesión del administrador que está en el panel
+    // (createUserWithEmailAndPassword inicia sesión automáticamente con el
+    // usuario recién creado si se usa la instancia "auth" principal).
+    const nombreAppSecundaria = `crear-usuario-${Date.now()}`;
+    const appSecundaria = initializeApp(firebaseConfig, nombreAppSecundaria);
+    const authSecundaria = getAuth(appSecundaria);
+
+    try {
+      const credenciales = await createUserWithEmailAndPassword(
+        authSecundaria,
+        formData.email.trim(),
+        formData.password
+      );
+      const nuevoUsuario = credenciales.user;
+
+      await setDoc(doc(db, 'usuarios', nuevoUsuario.uid), {
+        nombreCompleto: formData.nombreCompleto.trim(),
+        nombreUsuario: formData.nombreUsuario.trim(),
+        email: formData.email.trim(),
+        rol: formData.rol,
+        permisos,
+        permisosGranulares,
+        passwordChanged: false,
+        modoPantalla: 'claro',
+        creadoPor: auth.currentUser?.uid || null,
+        creadoEl: serverTimestamp(),
+      });
+
+      await signOut(authSecundaria);
+
+      showToast(`Usuario "${formData.nombreCompleto}" creado correctamente`, 'success');
+      resetFormulario();
+    } catch (error) {
+      console.error('Error al crear usuario:', error);
+      if (error.code === 'auth/email-already-in-use') {
+        showToast('Ese correo ya está registrado', 'error');
+      } else if (error.code === 'auth/invalid-email') {
+        showToast('El correo ingresado no es válido', 'error');
+      } else if (error.code === 'auth/weak-password') {
+        showToast('La contraseña es demasiado débil', 'error');
+      } else {
+        showToast('Ocurrió un error al crear el usuario', 'error');
+      }
+    } finally {
+      await deleteApp(appSecundaria);
+      setCargando(false);
+    }
+  };
+
+  return (
+    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4">
+      {/* --- DATOS BÁSICOS --- */}
+      <div className="lg:col-span-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col gap-4">
+        <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+          <h3 className="text-sm font-bold text-gray-700 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2">
+            <UserPlus size={16} className="text-[#2383C2]" />
+            Crear Usuario
+          </h3>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+            Registra un nuevo usuario y define sus datos de acceso.
+          </p>
+        </div>
+
+        <form onSubmit={handleGuardarUsuario} className="flex flex-col gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+              Nombre completo
+            </label>
+            <div className="relative flex items-center">
+              <User className="absolute ml-2 text-gray-400" size={14} />
+              <input
+                name="nombreCompleto"
+                value={formData.nombreCompleto}
+                onChange={handleChange}
+                placeholder="Ej: Juana Pérez Soto"
+                className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
+              />
+            </div>
           </div>
-          <div className="w-[180px]">
-            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Nombre de Usuario</label>
-            <input required value={formData.nombreUsuario} onChange={e => setFormData({ ...formData, nombreUsuario: e.target.value })} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Ej: jperez" />
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+              Nombre de usuario
+            </label>
+            <div className="relative flex items-center">
+              <AtSign className="absolute ml-2 text-gray-400" size={14} />
+              <input
+                name="nombreUsuario"
+                value={formData.nombreUsuario}
+                onChange={handleChange}
+                placeholder="Ej: jperez"
+                className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
+              />
+            </div>
           </div>
-          <div className="w-[220px]">
-            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Email</label>
-            <input required type="email" disabled={!!editingId} value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none focus:border-[#2383C2] dark:focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 disabled:bg-gray-100 dark:disabled:bg-gray-900/60 disabled:text-gray-400 dark:disabled:text-gray-500" placeholder="Ej: juan@medra.cl" />
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+              Correo
+            </label>
+            <div className="relative flex items-center">
+              <Mail className="absolute ml-2 text-gray-400" size={14} />
+              <input
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="ejemplo@medra.cl"
+                className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
+              />
+            </div>
           </div>
-          <div className="w-[140px]">
-            <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Rol</label>
-            <select value={formData.rol} onChange={e => handleRolChange(e.target.value)} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
-              <option value="usuario">Usuario Estándar</option>
-              <option value="editor">Editor</option>
-              <option value="admin">Administrador</option>
-              <option value="dev">Desarrollador</option>
-            </select>
-          </div>
-          {editingId && (
-            <div className="w-[120px]">
-              <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Estado</label>
-              <select value={formData.estado} onChange={e => setFormData({ ...formData, estado: e.target.value })} className="w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
-                <option value="ACTIVO">ACTIVO</option>
-                <option value="INACTIVO">INACTIVO</option>
+
+          <div>
+            <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+              Rol
+            </label>
+            <div className="relative flex items-center">
+              <Shield className="absolute ml-2 text-gray-400" size={14} />
+              <select
+                name="rol"
+                value={formData.rol}
+                onChange={handleChange}
+                className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] appearance-none"
+              >
+                {ROLES.map((r) => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </select>
             </div>
-          )}
-          <div className="flex gap-2">
-            <button type="submit" disabled={loading} className={`h-8 px-4 rounded font-bold text-[12px] flex items-center gap-2 text-white transition ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} disabled:opacity-50`}>
-              {loading ? <><Loader2 className="animate-spin" size={14} /> Procesando...</> : editingId ? <><Save size={14} /> Actualizar</> : <><Plus size={14} /> Registrar</>}
-            </button>
-            {editingId && (
-              <button type="button" onClick={cancelarEdicion} className="h-8 px-4 bg-gray-200 dark:bg-gray-700 rounded font-bold text-[12px] text-gray-600 dark:text-gray-300 flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600 transition"><X size={14} /> Cancelar</button>
-            )}
           </div>
-        </div>
 
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
-          <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1.5 mb-2">
-            <ShieldCheck size={14} className="text-[#2383C2]" /> 1. Accesos a Módulos y Pantallas Básicas
-          </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
-            {Object.keys(MODULES).map((mKey) => (
-              <div key={mKey} className="bg-white dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
-                <span className="block text-[10px] font-black text-[#2383C2] border-b border-gray-100 dark:border-gray-800 pb-1 mb-2 uppercase truncate">{MODULES[mKey].label}</span>
-                <div className="space-y-1 max-h-[140px] overflow-y-auto pr-1">
-                  {MODULES[mKey].subItems?.map((sub) => {
-                    const esModuloUsuarios = sub.path === '/configuracion/crear-usuario';
-                    const estaBloqueadoPorRol = esModuloUsuarios && formData.rol !== 'dev';
-
-                    const estaMarcado = estaBloqueadoPorRol ? false : (formData.permisos[mKey]?.includes(sub.path) || false);
-                    const tieneEstructuraGranular = !!COMPONENT_MAPS[sub.path];
-
-                    return (
-                      <div key={sub.path} className={`flex items-center justify-between p-1 rounded transition group ${estaBloqueadoPorRol ? 'bg-gray-100 dark:bg-gray-800 opacity-60 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-800/60'}`}>
-                        <label className={`flex items-start gap-1.5 text-[10px] flex-grow truncate ${estaBloqueadoPorRol ? 'text-gray-400 dark:text-gray-500 font-medium cursor-not-allowed' : 'text-gray-600 dark:text-gray-300 cursor-pointer'}`}>
-                          <input
-                            type="checkbox"
-                            className="w-3 h-3 mt-0.5 accent-[#2383C2] rounded border-gray-300 dark:border-gray-600 flex-shrink-0 disabled:opacity-50"
-                            checked={estaMarcado}
-                            disabled={estaBloqueadoPorRol}
-                            onChange={() => toggleSubItem(mKey, sub.path)}
-                          />
-                          <span className="leading-tight truncate" title={estaBloqueadoPorRol ? "Exclusivo para Desarrolladores" : sub.label}>
-                            {sub.label} {estaBloqueadoPorRol && "🔒"}
-                          </span>
-                        </label>
-
-                        {estaMarcado && tieneEstructuraGranular && editingId && (
-                          <button type="button" onClick={() => setVistaActivaGranular(vistaActivaGranular === sub.path ? null : sub.path)} className={`p-0.5 rounded ml-1 transition-colors ${vistaActivaGranular === sub.path ? 'bg-[#2383C2] text-white' : 'text-gray-400 dark:text-gray-500 hover:text-[#2383C2]'}`} title="Configurar control granular (Secciones y Datos)">
-                            <LayoutGrid size={12} />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                Contraseña
+              </label>
+              <div className="relative flex items-center">
+                <Lock className="absolute ml-2 text-gray-400" size={14} />
+                <input
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="********"
+                  className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
+                />
               </div>
-            ))}
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                Confirmar
+              </label>
+              <div className="relative flex items-center">
+                <Lock className="absolute ml-2 text-gray-400" size={14} />
+                <input
+                  name="confirmPassword"
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="********"
+                  className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
+                />
+              </div>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-gray-400 dark:text-gray-500">
+            El usuario deberá cambiar esta contraseña en su primer inicio de sesión
+            (queda marcado con <code className="text-gray-500 dark:text-gray-400">passwordChanged: false</code>).
+          </p>
+
+          <div className="flex items-center justify-end gap-2 mt-2">
+            <button
+              type="button"
+              onClick={resetFormulario}
+              disabled={cargando}
+              className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold px-3 py-2 rounded"
+            >
+              Limpiar
+            </button>
+            <button
+              type="submit"
+              disabled={cargando}
+              className="bg-[#2383C2] hover:bg-[#1b6aa0] text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-2 transition-colors disabled:opacity-50 min-w-[140px] justify-center"
+            >
+              {cargando ? (
+                <>
+                  <Spinner size="sm" color="#ffffff" />
+                  <span>Creando...</span>
+                </>
+              ) : (
+                <>
+                  <UserPlus size={13} />
+                  <span>Crear Usuario</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* --- MÓDULOS Y PERMISOS (nivel módulo / ítem) --- */}
+      <div className="lg:col-span-7 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col gap-3">
+        <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
+          <div>
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide">
+              Módulos con acceso
+            </span>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Selecciona los ítems visibles para este usuario dentro de cada módulo.
+            </p>
           </div>
         </div>
-      </form>
 
-      <div className="bg-gray-50 dark:bg-gray-800/50 p-3 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-        <div className="relative w-72">
-          <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={14} />
-          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-8 pl-8 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] dark:focus:border-[#2383C2]" placeholder="Buscar por nombre, usuario o email..." />
-        </div>
-      </div>
+        <div className="flex flex-col gap-2">
+          {modulosConPermisos.map(([moduloKey, modulo]) => {
+            const seleccionados = permisos[moduloKey] || [];
+            const total = modulo.subItems.length;
+            const expandido = !!modulosExpandidos[moduloKey];
 
-      <div className="flex-grow overflow-auto">
-        <table className="w-full text-left text-[12px] border-collapse">
-          <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
-            <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[11px]">
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700 w-10">#</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Nombre Completo</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Usuario</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Email</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Rol</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
-              <th className="p-3 border-b border-r border-gray-200 dark:border-gray-700">Fecha Alta</th>
-              <th className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usuariosFiltrados.map((u, index) => (
-              <tr key={u.id} className="border-l-4 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold">{index + 1}</td>
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{u.nombreCompleto}</td>
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{u.nombreUsuario}</td>
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{u.email}</td>
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">
-                  <span className="text-[10px] px-2 py-0.5 rounded font-bold uppercase bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">{u.rol}</span>
-                </td>
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${u.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>{u.estado || 'ACTIVO'}</span>
-                </td>
-                <td className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(u.createdAt)}</td>
-                <td className="p-3 border-b border-gray-200 dark:border-gray-700 text-center">
-                  <div className="flex justify-center gap-3">
-                    <button onClick={() => iniciarEdicion(u)} className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition" title="Editar usuario y granularidad"><Pencil size={15} /></button>
-                    <button onClick={() => handleDelete(u.id)} className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition" title="Eliminar"><Trash2 size={15} /></button>
+            return (
+              <div
+                key={moduloKey}
+                className="border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40 rounded-lg overflow-hidden transition-all"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleExpandido(moduloKey)}
+                  className="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+                >
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-200">
+                    <span className="text-[#2383C2]">{modulo.icon}</span>
+                    {modulo.label}
+                    <span className="text-[10px] font-normal text-gray-400">
+                      ({seleccionados.length}/{total})
+                    </span>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {editingId && vistaActivaGranular && COMPONENT_MAPS[vistaActivaGranular] && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden">
-            <div className="bg-gray-50 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-              <span className="text-[13px] font-bold text-[#2383C2] uppercase flex items-center gap-2">
-                <LayoutGrid size={16} /> 2. Control Granular Avanzado: <span className="underline font-black text-gray-800 dark:text-gray-100">{COMPONENT_MAPS[vistaActivaGranular].label}</span>
-              </span>
-              <button type="button" onClick={() => setVistaActivaGranular(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 bg-gray-200/50 dark:bg-gray-700 p-1 rounded-full transition">
-                <X size={16} />
-              </button>
-            </div>
-
-            <div className="p-4 overflow-y-auto space-y-4 bg-gray-50/30 dark:bg-gray-900/20 flex-grow max-h-[calc(85vh-110px)]">
-              {Object.keys(COMPONENT_MAPS[vistaActivaGranular]?.sections || {}).map((secKey) => {
-                const seccion = COMPONENT_MAPS[vistaActivaGranular].sections[secKey];
-                const seccionVisible = formData.permisosGranulares[vistaActivaGranular]?.[secKey]?.visible !== false;
-
-                return (
-                  <div key={secKey} className={`p-4 rounded-lg border bg-white dark:bg-gray-800 shadow-sm transition-all ${seccionVisible ? 'border-gray-200 dark:border-gray-700' : 'border-red-200 dark:border-red-900/50 bg-red-50/10 dark:bg-red-950/10'}`}>
-                    <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700/60 pb-2 mb-3">
-                      <button type="button" onClick={() => toggleGranularSection(vistaActivaGranular, secKey)} className={`flex items-center gap-1.5 text-[12px] font-bold uppercase transition ${seccionVisible ? 'text-gray-800 dark:text-gray-200' : 'text-red-600 dark:text-red-400 font-medium'}`}>
-                        {seccionVisible ? <Eye size={16} className="text-green-600 dark:text-green-400" /> : <EyeOff size={16} />}
-                        {seccion.label}
-                      </button>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${seccionVisible ? 'bg-green-100 dark:bg-green-950/40 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-400'}`}>
-                        {seccionVisible ? 'SECCIÓN VISIBLE' : 'SECCIÓN OCULTA'}
-                      </span>
-                    </div>
-
-                    {seccionVisible && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                        {Object.keys(seccion.elements).map((elKey) => {
-                          const elemento = seccion.elements[elKey];
-                          const elementoActivo = formData.permisosGranulares[vistaActivaGranular]?.[secKey]?.elements?.[elKey] !== false;
-
-                          return (
-                            <button
-                              key={elKey}
-                              type="button"
-                              onClick={() => toggleGranularElement(vistaActivaGranular, secKey, elKey)}
-                              className={`p-2.5 rounded border text-left text-[11px] font-medium flex items-center justify-between gap-2 transition ${elementoActivo ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700' : 'border-red-200 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/20 text-red-700 dark:text-red-400 line-through'}`}
-                            >
-                              <span className="truncate">{elemento.label}</span>
-                              {elementoActivo ? <Eye size={14} className="text-green-600 dark:text-green-400 flex-shrink-0" /> : <EyeOff size={14} className="text-red-500 dark:text-red-400 flex-shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <label
+                      className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.length === total}
+                        onChange={() => toggleModuloCompleto(moduloKey, modulo.subItems)}
+                        className="accent-[#2383C2]"
+                      />
+                      Todo
+                    </label>
+                    {expandido ? (
+                      <ChevronDown size={14} className="text-gray-400" />
+                    ) : (
+                      <ChevronRight size={14} className="text-gray-400" />
                     )}
                   </div>
-                );
-              })}
-            </div>
+                </button>
 
-            <div className="p-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end">
-              <button type="button" onClick={() => setVistaActivaGranular(null)} className="px-4 h-8 bg-[#2383C2] text-white font-bold text-[12px] rounded hover:bg-[#1d6fa5] transition shadow-sm">
-                Listo, Guardar Cambios Temporales
-              </button>
-            </div>
+                {expandido && (
+                  <div className="p-2.5 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {modulo.subItems.map((sub) => (
+                      <label
+                        key={sub.path}
+                        className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300 p-1.5 rounded hover:bg-white dark:hover:bg-gray-800 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={seleccionados.includes(sub.path)}
+                          onChange={() => toggleSubItem(moduloKey, sub.path)}
+                          className="accent-[#2383C2]"
+                        />
+                        <span className="opacity-70">{sub.icon}</span>
+                        {sub.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* --- CONFIGURACIÓN GRANULAR POR VISTA --- */}
+      {vistasConfigurables.length > 0 && (
+        <div className="lg:col-span-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col gap-3">
+          <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
+            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide flex items-center gap-2">
+              <SlidersHorizontal size={14} className="text-[#2383C2]" />
+              Configuración detallada por vista
+            </span>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Por defecto, cada vista marcada tiene acceso total. Desmarca lo que este
+              usuario NO debe ver ni poder hacer.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {vistasConfigurables.map((path) => {
+              const config = COMPONENT_MAPS[path];
+              const vistaPermisos = permisosGranulares[path];
+              if (!config || !vistaPermisos) return null;
+
+              const expandida = !!vistasExpandidas[path];
+
+              return (
+                <div
+                  key={path}
+                  className="border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40 rounded-lg overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleVistaExpandida(path)}
+                    className="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
+                  >
+                    <span className="text-xs font-bold text-gray-700 dark:text-gray-200">
+                      {config.label}
+                    </span>
+                    {expandida ? (
+                      <ChevronDown size={14} className="text-gray-400" />
+                    ) : (
+                      <ChevronRight size={14} className="text-gray-400" />
+                    )}
+                  </button>
+
+                  {expandida && (
+                    <div className="p-3 pt-0 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {Object.entries(config.sections).map(([sectionKey, section]) => {
+                        const seccionEstado = vistaPermisos[sectionKey];
+                        return (
+                          <div
+                            key={sectionKey}
+                            className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-2.5"
+                          >
+                            <label className="flex items-center gap-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 pb-1.5 mb-1.5 border-b border-gray-100 dark:border-gray-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={seccionEstado.visible}
+                                onChange={() => toggleSeccionVisible(path, sectionKey)}
+                                className="accent-[#2383C2]"
+                              />
+                              {section.label}
+                            </label>
+
+                            <div className="flex flex-col gap-1 pl-1">
+                              {Object.entries(section.elements || {}).map(([elKey, el]) => (
+                                <label
+                                  key={elKey}
+                                  className={`flex items-center gap-2 text-[10.5px] p-1 rounded cursor-pointer ${
+                                    seccionEstado.visible
+                                      ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/40'
+                                      : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    disabled={!seccionEstado.visible}
+                                    checked={!!seccionEstado.elements[elKey]}
+                                    onChange={() => toggleElementoVisible(path, sectionKey, elKey)}
+                                    className="accent-[#2383C2]"
+                                  />
+                                  {el.label}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

@@ -33,6 +33,7 @@ const ResumenGeneral = ({ userData }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-grow min-h-0 items-stretch">
 
+        {/* Columna Izquierda principal */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex flex-col justify-between p-4 min-h-0 h-full">
 
           <div className="flex flex-col gap-3 flex-1 min-h-0 h-full">
@@ -40,6 +41,7 @@ const ResumenGeneral = ({ userData }) => {
 
             <BrandingCard />
 
+            {/* Este contenedor ahora aprovecha el espacio restante sin forzar el scroll global */}
             <div className="flex-1 min-h-0 flex flex-col h-full overflow-hidden">
               <NuevoModuloCard />
             </div>
@@ -53,6 +55,7 @@ const ResumenGeneral = ({ userData }) => {
           </div>
         </div>
 
+        {/* Columna Derecha */}
         <div className="flex flex-col gap-3 min-h-0">
           <AgendaCalendar
             currentDate={currentDate}

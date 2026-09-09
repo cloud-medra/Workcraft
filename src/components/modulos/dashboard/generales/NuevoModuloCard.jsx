@@ -53,6 +53,7 @@ const NuevoModuloCard = () => {
         </span>
       </div>
 
+      {/* Este contenedor absorbe todo el scroll interno de las notas */}
       <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto pr-1 h-full">
         {notas.length === 0 ? (
           <p className="text-[10.5px] text-gray-400 dark:text-gray-500 italic py-3 text-center">

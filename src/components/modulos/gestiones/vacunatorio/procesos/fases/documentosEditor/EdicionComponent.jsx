@@ -34,10 +34,18 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
 
   const handleDetalleChange = (index, field, value) => {
     const nuevosDetalles = [...formData.detalles];
+    
+    // Parsear booleanos para las columnas de diferencia
+    let parsedValue = value;
+    if (field === 'diferenciaCantidad' || field === 'diferenciaPrecio') {
+      parsedValue = value === 'true';
+    }
+
     nuevosDetalles[index] = {
       ...nuevosDetalles[index],
-      [field]: value
+      [field]: parsedValue
     };
+    
     setFormData(prev => ({
       ...prev,
       detalles: nuevosDetalles
@@ -84,12 +92,11 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
     }
   };
 
-  // Clase base reusable para mantener todos los inputs consistentes con tipografía más pequeña
   const inputClass = "w-full p-1 text-[11px] rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 font-semibold focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in font-sans">
-      <div className="bg-white dark:bg-gray-900 w-full max-w-6xl max-h-[92vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-gray-800">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-7xl max-h-[92vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-200 dark:border-gray-800">
         
         {/* Modal Header */}
         <div className="px-6 py-2.5 border-b border-slate-200 dark:border-gray-800 flex justify-between items-center bg-slate-50 dark:bg-gray-900/90">
@@ -274,13 +281,17 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
               <table className="w-full text-left text-[10px] whitespace-nowrap">
                 <thead className="bg-slate-100 dark:bg-gray-900 text-slate-600 dark:text-gray-400 uppercase font-normal text-[9px]">
                   <tr>
-                    <th className="p-1.5 text-center w-10">Lin.</th>
+                    <th className="p-1.5 text-center w-8">Lin.</th>
                     <th className="p-1.5">Código Doc.</th>
                     <th className="p-1.5">Cód. Maestro</th>
                     <th className="p-1.5">Nombre Ítem</th>
-                    <th className="p-1.5">Cant.</th>
-                    <th className="p-1.5">Monto ($)</th>
-                    <th className="p-1.5 text-center">Estado</th>
+                    <th className="p-1.5">Cant. Doc.</th>
+                    <th className="p-1.5">Cant. OC</th>
+                    <th className="p-1.5">Monto Doc. ($)</th>
+                    <th className="p-1.5">Precio OC ($)</th>
+                    <th className="p-1.5 text-center">Dif. Cant.</th>
+                    <th className="p-1.5 text-center">Dif. Precio</th>
+                    <th className="p-1.5 text-center">Estado Ítem</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
@@ -292,7 +303,7 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
                           type="text" 
                           value={item.codigo || ''} 
                           onChange={(e) => handleDetalleChange(idx, 'codigo', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-600 dark:text-gray-300 w-24 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-600 dark:text-gray-300 w-20 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
                         />
                       </td>
                       <td className="p-1.5">
@@ -308,9 +319,10 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
                           type="text" 
                           value={item.nombre || ''} 
                           onChange={(e) => handleDetalleChange(idx, 'nombre', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 w-44 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 w-36 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
                         />
                       </td>
+                      {/* Cantidad Doc */}
                       <td className="p-1.5">
                         <input 
                           type="text" 
@@ -319,21 +331,65 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
                           className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-14 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
                         />
                       </td>
+                      {/* Cantidad OC */}
+                      <td className="p-1.5">
+                        <input 
+                          type="text" 
+                          value={item.cantidadOC || ''} 
+                          onChange={(e) => handleDetalleChange(idx, 'cantidadOC', e.target.value)}
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-14 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                        />
+                      </td>
+                      {/* Monto Doc */}
                       <td className="p-1.5">
                         <input 
                           type="text" 
                           value={item.monto || ''} 
                           onChange={(e) => handleDetalleChange(idx, 'monto', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-24 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-20 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
                         />
                       </td>
-                      <td className="p-1.5 text-center">
+                      {/* Precio OC */}
+                      <td className="p-1.5">
                         <input 
                           type="text" 
-                          value={item.estadoItem || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'estadoItem', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center text-emerald-700 dark:text-emerald-300 w-20 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          value={item.precioOC || ''} 
+                          onChange={(e) => handleDetalleChange(idx, 'precioOC', e.target.value)}
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-20 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
                         />
+                      </td>
+                      {/* Diferencia Cantidad (Boolean) */}
+                      <td className="p-1.5 text-center">
+                        <select
+                          value={item.diferenciaCantidad !== undefined ? String(item.diferenciaCantidad) : 'false'}
+                          onChange={(e) => handleDetalleChange(idx, 'diferenciaCantidad', e.target.value)}
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-medium text-slate-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                        >
+                          <option value="true">True</option>
+                          <option value="false">False</option>
+                        </select>
+                      </td>
+                      {/* Diferencia Precio (Boolean) */}
+                      <td className="p-1.5 text-center">
+                        <select
+                          value={item.diferenciaPrecio !== undefined ? String(item.diferenciaPrecio) : 'false'}
+                          onChange={(e) => handleDetalleChange(idx, 'diferenciaPrecio', e.target.value)}
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-medium text-slate-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                        >
+                          <option value="true">True</option>
+                          <option value="false">False</option>
+                        </select>
+                      </td>
+                      {/* Estado Item (Vinculado / Diferencia) */}
+                      <td className="p-1.5 text-center">
+                        <select
+                          value={item.estadoItem || 'Vinculado'}
+                          onChange={(e) => handleDetalleChange(idx, 'estadoItem', e.target.value)}
+                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-semibold text-emerald-700 dark:text-emerald-300 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                        >
+                          <option value="Vinculado">Vinculado</option>
+                          <option value="Diferencia">Diferencia</option>
+                        </select>
                       </td>
                     </tr>
                   ))}

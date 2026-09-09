@@ -44,7 +44,7 @@ const EmpresasLaboratorios = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/empresas";
+  const PATH_VISTA = "/laboratorio/empresasLaboratorio";
   const COL_BASE = "laboratorio_empresas";
 
   useEffect(() => {
@@ -610,6 +610,7 @@ const EmpresasLaboratorios = () => {
       <ConfigDrawer
         show={showConfigDrawer}
         onClose={() => setShowConfigDrawer(false)}
+        pathVista={PATH_VISTA}
         totalLaboratorios={laboratorios.length}
         onExportar={handleExportarDatos}
         onDescargarPlantilla={handleDescargarPlantilla}

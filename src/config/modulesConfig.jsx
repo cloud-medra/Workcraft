@@ -1,25 +1,34 @@
 import React from 'react';
 import {
+  Activity,
   ArrowDownToLine,
   ArrowUpFromLine,
+  ArrowRightToLine,
   BadgeInfo,
+  BarChart2,
   Building2,
   Boxes,
   Calendar,
   CalendarDays,
   CalendarCheck,
   Calculator,
+  CheckCheck,
   ClipboardList,
   Database,
   Factory,
+  FileScan,
   FileCode,
   FileSpreadsheet,
+  FilePlus,
+  Folder,
+  FolderKanban,
   Microscope,
   Hash,
   Handshake,
   Hospital,
   History,
   LayoutDashboard,
+  ListTree,
   Percent,
   PackageCheck,
   PackagePlus,
@@ -43,6 +52,7 @@ import {
   Eye,
   ArrowUpDown,
   Sliders,
+  SlidersHorizontal,
   HelpCircle,
   Home,
   FileText
@@ -59,7 +69,10 @@ export const MODULES = {
     icon: <Settings2 size={16} />,
     subItems: [
       { label: 'Control Mensual', path: '/administracion/controlMensual', icon: <CalendarCheck size={14} /> },
-      { label: 'Notas Admin', path: '/administracion/notasAdmin', icon: <StickyNote size={14} /> }
+      { label: 'Periodo Actual', path: '/administracion/ResumenPeriodoAbierto', icon: <CalendarDays size={14} /> },
+      { label: 'Notas Admin', path: '/administracion/notasAdmin', icon: <StickyNote size={14} /> },
+      { label: 'Crear Usuario', path: '/administracion/crearUsuario', icon: <UserPlus size={14} /> },
+      { label: 'Lista Usuario', path: '/administracion/listadoUsuario', icon: <Users size={14} /> }
     ]
   },
   laboratorio: {
@@ -96,13 +109,20 @@ export const MODULES = {
       { label: 'Recargos', path: '/maestros/recargosMaestros', icon: <Percent size={14} /> },
       { label: 'Calculador', path: '/maestros/calculadorMaestros', icon: <Calculator size={14} /> },
       { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <Hash size={14} /> },
+      { label: 'Pad', path: '/maestros/padMaestros', icon: <SlidersHorizontal size={14} /> },
+      { label: 'Listado', path: '/maestros/listadoMaestros', icon: <ListTree size={14} /> },
     ]
   },
   consignacion: {
     label: 'Consignación',
     icon: <PackageCheck size={18} />,
     subItems: [
-      { label: 'Guias', path: '/consignacion/guiasConsigna', icon: <ScanBarcode size={14} /> },
+      { label: 'Ingresar Guía', path: '/consignacion/ingresarGuiaDespacho', icon: <FileScan size={14} /> },
+      { label: 'Listado Guía', path: '/consignacion/listadoguiasconsignacion', icon: <FileText size={14} /> },
+      { label: 'Registros', path: '/consignacion/registroConsignacion', icon: <ArrowRightToLine size={14} /> },
+      { label: 'Cargas', path: '/consignacion/cargasConsignacion', icon: <CheckCheck size={14} /> },
+      { label: 'Solicitud', path: '/consignacion/solicitudConsignacion', icon: <FilePlus size={14} /> },
+      { label: 'Resumen', path: '/consignacion/resumenConsignacion', icon: <BarChart2 size={14} /> },
     ]
   },
   inventario: {
@@ -117,64 +137,50 @@ export const MODULES = {
       { label: 'Historial', path: '/inventario/historialInventario', icon: <History size={14} /> },
       { label: 'Stock Unidad', path: '/inventario/unidadInventario', icon: <Building2 size={14} /> },
     ]
+  },
+  documentos: {
+    label: 'Documentos',
+    icon: <Folder size={18} />,
+    subItems: [
+      { label: 'Reportes Info', path: '/documentos/reportesInfo', icon: <BarChart2 size={14} /> },
+    ]
+  },
+
+  implantes: {
+    label: 'Implantes',
+    icon: <Activity size={18} />,
+    subItems: [
+      { label: 'Gestion', path: '/implantes/gestionImplantes', icon: <FolderKanban size={14} /> },
+      { label: 'Solicitud', path: '/implantes/solicitudImplantes', icon: <FilePlus size={14} /> },
+      { label: 'Resumen', path: '/implantes/resumenImplantes', icon: <BarChart2 size={14} /> },
+    ]
   }
 };
 
+// --- CONFIGURACIÓN DE AJUSTES DEL SISTEMA ---
 export const AJUSTES_ITEMS = [
-  { path: '/ajustes/datosPersonales', label: 'Datos Personales', icon: <UserCircle size={15} /> },
-  { path: '/ajustes/cambiarPassword', label: 'Cambiar Contraseña', icon: <Shield size={15} /> },
-  { path: '/ajustes/temaApariencia', label: 'Tema y Apariencia', icon: <Sun size={15} /> },
+  { path: '/settings/datosUsuarios', label: 'Datos Personales', icon: <UserCircle size={15} /> },
+  { path: '/settings/cambiarPasswordAjustes', label: 'Cambiar Contraseña', icon: <Shield size={15} /> },
+  { path: '/settings/ajusteTema', label: 'Tema y Apariencia', icon: <Sun size={15} /> },
   { path: '/ajustes/configPrivacidad', label: 'Config. Privacidad', icon: <Lock size={15} /> },
-  { path: '/ajustes/modulosVisibles', label: 'Módulos Visibles', icon: <Eye size={15} /> },
-  { path: '/ajustes/ordenModulos', label: 'Orden de Módulos', icon: <ArrowUpDown size={15} /> },
+  { path: '/settings/modulosVisibles', label: 'Módulos Visibles', icon: <Eye size={15} /> },
+  { path: '/settings/ordenModulos', label: 'Orden de Módulos', icon: <ArrowUpDown size={15} /> },
   { path: '/ajustes/preferenciasGenerales', label: 'Preferencias Generales', icon: <Sliders size={15} /> },
   { path: '/ajustes/ayudaSoporte', label: 'Ayuda y Soporte', icon: <HelpCircle size={15} /> },
 ];
 
+// --- VISTAS ESPECIALES Y BREADCRUMBS ---
 export const SPECIAL_VIEWS = {
   'dashboard': { label: 'Inicio', icon: <Home size={13} /> },
   'perfil': { label: 'Mi Perfil', icon: <UserCircle size={13} /> },
   'privacidad': { label: 'Política de Privacidad', icon: <ShieldCheck size={13} /> },
   'terminos': { label: 'Términos de Servicio', icon: <FileText size={13} /> },
-  '/ajustes/datosPersonales': { label: 'Datos Personales', icon: <UserCircle size={13} /> },
-  '/ajustes/cambiarPassword': { label: 'Cambiar Contraseña', icon: <Shield size={13} /> },
-  '/ajustes/temaApariencia': { label: 'Tema y Apariencia', icon: <Sun size={13} /> },
+  '/settings/datosUsuarios': { label: 'Datos Personales', icon: <UserCircle size={13} /> },
+  '/settings/cambiarPasswordAjustes': { label: 'Cambiar Contraseña', icon: <Shield size={13} /> },
+  '/settings/ajusteTema': { label: 'Tema y Apariencia', icon: <Sun size={13} /> },
   '/ajustes/configPrivacidad': { label: 'Configuración de Privacidad', icon: <Lock size={13} /> },
-  '/ajustes/modulosVisibles': { label: 'Módulos Visibles', icon: <Eye size={13} /> },
-  '/ajustes/ordenModulos': { label: 'Orden de Módulos', icon: <ArrowUpDown size={13} /> },
+  '/settings/modulosVisibles': { label: 'Módulos Visibles', icon: <Eye size={13} /> },
+  '/settings/ordenModulos': { label: 'Orden de Módulos', icon: <ArrowUpDown size={13} /> },
   '/ajustes/preferenciasGenerales': { label: 'Preferencias Generales', icon: <Sliders size={13} /> },
   '/ajustes/ayudaSoporte': { label: 'Centro de Ayuda', icon: <HelpCircle size={13} /> },
 };
-
-
-
-/*
-  usuarios: { 
-    label: 'Usuarios',
-    icon: <Users size={18} />,
-    subItems: [
-      { label: 'Crear Usuario', path: '/usuarios/crear', icon: <UserPlus size={14} /> },
-      { label: 'Listado', path: '/usuarios/listado', icon: <UserSearch size={14} /> },
-    ]
-  },
-  
-  ,
- 
-  
- 
-  misturnos: {
-    label: 'Mis Turnos',
-    icon: <CalendarDays size={18} />,
-    subItems: [
-      {
-        label: 'Ver Turnos',
-        path: '/misturnos/ver',
-        icon: <Calendar size={14} />
-      }
-    ]
-  }
- 
-    
-};
-
-*/

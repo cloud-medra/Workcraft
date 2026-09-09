@@ -74,6 +74,7 @@ const ArchivosControl = () => {
     return tabs.find(t => t.id === activeTab) || tabs[0] || null;
   }, [tabs, activeTab]);
 
+  // Verificar si se necesita mostrar flechas de scroll
   const checkScroll = () => {
     if (tabsRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
@@ -119,6 +120,7 @@ const ArchivosControl = () => {
   return (
     <div className="w-full h-full flex flex-col bg-slate-50/60 dark:bg-gray-900 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs overflow-hidden">
       
+      {/* Encabezado Principal */}
       <div className="bg-white dark:bg-gray-800 border-b border-slate-200/80 dark:border-gray-700 px-5 py-2.5">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -162,8 +164,10 @@ const ArchivosControl = () => {
         </div>
       </div>
 
+      {/* Navegación por Pestañas Responsiva con Scroll Navegable */}
       <div className="relative bg-slate-100/60 dark:bg-gray-800/60 px-2 py-1.5 border-b border-slate-200/80 dark:border-gray-700 flex items-center">
         
+        {/* Botón Scroll Izquierdo */}
         {showLeftScroll && (
           <button
             onClick={() => scrollTabs('left')}
@@ -174,6 +178,7 @@ const ArchivosControl = () => {
           </button>
         )}
 
+        {/* Contenedor de Pestañas con Scroll */}
         <div 
           ref={tabsRef}
           onScroll={checkScroll}
@@ -204,6 +209,7 @@ const ArchivosControl = () => {
           })}
         </div>
 
+        {/* Botón Scroll Derecho */}
         {showRightScroll && (
           <button
             onClick={() => scrollTabs('right')}
@@ -215,6 +221,7 @@ const ArchivosControl = () => {
         )}
       </div>
 
+      {/* ÁREA DE CONTENIDO */}
       <div className="flex-grow p-4 overflow-auto">
         {currentTabObj.id === 'documentos_recibidos' && <DocumentosRecibidos />}
         {currentTabObj.id === 'iniciar_procesos' && <IniciarProceso />}

@@ -1,0 +1,326 @@
+import { useState, useEffect } from 'react';
+import {
+  collection,
+  collectionGroup,
+  onSnapshot,
+  doc,
+  writeBatch,
+  addDoc,
+  serverTimestamp,
+  query,
+  where
+} from 'firebase/firestore';
+import * as XLSX from 'xlsx';
+import { db } from '../../../../../../firebaseConfig';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useModal } from '../../../../../../context/ModalContext';
+import { useUser } from '../../../../../../context/UserContext';
+
+export const useSolicitudImplantesData = () => {
+  const [bloques, setBloques] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const [exportando, setExportando] = useState(false);
+  const [seleccionados, setSeleccionados] = useState(new Set());
+
+  const { showToast } = useToast();
+  const { confirmAction } = useModal();
+  const { userData } = useUser();
+
+  // Escucha en tiempo real todos los bloques (documentos "detalles") cuya
+  // Solicitud esté en SOLICITAR — o sea, todos los ítems de ese bloque ya
+  // quedaron CARGADO y están listos para descargarse.
+  useEffect(() => {
+    const q = query(collectionGroup(db, "detalles"), where("solicitud", "==", "SOLICITAR"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lista = snapshot.docs.map(document => {
+        const data = document.data();
+        const items = data.cotizaciones?.[0]?.items || [];
+        return {
+          id: document.id,
+          refPath: document.ref.path,
+          gestionId: data.gestionId || data.agendaId || 'P',
+          agendaId: data.agendaId || data.gestionId || 'P',
+          admision: data.admision || 'P',
+          nombre: data.nombre || 'P',
+          medico: data.medico || 'P',
+          empresa: data.empresa || 'P',
+          fecha: data.fecha || 'P',
+          informe: data.informe || 'PENDIENTE',
+          convenio: data.convenio || 'P',
+          prevision: data.prevision || 'P',
+          descripcion: data.descripcion || 'P',
+          centro: data.centro || 'PABELLON',
+          atributo: data.atributo || 'IMPLANTES',
+          estado: data.estado || 'AGENDANDO',
+          costo: data.costo || 0,
+          registradoPor: data.registradoPor || 'Usuario',
+          numCotizacion: data.cotizaciones?.[0]?.numCotizacion || 'P',
+          items
+        };
+      });
+      setBloques(lista);
+      setCargando(false);
+    }, (error) => {
+      console.error("Error al escuchar solicitudes:", error);
+      showToast("Error al cargar solicitudes pendientes", "error");
+      setCargando(false);
+    });
+
+    return () => unsubscribe();
+  }, [showToast]);
+
+  const toggleSeleccion = (refPath) => {
+    setSeleccionados(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(refPath)) {
+        nuevo.delete(refPath);
+      } else {
+        nuevo.add(refPath);
+      }
+      return nuevo;
+    });
+  };
+
+  const toggleSeleccionarTodos = () => {
+    if (seleccionados.size === bloques.length) {
+      setSeleccionados(new Set());
+    } else {
+      setSeleccionados(new Set(bloques.map(b => b.refPath)));
+    }
+  };
+
+  const formatearFechaExcel = (fechaString) => {
+    if (!fechaString || !fechaString.includes('-')) return fechaString || '';
+    const [yyyy, mm, dd] = fechaString.split('-');
+    return `${dd}-${mm}-${yyyy}`;
+  };
+
+  // Descompone "YYYY-MM-DD" en sus 3 partes; se usan para guardar año/mes/día
+  // como CAMPOS en implantes_imputadas (no como parte de la ruta, que sigue
+  // siendo por período contable).
+  const descomponerFecha = (fechaString) => {
+    if (fechaString && fechaString.includes('-')) {
+      const [anio, mes, dia] = fechaString.split('-');
+      return { anio, mes, dia };
+    }
+    return { anio: '0000', mes: '00', dia: '00' };
+  };
+
+  const registrarLog = async (docRef, accion, detalles) => {
+    try {
+      const logsSubcollectionRef = collection(docRef, "logs");
+      await addDoc(logsSubcollectionRef, {
+        accion,
+        detalles,
+        active: true,
+        usuario: userData?.nombreCompleto || 'Usuario Desconocido',
+        usuarioEmail: userData?.email || '',
+        timestamp: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error al registrar log de auditoría:", err);
+    }
+  };
+
+  // Exporta a Excel los bloques seleccionados (uno o más ítems por bloque),
+  // y al confirmar: 1) marca cada bloque como SOLICITADO, 2) escribe cada
+  // ítem en implantes_imputadas con TODOS sus datos (gestión + ítem), 3)
+  // registra el log de auditoría por bloque.
+  const handleExportarYMarcarSolicitado = () => {
+    const bloquesSeleccionados = bloques.filter(b => seleccionados.has(b.refPath));
+
+    if (bloquesSeleccionados.length === 0) {
+      showToast("Selecciona al menos un registro para exportar", "error");
+      return;
+    }
+
+    confirmAction(
+      "Exportar y Marcar como Solicitado",
+      `Se exportarán ${bloquesSeleccionados.length} registro(s) a Excel y quedarán marcados como SOLICITADO (ya no aparecerán en este listado). ¿Continuar?`,
+      async () => {
+        setExportando(true);
+        try {
+          // 1. Armar filas del Excel (una fila por ítem)
+          const fechaHoyFormato = formatearFechaExcel(new Date().toISOString().slice(0, 10));
+
+          const filas = [];
+          bloquesSeleccionados.forEach(bloque => {
+            if (bloque.items.length === 0) {
+              filas.push({
+                "ID": bloque.gestionId,
+                "PACIENTE": bloque.nombre,
+                "MEDICO": bloque.medico,
+                "FECHA": formatearFechaExcel(bloque.fecha),
+                "EMPRESA": bloque.empresa,
+                "CODIGO": "",
+                "DESCRIPCION": "",
+                "CANTIDAD": "",
+                "PRECIO": "",
+                "ATRIBUTO": bloque.atributo,
+                "FECHA REGISTRO": fechaHoyFormato,
+                "FECHA CARGA": formatearFechaExcel(bloque.fecha),
+                "N° COTIZACION": bloque.numCotizacion,
+                "FECHA INGRESO": fechaHoyFormato,
+                "LOTE": "",
+                "VENCIMIENTO": ""
+              });
+              return;
+            }
+
+            bloque.items.forEach(it => {
+              filas.push({
+                "ID": bloque.gestionId,
+                "PACIENTE": bloque.nombre,
+                "MEDICO": bloque.medico,
+                "FECHA": formatearFechaExcel(bloque.fecha),
+                "EMPRESA": bloque.empresa,
+                "CODIGO": it.codigo || 'P',
+                "DESCRIPCION": it.descriptorAuto || 'P',
+                "CANTIDAD": it.cantidad || 0,
+                "PRECIO": it.precio || 0,
+                "ATRIBUTO": bloque.atributo,
+                "FECHA REGISTRO": fechaHoyFormato,
+                "FECHA CARGA": formatearFechaExcel(bloque.fecha),
+                "N° COTIZACION": bloque.numCotizacion,
+                "FECHA INGRESO": fechaHoyFormato,
+                "LOTE": it.lote || 'P',
+                "VENCIMIENTO": formatearFechaExcel(it.vencimiento)
+              });
+            });
+          });
+
+          const worksheet = XLSX.utils.json_to_sheet(filas);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Solicitud Implantes");
+          const fechaHoy = new Date().toISOString().slice(0, 10);
+          XLSX.writeFile(workbook, `solicitud_implantes_${fechaHoy}.xlsx`);
+
+          // 2. Batch: marcar SOLICITADO + escribir en implantes_imputadas
+          const batch = writeBatch(db);
+          let opsEnBatch = 0;
+          let batchActual = batch;
+          const batches = [batchActual];
+
+          const agregarOp = (fn) => {
+            if (opsEnBatch >= 400) {
+              batchActual = writeBatch(db);
+              batches.push(batchActual);
+              opsEnBatch = 0;
+            }
+            fn(batchActual);
+            opsEnBatch++;
+          };
+
+          bloquesSeleccionados.forEach(bloque => {
+            const docRef = doc(db, bloque.refPath);
+
+            // Marca el bloque como SOLICITADO (estado terminal)
+            agregarOp(b => b.update(docRef, {
+              solicitud: 'SOLICITADO',
+              fechaSolicitud: new Date(),
+              solicitadoPor: userData?.nombreCompleto || 'Usuario'
+            }));
+
+            const { anio, mes, dia } = descomponerFecha(bloque.fecha);
+
+            // Se copian TODOS los datos del ítem + de la gestión a implantes_imputadas
+            bloque.items.forEach(it => {
+              if (!it.periodoAnio || !it.periodoMes) return; // salvaguarda: ítem sin período
+
+              const imputadaRef = doc(
+                db,
+                'implantes_imputadas', String(it.periodoAnio),
+                'meses', it.periodoMes,
+                'documentos', it.id
+              );
+
+              agregarOp(b => b.set(imputadaRef, {
+                // --- Datos de la gestión (bloque) ---
+                gestionId: bloque.gestionId,
+                agendaId: bloque.agendaId,
+                admision: bloque.admision,
+                paciente: bloque.nombre,
+                medico: bloque.medico,
+                fecha: bloque.fecha,
+                anio,
+                mes,
+                dia,
+                empresa: bloque.empresa,
+                informe: bloque.informe,
+                convenio: bloque.convenio,
+                prevision: bloque.prevision,
+                descripcion: bloque.descripcion,
+                centro: bloque.centro,
+                atributo: bloque.atributo,
+                estado: bloque.estado,
+                costoGestion: bloque.costo,
+
+                // --- Datos de la cotización / ítem ---
+                numCotizacion: bloque.numCotizacion,
+                itemId: it.id,
+                referencia: it.referencia || 'P',
+                codigo: it.codigo || 'P',
+                descriptorAuto: it.descriptorAuto || 'P',
+                clase: it.clase || 'P',
+                tipoVinculado: it.tipoVinculado || 'P',
+                detalle: it.detalle || 'P',
+                empresaVinculada: it.empresaVinculada || 'P',
+                precio: Number(it.precio) || 0,
+                cantidad: Number(it.cantidad) || 0,
+                vecesCosto: Number(it.vecesCosto) || 1,
+                recargoEncontrado: !!it.recargoEncontrado,
+                venta: Number(it.venta) || 0,
+                total: Number(it.totalItem) || 0,
+                lote: it.lote || 'P',
+                vencimiento: it.vencimiento || '',
+                sinCodigo: !!it.sinCodigo,
+                estadoCarga: it.estadoCarga || 'PENDIENTE',
+                periodoAnio: it.periodoAnio,
+                periodoMes: it.periodoMes,
+
+                // --- Metadatos ---
+                registradoPor: userData?.nombreCompleto || 'Usuario',
+                actualizadoEn: new Date()
+              }, { merge: true }));
+            });
+          });
+
+          for (const b of batches) {
+            await b.commit();
+          }
+
+          // 3. Logs de auditoría (después del commit, uno por bloque)
+          await Promise.all(
+            bloquesSeleccionados.map(bloque =>
+              registrarLog(doc(db, bloque.refPath), 'SOLICITUD_EXPORTADA', {
+                gestionId: bloque.gestionId,
+                empresa: bloque.empresa,
+                fecha: bloque.fecha,
+                cantidadItems: bloque.items.length
+              })
+            )
+          );
+
+          setSeleccionados(new Set());
+          showToast(`${bloquesSeleccionados.length} registro(s) exportado(s) y marcado(s) como SOLICITADO`, "success");
+        } catch (error) {
+          console.error("Error al exportar solicitud:", error);
+          showToast("Error al exportar: " + error.message, "error");
+        } finally {
+          setExportando(false);
+        }
+      }
+    );
+  };
+
+  return {
+    bloques,
+    cargando,
+    exportando,
+    seleccionados,
+    toggleSeleccion,
+    toggleSeleccionarTodos,
+    handleExportarYMarcarSolicitado
+  };
+};

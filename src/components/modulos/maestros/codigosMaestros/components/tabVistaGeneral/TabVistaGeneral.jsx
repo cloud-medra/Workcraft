@@ -354,7 +354,7 @@ const TabVistaGeneral = () => {
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 font-bold text-center">{index + 1}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{item.referencia}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.descriptorEmpresa || 'N/A'}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.descriptorAuto || 'N/A'}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-800 dark:text-gray-100">{item.empresa}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.tipo || 'N/A'}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.segmento || 'N/A'}</td>

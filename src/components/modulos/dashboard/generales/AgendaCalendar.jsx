@@ -72,6 +72,7 @@ const AgendaCalendar = ({
           const seleccionado = esSeleccionado(dia);
           const hoy = esHoy(dia);
 
+          // Clases dinámicas según el estado
           let estilosEstado = 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700';
 
           if (seleccionado) {

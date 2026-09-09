@@ -9,6 +9,7 @@ import { auth, db } from '../firebaseConfig';
 import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import loginIllustration from '../assets/login.svg';
 import logoMedra from '../assets/logo_medra_login/android-chrome-192x192.png';
+import { motion } from 'framer-motion';
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -91,10 +92,16 @@ const LoginForm = () => {
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
 
           <div className="flex justify-center mb-6">
-            <img
+            <motion.img
               src={logoMedra}
               alt="Medra Sistema Integral"
               className="h-32 max-w-full w-auto object-contain"
+              initial={{ opacity: 0, y: -16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{
+                duration: 0.6,
+                ease: [0.16, 1, 0.3, 1],
+              }}
             />
           </div>
 

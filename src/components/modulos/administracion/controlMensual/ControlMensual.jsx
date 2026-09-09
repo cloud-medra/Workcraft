@@ -146,9 +146,8 @@ const ControlMensual = () => {
               onChange={(e) => setAnioSeleccionado(e.target.value)}
               disabled={hayMesAbierto}
               title={hayMesAbierto ? "No se puede cambiar el año mientras existan períodos en curso o con actividad." : ""}
-              className={`h-7 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-2 font-bold outline-none focus:border-[#2383C2] ${
-                hayMesAbierto ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-gray-800' : ''
-              }`}
+              className={`h-7 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-2 font-bold outline-none focus:border-[#2383C2] ${hayMesAbierto ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-gray-800' : ''
+                }`}
             >
               {[anioActualNum, anioActualNum + 1].map(a => (
                 <option key={a} value={a}>{a}</option>
@@ -203,7 +202,7 @@ const ControlMensual = () => {
                   {modulosVisibles.map((mod) => {
                     const modIndex = MODULOS.findIndex(m => m.id === mod.id);
                     const colorConfig = MODULO_COLORES[modIndex % MODULO_COLORES.length];
-                    
+
                     return (
                       <th
                         key={mod.id}
@@ -231,20 +230,24 @@ const ControlMensual = () => {
               </thead>
 
               <tbody className="divide-y divide-slate-200 dark:divide-gray-700 text-[10px]">
-                {mesesIniciados.map((mes, index) => {
-                  const numeroMes = index + 1;
+                {mesesIniciados.map((mes) => {
+                  const indexMesReal = MESES.findIndex(m => m.id === mes.id || m.nombre === mes.nombre);
+                  let numeroMesReal = indexMesReal !== -1 ? indexMesReal + 1 : parseInt(mes.id, 10);
+                  if (isNaN(numeroMesReal)) {
+                    numeroMesReal = mes.id || 'N/A';
+                  }
 
                   return (
-                    <tr key={mes.id || index} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors">
+                    <tr key={mes.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="py-2 px-3 font-bold text-slate-800 dark:text-gray-100 border-r border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky left-0 z-10">
                         <div className="flex items-center justify-between gap-1.5">
                           <span className="uppercase">
-                            {numeroMes} {anioSeleccionado}
+                            {numeroMesReal} {anioSeleccionado}
                           </span>
                           <button
                             onClick={() => handleCerrarTodos(mes.id)}
                             disabled={procesandoAccion}
-                            title={`Cerrar todos los módulos para el período ${numeroMes} ${anioSeleccionado}`}
+                            title={`Cerrar todos los módulos para el período ${numeroMesReal} ${anioSeleccionado}`}
                             className="px-1 py-0.5 bg-slate-100 hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300 rounded text-[8px] font-bold flex items-center gap-0.5 transition cursor-pointer disabled:opacity-50 shrink-0"
                           >
                             <ShieldAlert size={9} className="text-amber-500" />
@@ -273,7 +276,7 @@ const ControlMensual = () => {
                                     <button
                                       onClick={() => handleAbrirMes(mes.id, mod.id, anioSeleccionado, setAnioSeleccionado)}
                                       disabled={procesandoAccion}
-                                      title={`Abrir ${numeroMes}/${anioSeleccionado} para ${mod.nombre}`}
+                                      title={`Abrir ${numeroMesReal}/${anioSeleccionado} para ${mod.nombre}`}
                                       className={`p-1 ${colorConfig.text} ${colorConfig.hoverBg} rounded transition cursor-pointer disabled:opacity-50`}
                                     >
                                       <PlayCircle size={12} />
@@ -284,7 +287,7 @@ const ControlMensual = () => {
                                     <button
                                       onClick={() => handleCerrarMes(mes.id, mod.id)}
                                       disabled={procesandoAccion}
-                                      title={`Cerrar ${numeroMes}/${anioSeleccionado} para ${mod.nombre}`}
+                                      title={`Cerrar ${numeroMesReal}/${anioSeleccionado} para ${mod.nombre}`}
                                       className={`p-1 ${colorConfig.text} ${colorConfig.hoverBg} rounded transition cursor-pointer disabled:opacity-50`}
                                     >
                                       <Lock size={12} />
@@ -295,7 +298,7 @@ const ControlMensual = () => {
                                     <button
                                       onClick={() => setModalReapertura({ mesId: mes.id, modId: mod.id })}
                                       disabled={procesandoAccion}
-                                      title={`Reabrir ${numeroMes}/${anioSeleccionado} para ${mod.nombre}`}
+                                      title={`Reabrir ${numeroMesReal}/${anioSeleccionado} para ${mod.nombre}`}
                                       className={`p-1 ${colorConfig.text} ${colorConfig.hoverBg} rounded transition cursor-pointer disabled:opacity-50`}
                                     >
                                       <AlertTriangle size={12} />
@@ -305,7 +308,7 @@ const ControlMensual = () => {
                                   {tieneHistorial && (
                                     <button
                                       onClick={() => setModalHistorial({
-                                        mes: numeroMes,
+                                        mes: numeroMesReal,
                                         anio: anioSeleccionado,
                                         moduloNombre: mod.nombre,
                                         historialReaperturas: cierreData.historialReaperturas
