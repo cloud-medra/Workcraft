@@ -3,19 +3,6 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { CODIGO_SIN_OC } from './cargasHelpers';
 
-/**
- * Fila individual + lógica compartida para ingresar UN ítem de "contenido"
- * de un PAD (ya sea al crear el PAD por primera vez, o al agregarle contenido
- * más adelante desde la tabla). Se usa desde CargasTab y desde CotizacionCard.
- *
- * Reglas fijas para estos ítems (ver cargasHelpers.construirItemContenidoPadDesdeFila):
- * - Precio siempre $0
- * - Código siempre "No lleva OC"
- * - Estado de Carga siempre "PAD"
- * Todo lo demás (descripción, clase, empresa vinculada) SÍ se guarda tal cual
- * lo trae el autocompletado, igual que un ítem normal.
- */
-
 export const crearFilaContenidoPadVacia = () => ({
   tempId: crypto.randomUUID(),
   referencia: '',
@@ -44,7 +31,6 @@ export const construirItemContenidoPadDesdeFila = (fila, padPadreId, contexto) =
   detalle: fila.detalle || 'P',
   descriptorAuto: fila.descriptorAuto || 'P',
   clase: fila.clase || 'P',
-  // --- Campos siempre forzados para contenido de PAD ---
   codigo: CODIGO_SIN_OC,
   precio: 0,
   sinCodigo: false,

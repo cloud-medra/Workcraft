@@ -7,14 +7,16 @@ import {
   AlertCircle,
   Loader2,
   Lock,
-  Package
+  Package,
+  Check,
+  Trash2
 } from 'lucide-react';
 import { formatearFechaTabla, calcularCamposFinancieros, esClasePad, VALOR_LOTE_VENCIMIENTO_PAD } from './cargasHelpers';
 import { useRecargosActivos } from './useRecargosActivos';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { usePeriodoAbiertoModulo } from './usePeriodoAbiertoModulo';
 import { CotizacionCard } from './CotizacionCard';
-import { PadContenidoRow, crearFilaContenidoPadVacia, construirItemContenidoPadDesdeFila } from './PadContenidoRow';
+import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 
 const INITIAL_ITEM = {
   numCotizacion: '',
@@ -32,29 +34,19 @@ const INITIAL_ITEM = {
   clase: ''
 };
 
-/**
- * Tab "Cargas": como cada bloque (empresa/fecha) admite UNA sola cotización,
- * el formulario precarga automáticamente el N° Cotización y el Total apenas
- * detecta que el bloque activo ya tiene su cotización creada. El Total Cot.
- * queda sincronizado en ambas direcciones con "Costo ($)" de Información.
- *
- * Al seleccionar una Referencia se traen desde Códigos Maestros: Código,
- * Precio, Empresa, Tipo, Detalle y Clase. El "Recargo" se busca en Recargos
- * Maestros según el rango del Precio. Venta = Precio x VecesCosto x Cantidad.
- * Total Ítem = Precio x Cantidad.
- *
- * Cada ítem que se agrega queda sellado con el Período (mes/año) que esté
- * ABIERTO/REABIERTO para el módulo "implantes" en Control Mensual. Si no hay
- * ningún período abierto, no se permite agregar ítems nuevos.
- *
- * REGLA PAD: si la Referencia elegida tiene clase "PAD", el ítem principal
- * queda con Lote y Vencimiento = "PAD" (no aplica un lote/vencimiento único).
- * El contenido real del pack (varios ítems con su propio lote/vencimiento) es
- * OPCIONAL en este momento — puede completarse ahora o más adelante desde la
- * tabla (ver CotizacionCard), ya que a veces no se tiene el detalle a mano al
- * momento de crear el PAD. Cada ítem de contenido se guarda con Precio $0,
- * Código "No lleva OC" y Estado de Carga "PAD".
- */
+const DRAFT_CONTENIDO_VACIO = {
+  referencia: '',
+  codigo: '',
+  descriptorAuto: '',
+  detalle: '',
+  clase: '',
+  tipoVinculado: '',
+  empresaVinculada: '',
+  cantidad: '',
+  lote: '',
+  vencimiento: ''
+};
+
 export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem }) => {
   const bloqueActivo = formData?.bloques?.[bloqueActivoIndex];
   const cotizaciones = bloqueActivo?.cotizaciones || [];
@@ -62,7 +54,12 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
   const [nuevoItem, setNuevoItem] = useState(INITIAL_ITEM);
   const [errores, setErrores] = useState({});
   const [esPad, setEsPad] = useState(false);
-  const [contenidoPad, setContenidoPad] = useState([]);
+  const [contenidoPad, setContenidoPad] = useState([]); 
+
+  const [numCotizacionPad, setNumCotizacionPad] = useState('');
+
+  const [draftContenido, setDraftContenido] = useState(DRAFT_CONTENIDO_VACIO);
+  const [errorDraftContenido, setErrorDraftContenido] = useState({});
 
   const { recargosActivos, cargandoRecargos } = useRecargosActivos();
   const { periodoAbierto, cargandoPeriodo } = usePeriodoAbiertoModulo('implantes');
@@ -70,12 +67,27 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
     sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, skipNext
   } = useAutocompleteReferencia(nuevoItem.referencia);
 
+  const {
+    sugerencias: sugerenciasContenido,
+    buscando: buscandoContenido,
+    mostrarSug: mostrarSugContenido,
+    setMostrarSug: setMostrarSugContenido,
+    containerRef: containerRefContenido,
+    skipNext: skipNextContenido
+  } = useAutocompleteReferencia(draftContenido.referencia);
+
   const rangoActual = buscarRangoRecargoLocal(nuevoItem.precio, recargosActivos);
   const vecesCostoActual = rangoActual ? Number(rangoActual.vecesCosto) : 1;
   const cantidadActual = Number(nuevoItem.cantidad) || 1;
   const ventaActual = calcularVentaUnitariaLocal(nuevoItem.precio, vecesCostoActual) * cantidadActual;
 
-  // Precarga N° Cotización y Total si el bloque activo ya tiene su (única) cotización creada
+  const resetContenidoPad = () => {
+    setContenidoPad([]);
+    setNumCotizacionPad('');
+    setDraftContenido(DRAFT_CONTENIDO_VACIO);
+    setErrorDraftContenido({});
+  };
+
   useEffect(() => {
     const cotExistente = cotizaciones[0];
     if (cotExistente) {
@@ -88,18 +100,22 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
       setNuevoItem(prev => ({ ...prev, numCotizacion: '', totalCotizacion: '' }));
     }
     setEsPad(false);
-    setContenidoPad([]);
+    resetContenidoPad();
     setErrores({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bloqueActivoIndex]);
+
+  const formatearMiles = (valor) => {
+    if (valor === null || valor === undefined || valor === '') return '';
+    const num = valor.toString().replace(/\D/g, '');
+    if (num === '') return '';
+    return new Intl.NumberFormat('es-CL').format(num);
+  };
 
   const handleSeleccionarSugerencia = (item) => {
     skipNext.current = true;
     const esPadItem = esClasePad(item.clase);
     setEsPad(esPadItem);
-    // Se ofrece una fila de contenido vacía por comodidad, pero es opcional:
-    // el usuario puede dejarla en blanco y guardar el PAD sin contenido.
-    setContenidoPad(prev => (esPadItem && prev.length === 0) ? [crearFilaContenidoPadVacia()] : (esPadItem ? prev : []));
+    if (!esPadItem) resetContenidoPad();
 
     setNuevoItem(prev => ({
       ...prev,
@@ -131,11 +147,73 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
         clase: ''
       }));
       setEsPad(false);
-      setContenidoPad([]);
+      resetContenidoPad();
       return;
     }
     setNuevoItem(prev => ({ ...prev, [field]: value }));
     if (errores[field]) setErrores(prev => ({ ...prev, [field]: false }));
+  };
+
+  const handleDraftReferenciaChange = (value) => {
+    setDraftContenido(prev => ({
+      ...prev,
+      referencia: value,
+      codigo: '',
+      descriptorAuto: '',
+      detalle: '',
+      clase: '',
+      tipoVinculado: '',
+      empresaVinculada: ''
+    }));
+    if (errorDraftContenido.referencia) setErrorDraftContenido(prev => ({ ...prev, referencia: false }));
+  };
+
+  const handleDraftSeleccionarSugerencia = (item) => {
+    skipNextContenido.current = true;
+    setDraftContenido(prev => ({
+      ...prev,
+      referencia: item.referencia || prev.referencia,
+      codigo: item.codigo || '',
+      descriptorAuto: item.descriptorAuto || '',
+      detalle: item.descriptorEmpresa || item.descriptorAuto || '',
+      clase: item.clase || '',
+      tipoVinculado: item.tipo || '',
+      empresaVinculada: item.empresa || ''
+    }));
+    setMostrarSugContenido(false);
+  };
+
+  const handleDraftChange = (field, value) => {
+    setDraftContenido(prev => ({ ...prev, [field]: value }));
+    if (errorDraftContenido[field]) setErrorDraftContenido(prev => ({ ...prev, [field]: false }));
+  };
+
+  const handleRegistrarContenido = () => {
+    const err = {};
+    if (!draftContenido.referencia.trim()) err.referencia = true;
+    if (!draftContenido.cantidad || Number(draftContenido.cantidad) <= 0) err.cantidad = true;
+
+    if (Object.keys(err).length > 0) {
+      setErrorDraftContenido(err);
+      return;
+    }
+
+    const filaRegistrada = {
+      ...draftContenido,
+      tempId: crypto.randomUUID(),
+      referencia: draftContenido.referencia.trim(),
+      cantidad: Number(draftContenido.cantidad),
+      lote: draftContenido.lote.trim() || 'Sin lote',
+      vencimiento: draftContenido.vencimiento || 'Sin fecha'
+    };
+
+    setContenidoPad(prev => [...prev, filaRegistrada]);
+    setDraftContenido(DRAFT_CONTENIDO_VACIO);
+    setErrorDraftContenido({});
+  };
+
+  const handleEliminarContenidoRegistrado = (tempId) => {
+    setContenidoPad(prev => prev.filter(f => f.tempId !== tempId));
   };
 
   const handleAgregar = () => {
@@ -184,16 +262,13 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
       periodoMes: periodoAbierto.mes
     });
 
-    // El contenido del PAD es opcional: solo se agregan las filas que el
-    // usuario haya completado (referencia + cantidad). Si no completó
-    // ninguna, el PAD se guarda solo y quedará marcado como "pendiente"
-    // en la tabla hasta que se le agregue contenido (ahí o más adelante).
-    if (esPad) {
-      const contenidoValido = contenidoPad.filter(f => f.referencia.trim() && Number(f.cantidad) > 0);
-      contenidoValido.forEach(fila => {
+    if (esPad && contenidoPad.length > 0) {
+      const numCotContenido = numCotizacionPad.trim() || nuevoItem.numCotizacion.trim();
+
+      contenidoPad.forEach(fila => {
         onAgregarItem(bloqueActivoIndex, construirItemContenidoPadDesdeFila(fila, idPadPrincipal, {
-          numCotizacion: nuevoItem.numCotizacion.trim(),
-          totalCotizacion: nuevoItem.totalCotizacion ? Number(nuevoItem.totalCotizacion) : 0,
+          numCotizacion: numCotContenido,
+          totalCotizacion: 0,
           periodoAnio: periodoAbierto.anio,
           periodoMes: periodoAbierto.mes
         }));
@@ -206,7 +281,7 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
       totalCotizacion: prev.totalCotizacion
     }));
     setEsPad(false);
-    setContenidoPad([]);
+    resetContenidoPad();
     setErrores({});
   };
 
@@ -287,9 +362,13 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
                 Total Cot. <span className="text-slate-400 normal-case font-normal">(= Costo del bloque)</span>
               </label>
               <input
-                type="number"
-                value={nuevoItem.totalCotizacion}
-                onChange={e => handleChange('totalCotizacion', e.target.value)}
+                type="text"
+                inputMode="numeric"
+                value={formatearMiles(nuevoItem.totalCotizacion)}
+                onChange={e => {
+                  const soloNumeros = e.target.value.replace(/\D/g, '');
+                  handleChange('totalCotizacion', soloNumeros);
+                }}
                 className="h-7 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none focus:ring-1 focus:ring-[#2383C2]"
                 placeholder="0"
               />
@@ -368,8 +447,8 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
                 disabled={esPad}
                 onChange={e => handleChange('lote', e.target.value)}
                 className={`h-7 px-2 text-[10px] border rounded outline-none ${esPad
-                    ? 'bg-slate-100 dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400'
-                    : 'bg-white dark:bg-gray-900 border-slate-300 dark:border-gray-600 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2]'
+                  ? 'bg-slate-100 dark:bg-gray-800 border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400'
+                  : 'bg-white dark:bg-gray-900 border-slate-300 dark:border-gray-600 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2]'
                   }`}
                 placeholder="Ej: L-4521"
               />
@@ -413,39 +492,177 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
           )}
 
           {esPad && (
-            <div className="border border-fuchsia-200 dark:border-fuchsia-900 bg-fuchsia-50/40 dark:bg-fuchsia-950/10 rounded-lg p-2.5 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-fuchsia-700 dark:text-fuchsia-400 uppercase flex items-center gap-1">
-                  <Package size={12} /> Contenido del PAD <span className="text-[9px] font-normal normal-case text-fuchsia-500 dark:text-fuchsia-500">(opcional, puedes completarlo ahora o más adelante)</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setContenidoPad(prev => [...prev, crearFilaContenidoPadVacia()])}
-                  className="text-[9px] font-semibold text-[#2383C2] hover:underline flex items-center gap-0.5"
-                >
-                  <Plus size={11} /> Agregar línea
-                </button>
+            <div className="border border-fuchsia-200 dark:border-fuchsia-900 bg-fuchsia-50/40 dark:bg-fuchsia-950/10 rounded-lg p-2.5 space-y-2.5">
+              <span className="text-[10px] font-bold text-fuchsia-700 dark:text-fuchsia-400 uppercase flex items-center gap-1">
+                <Package size={12} /> Contenido del PAD <span className="text-[9px] font-normal normal-case text-fuchsia-500 dark:text-fuchsia-500">(opcional, puedes completarlo ahora o más adelante)</span>
+              </span>
+
+              <div className="bg-white/60 dark:bg-gray-900/40 rounded border border-fuchsia-200/70 dark:border-fuchsia-900/50 p-2 space-y-1">
+                <label className="text-[9px] font-bold text-fuchsia-700 dark:text-fuchsia-400 uppercase">
+                  N° Cotización del contenido
+                </label>
+                <input
+                  type="text"
+                  value={numCotizacionPad}
+                  onChange={e => setNumCotizacionPad(e.target.value)}
+                  className="w-full h-7 px-2 text-[10px] border border-fuchsia-300 dark:border-fuchsia-800 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none focus:ring-1 focus:ring-fuchsia-500"
+                  placeholder={nuevoItem.numCotizacion ? `Vacío = ${nuevoItem.numCotizacion}` : 'Ej: COT-002'}
+                />
+                <p className="text-[9px] text-fuchsia-500 dark:text-fuchsia-500 italic">
+                  Déjalo en blanco si el contenido se cotizó junto con la referencia principal (usará "{nuevoItem.numCotizacion || 'la misma cotización'}"). El contenido siempre se guarda con precio $0.
+                </p>
               </div>
 
-              {contenidoPad.map((fila, idx) => (
-                <PadContenidoRow
-                  key={fila.tempId}
-                  fila={fila}
-                  onChange={(nueva) => setContenidoPad(prev => prev.map((f, i) => i === idx ? nueva : f))}
-                  onRemove={() => setContenidoPad(prev => prev.filter((_, i) => i !== idx))}
-                  puedeEliminar={contenidoPad.length > 1}
-                />
-              ))}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end bg-white dark:bg-gray-900/60 rounded border border-fuchsia-200 dark:border-fuchsia-900/60 p-2">
+                <div className="flex flex-col gap-1 relative md:col-span-2" ref={containerRefContenido}>
+                  <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">Referencia contenido</label>
+                  <input
+                    type="text"
+                    value={draftContenido.referencia}
+                    onChange={e => handleDraftReferenciaChange(e.target.value)}
+                    onFocus={() => sugerenciasContenido.length > 0 && setMostrarSugContenido(true)}
+                    autoComplete="off"
+                    className={`h-7 px-2 text-[10px] border rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none ${errorDraftContenido.referencia ? 'border-red-500 ring-1 ring-red-500/30' : 'border-slate-300 dark:border-gray-600 focus:ring-1 focus:ring-[#2383C2]'}`}
+                    placeholder="Buscar referencia..."
+                  />
+                  {mostrarSugContenido && (
+                    <div className="absolute top-full left-0 mt-1 w-56 max-h-40 overflow-y-auto bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded shadow-lg z-30">
+                      {buscandoContenido ? (
+                        <div className="px-2.5 py-2 text-[10px] text-slate-400 flex items-center gap-1.5">
+                          <Loader2 size={11} className="animate-spin" /> Buscando...
+                        </div>
+                      ) : sugerenciasContenido.length === 0 ? (
+                        <div className="px-2.5 py-2 text-[10px] text-slate-400">Sin coincidencias</div>
+                      ) : (
+                        sugerenciasContenido.map(item => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleDraftSeleccionarSugerencia(item)}
+                            className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-gray-700/60 border-b border-slate-100 dark:border-gray-700/50 last:border-b-0"
+                          >
+                            <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{item.referencia}</div>
+                            <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
+                              <span className="font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
+                              <span>·</span>
+                              <span className="truncate">{item.descriptorAuto || item.empresa}</span>
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">Cant.</label>
+                  <input
+                    type="number"
+                    value={draftContenido.cantidad}
+                    onChange={e => handleDraftChange('cantidad', e.target.value)}
+                    className={`h-7 px-2 text-[10px] border rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none ${errorDraftContenido.cantidad ? 'border-red-500 ring-1 ring-red-500/30' : 'border-slate-300 dark:border-gray-600'}`}
+                    placeholder="1"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">Lote</label>
+                  <input
+                    type="text"
+                    value={draftContenido.lote}
+                    onChange={e => handleDraftChange('lote', e.target.value)}
+                    className="h-7 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                    placeholder="Vacío = Sin lote"
+                  />
+                </div>
+
+                <div className="flex items-end gap-1.5">
+                  <div className="flex flex-col gap-1 flex-grow">
+                    <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">Vencimiento</label>
+                    <input
+                      type="date"
+                      value={draftContenido.vencimiento}
+                      onChange={e => handleDraftChange('vencimiento', e.target.value)}
+                      className="h-7 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRegistrarContenido}
+                    className="h-7 px-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white rounded font-semibold flex items-center justify-center gap-1 transition text-[10px] shrink-0"
+                    title="Registrar esta línea de contenido"
+                  >
+                    <Check size={13} />
+                  </button>
+                </div>
+
+                {(errorDraftContenido.referencia || errorDraftContenido.cantidad) && (
+                  <div className="md:col-span-5 text-[9px] text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle size={10} /> Referencia y Cantidad son obligatorias para registrar
+                  </div>
+                )}
+
+                <div className="md:col-span-5 text-[9px] text-slate-400 dark:text-gray-500 truncate">
+                  {draftContenido.descriptorAuto || (draftContenido.referencia.trim() ? 'Sin descripción encontrada' : 'Vacío = Sin lote / Sin fecha al registrar')}
+                </div>
+              </div>
+
+              {contenidoPad.length > 0 && (
+                <div className="overflow-hidden rounded border border-fuchsia-200 dark:border-fuchsia-900/60">
+                  <table className="w-full text-left text-[10px] border-collapse">
+                    <thead className="bg-fuchsia-100/60 dark:bg-fuchsia-950/30">
+                      <tr className="text-fuchsia-700 dark:text-fuchsia-400 uppercase font-bold text-[9px]">
+                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60">Referencia</th>
+                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60 text-center">Cant.</th>
+                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60">Lote</th>
+                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60">Vencimiento</th>
+                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60 text-center">Quitar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contenidoPad.map(fila => (
+                        <tr key={fila.tempId} className="bg-white dark:bg-gray-900/40 hover:bg-fuchsia-50/40 dark:hover:bg-fuchsia-950/10">
+                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 font-semibold text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={fila.referencia}>
+                            {fila.referencia}
+                          </td>
+                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-center text-slate-600 dark:text-gray-300">
+                            {fila.cantidad}
+                          </td>
+                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-slate-600 dark:text-gray-300">
+                            {fila.lote === 'Sin lote'
+                              ? <span className="italic text-slate-400 dark:text-gray-500">Sin lote</span>
+                              : fila.lote}
+                          </td>
+                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-slate-600 dark:text-gray-300">
+                            {fila.vencimiento === 'Sin fecha'
+                              ? <span className="italic text-slate-400 dark:text-gray-500">Sin fecha</span>
+                              : formatearFechaTabla(fila.vencimiento)}
+                          </td>
+                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarContenidoRegistrado(fila.tempId)}
+                              className="text-red-500 hover:text-red-700 p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+                              title="Quitar esta línea"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               <p className="text-[9px] text-fuchsia-600 dark:text-fuchsia-400 italic">
-                Si dejas estas líneas en blanco, el PAD se guardará solo y quedará marcado como "Contenido pendiente" en la tabla
+                Si no registras contenido aquí, el PAD se guardará solo y quedará marcado como "Contenido pendiente" en la tabla
                 hasta que se lo agregues (ahí mismo, cuando quieras). El ítem principal (el código que buscaste) queda con Lote y
                 Vencimiento = "PAD".
               </p>
             </div>
           )}
 
-          {/* DATOS VINCULADOS DEL ÍTEM PRINCIPAL QUE SE ESTÁ ARMANDO */}
           <div className="flex flex-wrap items-center gap-4 px-2.5 py-1.5 bg-gray-100/60 dark:bg-gray-900/40 rounded border border-dashed border-slate-200 dark:border-gray-700/60 text-[10px]">
             <span className="text-[9px] font-bold uppercase text-gray-400 dark:text-gray-500">Vinculado:</span>
             <span className="flex items-center gap-1">

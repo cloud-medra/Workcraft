@@ -13,6 +13,13 @@ import {
 } from 'lucide-react';
 import EmpresaSelect from '../EmpresaSelect';
 
+const formatearMiles = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const num = valor.toString().replace(/\D/g, '');
+  if (num === '') return '';
+  return new Intl.NumberFormat('es-CL').format(num);
+};
+
 export const InformacionTab = ({
   formData,
   handleGeneralChange,
@@ -166,10 +173,15 @@ export const InformacionTab = ({
                     <DollarSign size={11} />
                   </div>
                   <input
-                    type="number"
-                    value={formData.bloques[bloqueActivoIndex].costo}
-                    onChange={(e) => handleBloqueChange(bloqueActivoIndex, 'costo', e.target.value)}
+                    type="text"
+                    inputMode="numeric"
+                    value={formatearMiles(formData.bloques[bloqueActivoIndex].costo)}
+                    onChange={(e) => {
+                      const soloNumeros = e.target.value.replace(/\D/g, '');
+                      handleBloqueChange(bloqueActivoIndex, 'costo', soloNumeros ? Number(soloNumeros) : 0);
+                    }}
                     className="w-full h-6.5 pl-5 pr-2 text-[10px] text-slate-800 dark:text-gray-100 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 focus:ring-1 focus:ring-[#2383C2] outline-none"
+                    placeholder="0"
                   />
                 </div>
               </div>

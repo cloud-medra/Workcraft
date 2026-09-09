@@ -10,20 +10,11 @@ import { CargasTab } from './Cargastab/Cargastab';
 import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 
-// Debe coincidir exactamente con el id del módulo "Implantes" definido en
-// controlMensual/constants.js (MODULOS).
 const MODULO_ACTUAL = 'implantes';
 
 const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = [], onGuardar, onCancelar }, ref) => {
 
-  // ---------------------------------------------------------------------
-  // Período abierto/reabierto del módulo "implantes" (Control Mensual).
-  // Se muestra como referencia mientras se cargan/editan ítems acá, para
-  // que quede claro a qué período quedarían asociados. Solo debería haber
-  // uno activo a la vez (ControlMensual cierra los demás al abrir uno
-  // nuevo); por seguridad, si hubiera más de uno, se toma el más reciente.
-  // ---------------------------------------------------------------------
-  const [periodoActivo, setPeriodoActivo] = useState(null); // { anio, mes } | null
+  const [periodoActivo, setPeriodoActivo] = useState(null); 
   const [cargandoPeriodo, setCargandoPeriodo] = useState(true);
 
   useEffect(() => {
@@ -106,7 +97,7 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       costo: reg.costo ?? reg.monto ?? 0,
       cotizaciones: Array.isArray(reg.cotizaciones) ? reg.cotizaciones : [],
       solicitud: reg.solicitud || 'PENDIENTE',
-      estado: reg.estado || 'AGENDADO' // Estado propio de este bloque (empresa/fecha)
+      estado: reg.estado || 'AGENDADO' 
     }));
 
     return {
@@ -125,13 +116,8 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
   };
 
   const [formData, setFormData] = useState(construirEstadoInicial);
-
-  // "Foto" del estado inicial para detectar cambios sin guardar
   const snapshotInicialRef = useRef(JSON.stringify(construirEstadoInicial()));
 
-  // Ids (+ período) de los ítems que existían al abrir el detalle, index-alineado
-  // con formData.bloques. Se usa en handleSubmit para saber cuáles se eliminaron
-  // localmente y así borrar también su registro en implantes_imputadas.
   const idsItemsOriginalesRef = useRef(
     registrosDeEstaAdmision.map(reg => {
       const items = Array.isArray(reg.cotizaciones) && reg.cotizaciones[0]?.items ? reg.cotizaciones[0].items : [];
@@ -183,9 +169,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       const numLimpio = numCotizacion.trim();
       const nuevoItem = {
         ...itemFields,
-        // Si el llamador ya trajo un id propio (ítem PAD principal, o ítem de
-        // contenido vinculado a un PAD mediante padPadreId), se respeta tal
-        // cual para no romper el vínculo padre-hijo. Si no, se genera acá.
         id: itemFields.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
       };
 
@@ -226,9 +209,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       const bloque = nuevosBloques[bloqueIndex];
       const nuevasCotizaciones = (bloque.cotizaciones || []).map(cot => {
         if (cot.id !== cotizacionId) return cot;
-        // Al eliminar un ítem PAD "padre", se elimina también todo su
-        // contenido asociado (los ítems que tengan padPadreId === itemId),
-        // para no dejar huérfanos sueltos en la tabla.
         return {
           ...cot,
           items: (cot.items || []).filter(it => it.id !== itemId && it.padPadreId !== itemId)
@@ -284,15 +264,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
     });
   };
 
-  // Estado Operativo (ej. INCOMPLETO / PENDIENTE / CARGADO / ...), calculado
-  // POR BLOQUE (no global): cada empresa/fecha de la misma admisión tiene su
-  // propio avance de carga. Si Empresa A ya está CARGADA y Empresa B no
-  // tiene nada cargado, cada una debe reflejar SU propio estado, no el de
-  // toda la admisión junta.
-  // Un PAD ("estadoCarga" = 'PAD') se considera un ítem completo/cargado, al
-  // mismo nivel que 'CARGADO' — por eso se normaliza con esEstadoCargaCompleto
-  // antes de comparar, así un bloque con ítems CARGADO + PAD no cae en
-  // INCOMPLETO solo por tener dos etiquetas de estadoCarga distintas.
   useEffect(() => {
     setFormData(prev => {
       let huboCambios = false;
@@ -328,11 +299,8 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       });
       return huboCambios ? { ...prev, bloques: nuevosBloques } : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.bloques]);
 
-  // Estado de Solicitud (PENDIENTE → SOLICITAR una vez que todos los ítems del
-  // bloque están completos). Igual que arriba, 'PAD' cuenta como completo.
   useEffect(() => {
     setFormData(prev => {
       let huboCambios = false;
@@ -355,7 +323,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
 
       return huboCambios ? { ...prev, bloques: nuevosBloques } : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.bloques]);
 
   const hayCambios = JSON.stringify(formData) !== snapshotInicialRef.current;
@@ -404,7 +371,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
         centro: formData.centro,
         descripcion: formData.descripcion,
         notaLibre: formData.notaLibre
-        // estado ya NO va acá: ahora es por bloque
       },
       registrosActualizados: formData.bloques.map((b, idx) => {
         const idsOriginales = idsItemsOriginalesRef.current[idx] || [];
@@ -420,7 +386,7 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
           costo: b.costo,
           cotizaciones: b.cotizaciones || [],
           solicitud: b.solicitud || 'PENDIENTE',
-          estado: b.estado || 'AGENDADO', // Estado propio del bloque
+          estado: b.estado || 'AGENDADO', 
           itemsEliminados,
           nombre: formData.nombre,
           medico: formData.medico,
@@ -437,9 +403,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
     hayCambiosSinGuardar: () => hayCambios
   }));
 
-  // Resumen del estado a nivel de admisión (para mostrar en el panel lateral,
-  // ya que ahora cada bloque tiene su propio estado). Si todos los bloques
-  // comparten el mismo estado, se muestra ese; si no, "INCOMPLETO".
   const estadoResumenAdmision = useMemo(() => {
     if (!formData.bloques || formData.bloques.length === 0) return 'AGENDADO';
     const estadosUnicos = [...new Set(formData.bloques.map(b => b.estado || 'AGENDADO'))];
@@ -449,7 +412,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
   return (
     <div className="flex-grow flex flex-col bg-slate-50/50 dark:bg-gray-900 overflow-hidden text-[10px]">
 
-      {/* Período abierto del módulo Implantes (Control Mensual) */}
       {!cargandoPeriodo && (
         periodoActivo ? (
           <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-100 dark:border-emerald-900/40">
@@ -518,7 +480,6 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
             bloqueActivoIndex={bloqueActivoIndex}
             setBloqueActivoIndex={setBloqueActivoIndex}
             erroresFecha={erroresFecha}
-            estadoActual={estadoResumenAdmision}
           />
         )}
 

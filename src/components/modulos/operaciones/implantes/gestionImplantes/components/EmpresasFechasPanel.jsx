@@ -25,11 +25,8 @@ export const EmpresasFechasPanel = ({
   bloques = [],
   bloqueActivoIndex,
   setBloqueActivoIndex,
-  erroresFecha = {},
-  estadoActual = 'AGENDANDO'
+  erroresFecha = {}
 }) => {
-  const estilo = getEstadoStyle(estadoActual);
-
   return (
     <div className="w-56 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col overflow-y-auto">
       <div className="p-2 border-b border-slate-200 dark:border-gray-700 flex items-center gap-1.5 sticky top-0 bg-white dark:bg-gray-800 z-10">
@@ -49,6 +46,7 @@ export const EmpresasFechasPanel = ({
           {bloques.map((bloque, index) => {
             const activo = index === bloqueActivoIndex;
             const conError = erroresFecha[index];
+            const estilo = getEstadoStyle(bloque.estado);
 
             return (
               <button

@@ -1,10 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Copy, History, Pencil, Trash2, Eye, RotateCcw } from 'lucide-react';
 
-// Definición de columnas: key (para el ancho), etiqueta del encabezado,
-// ancho por defecto en px, ancho mínimo permitido y alineación.
-// El orden de este array DEBE coincidir con el orden de <col> en el
-// <colgroup> y con el orden de <th>/<td> en la tabla.
 const COLUMNAS = [
   { key: 'estado', label: '•', ancho: 32, min: 24, align: 'center' },
   { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
@@ -28,12 +24,6 @@ const COLUMNAS = [
 
 const anchosPorDefecto = () => COLUMNAS.reduce((acc, col) => ({ ...acc, [col.key]: col.ancho }), {});
 
-/**
- * Manija de redimensionado: vive dentro del <th>, se arrastra horizontalmente
- * y actualiza SOLO el ancho de su propia columna (onResize(colKey, nuevoAncho)).
- * Las demás columnas no se ven afectadas porque cada una tiene su propia
- * entrada en el estado `anchos` y su propio <col> en el colgroup.
- */
 const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) => {
   const arrastrando = useRef(false);
   const xInicial = useRef(0);
@@ -94,12 +84,6 @@ export const GestionesImplantesTable = ({
 
   const restablecerAnchos = () => setAnchos(anchosPorDefecto());
 
-  // Ancho TOTAL de la tabla = suma exacta de cada columna. Es clave fijarlo
-  // explícitamente: si se deja "width: auto" (o "w-full"), el navegador
-  // estira la tabla para llenar el contenedor y reparte el espacio extra
-  // entre las columnas, pisando el ancho manual que definiste al arrastrar.
-  // Con un ancho fijo, el contenedor hace scroll horizontal en vez de
-  // "inventar" espacio, y cada columna respeta su tamaño exacto.
   const anchoTotalTabla = COLUMNAS.reduce((suma, col) => suma + (anchos[col.key] || col.ancho), 0);
 
   const getStatusIndicator = (item) => {
@@ -152,8 +136,6 @@ export const GestionesImplantesTable = ({
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  // Clases comunes para TODAS las celdas de datos: una sola línea, cortada
-  // con "..." si no entra en el ancho de la columna.
   const celdaBase = 'py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis';
 
   return (
@@ -232,7 +214,9 @@ export const GestionesImplantesTable = ({
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.centro}>{i.centro || 'PABELLON'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.atributo}>{i.atributo || 'IMPLANTES'}</td>
                 <td className={`${celdaBase} font-semibold ${status.textClass}`} title={i.estado}>{i.estado || 'AGENDANDO'}</td>
-                <td className={`${celdaBase} text-emerald-700 dark:text-emerald-400 font-semibold`}>${i.costo ?? 0}</td>
+                <td className={`${celdaBase} text-emerald-700 dark:text-emerald-400 font-semibold`}>
+                  {new Intl.NumberFormat('es-CL').format(i.costo ?? 0)}
+                </td>
                 <td className={celdaBase}>
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase ${solicitudInfo.className}`}>
                     {solicitudInfo.label}

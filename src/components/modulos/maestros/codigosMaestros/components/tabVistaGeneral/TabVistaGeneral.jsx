@@ -3,9 +3,7 @@ import {
   collection,
   query,
   orderBy,
-  limit,
   getDocs,
-  where,
   doc,
   updateDoc,
   addDoc
@@ -15,7 +13,7 @@ import { Search, History, Filter, RefreshCw, Layers, XCircle, Edit3, ChevronLeft
 import { useToast } from '../../../../../../context/ToastContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
-import { useFirestorePagination } from '../../../../../../hooks/useFirestorePagination';
+import { useCollectionCache } from '../../../../../../hooks/useCollectionCache';
 import Spinner from '../../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer } from './TabConCodigoDrawers';
 import ModificarRegistroDrawer from './ModificarRegistroDrawer';
@@ -26,7 +24,7 @@ const PAGE_SIZE = 50;
 const CAMPOS_BUSQUEDA = [
   { value: 'referencia', label: 'Referencia' },
   { value: 'codigo', label: 'Código' },
-  { value: 'empresa', label: 'Empresa' }
+  { value: 'descriptorAuto', label: 'Descripción' }
 ];
 
 const TabVistaGeneral = () => {
@@ -39,8 +37,6 @@ const TabVistaGeneral = () => {
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroSegmento, setFiltroSegmento] = useState('');
   const [filtroClase, setFiltroClase] = useState('');
-
-  const [listaEmpresas, setListaEmpresas] = useState([]);
 
   const [showLogDrawer, setShowLogDrawer] = useState(false);
   const [selectedItemForLog, setSelectedItemForLog] = useState(null);
@@ -56,53 +52,50 @@ const TabVistaGeneral = () => {
 
   const PATH_VISTA = "/maestros/codigos-vista-general";
 
-  useEffect(() => {
-    const cargarEmpresas = async () => {
-      try {
-        const snap = await getDocs(query(collection(db, COL_BASE), limit(100)));
-        const empresasUnicas = [...new Set(snap.docs.map(d => d.data().empresa).filter(Boolean))];
-        setListaEmpresas(empresasUnicas.sort());
-      } catch (error) {
-        console.error("Error al cargar empresas:", error);
+  const { allDocs, loading: cargando, reload } = useCollectionCache(COL_BASE);
+
+  const listaEmpresas = useMemo(
+    () => [...new Set(allDocs.map(d => d.empresa).filter(Boolean))].sort(),
+    [allDocs]
+  );
+
+  const registrosFiltrados = useMemo(() => {
+    const termino = busqueda.trim().toLowerCase();
+    return allDocs.filter(item => {
+      if (filtroEmpresa && item.empresa !== filtroEmpresa) return false;
+      if (filtroTipo && item.tipo !== filtroTipo) return false;
+      if (filtroSegmento && item.segmento !== filtroSegmento) return false;
+      if (filtroClase && item.clase !== filtroClase) return false;
+      if (termino) {
+        const valor = String(item[campoBusqueda] || '').toLowerCase();
+        if (!valor.includes(termino)) return false;
       }
-    };
-    cargarEmpresas();
-  }, []);
+      return true;
+    });
+  }, [allDocs, busqueda, campoBusqueda, filtroEmpresa, filtroTipo, filtroSegmento, filtroClase]);
 
-  const constraints = useMemo(() => {
-    const termino = busqueda.trim().toUpperCase();
-    const filtrosIgualdad = [];
+  const [pageIndex, setPageIndex] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(registrosFiltrados.length / PAGE_SIZE));
 
-    if (filtroEmpresa) filtrosIgualdad.push(where('empresa', '==', filtroEmpresa));
-    if (filtroTipo) filtrosIgualdad.push(where('tipo', '==', filtroTipo));
-    if (filtroSegmento) filtrosIgualdad.push(where('segmento', '==', filtroSegmento));
-    if (filtroClase) filtrosIgualdad.push(where('clase', '==', filtroClase));
-
-    if (termino) {
-      return [
-        ...filtrosIgualdad,
-        where(campoBusqueda, '>=', termino),
-        where(campoBusqueda, '<=', termino + '\uf8ff'),
-        orderBy(campoBusqueda)
-      ];
-    }
-
-    return [
-      ...filtrosIgualdad,
-      orderBy('fechaRegistro', 'desc')
-    ];
+  useEffect(() => {
+    setPageIndex(0);
   }, [busqueda, campoBusqueda, filtroEmpresa, filtroTipo, filtroSegmento, filtroClase]);
 
-  const {
-    docs: registros,
-    loading: cargando,
-    hasNext,
-    hasPrev,
-    pageIndex,
-    goNext,
-    goPrev,
-    reload
-  } = useFirestorePagination({ colName: COL_BASE, constraints, pageSize: PAGE_SIZE });
+  useEffect(() => {
+    if (pageIndex > 0 && pageIndex >= totalPages) {
+      setPageIndex(totalPages - 1);
+    }
+  }, [totalPages, pageIndex]);
+
+  const registros = useMemo(
+    () => registrosFiltrados.slice(pageIndex * PAGE_SIZE, pageIndex * PAGE_SIZE + PAGE_SIZE),
+    [registrosFiltrados, pageIndex]
+  );
+
+  const hasNext = pageIndex < totalPages - 1;
+  const hasPrev = pageIndex > 0;
+  const goNext = () => hasNext && setPageIndex(p => p + 1);
+  const goPrev = () => hasPrev && setPageIndex(p => p - 1);
 
   const handleLimpiarFiltros = () => {
     setBusqueda('');
@@ -194,7 +187,6 @@ const TabVistaGeneral = () => {
         </div>
       )}
 
-      {/* Header */}
       <div className="px-3 py-2.5 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <div className="flex items-center gap-2">
           <Layers size={15} className="text-[#2383C2]" />
@@ -203,7 +195,7 @@ const TabVistaGeneral = () => {
               Vista General Consolidada
             </h2>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Paginado y con búsqueda por consulta directa a la base de datos
+              Filtros combinables y búsqueda instantánea
             </p>
           </div>
         </div>
@@ -218,7 +210,6 @@ const TabVistaGeneral = () => {
         </button>
       </div>
 
-      {/* Barra de Filtros y Búsqueda */}
       <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-2 flex flex-wrap gap-2 items-center justify-between border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -306,11 +297,10 @@ const TabVistaGeneral = () => {
         </div>
 
         <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-          Página <span className="font-bold text-gray-700 dark:text-gray-200">{pageIndex + 1}</span> · {registros.length} registros
+          Página <span className="font-bold text-gray-700 dark:text-gray-200">{pageIndex + 1}</span> de {totalPages} · {registrosFiltrados.length} registros
         </div>
       </div>
 
-      {/* Tabla */}
       <div className="flex-grow overflow-auto relative">
         {cargando && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-gray-900/60">
@@ -382,10 +372,9 @@ const TabVistaGeneral = () => {
         </table>
       </div>
 
-      {/* Paginación */}
       <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
         <span className="text-[10px] text-gray-500 dark:text-gray-400">
-          Página {pageIndex + 1} · {registros.length} registro{registros.length !== 1 ? 's' : ''} en esta página
+          Página {pageIndex + 1} de {totalPages} · {registros.length} registro{registros.length !== 1 ? 's' : ''} en esta página
         </span>
         <div className="flex items-center gap-1.5">
           <button
@@ -407,7 +396,6 @@ const TabVistaGeneral = () => {
         </div>
       </div>
 
-      {/* Drawers y Capas Superpuestas */}
       <DrawersOverlay
         show={showLogDrawer || showModificarDrawer}
         onClick={() => {

@@ -50,7 +50,8 @@ export const EstadoFilterDropdown = ({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 max-h-64 overflow-auto">
+
+        <div className="absolute z-50 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 max-h-64 overflow-auto">
           <button
             onClick={limpiarFiltroEstados}
             className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700"
