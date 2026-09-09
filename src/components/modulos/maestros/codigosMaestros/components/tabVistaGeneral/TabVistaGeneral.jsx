@@ -11,39 +11,42 @@ import {
   addDoc
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
-import { Search, History, Filter, RefreshCw, Layers, XCircle, Edit3 } from 'lucide-react';
+import { Search, History, Filter, RefreshCw, Layers, XCircle, Edit3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import { useFirestorePagination } from '../../../../../../hooks/useFirestorePagination';
 import Spinner from '../../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer } from './TabConCodigoDrawers';
-import ModificarRegistroDrawer from './ModificarRegistroDrawer'; // <-- Importamos el nuevo drawer
+import ModificarRegistroDrawer from './ModificarRegistroDrawer';
 
 const COL_BASE = "maestros_codigos";
-const LIMITE_POR_PAGINA = 50;
+const PAGE_SIZE = 50;
+
+const CAMPOS_BUSQUEDA = [
+  { value: 'referencia', label: 'Referencia' },
+  { value: 'codigo', label: 'Código' },
+  { value: 'empresa', label: 'Empresa' }
+];
 
 const TabVistaGeneral = () => {
-  const [registros, setRegistros] = useState([]);
-  const [cargando, setCargando] = useState(false);
   const [cargandoAccion, setCargandoAccion] = useState(false);
-  
-  // Estados para filtros avanzados de Firestore
+
+  const [campoBusqueda, setCampoBusqueda] = useState('referencia');
   const [busqueda, setBusqueda] = useState('');
+
   const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroSegmento, setFiltroSegmento] = useState('');
   const [filtroClase, setFiltroClase] = useState('');
 
-  // Estado para la lista dinámica de empresas
   const [listaEmpresas, setListaEmpresas] = useState([]);
 
-  // Estado para el drawer de historial / logs
   const [showLogDrawer, setShowLogDrawer] = useState(false);
   const [selectedItemForLog, setSelectedItemForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
-  // Estados para el drawer de Modificar Registro / Precios
   const [showModificarDrawer, setShowModificarDrawer] = useState(false);
   const [itemSeleccionado, setItemSeleccionado] = useState(null);
 
@@ -53,61 +56,53 @@ const TabVistaGeneral = () => {
 
   const PATH_VISTA = "/maestros/codigos-vista-general";
 
-  // Cargar lista única de empresas
-  const cargarEmpresas = async () => {
-    try {
-      const snap = await getDocs(query(collection(db, COL_BASE), limit(100)));
-      const empresasUnicas = [...new Set(snap.docs.map(doc => doc.data().empresa).filter(Boolean))];
-      setListaEmpresas(empresasUnicas.sort());
-    } catch (error) {
-      console.error("Error al cargar empresas:", error);
-    }
-  };
-
   useEffect(() => {
+    const cargarEmpresas = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, COL_BASE), limit(100)));
+        const empresasUnicas = [...new Set(snap.docs.map(d => d.data().empresa).filter(Boolean))];
+        setListaEmpresas(empresasUnicas.sort());
+      } catch (error) {
+        console.error("Error al cargar empresas:", error);
+      }
+    };
     cargarEmpresas();
   }, []);
 
-  // Cargar registros optimizados
-  const cargarRegistrosOptimizados = async () => {
-    setCargando(true);
-    try {
-      let q = collection(db, COL_BASE);
-      let constraints = [orderBy("fechaRegistro", "desc"), limit(LIMITE_POR_PAGINA)];
+  const constraints = useMemo(() => {
+    const termino = busqueda.trim().toUpperCase();
+    const filtrosIgualdad = [];
 
-      if (filtroEmpresa) {
-        constraints.unshift(where("empresa", "==", filtroEmpresa));
-      }
-      if (filtroTipo) {
-        constraints.unshift(where("tipo", "==", filtroTipo));
-      }
-      if (filtroSegmento) {
-        constraints.unshift(where("segmento", "==", filtroSegmento));
-      }
-      if (filtroClase) {
-        constraints.unshift(where("clase", "==", filtroClase));
-      }
+    if (filtroEmpresa) filtrosIgualdad.push(where('empresa', '==', filtroEmpresa));
+    if (filtroTipo) filtrosIgualdad.push(where('tipo', '==', filtroTipo));
+    if (filtroSegmento) filtrosIgualdad.push(where('segmento', '==', filtroSegmento));
+    if (filtroClase) filtrosIgualdad.push(where('clase', '==', filtroClase));
 
-      const consultaFinal = query(q, ...constraints);
-      const snapshot = await getDocs(consultaFinal);
-      
-      const lista = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      setRegistros(lista);
-    } catch (error) {
-      console.error("Error al cargar vista general:", error);
-      showToast("Error al consultar los registros con los filtros seleccionados", "error");
-    } finally {
-      setCargando(false);
+    if (termino) {
+      return [
+        ...filtrosIgualdad,
+        where(campoBusqueda, '>=', termino),
+        where(campoBusqueda, '<=', termino + '\uf8ff'),
+        orderBy(campoBusqueda)
+      ];
     }
-  };
 
-  useEffect(() => {
-    cargarRegistrosOptimizados();
-  }, [filtroEmpresa, filtroTipo, filtroSegmento, filtroClase]);
+    return [
+      ...filtrosIgualdad,
+      orderBy('fechaRegistro', 'desc')
+    ];
+  }, [busqueda, campoBusqueda, filtroEmpresa, filtroTipo, filtroSegmento, filtroClase]);
+
+  const {
+    docs: registros,
+    loading: cargando,
+    hasNext,
+    hasPrev,
+    pageIndex,
+    goNext,
+    goPrev,
+    reload
+  } = useFirestorePagination({ colName: COL_BASE, constraints, pageSize: PAGE_SIZE });
 
   const handleLimpiarFiltros = () => {
     setBusqueda('');
@@ -116,18 +111,6 @@ const TabVistaGeneral = () => {
     setFiltroSegmento('');
     setFiltroClase('');
   };
-
-  const registrosFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return registros;
-    const termino = busqueda.toLowerCase();
-    return registros.filter(item => 
-      (item.codigo && item.codigo.toLowerCase().includes(termino)) ||
-      (item.referencia && item.referencia.toLowerCase().includes(termino)) ||
-      (item.empresa && item.empresa.toLowerCase().includes(termino)) ||
-      (item.descriptorAuto && item.descriptorAuto.toLowerCase().includes(termino)) ||
-      (item.descriptorEmpresa && item.descriptorEmpresa.toLowerCase().includes(termino))
-    );
-  }, [registros, busqueda]);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
@@ -162,29 +145,24 @@ const TabVistaGeneral = () => {
     }
   };
 
-  // Función para abrir el drawer de modificación
   const abrirModificarRegistro = (item) => {
     setItemSeleccionado(item);
     setShowModificarDrawer(true);
   };
 
-  // Función para procesar la actualización del registro y su log en Firestore
   const handleActualizarRegistro = async (idRegistro, datosConLog) => {
     setCargandoAccion(true);
     try {
       const { logAuditoria, ...datosActualizacion } = datosConLog;
-      
-      // Añadir info del usuario que modifica
+
       const datosFinales = {
         ...datosActualizacion,
         modificadoPor: userData?.nombre || userData?.email || 'Sistema'
       };
 
-      // 1. Actualizar el documento principal
       const docRef = doc(db, COL_BASE, idRegistro);
       await updateDoc(docRef, datosFinales);
 
-      // 2. Guardar el log en la subcolección correspondiente
       if (logAuditoria) {
         await addDoc(collection(db, COL_BASE, idRegistro, "logs"), {
           ...logAuditoria,
@@ -194,7 +172,7 @@ const TabVistaGeneral = () => {
 
       showToast("Registro y precios actualizados correctamente", "success");
       setShowModificarDrawer(false);
-      cargarRegistrosOptimizados(); // Refrescar la tabla
+      reload();
     } catch (error) {
       console.error("Error al actualizar el registro:", error);
       showToast("Error al guardar los cambios", "error");
@@ -207,11 +185,11 @@ const TabVistaGeneral = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
-      {cargando && (
+      {cargandoAccion && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-gray-500/20 dark:bg-black/40 backdrop-blur-[2px]">
           <div className="bg-white/90 dark:bg-gray-800/90 p-4 rounded-xl shadow-xl flex flex-col items-center gap-3">
             <Spinner size="md" color="#2383C2" />
-            <h3 className="text-[#2383C2] font-bold text-[13px]">Optimizando lectura...</h3>
+            <h3 className="text-[#2383C2] font-bold text-[13px]">Guardando...</h3>
           </div>
         </div>
       )}
@@ -222,16 +200,16 @@ const TabVistaGeneral = () => {
           <Layers size={15} className="text-[#2383C2]" />
           <div>
             <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100">
-              Vista General Consolidada (Optimizado)
+              Vista General Consolidada
             </h2>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Consulta de registros con bajo consumo de lecturas en base de datos
+              Paginado y con búsqueda por consulta directa a la base de datos
             </p>
           </div>
         </div>
 
         <button
-          onClick={cargarRegistrosOptimizados}
+          onClick={reload}
           className="flex items-center gap-1 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded text-[10px] font-semibold transition cursor-pointer"
           title="Refrescar datos"
         >
@@ -243,13 +221,23 @@ const TabVistaGeneral = () => {
       {/* Barra de Filtros y Búsqueda */}
       <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-2 flex flex-wrap gap-2 items-center justify-between border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={campoBusqueda}
+            onChange={e => setCampoBusqueda(e.target.value)}
+            className="h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded text-[10px] outline-none bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 font-semibold"
+          >
+            {CAMPOS_BUSQUEDA.map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+
           <div className="relative w-48">
             <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={13} />
             <input
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]"
-              placeholder="Filtrar resultados..."
+              placeholder={`Buscar por ${CAMPOS_BUSQUEDA.find(c => c.value === campoBusqueda)?.label.toLowerCase()}...`}
             />
           </div>
 
@@ -318,12 +306,17 @@ const TabVistaGeneral = () => {
         </div>
 
         <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-          Mostrando <span className="font-bold text-gray-700 dark:text-gray-200">{registrosFiltrados.length}</span> registros (Límite: {LIMITE_POR_PAGINA})
+          Página <span className="font-bold text-gray-700 dark:text-gray-200">{pageIndex + 1}</span> · {registros.length} registros
         </div>
       </div>
 
       {/* Tabla */}
-      <div className="flex-grow overflow-auto">
+      <div className="flex-grow overflow-auto relative">
+        {cargando && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-gray-900/60">
+            <Spinner size="md" color="#2383C2" />
+          </div>
+        )}
         <table className="w-full text-left text-[11px] border-collapse">
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
             <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
@@ -342,16 +335,16 @@ const TabVistaGeneral = () => {
             </tr>
           </thead>
           <tbody>
-            {registrosFiltrados.length === 0 ? (
+            {!cargando && registros.length === 0 ? (
               <tr>
                 <td colSpan="12" className="text-center py-12 text-gray-400 text-[11px]">
                   No se encontraron registros con los filtros seleccionados.
                 </td>
               </tr>
             ) : (
-              registrosFiltrados.map((item, index) => (
+              registros.map((item, index) => (
                 <tr key={item.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/45 transition-colors">
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 font-bold text-center">{index + 1}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 font-bold text-center">{pageIndex * PAGE_SIZE + index + 1}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{item.referencia}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.descriptorAuto || 'N/A'}</td>
@@ -387,6 +380,31 @@ const TabVistaGeneral = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Paginación */}
+      <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
+        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+          Página {pageIndex + 1} · {registros.length} registro{registros.length !== 1 ? 's' : ''} en esta página
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={goPrev}
+            disabled={!hasPrev || cargando}
+            className="h-7 w-7 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            title="Página anterior"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          <button
+            onClick={goNext}
+            disabled={!hasNext || cargando}
+            className="h-7 w-7 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            title="Página siguiente"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Drawers y Capas Superpuestas */}

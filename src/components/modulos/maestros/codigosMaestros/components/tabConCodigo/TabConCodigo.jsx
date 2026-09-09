@@ -1,30 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
   doc,
-  query,
+  where,
   orderBy,
   getDocs,
+  query,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
-import { CheckCircle2, Plus, Trash2, Search, Pencil, Save, X, ChevronDown, History, Settings } from 'lucide-react';
+import {
+  CheckCircle2, Plus, Trash2, Search, Pencil, Save, X, ChevronDown,
+  History, Settings, ChevronLeft, ChevronRight
+} from 'lucide-react';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import { useFirestorePagination } from '../../../../../../hooks/useFirestorePagination';
 import Spinner from '../../../../../ui/Spinner';
-import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabConCodigoDrawers'; // Ajusta la ruta si es necesario
-import { useImportExportConCodigo } from './UsoImportExportConCodigo'; // Ajusta la ruta si es necesario
+import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabConCodigoDrawers';
+import { useImportExportConCodigo } from './UsoImportExportConCodigo';
 
 const COL_BASE = "maestros_codigos";
+const PAGE_SIZE = 50;
+
+const CAMPOS_BUSQUEDA = [
+  { value: 'codigo', label: 'Código' },
+  { value: 'referencia', label: 'Referencia' },
+  { value: 'empresa', label: 'Empresa' }
+];
 
 const TabConCodigo = () => {
-  const [registros, setRegistros] = useState([]);
   const [empresasMaestro, setEmpresasMaestro] = useState([]);
   const [formData, setFormData] = useState({
     codigo: '',
@@ -39,14 +49,14 @@ const TabConCodigo = () => {
     cx: '',
     observacion: ''
   });
+
+  const [campoBusqueda, setCampoBusqueda] = useState('referencia');
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [cargando, setCargando] = useState(false);
 
-  // Estado para controlar la visibilidad del desplegable de empresas
   const [mostrarDropdownEmpresa, setMostrarDropdownEmpresa] = useState(false);
 
-  // Estado para el drawer de historial / logs
   const [showLogDrawer, setShowLogDrawer] = useState(false);
   const [selectedItemForLog, setSelectedItemForLog] = useState(null);
   const [logsList, setLogsList] = useState([]);
@@ -57,20 +67,50 @@ const TabConCodigo = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigos-con-codigo"; // Ajusta según tus permisos
+  const PATH_VISTA = "/maestros/codigos-con-codigo";
 
-  // Hook personalizado de importar/exportar (asegúrate de adaptarlo si es necesario)
+  const constraints = useMemo(() => {
+    const termino = busqueda.trim().toUpperCase();
+
+    if (termino) {
+      return [
+        where('tieneCodigo', '==', true),
+        where(campoBusqueda, '>=', termino),
+        where(campoBusqueda, '<=', termino + '\uf8ff'),
+        orderBy(campoBusqueda)
+      ];
+    }
+
+    return [
+      where('tieneCodigo', '==', true),
+      orderBy('fechaRegistro', 'desc')
+    ];
+  }, [busqueda, campoBusqueda]);
+
+  const {
+    docs: registros,
+    loading: cargandoTabla,
+    hasNext,
+    hasPrev,
+    pageIndex,
+    goNext,
+    goPrev,
+    reload
+  } = useFirestorePagination({ colName: COL_BASE, constraints, pageSize: PAGE_SIZE });
+
   const {
     showConfigDrawer,
     setShowConfigDrawer,
     importFile,
     setImportFile,
     importing,
+    progreso,
+    resetProgreso,
     handleAbrirConfiguracion,
     handleExportarDatos,
     handleDescargarPlantilla,
     handleEjecutarImportacion
-  } = useImportExportConCodigo({ registros, userData, showToast, colBase: COL_BASE });
+  } = useImportExportConCodigo({ userData, showToast, colBase: COL_BASE });
 
   const formatearMiles = (valor) => {
     if (valor === null || valor === undefined || valor === '') return '';
@@ -79,25 +119,16 @@ const TabConCodigo = () => {
     return new Intl.NumberFormat('es-ES').format(num);
   };
 
-  // Filtrar solo los registros que SÍ tienen código
   useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const datos = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(item => item.codigo && item.codigo.trim() !== '');
-      setRegistros(datos);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, "maestros_empresas"), orderBy("nombre", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEmpresasMaestro(lista);
-    });
-    return () => unsubscribe();
+    const cargarEmpresas = async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "maestros_empresas"), orderBy("nombre", "asc")));
+        setEmpresasMaestro(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (err) {
+        console.error("Error al cargar empresas:", err);
+      }
+    };
+    cargarEmpresas();
   }, []);
 
   const formatearFecha = (fecha) => {
@@ -148,6 +179,7 @@ const TabConCodigo = () => {
         const dataAEnviar = {
           ...dataUpper,
           precioNeto: precioLimpio,
+          tieneCodigo: true,
           fechaRegistro: registroExistente?.fechaRegistro || new Date(),
           registradoPor: registroExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
@@ -176,6 +208,7 @@ const TabConCodigo = () => {
         const dataAEnviar = {
           ...dataUpper,
           precioNeto: precioLimpio,
+          tieneCodigo: true,
           fechaRegistro: serverTimestamp(),
           registradoPor: userData?.nombreCompleto || 'Usuario'
         };
@@ -191,19 +224,11 @@ const TabConCodigo = () => {
       }
 
       setFormData({
-        codigo: '',
-        referencia: '',
-        descriptorEmpresa: '',
-        empresa: '',
-        tipo: '',
-        segmento: '',
-        clase: '',
-        descriptorAuto: '',
-        precioNeto: '',
-        cx: '',
-        observacion: ''
+        codigo: '', referencia: '', descriptorEmpresa: '', empresa: '', tipo: '',
+        segmento: '', clase: '', descriptorAuto: '', precioNeto: '', cx: '', observacion: ''
       });
       setEditingId(null);
+      reload(); 
     } catch (error) {
       showToast("Error al guardar: " + error.message, "error");
     } finally {
@@ -227,6 +252,7 @@ const TabConCodigo = () => {
 
           await deleteDoc(doc(db, COL_BASE, id));
           showToast("Registro eliminado correctamente", "info");
+          reload();
         } catch (error) {
           showToast("Error al eliminar", "error");
         }
@@ -275,29 +301,13 @@ const TabConCodigo = () => {
   const cancelarEdicion = () => {
     setEditingId(null);
     setFormData({
-      codigo: '',
-      referencia: '',
-      descriptorEmpresa: '',
-      empresa: '',
-      tipo: '',
-      segmento: '',
-      clase: '',
-      descriptorAuto: '',
-      precioNeto: '',
-      cx: '',
-      observacion: ''
+      codigo: '', referencia: '', descriptorEmpresa: '', empresa: '', tipo: '',
+      segmento: '', clase: '', descriptorAuto: '', precioNeto: '', cx: '', observacion: ''
     });
   };
 
   const empresasFiltradasLista = empresasMaestro.filter(emp =>
     emp.nombre.toLowerCase().includes((formData.empresa || '').toLowerCase())
-  );
-
-  const registrosFiltrados = registros.filter(item =>
-    (item.codigo && item.codigo.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (item.referencia && item.referencia.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (item.empresa && item.empresa.toLowerCase().includes(busqueda.toLowerCase())) ||
-    (item.descriptorAuto && item.descriptorAuto.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
   return (
@@ -347,7 +357,6 @@ const TabConCodigo = () => {
             <input value={formData.descriptorEmpresa} onChange={e => setFormData({ ...formData, descriptorEmpresa: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Descriptor empresa" />
           </div>
 
-          {/* Campo Empresa Autocompletable / Buscador */}
           <div className="w-[150px] relative">
             <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Empresa</label>
             <div className="relative flex items-center">
@@ -418,7 +427,6 @@ const TabConCodigo = () => {
             </select>
           </div>
 
-          {/* Descriptor Manual */}
           <div className="w-[160px]">
             <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Maestro</label>
             <input value={formData.descriptorAuto} onChange={e => setFormData({ ...formData, descriptorAuto: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Descriptor manual" />
@@ -462,19 +470,45 @@ const TabConCodigo = () => {
         </form>
       )}
 
-      {/* Barra de Búsqueda */}
+      {/* Barra de Búsqueda: ahora con selector de campo + query real a Firestore */}
       {hasPermission(PATH_VISTA, "barra_busqueda") && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex justify-between items-center border-b border-gray-200 dark:border-gray-700">
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />
-            <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]" placeholder="Buscar por código, referencia o empresa..." />
+        <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex justify-between items-center border-b border-gray-200 dark:border-gray-700 gap-2">
+          <div className="flex items-center gap-1.5">
+            <select
+              value={campoBusqueda}
+              onChange={e => setCampoBusqueda(e.target.value)}
+              className="h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded text-[10px] outline-none bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 font-semibold"
+            >
+              {CAMPOS_BUSQUEDA.map(c => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+
+            <div className="relative w-56">
+              <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />
+              <input
+                value={busqueda}
+                onChange={e => setBusqueda(e.target.value)}
+                className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]"
+                placeholder={`Buscar por ${CAMPOS_BUSQUEDA.find(c => c.value === campoBusqueda)?.label.toLowerCase()}...`}
+              />
+            </div>
           </div>
+
+          <span className="text-[9px] text-gray-400 dark:text-gray-500 italic">
+            Búsqueda por coincidencia al inicio (ej: "IMP" encuentra "IMPLANTE...")
+          </span>
         </div>
       )}
 
       {/* Tabla */}
       {hasPermission(PATH_VISTA, "tabla_datos") && (
-        <div className="flex-grow overflow-auto">
+        <div className="flex-grow overflow-auto relative">
+          {cargandoTabla && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-gray-900/60">
+              <Spinner size="md" color="#2383C2" />
+            </div>
+          )}
           <table className="w-full text-left text-[11px] border-collapse">
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
@@ -495,9 +529,9 @@ const TabConCodigo = () => {
               </tr>
             </thead>
             <tbody>
-              {registrosFiltrados.map((item, index) => (
+              {registros.map((item, index) => (
                 <tr key={item.id} className="border-l-2 border-transparent hover:border-emerald-600 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{pageIndex * PAGE_SIZE + index + 1}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400">{item.codigo}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{item.referencia}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.descriptorEmpresa}</td>
@@ -533,8 +567,43 @@ const TabConCodigo = () => {
                   </td>
                 </tr>
               ))}
+
+              {!cargandoTabla && registros.length === 0 && (
+                <tr>
+                  <td colSpan={14} className="py-8 text-center text-gray-400 dark:text-gray-500 text-[11px]">
+                    No hay registros que coincidan con la búsqueda.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Paginación */}
+      {hasPermission(PATH_VISTA, "tabla_datos") && (
+        <div className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 flex items-center justify-between">
+          <span className="text-[10px] text-gray-500 dark:text-gray-400">
+            Página {pageIndex + 1} · {registros.length} registro{registros.length !== 1 ? 's' : ''} en esta página
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={goPrev}
+              disabled={!hasPrev || cargandoTabla}
+              className="h-7 w-7 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Página anterior"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <button
+              onClick={goNext}
+              disabled={!hasNext || cargandoTabla}
+              className="h-7 w-7 flex items-center justify-center rounded border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Página siguiente"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -558,13 +627,15 @@ const TabConCodigo = () => {
       <ConfigDrawer
         show={showConfigDrawer}
         onClose={() => setShowConfigDrawer(false)}
-        totalRegistros={registros.length}
+        totalPendientes={registros.length}
         onExportar={handleExportarDatos}
         onDescargarPlantilla={handleDescargarPlantilla}
         importFile={importFile}
         onSelectFile={setImportFile}
         importing={importing}
-        onEjecutarImportacion={handleEjecutarImportacion}
+        progreso={progreso}
+        resetProgreso={resetProgreso}
+        onEjecutarImportacion={() => handleEjecutarImportacion().then(reload)}
       />
     </div>
   );

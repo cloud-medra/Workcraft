@@ -9,7 +9,8 @@ import {
   FileDown,
   Tag,
   DollarSign,
-  Edit3
+  AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 import Spinner from '../../../../../ui/Spinner';
 
@@ -144,7 +145,6 @@ export const LogDrawer = ({
                   </div>
                 )}
 
-                {/* Vista específica para la Actualización de Registro y Precios */}
                 {log.accion === 'ACTUALIZACION_REGISTRO' && (
                   <div className="space-y-1">
                     <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
@@ -217,6 +217,58 @@ export const LogDrawer = ({
   );
 };
 
+const BarraProgreso = ({ progreso }) => {
+  if (!progreso || (!progreso.activo && !progreso.finalizado)) return null;
+
+  const { total, procesadas, invalidas, fallidas, activo, finalizado } = progreso;
+  const porcentaje = total > 0 ? Math.round((procesadas / total) * 100) : 0;
+
+  return (
+    <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2">
+      <div className="flex items-center justify-between text-[11px] font-bold text-gray-700 dark:text-gray-200">
+        <span className="flex items-center gap-1.5">
+          {activo && <Spinner size="sm" color="#2383C2" />}
+          {finalizado && !activo && (
+            fallidas.length > 0
+              ? <AlertTriangle size={14} className="text-amber-600" />
+              : <CheckCircle2 size={14} className="text-emerald-600" />
+          )}
+          {activo ? 'Importando...' : 'Importación finalizada'}
+        </span>
+        <span className="text-gray-500 dark:text-gray-400 font-mono">
+          {procesadas} / {total}
+        </span>
+      </div>
+
+      <div className="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
+        <div
+          className="h-full bg-[#2383C2] transition-all duration-200"
+          style={{ width: `${porcentaje}%` }}
+        />
+      </div>
+
+      {(invalidas.length > 0 || fallidas.length > 0) && (
+        <div className="text-[9px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded p-1.5 space-y-0.5 max-h-24 overflow-y-auto">
+          {invalidas.length > 0 && (
+            <p className="font-bold">
+              {invalidas.length} fila(s) omitidas (falta código, referencia o empresa): filas{' '}
+              {invalidas.slice(0, 15).map((i) => i.fila).join(', ')}
+              {invalidas.length > 15 ? '…' : ''}
+            </p>
+          )}
+          {fallidas.length > 0 && (
+            <p className="font-bold text-red-600 dark:text-red-400">
+              {fallidas.length} fila(s) fallaron al guardar: filas{' '}
+              {fallidas.slice(0, 15).map((f) => f.fila).join(', ')}
+              {fallidas.length > 15 ? '…' : ''}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ConfigDrawer = ({
   show,
   onClose,
@@ -226,8 +278,15 @@ export const ConfigDrawer = ({
   importFile,
   onSelectFile,
   importing,
+  progreso,
+  resetProgreso,
   onEjecutarImportacion
 }) => {
+  const handleClose = () => {
+    if (resetProgreso) resetProgreso();
+    onClose();
+  };
+
   return (
     <div
       className={`fixed top-0 right-0 z-50 h-full w-full max-w-sm bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col transform transition-transform duration-300 ease-in-out ${
@@ -247,7 +306,7 @@ export const ConfigDrawer = ({
           </div>
         </div>
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
         >
           <X size={15} />
@@ -262,7 +321,7 @@ export const ConfigDrawer = ({
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
             Descarga la lista actual de registros ({totalPendientes}{' '}
-            registros) en un archivo compatible con Excel (CSV/XLSX).
+            registros) en un archivo compatible con Excel (CSV).
           </p>
           <button
             onClick={onExportar}
@@ -280,7 +339,8 @@ export const ConfigDrawer = ({
           </div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
             Carga masivamente nuevos registros seleccionando un
-            archivo formateado en Excel o CSV.
+            archivo formateado en Excel o CSV. Soporta archivos grandes
+            (miles de filas): se procesan en lotes, con barra de progreso.
           </p>
           <button
             onClick={onDescargarPlantilla}
@@ -296,7 +356,8 @@ export const ConfigDrawer = ({
               type="file"
               accept=".csv, .xlsx, .xls"
               onChange={(e) => onSelectFile(e.target.files[0] || null)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              disabled={importing}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
             />
             <FileSpreadsheet
               size={22}
@@ -305,16 +366,18 @@ export const ConfigDrawer = ({
             <span className="block text-[10px] font-semibold text-gray-600 dark:text-gray-300 truncate">
               {importFile
                 ? importFile.name
-                : 'Haz clic para seleccionar archivo (.xlsx, .csv)'}
+                : 'Haz clic para seleccionar archivo (.csv)'}
             </span>
           </div>
 
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
-            <strong>Formato de columnas requerido:</strong>
+            <strong>Formato de columnas requerido (separadas por punto y coma ";"):</strong>
             <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400 leading-relaxed">
-              REFERENCIA | DESCRIPTOR_EMPRESA | EMPRESA | TIPO | SEGMENTO | CLASE | PRECIO_NETO | CX | OBSERVACION
+              CODIGO;REFERENCIA;DESCRIPTOR_EMPRESA;EMPRESA;TIPO;SEGMENTO;CLASE;DESCRIPTOR_AUTO;PRECIO_NETO;CX;OBSERVACION
             </div>
           </div>
+
+          <BarraProgreso progreso={progreso} />
 
           <button
             onClick={onEjecutarImportacion}
@@ -333,7 +396,7 @@ export const ConfigDrawer = ({
 
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900 shrink-0">
         <button
-          onClick={onClose}
+          onClick={handleClose}
           className="px-3 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded font-bold transition text-[10px]"
         >
           Cerrar

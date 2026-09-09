@@ -1,11 +1,114 @@
 import { useState } from 'react';
-import { collection, addDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, doc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
+
+const DELIM = ';';
+const FILAS_POR_LOTE = 200;
+
+const escapeCSV = (valor) => {
+  const str = String(valor ?? '');
+  if (str.includes(DELIM) || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+};
+
+const parseCSVLine = (line, delim = DELIM) => {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i++; 
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === delim) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+  }
+  result.push(current);
+  return result.map((v) => v.trim());
+};
+
+const parseCSVContent = (text, delim = DELIM) => {
+  const rows = [];
+  let currentRow = '';
+  let inQuotes = false;
+
+  const clean = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+    if (char === '"') inQuotes = !inQuotes;
+
+    if (char === '\n' && !inQuotes) {
+      if (currentRow.trim() !== '') rows.push(currentRow);
+      currentRow = '';
+    } else {
+      currentRow += char;
+    }
+  }
+  if (currentRow.trim() !== '') rows.push(currentRow);
+
+  return rows.map((row) => parseCSVLine(row, delim));
+};
+
+const descargarCSV = (headers, rows, nombreArchivo) => {
+  const contenido =
+    [headers, ...rows]
+      .map((fila) => fila.map(escapeCSV).join(DELIM))
+      .join('\r\n');
+
+  const BOM = '\uFEFF';
+  const blob = new Blob([BOM + contenido], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', nombreArchivo);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+const chunk = (arr, n) => {
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+};
+
+const PROGRESO_INICIAL = {
+  activo: false,
+  total: 0,
+  procesadas: 0,
+  invalidas: [],
+  fallidas: [],
+  finalizado: false
+};
 
 export const useImportExportConCodigo = ({ registros, userData, showToast, colBase }) => {
   const [showConfigDrawer, setShowConfigDrawer] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [progreso, setProgreso] = useState(PROGRESO_INICIAL);
 
   const handleAbrirConfiguracion = () => {
     setShowConfigDrawer(true);
@@ -13,177 +116,207 @@ export const useImportExportConCodigo = ({ registros, userData, showToast, colBa
 
   const handleExportarDatos = () => {
     if (!registros || registros.length === 0) {
-      return showToast("No hay registros para exportar", "warning");
+      return showToast('No hay registros para exportar', 'warning');
     }
 
     try {
       const headers = [
-        "CODIGO",
-        "REFERENCIA",
-        "DESCRIPTOR_EMPRESA",
-        "EMPRESA",
-        "TIPO",
-        "SEGMENTO",
-        "CLASE",
-        "DESCRIPTOR_AUTO",
-        "PRECIO_NETO",
-        "CX",
-        "OBSERVACION",
-        "REGISTRADO_POR"
+        'CODIGO',
+        'REFERENCIA',
+        'DESCRIPTOR_EMPRESA',
+        'EMPRESA',
+        'TIPO',
+        'SEGMENTO',
+        'CLASE',
+        'DESCRIPTOR_AUTO',
+        'PRECIO_NETO',
+        'CX',
+        'OBSERVACION',
+        'REGISTRADO_POR'
       ];
 
-      const rows = registros.map(item => [
-        `"${item.codigo || ''}"`,
-        `"${item.referencia || ''}"`,
-        `"${item.descriptorEmpresa || ''}"`,
-        `"${item.empresa || ''}"`,
-        `"${item.tipo || ''}"`,
-        `"${item.segmento || ''}"`,
-        `"${item.clase || ''}"`,
-        `"${item.descriptorAuto || ''}"`,
+      const rows = registros.map((item) => [
+        item.codigo || '',
+        item.referencia || '',
+        item.descriptorEmpresa || '',
+        item.empresa || '',
+        item.tipo || '',
+        item.segmento || '',
+        item.clase || '',
+        item.descriptorAuto || '',
         item.precioNeto || 0,
-        `"${item.cx || ''}"`,
-        `"${item.observacion || ''}"`,
-        `"${item.registradoPor || ''}"`
+        item.cx || '',
+        item.observacion || '',
+        item.registradoPor || ''
       ]);
 
-      const csvContent = "data:text/csv;charset=utf-8," + 
-        [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      descargarCSV(
+        headers,
+        rows,
+        `registros_con_codigo_${new Date().toISOString().slice(0, 10)}.csv`
+      );
 
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `registros_con_codigo_${new Date().toISOString().slice(0, 10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showToast("Exportación exitosa", "success");
+      showToast('Exportación exitosa', 'success');
     } catch (error) {
-      console.error("Error al exportar:", error);
-      showToast("Error al exportar los datos", "error");
+      console.error('Error al exportar:', error);
+      showToast('Error al exportar los datos', 'error');
     }
   };
 
   const handleDescargarPlantilla = () => {
     try {
       const headers = [
-        "CODIGO",
-        "REFERENCIA",
-        "DESCRIPTOR_EMPRESA",
-        "EMPRESA",
-        "TIPO",
-        "SEGMENTO",
-        "CLASE",
-        "DESCRIPTOR_AUTO",
-        "PRECIO_NETO",
-        "CX",
-        "OBSERVACION"
+        'CODIGO',
+        'REFERENCIA',
+        'DESCRIPTOR_EMPRESA',
+        'EMPRESA',
+        'TIPO',
+        'SEGMENTO',
+        'CLASE',
+        'DESCRIPTOR_AUTO',
+        'PRECIO_NETO',
+        'CX',
+        'OBSERVACION'
       ];
 
       const ejemplo = [
-        "COD001",
-        "REF-EJEMPLO",
-        "DESC EMPRESA",
-        "EMPRESA EJEMPLO S.A.",
-        "COTIZACION",
-        "IMPLANTES",
-        "IMPLANTE",
-        "DESCRIPTOR MANUAL",
-        "50000",
-        "CX1",
-        "NINGUNA"
+        'COD001',
+        'REF-EJEMPLO',
+        'DESC EMPRESA',
+        'EMPRESA EJEMPLO S.A.',
+        'COTIZACION',
+        'IMPLANTES',
+        'IMPLANTE',
+        'DESCRIPTOR MANUAL',
+        '50000',
+        'CX1',
+        'Observación, con coma y punto y coma; de ejemplo'
       ];
 
-      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ejemplo.join(",")].join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", "plantilla_registros_con_codigo.csv");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      descargarCSV(headers, [ejemplo], 'plantilla_registros_con_codigo.csv');
 
-      showToast("Plantilla descargada correctamente", "success");
+      showToast('Plantilla descargada correctamente', 'success');
     } catch (error) {
-      console.error("Error al descargar plantilla:", error);
-      showToast("Error al generar la plantilla", "error");
+      console.error('Error al descargar plantilla:', error);
+      showToast('Error al generar la plantilla', 'error');
     }
   };
 
   const handleEjecutarImportacion = async () => {
     if (!importFile) {
-      return showToast("Por favor selecciona un archivo primero", "warning");
+      return showToast('Por favor selecciona un archivo primero', 'warning');
     }
 
     setImporting(true);
+    setProgreso({ ...PROGRESO_INICIAL, activo: true });
+
     try {
       const text = await importFile.text();
-      const lines = text.split("\n").filter(line => line.trim() !== "");
-      
-      if (lines.length < 2) {
-        return showToast("El archivo está vacío o no tiene el formato correcto", "error");
+      const filas = parseCSVContent(text);
+
+      if (filas.length < 2) {
+        showToast('El archivo está vacío o no tiene el formato correcto', 'error');
+        setProgreso(PROGRESO_INICIAL);
+        return;
       }
 
-      const headers = lines[0].split(",").map(h => h.trim().replace(/"/g, ''));
-      let count = 0;
+      const headers = filas[0].map((h) => h.toLowerCase().replace(/"/g, ''));
+      const dataRows = filas.slice(1);
 
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(",").map(v => v.trim().replace(/^"|"$/g, ''));
-        if (values.length < headers.length) continue;
+      const filasValidas = [];
+      const invalidas = [];
 
+      dataRows.forEach((values, idx) => {
+        const numeroFila = idx + 2; 
         const rowData = {};
         headers.forEach((header, index) => {
-          rowData[header.toLowerCase()] = values[index] || "";
+          rowData[header] = values[index] || '';
         });
 
-        const codigo = rowData["codigo"] || rowData["cod"];
-        const referencia = rowData["referencia"] || rowData["ref"];
-        const empresa = rowData["empresa"];
+        const codigo = rowData['codigo'] || rowData['cod'];
+        const referencia = rowData['referencia'] || rowData['ref'];
+        const empresa = rowData['empresa'];
 
-        if (!codigo || !referencia || !empresa) continue;
+        if (!codigo || !referencia || !empresa) {
+          invalidas.push({ fila: numeroFila, motivo: 'Falta código, referencia o empresa' });
+          return;
+        }
 
-        const dataAEnviar = {
-          codigo: codigo.toUpperCase(),
-          referencia: referencia.toUpperCase(),
-          descriptorEmpresa: (rowData["descriptor_empresa"] || rowData["descriptorempresa"] || "").toUpperCase(),
-          empresa: empresa.toUpperCase(),
-          tipo: (rowData["tipo"] || "").toUpperCase(),
-          segmento: (rowData["segmento"] || "").toUpperCase(),
-          clase: (rowData["clase"] || "").toUpperCase(),
-          descriptorAuto: (rowData["descriptor_auto"] || rowData["descriptorauto"] || "").toUpperCase(),
-          precioNeto: parseFloat(rowData["precio_neto"] || rowData["precioneto"] || 0) || 0,
-          cx: (rowData["cx"] || "").toUpperCase(),
-          observacion: (rowData["observacion"] || "").toUpperCase(),
-          fechaRegistro: serverTimestamp(),
-          registradoPor: userData?.nombreCompleto || 'Usuario Importación'
-        };
+        filasValidas.push({
+          numeroFila,
+          data: {
+            codigo: codigo.toUpperCase(),
+            referencia: referencia.toUpperCase(),
+            descriptorEmpresa: (rowData['descriptor_empresa'] || rowData['descriptorempresa'] || '').toUpperCase(),
+            empresa: empresa.toUpperCase(),
+            tipo: (rowData['tipo'] || '').toUpperCase(),
+            segmento: (rowData['segmento'] || '').toUpperCase(),
+            clase: (rowData['clase'] || '').toUpperCase(),
+            descriptorAuto: (rowData['descriptor_auto'] || rowData['descriptorauto'] || '').toUpperCase(),
+            precioNeto: parseFloat(rowData['precio_neto'] || rowData['precioneto'] || 0) || 0,
+            cx: (rowData['cx'] || '').toUpperCase(),
+            observacion: (rowData['observacion'] || '').toUpperCase(),
+            fechaRegistro: serverTimestamp(),
+            registradoPor: userData?.nombreCompleto || 'Usuario Importación'
+          }
+        });
+      });
 
-        const docRef = await addDoc(collection(db, colBase), dataAEnviar);
+      setProgreso((prev) => ({ ...prev, total: filasValidas.length, invalidas }));
 
-        // Registrar Log de importación masiva
-        await addDoc(collection(db, colBase, docRef.id, "logs"), {
-          accion: 'CREACION_MASIVA',
-          detalles: { ...dataAEnviar, metodoRegistro: 'IMPORTACION' },
-          usuario: userData?.nombreCompleto || 'Usuario Desconocido',
-          usuarioEmail: userData?.email || '',
-          fecha: new Date(),
-          timestamp: serverTimestamp()
+      const lotes = chunk(filasValidas, FILAS_POR_LOTE);
+      const fallidas = [];
+      let procesadas = 0;
+
+      for (const lote of lotes) {
+        const batch = writeBatch(db);
+
+        lote.forEach(({ data }) => {
+          const docRef = doc(collection(db, colBase));
+          batch.set(docRef, data);
+
+          const logRef = doc(collection(db, colBase, docRef.id, 'logs'));
+          batch.set(logRef, {
+            accion: 'CREACION_MASIVA',
+            detalles: { ...data, metodoRegistro: 'IMPORTACION' },
+            usuario: userData?.nombreCompleto || 'Usuario Desconocido',
+            usuarioEmail: userData?.email || '',
+            fecha: new Date(),
+            timestamp: serverTimestamp()
+          });
         });
 
-        count++;
+        try {
+          await batch.commit();
+          procesadas += lote.length;
+        } catch (err) {
+          console.error('Error al escribir lote:', err);
+          lote.forEach(({ numeroFila }) =>
+            fallidas.push({ fila: numeroFila, motivo: err.message })
+          );
+        }
+
+        setProgreso((prev) => ({ ...prev, procesadas, fallidas }));
       }
 
-      showToast(`Se importaron ${count} registros exitosamente`, "success");
+      setProgreso((prev) => ({ ...prev, activo: false, finalizado: true }));
+
+      const resumen = `Se importaron ${procesadas} de ${filasValidas.length} filas válidas` +
+        (invalidas.length ? ` · ${invalidas.length} filas omitidas por datos incompletos` : '') +
+        (fallidas.length ? ` · ${fallidas.length} fallaron al guardar` : '');
+
+      showToast(resumen, fallidas.length || invalidas.length ? 'warning' : 'success');
       setImportFile(null);
-      setShowConfigDrawer(false);
     } catch (error) {
-      console.error("Error en importación masiva:", error);
-      showToast("Error al procesar el archivo: " + error.message, "error");
+      console.error('Error en importación masiva:', error);
+      showToast('Error al procesar el archivo: ' + error.message, 'error');
+      setProgreso(PROGRESO_INICIAL);
     } finally {
       setImporting(false);
     }
   };
+
+  const resetProgreso = () => setProgreso(PROGRESO_INICIAL);
 
   return {
     showConfigDrawer,
@@ -191,6 +324,8 @@ export const useImportExportConCodigo = ({ registros, userData, showToast, colBa
     importFile,
     setImportFile,
     importing,
+    progreso,
+    resetProgreso,
     handleAbrirConfiguracion,
     handleExportarDatos,
     handleDescargarPlantilla,
