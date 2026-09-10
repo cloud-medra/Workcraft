@@ -51,8 +51,6 @@ export const CotizacionCard = ({
   const [edicionEsPad, setEdicionEsPad] = useState(false);
   const [edicionEsContenidoPad, setEdicionEsContenidoPad] = useState(false);
 
-  // Id del ítem PAD "padre" para el cual se está mostrando el formulario de
-  // "agregar contenido" (contenido opcional que se puede completar después).
   const [agregandoContenidoDePadId, setAgregandoContenidoDePadId] = useState(null);
   const [filasNuevoContenido, setFilasNuevoContenido] = useState([]);
 
@@ -62,9 +60,6 @@ export const CotizacionCard = ({
 
   const items = cotizacion.items || [];
 
-  // Orden visual: cada ítem PAD "padre" va seguido inmediatamente de todo su
-  // contenido, para que se vean agrupados aunque en la base de datos sean
-  // ítems planos independientes.
   const itemsOrdenados = useMemo(() => {
     const principales = items.filter(it => !it.padPadreId);
     const contenidosPorPadre = {};
@@ -78,8 +73,6 @@ export const CotizacionCard = ({
       resultado.push(p);
       (contenidosPorPadre[p.id] || []).forEach(c => resultado.push(c));
     });
-    // Salvaguarda: contenido "huérfano" (su padre fue eliminado individualmente)
-    // igual se muestra, al final, para que no desaparezca de la tabla.
     Object.keys(contenidosPorPadre).forEach(padreId => {
       if (!principales.some(p => p.id === padreId)) {
         resultado.push(...contenidosPorPadre[padreId]);
@@ -110,11 +103,10 @@ export const CotizacionCard = ({
       descriptorAuto: it.descriptorAuto || '',
       clase: it.clase || '',
       cantidad: String(it.cantidad ?? ''),
-      lote: it.lote === 'P' ? '' : (it.lote || ''),
+      lote: (it.lote === 'P' || it.lote === 'Sin lote') ? '' : (it.lote || ''),
       vencimiento: it.vencimiento || ''
     });
   };
-
   const cancelarEdicion = () => {
     setEditandoId(null);
     setBorrador(BORRADOR_VACIO);
@@ -142,9 +134,6 @@ export const CotizacionCard = ({
     setBorrador(prev => ({
       ...prev,
       referencia: sug.referencia || prev.referencia,
-      // Si el ítem que se edita es "contenido de un PAD", código y precio
-      // quedan siempre forzados. Todo lo demás (descripción, clase, empresa)
-      // se guarda igual que en un ítem normal, tal como lo trae el autocompletado.
       codigo: edicionEsContenidoPad ? CODIGO_SIN_OC : (sug.codigo || ''),
       precio: edicionEsContenidoPad ? 0 : (sug.precioNeto ?? 0),
       empresaVinculada: sug.empresa || '',
@@ -160,9 +149,6 @@ export const CotizacionCard = ({
     const cantidadNum = Number(borrador.cantidad);
     if (!borrador.referencia.trim() || !borrador.cantidad || isNaN(cantidadNum) || cantidadNum <= 0) return;
 
-    // Caso 1: es un ítem de "contenido" de un PAD → precio, código y estado
-    // quedan siempre forzados. La descripción/clase/empresa SÍ se guardan
-    // (ya no se pierden, ese era el bug reportado).
     if (edicionEsContenidoPad) {
       onEditarItem(editandoId, {
         referencia: borrador.referencia.trim(),
@@ -191,8 +177,6 @@ export const CotizacionCard = ({
       borrador.precio, cantidadNum, recargosActivos
     );
 
-    // Caso 2: es el ítem PAD "padre" → Lote y Vencimiento quedan fijos en "PAD".
-    // Caso 3: ítem normal → se editan libremente.
     onEditarItem(editandoId, {
       referencia: borrador.referencia.trim(),
       codigo: borrador.codigo || '',
@@ -203,8 +187,8 @@ export const CotizacionCard = ({
       descriptorAuto: borrador.descriptorAuto || 'P',
       clase: borrador.clase || 'P',
       cantidad: cantidadNum,
-      lote: edicionEsPad ? VALOR_LOTE_VENCIMIENTO_PAD : (borrador.lote.trim() || 'P'),
-      vencimiento: edicionEsPad ? VALOR_LOTE_VENCIMIENTO_PAD : (borrador.vencimiento || ''),
+      lote: edicionEsPad ? VALOR_LOTE_VENCIMIENTO_PAD : (borrador.lote.trim() || 'Sin lote'),
+      vencimiento: edicionEsPad ? VALOR_LOTE_VENCIMIENTO_PAD : (borrador.vencimiento || 'Sin fecha'),
       sinCodigo: !borrador.codigo,
       vecesCosto,
       recargoEncontrado,
@@ -214,8 +198,6 @@ export const CotizacionCard = ({
     cancelarEdicion();
   };
 
-  // --- Agregar contenido a un PAD ya existente (creado sin contenido, o al
-  // que se le quiere sumar más contenido más adelante) ---
   const abrirFormularioContenido = (padPadreId) => {
     setAgregandoContenidoDePadId(padPadreId);
     setFilasNuevoContenido([crearFilaContenidoPadVacia()]);
@@ -495,13 +477,12 @@ export const CotizacionCard = ({
                     return (
                       <React.Fragment key={it.id}>
                         <tr
-                          className={`transition ${
-                            it.sinCodigo
-                              ? 'bg-red-50/70 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
-                              : esContenidoPad
-                                ? 'bg-fuchsia-50/30 dark:bg-fuchsia-950/10 hover:bg-fuchsia-50/60 dark:hover:bg-fuchsia-950/20'
-                                : 'hover:bg-slate-50/60 dark:hover:bg-gray-700/30'
-                          }`}
+                          className={`transition ${it.sinCodigo
+                            ? 'bg-red-50/70 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
+                            : esContenidoPad
+                              ? 'bg-fuchsia-50/30 dark:bg-fuchsia-950/10 hover:bg-fuchsia-50/60 dark:hover:bg-fuchsia-950/20'
+                              : 'hover:bg-slate-50/60 dark:hover:bg-gray-700/30'
+                            }`}
                         >
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[140px]" title={it.referencia}>
                             <span className="flex items-center gap-1">
@@ -514,13 +495,12 @@ export const CotizacionCard = ({
                               )}
                             </span>
                           </td>
-                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono ${
-                            esContenidoPad
-                              ? 'text-fuchsia-600 dark:text-fuchsia-400 italic'
-                              : it.sinCodigo
-                                ? 'text-red-600 dark:text-red-400 font-bold'
-                                : 'text-emerald-600 dark:text-emerald-400'
-                          }`}>
+                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono ${esContenidoPad
+                            ? 'text-fuchsia-600 dark:text-fuchsia-400 italic'
+                            : it.sinCodigo
+                              ? 'text-red-600 dark:text-red-400 font-bold'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                            }`}>
                             {it.codigo || 'S/C'}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[140px]" title={it.descriptorAuto}>
