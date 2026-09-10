@@ -216,9 +216,6 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     setContenidoPad(prev => prev.filter(f => f.tempId !== tempId));
   };
 
-  // Construye el ítem principal (y el contenido del PAD, si aplica) a partir
-  // de lo que hay cargado en el formulario "Agregar ítem". No toca el estado:
-  // solo arma los objetos, tal como los espera onAgregarItem.
   const construirItemsDesdeFormulario = () => {
     const sinCodigo = !nuevoItem.codigo;
     const { vecesCosto, recargoEncontrado, venta, totalItem } = calcularCamposFinancieros(
@@ -787,6 +784,8 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               key={cot.id}
               cotizacion={cot}
               bloqueEmpresa={bloqueActivo.empresa}
+              gestionId={formData?.gestionId}
+              bloqueFecha={bloqueActivo.fecha}
               recargosActivos={recargosActivos}
               defaultOpen={idx === cotizaciones.length - 1}
               periodoAbierto={periodoAbierto}

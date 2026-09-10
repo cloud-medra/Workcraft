@@ -36,6 +36,8 @@ const BORRADOR_VACIO = {
 export const CotizacionCard = ({
   cotizacion,
   bloqueEmpresa,
+  gestionId,
+  bloqueFecha,
   recargosActivos,
   periodoAbierto,
   onAgregarItem,
@@ -59,6 +61,9 @@ export const CotizacionCard = ({
   } = useAutocompleteReferencia(editandoId ? borrador.referencia : '');
 
   const items = cotizacion.items || [];
+
+  const idMostrado = gestionId || 'P';
+  const fechaMostrada = formatearFechaTabla(bloqueFecha);
 
   const itemsOrdenados = useMemo(() => {
     const principales = items.filter(it => !it.padPadreId);
@@ -295,15 +300,17 @@ export const CotizacionCard = ({
             <table className="w-full text-left text-[10px] border-collapse">
               <thead className="bg-slate-50 dark:bg-gray-900/60">
                 <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
+                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">ID</th>
+                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
+                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
+                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Venta</th>
+                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Desc. Auto</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Clase</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Tipo</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Precio</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Veces Costo</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Venta</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total Ítem</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Lote</th>
                   <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Vencimiento</th>
@@ -314,7 +321,7 @@ export const CotizacionCard = ({
               <tbody>
                 {itemsOrdenados.length === 0 ? (
                   <tr>
-                    <td colSpan={14} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
+                    <td colSpan={16} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
                       Sin ítems en esta cotización
                     </td>
                   </tr>
@@ -331,6 +338,31 @@ export const CotizacionCard = ({
                     if (enEdicion) {
                       return (
                         <tr key={it.id} className={`bg-blue-50/60 dark:bg-blue-950/20 ${esContenidoPad ? 'border-l-2 border-fuchsia-400 dark:border-fuchsia-700' : ''}`}>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px] text-slate-500 dark:text-gray-400">
+                            {idMostrado}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400">
+                            {fechaMostrada}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px]">
+                            {edicionEsContenidoPad ? (
+                              <span className="text-fuchsia-600 dark:text-fuchsia-400 italic">{CODIGO_SIN_OC}</span>
+                            ) : (
+                              borrador.codigo || <span className="text-red-500 font-bold">S/C</span>
+                            )}
+                          </td>
+
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center">
+                            <input
+                              type="number"
+                              value={borrador.cantidad}
+                              onChange={e => setBorrador(prev => ({ ...prev, cantidad: e.target.value }))}
+                              className="w-14 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none text-center"
+                            />
+                          </td>
+
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
+
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRef}>
                             <div className="flex items-center gap-1">
                               {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 text-[10px]">↳</span>}
@@ -373,13 +405,6 @@ export const CotizacionCard = ({
                             )}
                           </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px]">
-                            {edicionEsContenidoPad ? (
-                              <span className="text-fuchsia-600 dark:text-fuchsia-400 italic">{CODIGO_SIN_OC}</span>
-                            ) : (
-                              borrador.codigo || <span className="text-red-500 font-bold">S/C</span>
-                            )}
-                          </td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400 truncate max-w-[120px]" title={borrador.descriptorAuto}>
                             {borrador.descriptorAuto || 'P'}
                           </td>
@@ -393,16 +418,6 @@ export const CotizacionCard = ({
                             )}
                           </td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
-
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center">
-                            <input
-                              type="number"
-                              value={borrador.cantidad}
-                              onChange={e => setBorrador(prev => ({ ...prev, cantidad: e.target.value }))}
-                              className="w-14 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none text-center"
-                            />
-                          </td>
 
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
 
@@ -484,6 +499,26 @@ export const CotizacionCard = ({
                               : 'hover:bg-slate-50/60 dark:hover:bg-gray-700/30'
                             }`}
                         >
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-slate-500 dark:text-gray-400">
+                            {idMostrado}
+                          </td>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                            {fechaMostrada}
+                          </td>
+                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono ${esContenidoPad
+                            ? 'text-fuchsia-600 dark:text-fuchsia-400 italic'
+                            : it.sinCodigo
+                              ? 'text-red-600 dark:text-red-400 font-bold'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                            }`}>
+                            {it.codigo || 'S/C'}
+                          </td>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">
+                            {it.cantidad}
+                          </td>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium">
+                            ${Number(it.venta || 0).toLocaleString('es-CL')}
+                          </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[140px]" title={it.referencia}>
                             <span className="flex items-center gap-1">
                               {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 shrink-0">↳</span>}
@@ -494,14 +529,6 @@ export const CotizacionCard = ({
                                 </span>
                               )}
                             </span>
-                          </td>
-                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono ${esContenidoPad
-                            ? 'text-fuchsia-600 dark:text-fuchsia-400 italic'
-                            : it.sinCodigo
-                              ? 'text-red-600 dark:text-red-400 font-bold'
-                              : 'text-emerald-600 dark:text-emerald-400'
-                            }`}>
-                            {it.codigo || 'S/C'}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[140px]" title={it.descriptorAuto}>
                             {it.descriptorAuto || 'P'}
@@ -523,12 +550,6 @@ export const CotizacionCard = ({
                             ) : (
                               <span className="text-purple-600 dark:text-purple-400 font-semibold" title="No hay rango configurado para este precio">1*</span>
                             )}
-                          </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium">
-                            ${Number(it.venta || 0).toLocaleString('es-CL')}
-                          </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">
-                            {it.cantidad}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
                             ${Number(it.totalItem || 0).toLocaleString('es-CL')}
@@ -611,7 +632,7 @@ export const CotizacionCard = ({
 
                         {mostrandoFormularioContenido && (
                           <tr className="bg-fuchsia-50/40 dark:bg-fuchsia-950/10">
-                            <td colSpan={14} className="p-2.5 border-b border-fuchsia-200 dark:border-fuchsia-900">
+                            <td colSpan={16} className="p-2.5 border-b border-fuchsia-200 dark:border-fuchsia-900">
                               {!periodoAbierto ? (
                                 <div className="flex items-center gap-2 px-2.5 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded text-[10px] text-red-700 dark:text-red-400">
                                   <Lock size={12} className="shrink-0" />
@@ -671,7 +692,7 @@ export const CotizacionCard = ({
               {items.length > 0 && (
                 <tfoot>
                   <tr className="bg-slate-50 dark:bg-gray-900/60 font-bold">
-                    <td colSpan={9} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right">
+                    <td colSpan={11} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right">
                       Suma de ítems:
                     </td>
                     <td className={`px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 ${totalCoincide ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
