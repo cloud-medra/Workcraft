@@ -178,10 +178,17 @@ export const useSolicitudImplantesData = () => {
       async () => {
         setExportando(true);
         try {
-          // 1. Armar filas del Excel (una fila por ítem)
+          // 1. Armar filas del Excel (una fila por ítem) — Hoja 1: detalle completo
           const fechaHoyFormato = formatearFechaExcel(new Date().toISOString().slice(0, 10));
 
           const filas = [];
+          // Hoja 2: resumen simplificado. Se llena en el mismo recorrido que
+          // la hoja 1, para no duplicar lógica ni desalinear los datos.
+          // Incluye también los ítems de "contenido de PAD", ya que estos
+          // viven como ítems planos (con padPadreId) dentro de
+          // bloque.items — no requieren tratamiento especial.
+          const filasResumen = [];
+
           bloquesSeleccionados.forEach(bloque => {
             const fechaRegistroBloque = formatearFechaDeTimestamp(bloque.fechaRegistro);
 
@@ -203,6 +210,20 @@ export const useSolicitudImplantesData = () => {
                 "FECHA INGRESO": fechaHoyFormato,
                 "LOTE": "",
                 "VENCIMIENTO": ""
+              });
+
+              filasResumen.push({
+                "Ingreso": fechaHoyFormato,
+                "Area": bloque.centro,
+                "Previsión": bloque.prevision,
+                "Id": bloque.gestionId,
+                "Cód": "",
+                "Cant": "",
+                "Venta": "",
+                "Médico": bloque.medico,
+                "Fecha": formatearFechaExcel(bloque.fecha),
+                "Descripción": "",
+                "Estado": ""
               });
               return;
             }
@@ -226,12 +247,28 @@ export const useSolicitudImplantesData = () => {
                 "LOTE": it.lote || 'P',
                 "VENCIMIENTO": formatearFechaExcel(it.vencimiento)
               });
+
+              filasResumen.push({
+                "Ingreso": fechaHoyFormato,
+                "Area": bloque.centro,
+                "Previsión": bloque.prevision,
+                "Id": bloque.gestionId,
+                "Cód": it.codigo || 'P',
+                "Cant": it.cantidad || 0,
+                "Venta": it.totalItem || 0,
+                "Médico": bloque.medico,
+                "Fecha": formatearFechaExcel(bloque.fecha),
+                "Descripción": it.descriptorAuto || 'P',
+                "Estado": it.estadoCarga || 'PENDIENTE'
+              });
             });
           });
 
           const worksheet = XLSX.utils.json_to_sheet(filas);
+          const worksheetResumen = XLSX.utils.json_to_sheet(filasResumen);
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, "Solicitud Implantes");
+          XLSX.utils.book_append_sheet(workbook, worksheetResumen, "Resumen");
           const fechaHoy = new Date().toISOString().slice(0, 10);
           XLSX.writeFile(workbook, `solicitud_implantes_${fechaHoy}.xlsx`);
 
