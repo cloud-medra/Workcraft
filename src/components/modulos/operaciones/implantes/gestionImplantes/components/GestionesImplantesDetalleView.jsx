@@ -1,20 +1,30 @@
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { Info, ListFilter, UploadCloud, Unlock, Lock } from 'lucide-react';
+import { Info, ListFilter, UploadCloud, Unlock, Lock, History } from 'lucide-react';
 
-import { db } from '../../../../../../firebaseConfig'; // AJUSTAR según la ubicación real de este archivo
-import { COLECCIONES, MESES } from '../../../../administracion/controlMensual/constants'; // AJUSTAR ruta según ubicación real de ControlMensual
+import { db } from '../../../../../../firebaseConfig';
+import { COLECCIONES, MESES } from '../../../../administracion/controlMensual/constants';
 import { InformacionTab } from './Informaciontab/Informaciontab';
 import { DetallesTab } from './Detallestab/Detallestab';
 import { CargasTab } from './Cargastab/Cargastab';
 import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
+import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
 
 const MODULO_ACTUAL = 'implantes';
 
-const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = [], onGuardar, onCancelar }, ref) => {
+const GestionesImplantesDetalleView = forwardRef(({
+  item,
+  todosLosRegistros = [],
+  onGuardar,
+  onCancelar,
+  logsList = [],
+  loadingLogs = false,
+  cargarLogsDeImplante,
+  formatearFecha
+}, ref) => {
 
-  const [periodoActivo, setPeriodoActivo] = useState(null); 
+  const [periodoActivo, setPeriodoActivo] = useState(null);
   const [cargandoPeriodo, setCargandoPeriodo] = useState(true);
 
   useEffect(() => {
@@ -92,12 +102,13 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
     const bloquesEmpresas = registrosDeEstaAdmision.map((reg, index) => ({
       uniqueKey: reg.id ? `id_${reg.id}` : `registro_${index}_${Date.now()}`,
       idOriginal: reg.id,
+      refPath: reg.refPath || null, 
       empresa: reg.empresa || reg.nombreEmpresa || reg.razonSocial || '',
       fecha: reg.fecha || reg.fechaAgenda || reg.fecha_agenda || '',
       costo: reg.costo ?? reg.monto ?? 0,
       cotizaciones: Array.isArray(reg.cotizaciones) ? reg.cotizaciones : [],
       solicitud: reg.solicitud || 'PENDIENTE',
-      estado: reg.estado || 'AGENDADO' 
+      estado: reg.estado || 'AGENDADO'
     }));
 
     return {
@@ -269,7 +280,7 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
       let huboCambios = false;
       const nuevosBloques = prev.bloques.map(bloque => {
         const items = (bloque.cotizaciones || []).flatMap(cot => cot.items || []);
-        if (items.length === 0) return bloque; // sin ítems, no se toca
+        if (items.length === 0) return bloque;
 
         const hayItemsSinCodigo = items.some(it => it.sinCodigo);
         if (hayItemsSinCodigo) {
@@ -386,7 +397,7 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
           costo: b.costo,
           cotizaciones: b.cotizaciones || [],
           solicitud: b.solicitud || 'PENDIENTE',
-          estado: b.estado || 'AGENDADO', 
+          estado: b.estado || 'AGENDADO',
           itemsEliminados,
           nombre: formData.nombre,
           medico: formData.medico,
@@ -408,6 +419,17 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
     const estadosUnicos = [...new Set(formData.bloques.map(b => b.estado || 'AGENDADO'))];
     return estadosUnicos.length === 1 ? estadosUnicos[0] : 'INCOMPLETO';
   }, [formData.bloques]);
+
+  const refPathBloqueActivo = formData.bloques[bloqueActivoIndex]?.refPath;
+
+  useEffect(() => {
+    if (activeTab !== 'logs' || !refPathBloqueActivo || !cargarLogsDeImplante) return;
+    cargarLogsDeImplante({
+      refPath: refPathBloqueActivo,
+      nombre: formData.nombre,
+      gestionId: formData.gestionId
+    });
+  }, [activeTab, refPathBloqueActivo]);
 
   return (
     <div className="flex-grow flex flex-col bg-slate-50/50 dark:bg-gray-900 overflow-hidden text-[10px]">
@@ -471,10 +493,22 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
               <UploadCloud size={13} />
               <span className="truncate">Cargas</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('logs')}
+              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'logs'
+                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
+                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                }`}
+            >
+              <History size={13} />
+              <span className="truncate">Logs</span>
+            </button>
           </div>
         </div>
 
-        {(activeTab === 'informacion' || activeTab === 'cargas') && (
+        {(activeTab === 'informacion' || activeTab === 'cargas' || activeTab === 'logs') && (
           <EmpresasFechasPanel
             bloques={formData.bloques}
             bloqueActivoIndex={bloqueActivoIndex}
@@ -509,6 +543,22 @@ const GestionesImplantesDetalleView = forwardRef(({ item, todosLosRegistros = []
               onActualizarEstadoItem={handleActualizarEstadoItem}
               onEditarItem={handleEditarItem}
             />
+          )}
+
+          {activeTab === 'logs' && (
+            <div className="flex-grow overflow-y-auto p-3">
+              {refPathBloqueActivo ? (
+                <HistorialLogsContenido
+                  logsList={logsList}
+                  loadingLogs={loadingLogs}
+                  formatearFecha={formatearFecha}
+                />
+              ) : (
+                <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
+                  Este bloque aún no se ha guardado — guarda primero para ver su historial.
+                </div>
+              )}
+            </div>
           )}
 
         </div>

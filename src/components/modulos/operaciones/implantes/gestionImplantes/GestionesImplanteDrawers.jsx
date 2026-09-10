@@ -21,11 +21,6 @@ export const DrawersOverlay = ({ show, onClick }) => {
   );
 };
 
-// Etiqueta legible para cada tipo de acción registrada. Incluye tanto las
-// acciones a nivel de GESTIÓN (todo el registro: paciente/empresa/fecha...)
-// como las acciones a nivel de ÍTEM (referencia + cantidad de una carga
-// puntual), que se agregaron para que el historial diga exactamente qué se
-// registró/editó/eliminó en la pestaña "Cargas", no solo "se editó la gestión".
 const ACCION_LABELS = {
   CREACION: 'Creación de Gestión',
   CREACION_MASIVA: 'Creación por Importación',
@@ -52,8 +47,6 @@ const ACCION_ESTILOS = {
 
 const getAccionEstilo = (accion) => ACCION_ESTILOS[accion] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
 
-// Una línea "antes → después" reutilizable para mostrar diferencias en
-// ediciones (de gestión o de ítem).
 const FilaCambio = ({ etiqueta, anterior, nuevo }) => (
   <li className="flex flex-col gap-0.5">
     <span className="text-gray-400 text-[9px] font-bold">{etiqueta}</span>
@@ -196,6 +189,58 @@ const DetalleLog = ({ log }) => {
   }
 };
 
+export const HistorialLogsContenido = ({ logsList, loadingLogs, formatearFecha }) => {
+  if (loadingLogs) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 gap-2">
+        <Spinner size="sm" color="#2383C2" />
+        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+          Cargando historial...
+        </p>
+      </div>
+    );
+  }
+
+  if (!logsList || logsList.length === 0) {
+    return (
+      <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
+        No hay registros de auditoría para este implante.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {logsList.map((log) => (
+        <div
+          key={log.id}
+          className="p-2.5 border border-gray-200 dark:border-gray-700/80 rounded-md bg-gray-50/60 dark:bg-gray-900/40 text-[10px] space-y-1.5 shadow-sm"
+        >
+          <div className="flex justify-between items-center">
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${getAccionEstilo(log.accion)}`}>
+              {ACCION_LABELS[log.accion] || log.accion}
+            </span>
+            <span className="text-gray-400 text-[9px]">
+              {formatearFecha(log.fecha || log.timestamp)}
+            </span>
+          </div>
+
+          <p className="text-gray-700 dark:text-gray-300 font-medium">
+            Usuario:{' '}
+            <span className="font-normal text-gray-600 dark:text-gray-400">
+              {log.usuario}
+            </span>
+          </p>
+
+          <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700/60 text-[10px]">
+            <DetalleLog log={log} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const LogDrawer = ({
   show,
   onClose,
@@ -235,46 +280,8 @@ export const LogDrawer = ({
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-        {loadingLogs ? (
-          <div className="flex flex-col items-center justify-center h-48 gap-2">
-            <Spinner size="sm" color="#2383C2" />
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Cargando historial...
-            </p>
-          </div>
-        ) : logsList.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 dark:text-gray-500 text-[10px]">
-            No hay registros de auditoría para este implante.
-          </div>
-        ) : (
-          logsList.map((log) => (
-            <div
-              key={log.id}
-              className="p-2.5 border border-gray-200 dark:border-gray-700/80 rounded-md bg-gray-50/60 dark:bg-gray-900/40 text-[10px] space-y-1.5 shadow-sm"
-            >
-              <div className="flex justify-between items-center">
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${getAccionEstilo(log.accion)}`}>
-                  {ACCION_LABELS[log.accion] || log.accion}
-                </span>
-                <span className="text-gray-400 text-[9px]">
-                  {formatearFecha(log.fecha || log.timestamp)}
-                </span>
-              </div>
-
-              <p className="text-gray-700 dark:text-gray-300 font-medium">
-                Usuario:{' '}
-                <span className="font-normal text-gray-600 dark:text-gray-400">
-                  {log.usuario}
-                </span>
-              </p>
-
-              <div className="text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 p-2 rounded border border-gray-100 dark:border-gray-700/60 text-[10px]">
-                <DetalleLog log={log} />
-              </div>
-            </div>
-          ))
-        )}
+      <div className="flex-1 overflow-y-auto p-3">
+        <HistorialLogsContenido logsList={logsList} loadingLogs={loadingLogs} formatearFecha={formatearFecha} />
       </div>
 
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900 shrink-0 text-[10px] text-gray-500">

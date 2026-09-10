@@ -116,6 +116,17 @@ const GestionesImplantesForm = ({
             </select>
           </div>
 
+          <div className="w-[220px]">
+            <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Observación</label>
+            <input
+              type="text"
+              value={formData.observacion || ''}
+              onChange={e => setFormData({ ...formData, observacion: e.target.value })}
+              className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+              placeholder="Observación libre..."
+            />
+          </div>
+
           <button
             type="submit"
             className={`h-7 px-3 rounded font-bold text-[11px] flex items-center gap-1.5 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} text-white transition shrink-0`}

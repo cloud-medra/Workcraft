@@ -20,12 +20,21 @@ import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { exportarGestionesAExcel, descargarPlantillaCSV, parsearArchivoImportacion } from '../utils/gestionesImportExport';
 
-export const INITIAL_FORM_STATE = {
+const getFechaActualISO = () => {
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+export const getInitialFormState = () => ({
   gestionId: '',
   nombre: '',
-  fecha: '',
+  fecha: getFechaActualISO(),
   empresa: '',
   informe: 'PENDIENTE',
+  observacion: '',
   convenio: 'P',
   prevision: 'P',
   medico: 'P',
@@ -35,7 +44,7 @@ export const INITIAL_FORM_STATE = {
   estado: 'AGENDANDO',
   costo: 0,
   active: true
-};
+});
 
 const getDetallesRef = (fechaString, admisionId, empresaNombre) => {
   let year = "0000";
@@ -75,9 +84,6 @@ const getDetallesRef = (fechaString, admisionId, empresaNombre) => {
   );
 };
 
-// Descompone "YYYY-MM-DD" en sus 3 partes; se usan para guardar año/mes/día
-// como CAMPOS en implantes_imputadas (no como parte de la ruta, que sigue
-// siendo por período contable — periodoAnio/periodoMes del ítem).
 const descomponerFecha = (fechaString) => {
   if (fechaString && fechaString.includes('-')) {
     const [anio, mes, dia] = fechaString.split('-');
@@ -88,7 +94,7 @@ const descomponerFecha = (fechaString) => {
 
 export const useGestionesImplantesData = () => {
   const [implantes, setImplantes] = useState([]);
-  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
+  const [formData, setFormData] = useState(getInitialFormState);
 
   const [editingId, setEditingId] = useState(null);
   const [editingRefPath, setEditingRefPath] = useState(null);
@@ -333,6 +339,7 @@ export const useGestionesImplantesData = () => {
         fecha: formData.fecha || 'P',
         empresa: formData.empresa?.trim() || 'P',
         informe: formData.informe || 'PENDIENTE',
+        observacion: formData.observacion?.trim() || '',
         convenio: formData.convenio === 'Cargando...' ? 'P' : (formData.convenio || 'P'),
         prevision: formData.prevision === 'Cargando...' ? 'P' : (formData.prevision || 'P'),
         medico: formData.medico === 'Cargando...' ? 'P' : (formData.medico || 'P'),
@@ -345,7 +352,9 @@ export const useGestionesImplantesData = () => {
         active: true
       };
 
-      const existeDuplicado = implantes.some(item =>
+      const idEsReal = gestionIdLimpio !== '' && gestionIdLimpio !== 'P';
+
+      const existeDuplicado = idEsReal && implantes.some(item =>
         (item.gestionId === dataNormalizada.gestionId || item.agendaId === dataNormalizada.agendaId) &&
         item.fecha === dataNormalizada.fecha &&
         item.empresa === dataNormalizada.empresa &&
@@ -414,7 +423,7 @@ export const useGestionesImplantesData = () => {
       const admisionValor = (gestionIdLimpio !== '' && gestionIdLimpio !== 'P') ? gestionIdLimpio : 'SIN_ADMISION';
 
       const batch = writeBatch(db);
-      const logsAAgregar = []; // { docRef, accion, detalles }
+      const logsAAgregar = []; 
 
       for (const registro of registrosActualizados) {
         const dataNormalizada = {
@@ -431,7 +440,7 @@ export const useGestionesImplantesData = () => {
           descripcion: paciente.descripcion || 'P',
           centro: paciente.centro || 'PABELLON',
           atributo: paciente.atributo || 'IMPLANTES',
-          estado: registro.estado || 'AGENDADO', // CAMBIO: antes era paciente.estado (global)
+          estado: registro.estado || 'AGENDADO', 
           costo: Number(registro.costo) || 0,
           cotizaciones: registro.cotizaciones || [],
           solicitud: registro.solicitud || 'PENDIENTE',
@@ -446,11 +455,6 @@ export const useGestionesImplantesData = () => {
           ((original.gestionId || original.agendaId) || '') !== dataNormalizada.gestionId
         );
 
-        // docRefFinal: referencia del documento donde vive este bloque DESPUÉS
-        // de guardar (ya sea el mismo doc actualizado, o el nuevo doc si cambió
-        // de ruta). Se reutiliza tanto para el log de la gestión como para los
-        // logs de ítem que se agregan más abajo, así todos quedan agrupados
-        // bajo el mismo registro en "Ver Historial / Logs".
         let docRefFinal;
 
         if (original && !rutaCambio) {
@@ -480,11 +484,6 @@ export const useGestionesImplantesData = () => {
           }
         }
 
-        // --- Logs a nivel de ÍTEM (referencia + cantidad) ---
-        // Compara los ítems que ya existían en `original` (foto de Firestore
-        // antes de este guardado) contra los ítems actuales del bloque, para
-        // registrar en el historial exactamente qué referencia se agregó,
-        // se modificó o se quitó — no solo "se editó la gestión".
         const itemsAntes = original?.cotizaciones?.[0]?.items || [];
         const itemsDespues = registro.cotizaciones?.[0]?.items || [];
         const mapaAntes = new Map(itemsAntes.map(it => [it.id, it]));
@@ -540,17 +539,6 @@ export const useGestionesImplantesData = () => {
           }
         });
 
-        // --- Sincronización con Control Mensual (implantes_imputadas) ---
-        // IMPORTANTE: solo se copia a implantes_imputadas cuando el bloque ya
-        // quedó marcado como SOLICITADO (esto lo hará la futura función de
-        // descarga a Excel). Mientras el bloque esté en PENDIENTE o SOLICITAR,
-        // NO se escribe nada en imputadas, porque los ítems aún pueden seguir
-        // editándose. Si ya no está SOLICITADO, se omite por completo esta parte.
-        //
-        // Se copian TODOS los campos (de la gestión + del ítem), manteniendo la
-        // ruta por período contable (periodoAnio/periodoMes) — ese período NO
-        // necesariamente coincide con año/mes/día de "fecha" (la fecha real de
-        // la cirugía), así que ambos se guardan como campos separados.
         const bloqueEstaSolicitado = (registro.solicitud || '').toUpperCase() === 'SOLICITADO';
 
         if (bloqueEstaSolicitado) {
@@ -558,7 +546,7 @@ export const useGestionesImplantesData = () => {
           const { anio, mes, dia } = descomponerFecha(dataNormalizada.fecha);
 
           itemsActuales.forEach(it => {
-            if (!it.periodoAnio || !it.periodoMes) return; // ítem sin período (no debería pasar, salvaguarda)
+            if (!it.periodoAnio || !it.periodoMes) return; 
 
             const imputadaRef = doc(
               db,
@@ -568,7 +556,6 @@ export const useGestionesImplantesData = () => {
             );
 
             batch.set(imputadaRef, {
-              // --- Datos de la gestión (bloque) ---
               gestionId: dataNormalizada.gestionId,
               agendaId: dataNormalizada.agendaId,
               admision: dataNormalizada.admision,
@@ -588,7 +575,6 @@ export const useGestionesImplantesData = () => {
               estado: dataNormalizada.estado,
               costoGestion: dataNormalizada.costo,
 
-              // --- Datos de la cotización / ítem ---
               numCotizacion: it.numCotizacion || 'P',
               totalCotizacion: Number(it.totalCotizacion) || 0,
               itemId: it.id,
@@ -614,16 +600,12 @@ export const useGestionesImplantesData = () => {
               esPad: !!it.esPad,
               padPadreId: it.padPadreId || null,
 
-              // --- Metadatos ---
               registradoPor: userData?.nombreCompleto || 'Usuario',
               actualizadoEn: new Date()
             }, { merge: true });
           });
         }
 
-        // Ítems que existían antes y se eliminaron localmente: si el bloque llegó
-        // a estar SOLICITADO en algún momento, se borra su documento de
-        // implantes_imputadas para que no quede "fantasma" sumando.
         (registro.itemsEliminados || []).forEach(itEliminado => {
           if (!itEliminado.periodoAnio || !itEliminado.periodoMes) return;
 
@@ -688,6 +670,7 @@ export const useGestionesImplantesData = () => {
       fecha: i.fecha || '',
       empresa: i.empresa || '',
       informe: i.informe || 'PENDIENTE',
+      observacion: i.observacion || '',
       convenio: i.convenio || 'P',
       prevision: i.prevision || 'P',
       medico: i.medico || 'P',
@@ -703,12 +686,12 @@ export const useGestionesImplantesData = () => {
   const cancelarEdicion = () => {
     setEditingId(null);
     setEditingRefPath(null);
-    setFormData(INITIAL_FORM_STATE);
+    setFormData(getInitialFormState());
   };
 
-  const abrirHistorialLogs = async (implante) => {
+  const cargarLogsDeImplante = async (implante) => {
+    if (!implante || !implante.refPath) return;
     setSelectedImplanteForLog(implante);
-    setShowLogDrawer(true);
     setLoadingLogs(true);
 
     try {
@@ -723,6 +706,11 @@ export const useGestionesImplantesData = () => {
     } finally {
       setLoadingLogs(false);
     }
+  };
+
+  const abrirHistorialLogs = async (implante) => {
+    setShowLogDrawer(true);
+    await cargarLogsDeImplante(implante);
   };
 
   const handleEjecutarImportacion = async () => {
@@ -822,6 +810,7 @@ export const useGestionesImplantesData = () => {
     iniciarEdicion,
     cancelarEdicion,
     abrirHistorialLogs,
+    cargarLogsDeImplante,
     handleExportarDatos: () => exportarGestionesAExcel(implantes, showToast),
     handleDescargarPlantilla: () => descargarPlantillaCSV(showToast),
     handleEjecutarImportacion

@@ -23,6 +23,7 @@ const COLUMNAS = [
 ];
 
 const anchosPorDefecto = () => COLUMNAS.reduce((acc, col) => ({ ...acc, [col.key]: col.ancho }), {});
+const STICKY_KEYS = new Set(['estado', 'numero', 'id', 'nombre', 'fecha', 'empresa']);
 
 const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) => {
   const arrastrando = useRef(false);
@@ -85,6 +86,29 @@ export const GestionesImplantesTable = ({
   const restablecerAnchos = () => setAnchos(anchosPorDefecto());
 
   const anchoTotalTabla = COLUMNAS.reduce((suma, col) => suma + (anchos[col.key] || col.ancho), 0);
+
+  const stickyOffsets = {};
+  {
+    let acumulado = 0;
+    COLUMNAS.forEach(col => {
+      if (STICKY_KEYS.has(col.key)) {
+        stickyOffsets[col.key] = acumulado;
+        acumulado += (anchos[col.key] ?? col.ancho);
+      }
+    });
+  }
+
+  const getStickyStyle = (colKey) => {
+    if (!STICKY_KEYS.has(colKey)) return undefined;
+    return { position: 'sticky', left: stickyOffsets[colKey] };
+  };
+
+  const getStickyClass = (colKey, forHeader = false) => {
+    if (!STICKY_KEYS.has(colKey)) return '';
+    const clases = [forHeader ? 'z-20 bg-gray-100 dark:bg-gray-900' : 'z-[5] bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/40'];
+    if (colKey === 'empresa') clases.push('shadow-[4px_0_6px_-4px_rgba(0,0,0,0.35)]');
+    return clases.join(' ');
+  };
 
   const getStatusIndicator = (item) => {
     const idItem = item.gestionId || item.agendaId;
@@ -166,8 +190,9 @@ export const GestionesImplantesTable = ({
             {COLUMNAS.map(col => (
               <th
                 key={col.key}
+                style={getStickyStyle(col.key)}
                 className={`relative py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 overflow-hidden ${col.align === 'center' ? 'text-center' : ''
-                  }`}
+                  } ${getStickyClass(col.key, true)}`}
                 title={col.label}
               >
                 <span className="block truncate">{col.label}</span>
@@ -191,16 +216,16 @@ export const GestionesImplantesTable = ({
               <tr
                 key={i.id}
                 onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(i)}
-                className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer"
+                className="group border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer"
                 title="Haz doble clic para abrir vista de modificación detallada"
               >
-                <td className={`${celdaBase} text-center`}>
+                <td style={getStickyStyle('estado')} className={`${celdaBase} text-center ${getStickyClass('estado')}`}>
                   <div className="flex items-center justify-center">
                     <span className={`h-2.5 w-2.5 rounded-full inline-block shrink-0 ${status.colorClass}`} title={status.label} />
                   </div>
                 </td>
-                <td className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center`}>{index + 1}</td>
-                <td className={`${celdaBase} font-semibold text-[#2383C2]`} title={idMostrado}>
+                <td style={getStickyStyle('numero')} className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center ${getStickyClass('numero')}`}>{index + 1}</td>
+                <td style={getStickyStyle('id')} className={`${celdaBase} font-semibold text-[#2383C2] ${getStickyClass('id')}`} title={idMostrado}>
                   <div className="flex items-center gap-1">
                     <span className="truncate">{idMostrado}</span>
                     <button onClick={(e) => { e.stopPropagation(); handleCopiarTexto(idMostrado); }} title="Copiar ID" className="p-0.5 rounded text-gray-400 hover:text-emerald-600 transition shrink-0">
@@ -208,9 +233,9 @@ export const GestionesImplantesTable = ({
                     </button>
                   </div>
                 </td>
-                <td className={`${celdaBase} text-gray-700 dark:text-gray-200 font-medium`} title={i.nombre}>{i.nombre}</td>
-                <td className={`${celdaBase} text-gray-600 dark:text-gray-300`}>{formatearFechaTabla(i.fecha)}</td>
-                <td className={`${celdaBase} text-gray-600 dark:text-gray-300`} title={i.empresa}>{i.empresa || '-'}</td>
+                <td style={getStickyStyle('nombre')} className={`${celdaBase} text-gray-700 dark:text-gray-200 font-medium ${getStickyClass('nombre')}`} title={i.nombre}>{i.nombre}</td>
+                <td style={getStickyStyle('fecha')} className={`${celdaBase} text-gray-600 dark:text-gray-300 ${getStickyClass('fecha')}`}>{formatearFechaTabla(i.fecha)}</td>
+                <td style={getStickyStyle('empresa')} className={`${celdaBase} text-gray-600 dark:text-gray-300 ${getStickyClass('empresa')}`} title={i.empresa}>{i.empresa || '-'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.centro}>{i.centro || 'PABELLON'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.atributo}>{i.atributo || 'IMPLANTES'}</td>
                 <td className={`${celdaBase} font-semibold ${status.textClass}`} title={i.estado}>{i.estado || 'AGENDANDO'}</td>

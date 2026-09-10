@@ -61,6 +61,7 @@ const GestionesImplantes = () => {
     iniciarEdicion,
     cancelarEdicion,
     abrirHistorialLogs,
+    cargarLogsDeImplante,
     handleExportarDatos,
     handleDescargarPlantilla,
     handleEjecutarImportacion
@@ -206,6 +207,10 @@ const GestionesImplantes = () => {
           todosLosRegistros={implantes}
           onGuardar={handleGuardarDetalle}
           onCancelar={handleIntentarVolver}
+          logsList={logsList}
+          loadingLogs={loadingLogs}
+          cargarLogsDeImplante={cargarLogsDeImplante}
+          formatearFecha={formatearFecha}
         />
       ) : (
         <>
