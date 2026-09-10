@@ -64,10 +64,10 @@ export const DetallesTab = ({ formData }) => {
               <span className="text-slate-700 dark:text-gray-200">{formData.descripcion}</span>
             </div>
           )}
-          {formData?.notaLibre && formData.notaLibre !== 'P' && (
+          {formData?.observacion && formData.observacion !== 'P' && (
             <div className="flex flex-col gap-0.5 col-span-2 md:col-span-3 lg:col-span-4">
-              <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Nota Libre</span>
-              <span className="text-slate-700 dark:text-gray-200">{formData.notaLibre}</span>
+              <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Observación / Nota Libre</span>
+              <span className="text-slate-700 dark:text-gray-200">{formData.observacion}</span>
             </div>
           )}
         </div>

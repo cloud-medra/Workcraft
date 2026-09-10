@@ -20,6 +20,7 @@ const COLUMNAS = [
   { key: 'prevision', label: 'Previsión', ancho: 110, min: 60 },
   { key: 'medico', label: 'Médico', ancho: 130, min: 60 },
   { key: 'descripcion', label: 'Descripción', ancho: 170, min: 80 },
+  { key: 'observacion', label: 'Observación', ancho: 170, min: 80 },
   { key: 'registradoPor', label: 'Registrado Por', ancho: 120, min: 70 },
   { key: 'acciones', label: 'Acciones', ancho: 95, min: 80, align: 'center' }
 ];
@@ -287,6 +288,7 @@ export const GestionesImplantesTable = ({
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.prevision}>{i.prevision || '-'}</td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.medico}>{i.medico || '-'}</td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.descripcion}>{i.descripcion || '-'}</td>
+                <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.observacion}>{i.observacion || '-'}</td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.registradoPor}>{i.registradoPor || 'N/A'}</td>
                 <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center overflow-hidden">
                   <div className="flex justify-center gap-1.5" onClick={e => e.stopPropagation()}>

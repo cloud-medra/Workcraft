@@ -423,7 +423,7 @@ export const useGestionesImplantesData = () => {
       const admisionValor = (gestionIdLimpio !== '' && gestionIdLimpio !== 'P') ? gestionIdLimpio : 'SIN_ADMISION';
 
       const batch = writeBatch(db);
-      const logsAAgregar = []; 
+      const logsAAgregar = [];
 
       for (const registro of registrosActualizados) {
         const dataNormalizada = {
@@ -438,9 +438,10 @@ export const useGestionesImplantesData = () => {
           prevision: paciente.prevision || 'P',
           medico: paciente.medico || 'P',
           descripcion: paciente.descripcion || 'P',
+          observacion: (paciente.observacion || '').toString().trim(),
           centro: paciente.centro || 'PABELLON',
           atributo: paciente.atributo || 'IMPLANTES',
-          estado: registro.estado || 'AGENDADO', 
+          estado: registro.estado || 'AGENDADO',
           costo: Number(registro.costo) || 0,
           cotizaciones: registro.cotizaciones || [],
           solicitud: registro.solicitud || 'PENDIENTE',
@@ -546,7 +547,7 @@ export const useGestionesImplantesData = () => {
           const { anio, mes, dia } = descomponerFecha(dataNormalizada.fecha);
 
           itemsActuales.forEach(it => {
-            if (!it.periodoAnio || !it.periodoMes) return; 
+            if (!it.periodoAnio || !it.periodoMes) return;
 
             const imputadaRef = doc(
               db,

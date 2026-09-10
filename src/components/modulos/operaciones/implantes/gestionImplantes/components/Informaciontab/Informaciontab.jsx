@@ -283,9 +283,9 @@ export const InformacionTab = ({
             <div className="flex flex-col gap-1">
               <label className="font-semibold text-slate-600 dark:text-gray-300">Texto Libre / Notas Adicionales</label>
               <textarea
-                name="notaLibre"
+                name="observacion"
                 rows={3}
-                value={formData.notaLibre}
+                value={formData.observacion}
                 onChange={handleGeneralChange}
                 placeholder="Observaciones adicionales..."
                 className="p-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none resize-none"

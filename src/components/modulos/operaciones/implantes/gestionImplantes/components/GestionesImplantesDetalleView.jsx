@@ -60,10 +60,6 @@ const GestionesImplantesDetalleView = forwardRef(({
     return `${mesInfo?.nombre || periodoActivo.mes} ${periodoActivo.anio}`;
   }, [periodoActivo]);
 
-  // Cualquier valor que signifique "todavía sin admisión real asignada".
-  // Estos valores NUNCA deben usarse como clave para agrupar registros
-  // entre sí, porque muchos clientes distintos comparten el mismo valor
-  // mientras están solo agendados (sin ID de admisión aún).
   const esCodigoPendiente = (codigo) => {
     const c = (codigo || '').toString().trim().toUpperCase();
     return c === '' || c === 'P' || c === 'SIN_ADMISION';
@@ -83,9 +79,6 @@ const GestionesImplantesDetalleView = forwardRef(({
 
     const codigo = posibleId !== null && posibleId !== undefined ? String(posibleId).trim() : '';
 
-    // Si es un código "placeholder" de pendiente (P, vacío, SIN_ADMISION),
-    // devolvemos '' para que este registro nunca se agrupe con otros
-    // registros pendientes distintos. Ver registrosDeEstaAdmision más abajo.
     return esCodigoPendiente(codigo) ? '' : codigo;
   };
 
@@ -135,7 +128,7 @@ const GestionesImplantesDetalleView = forwardRef(({
       atributo: item?.atributo || '',
       centro: item?.centro || item?.centroMedico || '',
       descripcion: item?.descripcion || item?.observacion || '',
-      notaLibre: item?.notaLibre || item?.notas || '',
+      observacion: item?.observacion || item?.notaLibre || item?.notas || '',
       bloques: bloquesEmpresas
     };
   };
@@ -184,10 +177,6 @@ const GestionesImplantesDetalleView = forwardRef(({
     });
   };
 
-  // Construye el nuevo estado de un bloque al agregarle un ítem. Es una
-  // función pura (sin setState) para poder reutilizarla tanto en el flujo
-  // normal (botón "+" de CargasTab) como en el guardado automático de ítems
-  // pendientes al presionar "Guardar Todo".
   const aplicarNuevoItemABloque = (bloque, data) => {
     const { numCotizacion, totalCotizacion, ...itemFields } = data;
     const cotizaciones = [...(bloque.cotizaciones || [])];
@@ -441,7 +430,7 @@ const GestionesImplantesDetalleView = forwardRef(({
         atributo: formDataParaGuardar.atributo,
         centro: formDataParaGuardar.centro,
         descripcion: formDataParaGuardar.descripcion,
-        notaLibre: formDataParaGuardar.notaLibre
+        observacion: formDataParaGuardar.observacion
       },
       registrosActualizados: formDataParaGuardar.bloques.map((b, idx) => {
         const idsOriginales = idsItemsOriginalesRef.current[idx] || [];
@@ -488,7 +477,6 @@ const GestionesImplantesDetalleView = forwardRef(({
       nombre: formData.nombre,
       gestionId: formData.gestionId
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, refPathBloqueActivo]);
 
   return (
