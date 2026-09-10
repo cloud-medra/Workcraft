@@ -351,13 +351,9 @@ const GestionesImplantesDetalleView = forwardRef(({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hayCambios]);
 
-  const handleSubmit = (e) => {
+    const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    // Si hay datos cargados en el formulario de "nuevo ítem" (pestaña Cargas)
-    // que nunca se confirmaron con el botón "+", se agregan aquí para que no
-    // se pierdan al guardar. Si están incompletos, se detiene el guardado y
-    // CargasTab ya se encarga de marcar los campos en rojo.
     let formDataParaGuardar = formData;
 
     if (cargasTabRef.current) {
@@ -365,6 +361,29 @@ const GestionesImplantesDetalleView = forwardRef(({
 
       if (resultado.status === 'incompleto') {
         return;
+      }
+
+      if (resultado.status === 'solo-total') {
+        const nuevosBloques = [...formData.bloques];
+        const bloque = nuevosBloques[bloqueActivoIndex];
+
+        if (bloque?.cotizaciones?.length > 0) {
+          const cotActual = bloque.cotizaciones[0];
+          const cotActualizada = {
+            ...cotActual,
+            totalCotizacion: resultado.totalCotizacion,
+            numCotizacion: resultado.numCotizacion || cotActual.numCotizacion
+          };
+
+          nuevosBloques[bloqueActivoIndex] = {
+            ...bloque,
+            cotizaciones: [cotActualizada, ...bloque.cotizaciones.slice(1)],
+            costo: resultado.totalCotizacion
+          };
+
+          formDataParaGuardar = { ...formData, bloques: nuevosBloques };
+          setFormData(formDataParaGuardar);
+        }
       }
 
       if (resultado.status === 'ok' && resultado.items?.length > 0) {
@@ -435,7 +454,6 @@ const GestionesImplantesDetalleView = forwardRef(({
 
     onGuardar(payload);
   };
-
   useImperativeHandle(ref, () => ({
     guardarTodo: handleSubmit,
     hayCambiosSinGuardar: () => hayCambios

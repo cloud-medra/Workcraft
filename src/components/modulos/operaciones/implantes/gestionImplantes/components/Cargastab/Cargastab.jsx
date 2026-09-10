@@ -299,13 +299,26 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
 
   useImperativeHandle(ref, () => ({
     confirmarItemPendiente: () => {
-      const hayAlgoCargado = !!(
+      const hayItemCargado = !!(
         nuevoItem.referencia.trim() ||
         nuevoItem.cantidad ||
         contenidoPad.length > 0
       );
 
-      if (!hayAlgoCargado) return { status: 'vacio' };
+      if (!hayItemCargado) {
+        const totalIngresado = nuevoItem.totalCotizacion !== '' ? Number(nuevoItem.totalCotizacion) : null;
+        const totalActual = cotizaciones[0]?.totalCotizacion ?? 0;
+
+        if (cotizaciones.length > 0 && totalIngresado !== null && totalIngresado !== totalActual) {
+          return {
+            status: 'solo-total',
+            totalCotizacion: totalIngresado,
+            numCotizacion: nuevoItem.numCotizacion.trim() || undefined
+          };
+        }
+
+        return { status: 'vacio' };
+      }
 
       if (!periodoAbierto) return { status: 'incompleto' };
 
