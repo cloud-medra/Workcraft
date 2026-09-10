@@ -1,14 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   ClipboardList,
-  ChevronDown,
-  ChevronUp,
   Download,
   Building2,
   Calendar as CalendarIcon,
   FileText,
   Lock,
-  Unlock
+  Unlock,
+  Package
 } from 'lucide-react';
 import Spinner from '../../../../ui/Spinner';
 import { useSolicitudImplantesData } from './hooks/useSolicitudImplantesData';
@@ -20,80 +19,36 @@ const formatearFechaTabla = (fechaString) => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-const BloqueRow = ({ bloque, seleccionado, onToggle }) => {
-  const [abierto, setAbierto] = useState(false);
-  const totalBloque = bloque.items.reduce((acc, it) => acc + (Number(it.totalItem) || 0), 0);
-
-  return (
-    <>
-      <tr className={`border-b border-gray-200 dark:border-gray-700/70 transition-colors ${seleccionado ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-gray-50/80 dark:hover:bg-gray-700/40'}`}>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-center">
-          <input
-            type="checkbox"
-            checked={seleccionado}
-            onChange={onToggle}
-            className="w-3.5 h-3.5 cursor-pointer accent-[#2383C2]"
-          />
-        </td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70">
-          <button
-            type="button"
-            onClick={() => setAbierto(o => !o)}
-            className="flex items-center gap-1 text-slate-500 dark:text-gray-400 hover:text-[#2383C2] transition"
-          >
-            {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          </button>
-        </td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 font-semibold text-[#2383C2]">{bloque.gestionId}</td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{bloque.nombre}</td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{bloque.medico}</td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{bloque.empresa}</td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{formatearFechaTabla(bloque.fecha)}</td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{bloque.numCotizacion}</td>
-        <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-600 dark:text-gray-300">{bloque.items.length}</td>
-        <td className="py-1.5 px-2 text-emerald-700 dark:text-emerald-400 font-semibold">${totalBloque.toLocaleString('es-CL')}</td>
-      </tr>
-
-      {abierto && (
-        <tr>
-          <td colSpan={10} className="p-0 bg-slate-50/60 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700/70">
-            <div className="p-2.5">
-              <table className="w-full text-left text-[10px] border-collapse bg-white dark:bg-gray-800 rounded border border-slate-200 dark:border-gray-700 overflow-hidden">
-                <thead className="bg-slate-100 dark:bg-gray-900/60">
-                  <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Clase</th>
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Tipo</th>
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total Ítem</th>
-                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Lote</th>
-                    <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700">Vencimiento</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bloque.items.map(it => (
-                    <tr key={it.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/30">
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 truncate max-w-[160px]" title={it.referencia}>{it.referencia}</td>
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">{it.codigo || 'S/C'}</td>
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{it.clase || 'P'}</td>
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{it.tipoVinculado || 'P'}</td>
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">{it.cantidad}</td>
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">${Number(it.totalItem || 0).toLocaleString('es-CL')}</td>
-                      <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{it.lote}</td>
-                      <td className="px-2 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{formatearFechaTabla(it.vencimiento)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
-  );
+const formatearFechaDeTimestamp = (valor) => {
+  if (!valor) return '-';
+  const date = valor.toDate ? valor.toDate() : new Date(valor);
+  if (isNaN(date.getTime())) return '-';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
 };
 
+const obtenerFechaHoyTexto = () => {
+  const hoy = new Date();
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const yyyy = hoy.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+/**
+ * SolicitudImplantes.jsx
+ *
+ * Tabla plana (sin subfilas expandibles), igual criterio que
+ * SolicitudConsignacion: cada ítem del bloque —incluyendo los ítems de
+ * "contenido de PAD" (que ya viven como ítems planos con padPadreId)—
+ * se muestra como su propia fila, repitiendo los datos de la gestión
+ * (Admisión, Paciente, Médico, Fecha, Empresa). El checkbox de
+ * selección actúa a nivel de bloque (documento en Firestore, donde vive
+ * el campo "solicitud"): marcar cualquier fila de un mismo bloque
+ * selecciona todas las filas de ese bloque en conjunto.
+ */
 const SolicitudImplantes = () => {
   const {
     bloques,
@@ -107,9 +62,23 @@ const SolicitudImplantes = () => {
 
   const { periodoAbierto, cargandoPeriodo } = usePeriodoAbiertoModulo('implantes');
 
-  const totalGeneral = bloques.reduce((acc, b) =>
-    acc + b.items.reduce((acc2, it) => acc2 + (Number(it.totalItem) || 0), 0), 0
-  );
+  const fechaIngresoHoy = obtenerFechaHoyTexto();
+
+  const filas = useMemo(() => {
+    const resultado = [];
+    bloques.forEach(bloque => {
+      if (!bloque.items || bloque.items.length === 0) {
+        resultado.push({ key: bloque.refPath, bloque, item: null });
+        return;
+      }
+      bloque.items.forEach((item, idx) => {
+        resultado.push({ key: `${bloque.refPath}-${item.id || idx}`, bloque, item });
+      });
+    });
+    return resultado;
+  }, [bloques]);
+
+  const totalItems = filas.reduce((acc, f) => acc + (Number(f.item?.totalItem) || 0), 0);
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -171,15 +140,15 @@ const SolicitudImplantes = () => {
         </span>
         <span className="flex items-center gap-1">
           <FileText size={11} className="text-[#2383C2]" />
-          {bloques.length} registro(s) · Total ${totalGeneral.toLocaleString('es-CL')}
+          {bloques.length} gestión(es) · {filas.length} fila(s) · Total ${totalItems.toLocaleString('es-CL')}
         </span>
       </div>
 
-      {/* TABLA PRINCIPAL */}
+      {/* TABLA PRINCIPAL — plana, sin subfilas */}
       <div className="flex-grow overflow-auto">
-        <table className="w-full text-left text-[11px] border-collapse">
+        <table className="w-full text-left text-[10px] border-collapse">
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
-            <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
+            <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[9px]">
               <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8 text-center">
                 <input
                   type="checkbox"
@@ -188,37 +157,119 @@ const SolicitudImplantes = () => {
                   className="w-3.5 h-3.5 cursor-pointer accent-[#2383C2]"
                 />
               </th>
-              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8"></th>
-              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">ID</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Admisión</th>
               <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Paciente</th>
               <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Médico</th>
-              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 flex items-center gap-1">
-                <Building2 size={11} /> Empresa
-              </th>
               <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">
                 <span className="flex items-center gap-1"><CalendarIcon size={11} /> Fecha</span>
               </th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">
+                <span className="flex items-center gap-1"><Building2 size={11} /> Empresa</span>
+              </th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Código</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">Cantidad</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Precio</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Tipo Vinculado</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Fecha de Registro</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Fecha de Carga</th>
               <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">N° Cotización</th>
-              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-center">Ítems</th>
-              <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700">Total</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Fecha de Ingreso</th>
+              <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Lote</th>
+              <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700">Vencimiento</th>
             </tr>
           </thead>
           <tbody>
-            {bloques.length === 0 ? (
+            {filas.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500 text-xs">
+                <td colSpan={17} className="px-4 py-8 text-center text-gray-400 dark:text-gray-500 text-xs">
                   No hay registros pendientes de solicitar por el momento.
                 </td>
               </tr>
             ) : (
-              bloques.map(bloque => (
-                <BloqueRow
-                  key={bloque.refPath}
-                  bloque={bloque}
-                  seleccionado={seleccionados.has(bloque.refPath)}
-                  onToggle={() => toggleSeleccion(bloque.refPath)}
-                />
-              ))
+              filas.map(({ key, bloque, item }) => {
+                const seleccionado = seleccionados.has(bloque.refPath);
+                const esPrincipalPad = !!item?.esPad;
+                const esContenidoPad = !!item?.padPadreId;
+
+                return (
+                  <tr
+                    key={key}
+                    className={`border-b border-gray-200 dark:border-gray-700/70 transition-colors ${
+                      seleccionado
+                        ? 'bg-blue-50/60 dark:bg-blue-950/20'
+                        : esContenidoPad
+                          ? 'bg-fuchsia-50/30 dark:bg-fuchsia-950/10 hover:bg-fuchsia-50/60 dark:hover:bg-fuchsia-950/20'
+                          : 'hover:bg-gray-50/80 dark:hover:bg-gray-700/40'
+                    }`}
+                  >
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-center">
+                      <input
+                        type="checkbox"
+                        checked={seleccionado}
+                        onChange={() => toggleSeleccion(bloque.refPath)}
+                        className="w-3.5 h-3.5 cursor-pointer accent-[#2383C2]"
+                      />
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 font-semibold text-[#2383C2]">
+                      {bloque.gestionId}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">
+                      {bloque.nombre}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {bloque.medico}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {formatearFechaTabla(bloque.fecha)}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 truncate max-w-[160px]" title={bloque.empresa}>
+                      {bloque.empresa}
+                    </td>
+                    <td className={`py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 ${esContenidoPad ? 'text-fuchsia-600 dark:text-fuchsia-400 italic' : 'font-mono text-emerald-600 dark:text-emerald-400'}`}>
+                      {item ? (item.codigo || 'S/C') : '-'}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 truncate max-w-[180px]" title={item?.referencia || item?.descriptorAuto}>
+                      <span className="flex items-center gap-1">
+                        {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 shrink-0">↳</span>}
+                        <span className="truncate">{item ? (item.referencia || item.descriptorAuto || '-') : '-'}</span>
+                        {esPrincipalPad && (
+                          <span className="flex items-center gap-0.5 text-[8px] px-1 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-400 font-bold shrink-0">
+                            <Package size={9} /> PAD
+                          </span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-600 dark:text-gray-300">
+                      {item ? item.cantidad : '-'}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-emerald-700 dark:text-emerald-400 font-semibold">
+                      {item ? `$${Number(item.totalItem || 0).toLocaleString('es-CL')}` : '-'}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {item ? (item.tipoVinculado || 'P') : '-'}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {formatearFechaDeTimestamp(bloque.fechaRegistro)}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {formatearFechaTabla(bloque.fecha)}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {bloque.numCotizacion}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {fechaIngresoHoy}
+                    </td>
+                    <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                      {item ? item.lote : '-'}
+                    </td>
+                    <td className="py-1 px-2 text-gray-600 dark:text-gray-300">
+                      {item ? formatearFechaTabla(item.vencimiento) : '-'}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

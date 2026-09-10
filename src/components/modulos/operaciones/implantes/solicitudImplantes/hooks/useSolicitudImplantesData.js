@@ -26,9 +26,6 @@ export const useSolicitudImplantesData = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-  // Escucha en tiempo real todos los bloques (documentos "detalles") cuya
-  // Solicitud esté en SOLICITAR — o sea, todos los ítems de ese bloque ya
-  // quedaron CARGADO y están listos para descargarse.
   useEffect(() => {
     const q = query(collectionGroup(db, "detalles"), where("solicitud", "==", "SOLICITAR"));
 
@@ -55,6 +52,7 @@ export const useSolicitudImplantesData = () => {
           estado: data.estado || 'AGENDANDO',
           costo: data.costo || 0,
           registradoPor: data.registradoPor || 'Usuario',
+          fechaRegistro: data.fechaRegistro || null,
           numCotizacion: data.cotizaciones?.[0]?.numCotizacion || 'P',
           items
         };
@@ -96,9 +94,16 @@ export const useSolicitudImplantesData = () => {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  // Descompone "YYYY-MM-DD" en sus 3 partes; se usan para guardar año/mes/día
-  // como CAMPOS en implantes_imputadas (no como parte de la ruta, que sigue
-  // siendo por período contable).
+  const formatearFechaDeTimestamp = (valor) => {
+    if (!valor) return '';
+    const date = valor.toDate ? valor.toDate() : new Date(valor);
+    if (isNaN(date.getTime())) return '';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  };
+
   const descomponerFecha = (fechaString) => {
     if (fechaString && fechaString.includes('-')) {
       const [anio, mes, dia] = fechaString.split('-');
@@ -123,10 +128,6 @@ export const useSolicitudImplantesData = () => {
     }
   };
 
-  // Exporta a Excel los bloques seleccionados (uno o más ítems por bloque),
-  // y al confirmar: 1) marca cada bloque como SOLICITADO, 2) escribe cada
-  // ítem en implantes_imputadas con TODOS sus datos (gestión + ítem), 3)
-  // registra el log de auditoría por bloque.
   const handleExportarYMarcarSolicitado = () => {
     const bloquesSeleccionados = bloques.filter(b => seleccionados.has(b.refPath));
 
@@ -141,11 +142,12 @@ export const useSolicitudImplantesData = () => {
       async () => {
         setExportando(true);
         try {
-          // 1. Armar filas del Excel (una fila por ítem)
           const fechaHoyFormato = formatearFechaExcel(new Date().toISOString().slice(0, 10));
 
           const filas = [];
           bloquesSeleccionados.forEach(bloque => {
+            const fechaRegistroBloque = formatearFechaDeTimestamp(bloque.fechaRegistro);
+
             if (bloque.items.length === 0) {
               filas.push({
                 "ID": bloque.gestionId,
@@ -157,8 +159,8 @@ export const useSolicitudImplantesData = () => {
                 "DESCRIPCION": "",
                 "CANTIDAD": "",
                 "PRECIO": "",
-                "ATRIBUTO": bloque.atributo,
-                "FECHA REGISTRO": fechaHoyFormato,
+                "ATRIBUTO": "",
+                "FECHA REGISTRO": fechaRegistroBloque,
                 "FECHA CARGA": formatearFechaExcel(bloque.fecha),
                 "N° COTIZACION": bloque.numCotizacion,
                 "FECHA INGRESO": fechaHoyFormato,
@@ -178,9 +180,9 @@ export const useSolicitudImplantesData = () => {
                 "CODIGO": it.codigo || 'P',
                 "DESCRIPCION": it.descriptorAuto || 'P',
                 "CANTIDAD": it.cantidad || 0,
-                "PRECIO": it.precio || 0,
-                "ATRIBUTO": bloque.atributo,
-                "FECHA REGISTRO": fechaHoyFormato,
+                "PRECIO": it.totalItem || 0,
+                "ATRIBUTO": it.tipoVinculado || 'P',
+                "FECHA REGISTRO": fechaRegistroBloque,
                 "FECHA CARGA": formatearFechaExcel(bloque.fecha),
                 "N° COTIZACION": bloque.numCotizacion,
                 "FECHA INGRESO": fechaHoyFormato,
@@ -196,7 +198,6 @@ export const useSolicitudImplantesData = () => {
           const fechaHoy = new Date().toISOString().slice(0, 10);
           XLSX.writeFile(workbook, `solicitud_implantes_${fechaHoy}.xlsx`);
 
-          // 2. Batch: marcar SOLICITADO + escribir en implantes_imputadas
           const batch = writeBatch(db);
           let opsEnBatch = 0;
           let batchActual = batch;
@@ -215,7 +216,6 @@ export const useSolicitudImplantesData = () => {
           bloquesSeleccionados.forEach(bloque => {
             const docRef = doc(db, bloque.refPath);
 
-            // Marca el bloque como SOLICITADO (estado terminal)
             agregarOp(b => b.update(docRef, {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
@@ -224,9 +224,8 @@ export const useSolicitudImplantesData = () => {
 
             const { anio, mes, dia } = descomponerFecha(bloque.fecha);
 
-            // Se copian TODOS los datos del ítem + de la gestión a implantes_imputadas
             bloque.items.forEach(it => {
-              if (!it.periodoAnio || !it.periodoMes) return; // salvaguarda: ítem sin período
+              if (!it.periodoAnio || !it.periodoMes) return; 
 
               const imputadaRef = doc(
                 db,
@@ -236,7 +235,6 @@ export const useSolicitudImplantesData = () => {
               );
 
               agregarOp(b => b.set(imputadaRef, {
-                // --- Datos de la gestión (bloque) ---
                 gestionId: bloque.gestionId,
                 agendaId: bloque.agendaId,
                 admision: bloque.admision,
@@ -256,7 +254,6 @@ export const useSolicitudImplantesData = () => {
                 estado: bloque.estado,
                 costoGestion: bloque.costo,
 
-                // --- Datos de la cotización / ítem ---
                 numCotizacion: bloque.numCotizacion,
                 itemId: it.id,
                 referencia: it.referencia || 'P',
@@ -279,7 +276,6 @@ export const useSolicitudImplantesData = () => {
                 periodoAnio: it.periodoAnio,
                 periodoMes: it.periodoMes,
 
-                // --- Metadatos ---
                 registradoPor: userData?.nombreCompleto || 'Usuario',
                 actualizadoEn: new Date()
               }, { merge: true }));
@@ -290,7 +286,6 @@ export const useSolicitudImplantesData = () => {
             await b.commit();
           }
 
-          // 3. Logs de auditoría (después del commit, uno por bloque)
           await Promise.all(
             bloquesSeleccionados.map(bloque =>
               registrarLog(doc(db, bloque.refPath), 'SOLICITUD_EXPORTADA', {
