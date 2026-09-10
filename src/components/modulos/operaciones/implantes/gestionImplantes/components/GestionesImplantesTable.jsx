@@ -13,6 +13,7 @@ const COLUMNAS = [
   { key: 'estadoTexto', label: 'Estado', ancho: 95, min: 60 },
   { key: 'costo', label: 'Costo', ancho: 90, min: 60 },
   { key: 'solicitud', label: 'Solicitud', ancho: 95, min: 60 },
+  { key: 'periodo', label: 'Período', ancho: 110, min: 70 },
   { key: 'informe', label: 'Informe', ancho: 95, min: 60 },
   { key: 'convenio', label: 'Convenio', ancho: 95, min: 60 },
   { key: 'prevision', label: 'Previsión', ancho: 110, min: 60 },
@@ -246,6 +247,9 @@ export const GestionesImplantesTable = ({
                   <span className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase ${solicitudInfo.className}`}>
                     {solicitudInfo.label}
                   </span>
+                </td>
+                <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.periodo}>
+                  {i.periodo || '-'}
                 </td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300`} title={i.informe}>{i.informe || '-'}</td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.convenio}>{i.convenio || '-'}</td>

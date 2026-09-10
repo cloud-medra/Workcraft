@@ -101,7 +101,7 @@ const SolicitudImplantes = () => {
         </h2>
 
         <button
-          onClick={handleExportarYMarcarSolicitado}
+          onClick={() => handleExportarYMarcarSolicitado(periodoAbierto)}
           disabled={seleccionados.size === 0 || exportando}
           className="px-3 py-1 bg-[#2383C2] hover:bg-[#1d6fa5] text-white rounded font-semibold flex items-center gap-1.5 transition text-[11px] shadow-xs active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
         >
