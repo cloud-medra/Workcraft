@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   UploadCloud,
   Building2,
@@ -47,14 +47,14 @@ const DRAFT_CONTENIDO_VACIO = {
   vencimiento: ''
 };
 
-export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem }) => {
+export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem }, ref) => {
   const bloqueActivo = formData?.bloques?.[bloqueActivoIndex];
   const cotizaciones = bloqueActivo?.cotizaciones || [];
 
   const [nuevoItem, setNuevoItem] = useState(INITIAL_ITEM);
   const [errores, setErrores] = useState({});
   const [esPad, setEsPad] = useState(false);
-  const [contenidoPad, setContenidoPad] = useState([]); 
+  const [contenidoPad, setContenidoPad] = useState([]);
 
   const [numCotizacionPad, setNumCotizacionPad] = useState('');
 
@@ -216,19 +216,10 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
     setContenidoPad(prev => prev.filter(f => f.tempId !== tempId));
   };
 
-  const handleAgregar = () => {
-    if (!periodoAbierto) return;
-
-    const err = {};
-    if (!nuevoItem.numCotizacion.trim()) err.numCotizacion = true;
-    if (!nuevoItem.referencia.trim()) err.referencia = true;
-    if (!nuevoItem.cantidad || Number(nuevoItem.cantidad) <= 0) err.cantidad = true;
-
-    if (Object.keys(err).length > 0) {
-      setErrores(err);
-      return;
-    }
-
+  // Construye el ítem principal (y el contenido del PAD, si aplica) a partir
+  // de lo que hay cargado en el formulario "Agregar ítem". No toca el estado:
+  // solo arma los objetos, tal como los espera onAgregarItem.
+  const construirItemsDesdeFormulario = () => {
     const sinCodigo = !nuevoItem.codigo;
     const { vecesCosto, recargoEncontrado, venta, totalItem } = calcularCamposFinancieros(
       nuevoItem.precio, nuevoItem.cantidad, recargosActivos
@@ -236,7 +227,7 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
 
     const idPadPrincipal = esPad ? crypto.randomUUID() : undefined;
 
-    onAgregarItem(bloqueActivoIndex, {
+    const itemPrincipal = {
       ...(idPadPrincipal ? { id: idPadPrincipal } : {}),
       esPad,
       numCotizacion: nuevoItem.numCotizacion.trim(),
@@ -260,13 +251,13 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
       estadoCarga: 'PENDIENTE',
       periodoAnio: periodoAbierto.anio,
       periodoMes: periodoAbierto.mes
-    });
+    };
 
+    const itemsContenido = [];
     if (esPad && contenidoPad.length > 0) {
       const numCotContenido = numCotizacionPad.trim() || nuevoItem.numCotizacion.trim();
-
       contenidoPad.forEach(fila => {
-        onAgregarItem(bloqueActivoIndex, construirItemContenidoPadDesdeFila(fila, idPadPrincipal, {
+        itemsContenido.push(construirItemContenidoPadDesdeFila(fila, idPadPrincipal, {
           numCotizacion: numCotContenido,
           totalCotizacion: 0,
           periodoAnio: periodoAbierto.anio,
@@ -275,6 +266,10 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
       });
     }
 
+    return [itemPrincipal, ...itemsContenido];
+  };
+
+  const limpiarFormularioNuevoItem = () => {
     setNuevoItem(prev => ({
       ...INITIAL_ITEM,
       numCotizacion: prev.numCotizacion,
@@ -284,6 +279,55 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
     resetContenidoPad();
     setErrores({});
   };
+
+  const handleAgregar = () => {
+    if (!periodoAbierto) return;
+
+    const err = {};
+    if (!nuevoItem.numCotizacion.trim()) err.numCotizacion = true;
+    if (!nuevoItem.referencia.trim()) err.referencia = true;
+    if (!nuevoItem.cantidad || Number(nuevoItem.cantidad) <= 0) err.cantidad = true;
+
+    if (Object.keys(err).length > 0) {
+      setErrores(err);
+      return;
+    }
+
+    construirItemsDesdeFormulario().forEach(item => onAgregarItem(bloqueActivoIndex, item));
+    limpiarFormularioNuevoItem();
+  };
+
+  // Expuesto al padre (GestionesImplantesDetalleView) para el caso "cargué
+  // referencia/cantidad/PAD pero olvidé apretar el botón +": si al momento
+  // de Guardar Todo hay algo cargado en este formulario, se confirma solo.
+  useImperativeHandle(ref, () => ({
+    confirmarItemPendiente: () => {
+      const hayAlgoCargado = !!(
+        nuevoItem.referencia.trim() ||
+        nuevoItem.numCotizacion.trim() ||
+        nuevoItem.cantidad ||
+        contenidoPad.length > 0
+      );
+
+      if (!hayAlgoCargado) return { status: 'vacio' };
+
+      if (!periodoAbierto) return { status: 'incompleto' };
+
+      const err = {};
+      if (!nuevoItem.numCotizacion.trim()) err.numCotizacion = true;
+      if (!nuevoItem.referencia.trim()) err.referencia = true;
+      if (!nuevoItem.cantidad || Number(nuevoItem.cantidad) <= 0) err.cantidad = true;
+
+      if (Object.keys(err).length > 0) {
+        setErrores(err);
+        return { status: 'incompleto' };
+      }
+
+      const items = construirItemsDesdeFormulario();
+      limpiarFormularioNuevoItem();
+      return { status: 'ok', items };
+    }
+  }));
 
   if (!bloqueActivo) {
     return (
@@ -752,7 +796,7 @@ export const CargasTab = ({ formData, bloqueActivoIndex, onAgregarItem, onElimin
       </p>
     </div>
   );
-};
+});
 
 function buscarRangoRecargoLocal(precio, recargosActivos) {
   const p = Number(precio) || 0;

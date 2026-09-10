@@ -102,7 +102,7 @@ const GestionesImplantesDetalleView = forwardRef(({
     const bloquesEmpresas = registrosDeEstaAdmision.map((reg, index) => ({
       uniqueKey: reg.id ? `id_${reg.id}` : `registro_${index}_${Date.now()}`,
       idOriginal: reg.id,
-      refPath: reg.refPath || null, 
+      refPath: reg.refPath || null,
       empresa: reg.empresa || reg.nombreEmpresa || reg.razonSocial || '',
       fecha: reg.fecha || reg.fechaAgenda || reg.fecha_agenda || '',
       costo: reg.costo ?? reg.monto ?? 0,
@@ -142,6 +142,7 @@ const GestionesImplantesDetalleView = forwardRef(({
 
   const [erroresFecha, setErroresFecha] = useState({});
   const [bloqueActivoIndex, setBloqueActivoIndex] = useState(0);
+  const cargasTabRef = useRef(null);
 
   const handleGeneralChange = (e) => {
     const { name, value } = e.target;
@@ -169,47 +170,48 @@ const GestionesImplantesDetalleView = forwardRef(({
     });
   };
 
-  const handleAgregarItemCotizacion = (bloqueIndex, data) => {
+  // Construye el nuevo estado de un bloque al agregarle un ítem. Es una
+  // función pura (sin setState) para poder reutilizarla tanto en el flujo
+  // normal (botón "+" de CargasTab) como en el guardado automático de ítems
+  // pendientes al presionar "Guardar Todo".
+  const aplicarNuevoItemABloque = (bloque, data) => {
     const { numCotizacion, totalCotizacion, ...itemFields } = data;
+    const cotizaciones = [...(bloque.cotizaciones || [])];
 
+    const numLimpio = numCotizacion.trim();
+    const nuevoItem = {
+      ...itemFields,
+      id: itemFields.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+    };
+
+    let totalFinal;
+
+    if (cotizaciones.length === 0) {
+      totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : (Number(bloque.costo) || 0);
+      cotizaciones.push({
+        id: `cot_${Date.now()}`,
+        numCotizacion: numLimpio,
+        totalCotizacion: totalFinal,
+        items: [nuevoItem]
+      });
+    } else {
+      const cot = cotizaciones[0];
+      totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : cot.totalCotizacion;
+      cotizaciones[0] = {
+        ...cot,
+        numCotizacion: numLimpio || cot.numCotizacion,
+        totalCotizacion: totalFinal,
+        items: [...(cot.items || []), nuevoItem]
+      };
+    }
+
+    return { ...bloque, cotizaciones, costo: totalFinal };
+  };
+
+  const handleAgregarItemCotizacion = (bloqueIndex, data) => {
     setFormData(prev => {
       const nuevosBloques = [...prev.bloques];
-      const bloque = nuevosBloques[bloqueIndex];
-      const cotizaciones = [...(bloque.cotizaciones || [])];
-
-      const numLimpio = numCotizacion.trim();
-      const nuevoItem = {
-        ...itemFields,
-        id: itemFields.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-      };
-
-      let totalFinal;
-
-      if (cotizaciones.length === 0) {
-        totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : (Number(bloque.costo) || 0);
-        cotizaciones.push({
-          id: `cot_${Date.now()}`,
-          numCotizacion: numLimpio,
-          totalCotizacion: totalFinal,
-          items: [nuevoItem]
-        });
-      } else {
-        const cot = cotizaciones[0];
-        totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : cot.totalCotizacion;
-        cotizaciones[0] = {
-          ...cot,
-          numCotizacion: numLimpio || cot.numCotizacion,
-          totalCotizacion: totalFinal,
-          items: [...(cot.items || []), nuevoItem]
-        };
-      }
-
-      nuevosBloques[bloqueIndex] = {
-        ...bloque,
-        cotizaciones,
-        costo: totalFinal
-      };
-
+      nuevosBloques[bloqueIndex] = aplicarNuevoItemABloque(nuevosBloques[bloqueIndex], data);
       return { ...prev, bloques: nuevosBloques };
     });
   };
@@ -352,10 +354,35 @@ const GestionesImplantesDetalleView = forwardRef(({
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
+    // Si hay datos cargados en el formulario de "nuevo ítem" (pestaña Cargas)
+    // que nunca se confirmaron con el botón "+", se agregan aquí para que no
+    // se pierdan al guardar. Si están incompletos, se detiene el guardado y
+    // CargasTab ya se encarga de marcar los campos en rojo.
+    let formDataParaGuardar = formData;
+
+    if (cargasTabRef.current) {
+      const resultado = cargasTabRef.current.confirmarItemPendiente();
+
+      if (resultado.status === 'incompleto') {
+        return;
+      }
+
+      if (resultado.status === 'ok' && resultado.items?.length > 0) {
+        const nuevosBloques = [...formData.bloques];
+        let bloqueActualizado = nuevosBloques[bloqueActivoIndex];
+        resultado.items.forEach(itemData => {
+          bloqueActualizado = aplicarNuevoItemABloque(bloqueActualizado, itemData);
+        });
+        nuevosBloques[bloqueActivoIndex] = bloqueActualizado;
+        formDataParaGuardar = { ...formData, bloques: nuevosBloques };
+        setFormData(formDataParaGuardar);
+      }
+    }
+
     const nuevosErrores = {};
     let hayError = false;
 
-    formData.bloques.forEach((bloque, idx) => {
+    formDataParaGuardar.bloques.forEach((bloque, idx) => {
       if (!bloque.fecha || String(bloque.fecha).trim() === '') {
         nuevosErrores[idx] = true;
         hayError = true;
@@ -371,26 +398,26 @@ const GestionesImplantesDetalleView = forwardRef(({
     }
 
     const payload = {
-      admisionId: formData.gestionId,
+      admisionId: formDataParaGuardar.gestionId,
       paciente: {
-        nombre: formData.nombre,
-        convenio: formData.convenio,
-        prevision: formData.prevision,
-        medico: formData.medico,
-        informe: formData.informe,
-        atributo: formData.atributo,
-        centro: formData.centro,
-        descripcion: formData.descripcion,
-        notaLibre: formData.notaLibre
+        nombre: formDataParaGuardar.nombre,
+        convenio: formDataParaGuardar.convenio,
+        prevision: formDataParaGuardar.prevision,
+        medico: formDataParaGuardar.medico,
+        informe: formDataParaGuardar.informe,
+        atributo: formDataParaGuardar.atributo,
+        centro: formDataParaGuardar.centro,
+        descripcion: formDataParaGuardar.descripcion,
+        notaLibre: formDataParaGuardar.notaLibre
       },
-      registrosActualizados: formData.bloques.map((b, idx) => {
+      registrosActualizados: formDataParaGuardar.bloques.map((b, idx) => {
         const idsOriginales = idsItemsOriginalesRef.current[idx] || [];
         const idsActuales = new Set((b.cotizaciones?.[0]?.items || []).map(it => it.id));
         const itemsEliminados = idsOriginales.filter(orig => !idsActuales.has(orig.id));
 
         return {
           id: b.idOriginal,
-          gestionId: formData.gestionId,
+          gestionId: formDataParaGuardar.gestionId,
           empresa: b.empresa,
           fecha: b.fecha,
           fechaAgenda: b.fecha,
@@ -399,9 +426,9 @@ const GestionesImplantesDetalleView = forwardRef(({
           solicitud: b.solicitud || 'PENDIENTE',
           estado: b.estado || 'AGENDADO',
           itemsEliminados,
-          nombre: formData.nombre,
-          medico: formData.medico,
-          centro: formData.centro
+          nombre: formDataParaGuardar.nombre,
+          medico: formDataParaGuardar.medico,
+          centro: formDataParaGuardar.centro
         };
       })
     };
@@ -429,6 +456,7 @@ const GestionesImplantesDetalleView = forwardRef(({
       nombre: formData.nombre,
       gestionId: formData.gestionId
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, refPathBloqueActivo]);
 
   return (
@@ -535,6 +563,7 @@ const GestionesImplantesDetalleView = forwardRef(({
 
           {activeTab === 'cargas' && (
             <CargasTab
+              ref={cargasTabRef}
               formData={formData}
               bloqueActivoIndex={bloqueActivoIndex}
               onAgregarItem={handleAgregarItemCotizacion}
