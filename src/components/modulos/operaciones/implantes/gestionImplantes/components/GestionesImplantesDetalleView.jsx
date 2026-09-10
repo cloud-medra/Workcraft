@@ -60,6 +60,15 @@ const GestionesImplantesDetalleView = forwardRef(({
     return `${mesInfo?.nombre || periodoActivo.mes} ${periodoActivo.anio}`;
   }, [periodoActivo]);
 
+  // Cualquier valor que signifique "todavía sin admisión real asignada".
+  // Estos valores NUNCA deben usarse como clave para agrupar registros
+  // entre sí, porque muchos clientes distintos comparten el mismo valor
+  // mientras están solo agendados (sin ID de admisión aún).
+  const esCodigoPendiente = (codigo) => {
+    const c = (codigo || '').toString().trim().toUpperCase();
+    return c === '' || c === 'P' || c === 'SIN_ADMISION';
+  };
+
   const obtenerCodigoAdmision = (registro) => {
     if (!registro) return '';
     const posibleId =
@@ -72,7 +81,12 @@ const GestionesImplantesDetalleView = forwardRef(({
       registro.nroAdmision ??
       registro.id;
 
-    return posibleId !== null && posibleId !== undefined ? String(posibleId).trim() : '';
+    const codigo = posibleId !== null && posibleId !== undefined ? String(posibleId).trim() : '';
+
+    // Si es un código "placeholder" de pendiente (P, vacío, SIN_ADMISION),
+    // devolvemos '' para que este registro nunca se agrupe con otros
+    // registros pendientes distintos. Ver registrosDeEstaAdmision más abajo.
+    return esCodigoPendiente(codigo) ? '' : codigo;
   };
 
   const admisionCodigoTarget = useMemo(() => {

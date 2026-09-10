@@ -8,6 +8,7 @@ const COLUMNAS = [
   { key: 'nombre', label: 'Nombre', ancho: 190, min: 80 },
   { key: 'fecha', label: 'Fecha', ancho: 95, min: 70 },
   { key: 'empresa', label: 'Empresa', ancho: 170, min: 80 },
+  { key: 'admisionNombre', label: 'Admisión - Nombre', ancho: 230, min: 140 },
   { key: 'centro', label: 'Centro', ancho: 95, min: 60 },
   { key: 'atributo', label: 'Atributo', ancho: 95, min: 60 },
   { key: 'estadoTexto', label: 'Estado', ancho: 95, min: 60 },
@@ -153,6 +154,18 @@ export const GestionesImplantesTable = ({
     return { label: sol, className: estilos[sol] || estilos.PENDIENTE };
   };
 
+  // Colores para el estado del Informe: PENDIENTE resalta fuerte (rojo) para
+  // que sea imposible pasarlo por alto, DISPONIBLE en verde, NO APLICA neutro.
+  const getInformeEstilo = (informe) => {
+    const inf = (informe || 'PENDIENTE').toUpperCase().trim();
+    const estilos = {
+      PENDIENTE: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400 font-bold ring-1 ring-red-200 dark:ring-red-900',
+      DISPONIBLE: 'bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-semibold',
+      'NO APLICA': 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+    };
+    return { label: inf, className: estilos[inf] || estilos.PENDIENTE };
+  };
+
   const formatearFechaTabla = (fechaString) => {
     if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
     const partes = fechaString.split('-');
@@ -212,6 +225,8 @@ export const GestionesImplantesTable = ({
             const status = getStatusIndicator(i);
             const idMostrado = i.gestionId || i.agendaId;
             const solicitudInfo = getSolicitudEstilo(i.solicitud);
+            const informeInfo = getInformeEstilo(i.informe);
+            const textoAdmisionNombre = `${idMostrado || 'P'} - ${i.nombre || 'P'} -`;
 
             return (
               <tr
@@ -237,6 +252,18 @@ export const GestionesImplantesTable = ({
                 <td style={getStickyStyle('nombre')} className={`${celdaBase} text-gray-700 dark:text-gray-200 font-medium ${getStickyClass('nombre')}`} title={i.nombre}>{i.nombre}</td>
                 <td style={getStickyStyle('fecha')} className={`${celdaBase} text-gray-600 dark:text-gray-300 ${getStickyClass('fecha')}`}>{formatearFechaTabla(i.fecha)}</td>
                 <td style={getStickyStyle('empresa')} className={`${celdaBase} text-gray-600 dark:text-gray-300 ${getStickyClass('empresa')}`} title={i.empresa}>{i.empresa || '-'}</td>
+                <td className={`${celdaBase} text-gray-600 dark:text-gray-300`} title={textoAdmisionNombre}>
+                  <div className="flex items-center gap-1">
+                    <span className="truncate">{textoAdmisionNombre}</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCopiarTexto(textoAdmisionNombre); }}
+                      title="Copiar Admisión - Nombre"
+                      className="p-0.5 rounded text-gray-400 hover:text-emerald-600 transition shrink-0"
+                    >
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                </td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.centro}>{i.centro || 'PABELLON'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.atributo}>{i.atributo || 'IMPLANTES'}</td>
                 <td className={`${celdaBase} font-semibold ${status.textClass}`} title={i.estado}>{i.estado || 'AGENDANDO'}</td>
@@ -251,7 +278,11 @@ export const GestionesImplantesTable = ({
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.periodo}>
                   {i.periodo || '-'}
                 </td>
-                <td className={`${celdaBase} text-gray-600 dark:text-gray-300`} title={i.informe}>{i.informe || '-'}</td>
+                <td className={celdaBase}>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase ${informeInfo.className}`}>
+                    {informeInfo.label}
+                  </span>
+                </td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.convenio}>{i.convenio || '-'}</td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.prevision}>{i.prevision || '-'}</td>
                 <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={i.medico}>{i.medico || '-'}</td>
