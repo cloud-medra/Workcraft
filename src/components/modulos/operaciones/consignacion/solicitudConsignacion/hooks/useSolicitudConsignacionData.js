@@ -14,10 +14,10 @@ import {
   orderBy
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import { db } from '../../../../../../firebaseConfig'; // AJUSTAR según la ubicación real de este archivo
-import { useToast } from '../../../../../../context/ToastContext'; // AJUSTAR ruta
-import { useModal } from '../../../../../../context/ModalContext'; // AJUSTAR ruta
-import { useUser } from '../../../../../../context/UserContext'; // AJUSTAR ruta
+import { db } from '../../../../../../firebaseConfig'; 
+import { useToast } from '../../../../../../context/ToastContext'; 
+import { useModal } from '../../../../../../context/ModalContext'; 
+import { useUser } from '../../../../../../context/UserContext'; 
 
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_ORIGEN = 'CARGADO';
@@ -25,14 +25,10 @@ const ESTADO_DESTINO = 'SOLICITADO';
 
 const COL_MAESTROS_CODIGOS = 'maestros_codigos';
 
-// Mismos códigos excluidos que en DeliveryTab/CargasTab (kits/bypass
-// internos que no son ítems reales del despacho).
 const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
 const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
 const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
 
-// Firestore permite hasta 30 valores en una cláusula "in"; se trocea por
-// seguridad en bloques más chicos (igual que en DeliveryTab/CargasTab).
 const trocear = (arr, tamano) => {
   const bloques = [];
   for (let i = 0; i < arr.length; i += tamano) {
@@ -47,7 +43,6 @@ const formatearFechaDDMMYYYY = (fechaString) => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-// Convierte un Timestamp de Firestore (o Date/string) a dd-mm-yyyy.
 const formatearFechaDeTimestamp = (valor) => {
   if (!valor) return '';
   const date = valor.toDate ? valor.toDate() : new Date(valor);
@@ -58,9 +53,6 @@ const formatearFechaDeTimestamp = (valor) => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-// "Fecha de Ingreso" NO se guarda: siempre es el día real en que se está
-// viendo/exportando esta pantalla (hoy si se abre hoy, mañana si se abre
-// mañana), tal como se pidió.
 const obtenerFechaHoyTexto = () => {
   const hoy = new Date();
   const dd = String(hoy.getDate()).padStart(2, '0');
@@ -69,35 +61,6 @@ const obtenerFechaHoyTexto = () => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-/**
- * useSolicitudConsignacionData
- *
- * Versión simplificada: ya no agrupa por gestionId en "bloques" con
- * subfilas — entrega directamente la lista PLANA de todos los ítems con
- * estado "CARGADO" (uno por fila en la tabla), igual que "Ítems
- * Registrados" en CargasTab.jsx.
- *
- * FUENTE DE DATOS: collectionGroup sobre "detalles", filtrando por
- * estado == "CARGADO".
- *
- * Cada ítem trae, además de sus campos originales, los siguientes
- * calculados/derivados:
- *   - precio: usa el campo "venta" ya guardado (costo * recargo *
- *     cantidad); si no existe, respalda con costo * cantidad.
- *   - lote / vencimiento: si el ítem ya fue vinculado con una guía en
- *     Delivery, usa los valores reales guardados (loteGuiaVinculado /
- *     vencimientoGuiaVinculado); si tiene delivery asignado pero sin
- *     vincular, muestra "PAD"; si no tiene delivery, "Sin lote" / "Sin
- *     fecha".
- *   - fechaIngreso: SIEMPRE la fecha real de hoy (no es un campo
- *     guardado en Firestore).
- *
- * EXPORTAR Y MARCAR COMO SOLICITADO: al confirmar, se genera un Excel
- * (una fila por ítem seleccionado) y, en un solo writeBatch (partido
- * cada 400 operaciones), se actualiza el campo "estado" de cada ítem
- * seleccionado de "CARGADO" a "SOLICITADO" — dejan de aparecer en este
- * listado. También se registra un log de auditoría por ítem.
- */
 export const useSolicitudConsignacionData = () => {
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -108,7 +71,7 @@ export const useSolicitudConsignacionData = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-  useEffect(() => {
+    useEffect(() => {
     const q = query(
       collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
       where('estado', '==', ESTADO_ORIGEN),
@@ -116,7 +79,9 @@ export const useSolicitudConsignacionData = () => {
     );
 
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const itemsCargados = snapshot.docs.map((document) => {
+      const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_registros/'));
+
+      const itemsCargados = docsConsignacion.map((document) => {
         const data = document.data();
         const costo = Number(data.costo) || 0;
         const cantidad = Number(data.cantidad) || 0;
@@ -127,7 +92,7 @@ export const useSolicitudConsignacionData = () => {
           id: document.id,
           ref: document.ref,
           refPath: document.ref.path,
-          datosOriginales: data, // se usa al exportar, para copiar TODOS los campos a consignacion_imputadas
+          datosOriginales: data, 
           gestionId: data.gestionId || 'P',
           nombre: data.nombre || 'P',
           medico: data.medico || 'P',
@@ -152,10 +117,6 @@ export const useSolicitudConsignacionData = () => {
       });
 
       try {
-        // Por cada N° de Delivery único presente, traer el desglose
-        // completo de la guía (productos) y cruzarlo con maestros_codigos
-        // — igual que en CargasTab, pero acá se agregan como filas
-        // normales de la misma lista (no como subfilas colapsables).
         const deliveriesUnicos = [...new Set(
           itemsCargados.map(it => it.delivery).filter(Boolean)
         )];
@@ -172,7 +133,6 @@ export const useSolicitudConsignacionData = () => {
             const snapGuia = await getDocs(qGuia);
             if (snapGuia.empty) return;
 
-            // N° de Guía real (igual para todos los documentos de esta guía).
             numeroGuiaPorDelivery[deliveryValor] = snapGuia.docs[0]?.data()?.numeroGuia || null;
 
             const productos = snapGuia.docs
@@ -206,17 +166,13 @@ export const useSolicitudConsignacionData = () => {
               }
             }
 
-            // Se toma el ítem que trajo este N° de Delivery para
-            // autocompletar Paciente, Médico, Fecha y Fecha de Registro
-            // en las filas del desglose de guía (Fecha de Carga usa el
-            // mismo campo "fecha", así que queda igual automáticamente).
             const itemRelacionado = itemsCargados.find(it => it.delivery === deliveryValor) || null;
 
             filasGuiaPorDelivery[deliveryValor] = productos.map((p, idx) => {
               const vinculo = vinculosCodigos[(p.codigo || '').trim()];
               return {
                 id: `guia-${deliveryValor}-${idx}`,
-                ref: null, // no hay documento propio: no se puede marcar SOLICITADO
+                ref: null, 
                 esFilaGuia: true,
                 gestionId: itemRelacionado?.gestionId || '-',
                 nombre: itemRelacionado?.nombre || '-',
@@ -231,7 +187,7 @@ export const useSolicitudConsignacionData = () => {
                 fechaRegistro: itemRelacionado?.fechaRegistro || null,
                 lote: p.lote || 'N/A',
                 vencimiento: p.vencimiento || 'N/A',
-                numeroGuia: 0 // en las filas del desglose de Delivery siempre queda en 0
+                numeroGuia: 0 
               };
             });
           } catch (err) {
@@ -239,16 +195,11 @@ export const useSolicitudConsignacionData = () => {
           }
         }));
 
-        // Asigna el N° de Guía real a cada ítem: prioriza el campo ya
-        // guardado (numeroGuiaVinculada); si no existe, usa el que se
-        // acaba de resolver desde la guía asociada a su N° de Delivery.
         const itemsConNumeroGuia = itemsCargados.map(it => ({
           ...it,
           numeroGuia: it.numeroGuiaVinculada || numeroGuiaPorDelivery[it.delivery] || 0
         }));
 
-        // Intercalar: cada ítem va seguido (una sola vez) por las filas de
-        // su guía, aunque varios ítems compartan el mismo N° de Delivery.
         const deliveriesYaInsertados = new Set();
         const listaFinal = [];
 
@@ -274,7 +225,6 @@ export const useSolicitudConsignacionData = () => {
     });
 
     return () => unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggleSeleccion = (id) => {
@@ -313,9 +263,6 @@ export const useSolicitudConsignacionData = () => {
     }
   };
 
-  // periodoActivo: { anio, mes } — el período que está abierto AHORA en
-  // Control Mensual (se le pasa desde el componente, que ya lo obtiene con
-  // usePeriodoAbiertoModulo('consignacion') para el banner informativo).
   const handleExportarYMarcarSolicitado = (periodoActivo) => {
     const itemsSeleccionados = items.filter(it => seleccionados.has(it.id));
 
@@ -337,7 +284,7 @@ export const useSolicitudConsignacionData = () => {
       async () => {
         setExportando(true);
         try {
-          // 1. Armar filas del Excel (una fila por ítem o producto de guía)
+
           const fechaIngresoHoy = obtenerFechaHoyTexto();
           const filas = itemsSeleccionados.map(it => ({
             'ADMISION': it.gestionId,
@@ -364,16 +311,6 @@ export const useSolicitudConsignacionData = () => {
           const fechaArchivo = new Date().toISOString().slice(0, 10);
           XLSX.writeFile(workbook, `solicitud_consignacion_${fechaArchivo}.xlsx`);
 
-          // 2. Batch: marcar cada ítem REAL como SOLICITADO + copiar TODOS
-          //    sus campos a consignacion_imputadas en el período activo
-          //    (partido cada 400 operaciones por seguridad). Las filas de
-          //    desglose de guía (sin "ref") se omiten de ambas acciones.
-          //
-          //    Antes de copiar, se relee cada documento directamente desde
-          //    Firestore (getDoc) en vez de confiar en el dato guardado en
-          //    memoria: así queda garantizado que se copian TODOS los
-          //    campos actuales del ítem, sin depender de si "datosOriginales"
-          //    llegó completo o desactualizado hasta este punto.
           let opsEnBatch = 0;
           let batchActual = writeBatch(db);
           const batches = [batchActual];
@@ -389,17 +326,12 @@ export const useSolicitudConsignacionData = () => {
           };
 
           for (const it of itemsConRef) {
-            // a) Marcar el ítem original como SOLICITADO
             agregarOp(b => b.update(it.ref, {
               estado: ESTADO_DESTINO,
               fechaSolicitud: new Date(),
               solicitadoPor: userData?.nombreCompleto || 'Usuario'
             }));
 
-            // b) Releer el documento completo y fresco, y copiar TODOS sus
-            //    campos a consignacion_imputadas, en el período que está
-            //    abierto ahora mismo (no uno guardado históricamente),
-            //    igual que se hace en Implantes.
             let datosFrescos = it.datosOriginales || {};
             try {
               const snapFresco = await getDoc(it.ref);
@@ -436,7 +368,6 @@ export const useSolicitudConsignacionData = () => {
             await b.commit();
           }
 
-          // 3. Logs de auditoría (después del commit, uno por ítem real)
           await Promise.all(
             itemsConRef.map(it =>
               registrarLog(it.ref, 'SOLICITUD_EXPORTADA', {

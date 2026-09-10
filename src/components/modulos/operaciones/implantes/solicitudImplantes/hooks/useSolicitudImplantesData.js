@@ -26,14 +26,13 @@ export const useSolicitudImplantesData = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-  // Escucha en tiempo real todos los bloques (documentos "detalles") cuya
-  // Solicitud esté en SOLICITAR — o sea, todos los ítems de ese bloque ya
-  // quedaron CARGADO y están listos para descargarse.
-  useEffect(() => {
+    useEffect(() => {
     const q = query(collectionGroup(db, "detalles"), where("solicitud", "==", "SOLICITAR"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const lista = snapshot.docs.map(document => {
+      const docsImplantes = snapshot.docs.filter(d => d.ref.path.startsWith('implantes_gestiones/'));
+
+      const lista = docsImplantes.map(document => {
         const data = document.data();
         const items = data.cotizaciones?.[0]?.items || [];
         return {
@@ -97,7 +96,6 @@ export const useSolicitudImplantesData = () => {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  // Convierte un Timestamp de Firestore (o Date/string) a dd-mm-yyyy.
   const formatearFechaDeTimestamp = (valor) => {
     if (!valor) return '';
     const date = valor.toDate ? valor.toDate() : new Date(valor);
@@ -108,9 +106,6 @@ export const useSolicitudImplantesData = () => {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  // Descompone "YYYY-MM-DD" en sus 3 partes; se usan para guardar año/mes/día
-  // como CAMPOS en implantes_imputadas (no como parte de la ruta, que usa el
-  // período de Control Mensual, ver más abajo).
   const descomponerFecha = (fechaString) => {
     if (fechaString && fechaString.includes('-')) {
       const [anio, mes, dia] = fechaString.split('-');
@@ -119,10 +114,6 @@ export const useSolicitudImplantesData = () => {
     return { anio: '0000', mes: '00', dia: '00' };
   };
 
-  // Texto legible del período, ej: "Septiembre 2026". Se usa para el campo
-  // "periodo" que se guarda tanto en el bloque (implantes_gestiones) como en
-  // cada documento de implantes_imputadas, para que sea fácil de leer o
-  // filtrar sin tener que combinar mes + año manualmente.
   const formatearPeriodoTexto = (periodo) => {
     if (!periodo || !periodo.mes || !periodo.anio) return '';
     const mesCapitalizado = periodo.mes.charAt(0).toUpperCase() + periodo.mes.slice(1).toLowerCase();
@@ -145,18 +136,6 @@ export const useSolicitudImplantesData = () => {
     }
   };
 
-  // Exporta a Excel los bloques seleccionados (uno o más ítems por bloque),
-  // y al confirmar: 1) marca cada bloque como SOLICITADO, 2) escribe cada
-  // ítem en implantes_imputadas con TODOS sus datos (gestión + ítem), 3)
-  // registra el log de auditoría por bloque.
-  //
-  // IMPORTANTE — período de imputación: se usa el período que está ABIERTO
-  // AHORA en Control Mensual (periodoActivo, recibido desde el componente
-  // vía usePeriodoAbiertoModulo), NO el período que el ítem trae guardado
-  // desde que fue cargado (it.periodoAnio/it.periodoMes). Esto es a
-  // propósito: si un ítem se cargó en Agosto pero la Solicitud se hace en
-  // Septiembre (con Agosto ya cerrado), debe imputarse en Septiembre, que es
-  // el único período en el que realmente se puede seguir registrando datos.
   const handleExportarYMarcarSolicitado = (periodoActivo) => {
     const bloquesSeleccionados = bloques.filter(b => seleccionados.has(b.refPath));
 
@@ -178,15 +157,9 @@ export const useSolicitudImplantesData = () => {
       async () => {
         setExportando(true);
         try {
-          // 1. Armar filas del Excel (una fila por ítem) — Hoja 1: detalle completo
           const fechaHoyFormato = formatearFechaExcel(new Date().toISOString().slice(0, 10));
 
           const filas = [];
-          // Hoja 2: resumen simplificado. Se llena en el mismo recorrido que
-          // la hoja 1, para no duplicar lógica ni desalinear los datos.
-          // Incluye también los ítems de "contenido de PAD", ya que estos
-          // viven como ítems planos (con padPadreId) dentro de
-          // bloque.items — no requieren tratamiento especial.
           const filasResumen = [];
 
           bloquesSeleccionados.forEach(bloque => {
@@ -272,7 +245,6 @@ export const useSolicitudImplantesData = () => {
           const fechaHoy = new Date().toISOString().slice(0, 10);
           XLSX.writeFile(workbook, `solicitud_implantes_${fechaHoy}.xlsx`);
 
-          // 2. Batch: marcar SOLICITADO + escribir en implantes_imputadas
           const batch = writeBatch(db);
           let opsEnBatch = 0;
           let batchActual = batch;
@@ -291,7 +263,6 @@ export const useSolicitudImplantesData = () => {
           bloquesSeleccionados.forEach(bloque => {
             const docRef = doc(db, bloque.refPath);
 
-            // Marca el bloque como SOLICITADO (estado terminal)
             agregarOp(b => b.update(docRef, {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
@@ -301,10 +272,6 @@ export const useSolicitudImplantesData = () => {
 
             const { anio, mes, dia } = descomponerFecha(bloque.fecha);
 
-            // Se copian TODOS los datos del ítem + de la gestión a
-            // implantes_imputadas, bajo la ruta del período ABIERTO AHORA
-            // (periodoActivo) — no el período que el ítem trae guardado
-            // desde su creación.
             bloque.items.forEach(it => {
               const imputadaRef = doc(
                 db,
@@ -314,7 +281,6 @@ export const useSolicitudImplantesData = () => {
               );
 
               agregarOp(b => b.set(imputadaRef, {
-                // --- Datos de la gestión (bloque) ---
                 gestionId: bloque.gestionId,
                 agendaId: bloque.agendaId,
                 admision: bloque.admision,
@@ -334,7 +300,6 @@ export const useSolicitudImplantesData = () => {
                 estado: bloque.estado,
                 costoGestion: bloque.costo,
 
-                // --- Datos de la cotización / ítem ---
                 numCotizacion: bloque.numCotizacion,
                 itemId: it.id,
                 referencia: it.referencia || 'P',
@@ -355,16 +320,12 @@ export const useSolicitudImplantesData = () => {
                 sinCodigo: !!it.sinCodigo,
                 estadoCarga: it.estadoCarga || 'PENDIENTE',
 
-                // Período de IMPUTACIÓN real (el que está abierto al
-                // solicitar). periodoAnioCarga/periodoMesCarga se conservan
-                // solo como referencia histórica de cuándo se cargó el ítem.
                 periodoAnio: periodoActivo.anio,
                 periodoMes: periodoActivo.mes,
                 periodo: periodoTexto,
                 periodoAnioCarga: it.periodoAnio || null,
                 periodoMesCarga: it.periodoMes || null,
 
-                // --- Metadatos ---
                 registradoPor: userData?.nombreCompleto || 'Usuario',
                 actualizadoEn: new Date()
               }, { merge: true }));
@@ -375,7 +336,6 @@ export const useSolicitudImplantesData = () => {
             await b.commit();
           }
 
-          // 3. Logs de auditoría (después del commit, uno por bloque)
           await Promise.all(
             bloquesSeleccionados.map(bloque =>
               registrarLog(doc(db, bloque.refPath), 'SOLICITUD_EXPORTADA', {

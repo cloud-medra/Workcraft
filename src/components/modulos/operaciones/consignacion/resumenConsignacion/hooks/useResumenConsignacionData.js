@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collectionGroup, onSnapshot, collection, query, where } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; // AJUSTAR según la ubicación real de este archivo
-import { useToast } from '../../../../../../context/ToastContext'; // AJUSTAR ruta
+import { db } from '../../../../../../firebaseConfig'; 
+import { useToast } from '../../../../../../context/ToastContext'; 
 
 export const NOMBRES_MESES = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -10,21 +10,13 @@ export const NOMBRES_MESES = {
 };
 
 export const ATRIBUTO_OPTIONS = ['CONSIGNACION', 'COTIZACION'];
-
-// Sentinel para "el usuario eligió explícitamente ver todos los meses del
-// año". Distinto de '' (que significa "todavía no ha elegido nada").
 export const TODOS_LOS_MESES = 'TODOS';
 
-// "documentos" es el mismo nombre de subcolección que usa Implantes
-// (implantes_imputadas/{anio}/meses/{mes}/documentos) y collectionGroup no
-// distingue por colección padre. Por eso cada documento que escribimos en
-// consignacion_imputadas trae el campo "modulo: 'CONSIGNACION'" — acá se
-// filtra por él para no mezclar datos de otros módulos.
 const FILTRO_MODULO = where('modulo', '==', 'CONSIGNACION');
 
 export const useResumenConsignacionData = () => {
-  const [anio, setAnio] = useState('');   // '' = sin elegir todavía
-  const [mes, setMes] = useState('');     // '' = sin elegir, TODOS_LOS_MESES = todos, o '01'..'12'
+  const [anio, setAnio] = useState('');   
+  const [mes, setMes] = useState('');   
   const [busqueda, setBusqueda] = useState('');
   const [filtroAtributo, setFiltroAtributo] = useState('');
   const [documentos, setDocumentos] = useState([]);
@@ -35,16 +27,13 @@ export const useResumenConsignacionData = () => {
 
   const { showToast } = useToast();
 
-  // --- Metadata: qué años/meses tienen datos realmente registrados ---
-  // Es la única lectura que se hace siempre al entrar a la vista, y solo
-  // sirve para poblar los selects. Los datos completos de cada ítem (la
-  // consulta pesada) solo se piden cuando el usuario elige año Y mes.
   useEffect(() => {
     const q = query(collectionGroup(db, 'documentos'), FILTRO_MODULO);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_imputadas/'));
       const mapa = {};
-      snapshot.docs.forEach(d => {
+      docsConsignacion.forEach(d => {
         const data = d.data();
         const a = data.periodoAnio;
         const m = data.periodoMes;
@@ -73,24 +62,16 @@ export const useResumenConsignacionData = () => {
     return Array.from(periodosDisponibles[anio]).sort((a, b) => a.localeCompare(b));
   }, [periodosDisponibles, anio]);
 
-  // Si el año elegido deja de existir en la metadata (caso borde), se limpia
-  // — pero no se auto-selecciona ningún año por defecto.
   useEffect(() => {
     if (anio && !aniosDisponibles.includes(anio)) {
       setAnio('');
     }
   }, [aniosDisponibles, anio]);
 
-  // Al cambiar de año, se resetea el mes (obliga a elegir de nuevo dentro
-  // del nuevo año).
   useEffect(() => {
     setMes('');
   }, [anio]);
 
-  // --- Datos de la tabla ---
-  // Solo se consulta cuando hay año Y mes elegidos explícitamente (mes puede
-  // ser un mes puntual o el sentinel TODOS_LOS_MESES). Mientras mes === '',
-  // la tabla queda vacía sin gastar lecturas.
   useEffect(() => {
     if (!anio || !mes) {
       setDocumentos([]);
@@ -109,7 +90,8 @@ export const useResumenConsignacionData = () => {
       );
 
       unsubscribe = onSnapshot(q, (snapshot) => {
-        setDocumentos(snapshot.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
+        const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_imputadas/'));
+        setDocumentos(docsConsignacion.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
         setCargando(false);
       }, (error) => {
         console.error("Error al escuchar consignacion_imputadas (año completo):", error);
