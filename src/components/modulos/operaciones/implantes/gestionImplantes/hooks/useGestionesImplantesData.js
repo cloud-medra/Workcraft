@@ -118,7 +118,8 @@ export const useGestionesImplantesData = () => {
   useEffect(() => {
     const q = query(collectionGroup(db, "detalles"), orderBy("fechaRegistro", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setImplantes(snapshot.docs.map(document => ({
+      const soloImplantes = snapshot.docs.filter(d => d.ref.path.startsWith('implantes_gestiones/'));
+      setImplantes(soloImplantes.map(document => ({
         id: document.id,
         refPath: document.ref.path,
         active: true,

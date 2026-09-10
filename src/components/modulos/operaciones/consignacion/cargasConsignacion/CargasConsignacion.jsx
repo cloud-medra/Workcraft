@@ -7,17 +7,18 @@ import {
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { db } from '../../../../../firebaseConfig'; 
+import { db } from '../../../../../firebaseConfig';
 import { PackageSearch } from 'lucide-react';
-import { useToast } from '../../../../../context/ToastContext'; 
-import { useModal } from '../../../../../context/ModalContext'; 
-import Spinner from '../../../../ui/Spinner'; 
-import { buscarReporteInfoPorAdmision } from '../registroConsignacion/utils/buscarReporteInfoPorAdmision'; 
+import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import Spinner from '../../../../ui/Spinner';
+import { buscarReporteInfoPorAdmision } from '../registroConsignacion/utils/buscarReporteInfoPorAdmision';
 
 import CargasConsignacionFiltros from './components/CargasConsignacionFiltros';
 import CargasConsignacionTable from './components/CargasConsignacionTable';
 import CargasConsignacionDetalleView from './components/CargasConsignacionDetalleView';
 
+const COL_BASE = 'consignacion_registros';
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_POR_DEFECTO = 'INGRESADO';
 
@@ -25,7 +26,6 @@ const CargasConsignacion = () => {
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(false);
 
-  // Filtros
   const [busqueda, setBusqueda] = useState('');
   const [filtroAnio, setFiltroAnio] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
@@ -33,7 +33,6 @@ const CargasConsignacion = () => {
   const [filtroAtributo, setFiltroAtributo] = useState('');
   const [filtroEstado, setFiltroEstado] = useState(ESTADO_POR_DEFECTO);
 
-  // Detalle (se abre con doble clic o botón "Ver")
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
 
   const { showToast } = useToast();
@@ -44,7 +43,8 @@ const CargasConsignacion = () => {
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setRegistros(snap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() })));
+        const soloConsignacion = snap.docs.filter(d => d.ref.path.startsWith(`${COL_BASE}/`));
+        setRegistros(soloConsignacion.map(d => ({ id: d.id, ref: d.ref, ...d.data() })));
       },
       (error) => {
         console.error('Error al escuchar consignacion_registros:', error);
