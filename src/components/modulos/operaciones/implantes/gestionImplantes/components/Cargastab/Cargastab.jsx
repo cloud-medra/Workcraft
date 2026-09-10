@@ -297,14 +297,10 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     limpiarFormularioNuevoItem();
   };
 
-  // Expuesto al padre (GestionesImplantesDetalleView) para el caso "cargué
-  // referencia/cantidad/PAD pero olvidé apretar el botón +": si al momento
-  // de Guardar Todo hay algo cargado en este formulario, se confirma solo.
   useImperativeHandle(ref, () => ({
     confirmarItemPendiente: () => {
       const hayAlgoCargado = !!(
         nuevoItem.referencia.trim() ||
-        nuevoItem.numCotizacion.trim() ||
         nuevoItem.cantidad ||
         contenidoPad.length > 0
       );
