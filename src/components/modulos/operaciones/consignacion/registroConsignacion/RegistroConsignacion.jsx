@@ -47,7 +47,6 @@ const RegistroConsignacion = () => {
   const [cargando, setCargando] = useState(false);
   const [registroEditando, setRegistroEditando] = useState(null);
 
-  // Filtros
   const [busqueda, setBusqueda] = useState('');
   const [filtroAnio, setFiltroAnio] = useState('');
   const [filtroMes, setFiltroMes] = useState('');
@@ -59,12 +58,13 @@ const RegistroConsignacion = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-  useEffect(() => {
+    useEffect(() => {
     const q = query(collectionGroup(db, NOMBRE_SUBCOL_DETALLES), orderBy('fechaRegistro', 'desc'));
     const unsub = onSnapshot(
       q,
       (snap) => {
-        setRegistros(snap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() })));
+        const soloConsignacion = snap.docs.filter(d => d.ref.path.startsWith(`${COL_BASE}/`));
+        setRegistros(soloConsignacion.map(d => ({ id: d.id, ref: d.ref, ...d.data() })));
       },
       (error) => {
         console.error('Error al escuchar consignacion_registros:', error);
@@ -81,9 +81,6 @@ const RegistroConsignacion = () => {
       return;
     }
 
-    // Guardia defensiva: si en el tiempo que estuvo abierto el formulario
-    // el registro pasó a CARGADO (por ejemplo, alguien lo cargó desde
-    // Cargas de Consignación en otra pestaña), no se guarda el cambio.
     if (registroEditando && (registroEditando.estado || '').toUpperCase() === 'CARGADO') {
       showToast('Este registro ya fue cargado y no se puede modificar', 'error');
       setRegistroEditando(null);
@@ -99,7 +96,7 @@ const RegistroConsignacion = () => {
       referencia: payload.referencia || '',
       cantidad: Number(payload.cantidad) || 0,
       delivery: payload.delivery || '',
-      empresa: payload.empresa || '', // NUEVO: empresa traída desde maestros_codigos
+      empresa: payload.empresa || '', 
 
       centro: payload.centro || 'PABELLON',
       atributo: payload.atributo || payload.tipo || 'CONSIGNACION',
