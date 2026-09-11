@@ -148,6 +148,7 @@ export const useSolicitudConsignacionData = () => {
         const data = document.data();
         const costo = Number(data.costo) || 0;
         const cantidad = Number(data.cantidad) || 0;
+        const vecesCosto = data.recargoVecesCosto != null ? Number(data.recargoVecesCosto) : 1;
         const deliveryValor = (data.delivery || '').trim();
         const tieneVinculo = Boolean(data.deliveryVinculado);
 
@@ -164,7 +165,8 @@ export const useSolicitudConsignacionData = () => {
           codigo: data.codigo || 'S/C',
           descripcion: data.descripcion || 'P',
           cantidad,
-          precio: data.venta != null ? Number(data.venta) : costo * cantidad,
+          costo,
+          ventaUnitaria: costo * vecesCosto,
           costoTotal: costo * cantidad,
           atributo: data.atributo || 'P',
           fechaRegistro: data.fechaRegistro || null,
@@ -210,7 +212,9 @@ export const useSolicitudConsignacionData = () => {
               codigo: 'No lleva OC',
               descripcion: vinculo?.descripcion || '-',
               cantidad: p.cantidad ?? 0,
-              precio: 0,
+              costo: 0,
+              ventaUnitaria: 0,
+              costoTotal: 0,
               atributo: vinculo?.tipo || '-',
               fechaRegistro: itemRelacionado?.fechaRegistro || null,
               lote: p.lote || 'N/A',
@@ -321,7 +325,7 @@ export const useSolicitudConsignacionData = () => {
             'CODIGO': it.codigo,
             'DESCRIPCION': it.descripcion,
             'CANTIDAD': it.cantidad,
-            'PRECIO': it.precio,
+            'PRECIO': it.costo,
             'ATRIBUTO': it.atributo,
             'FECHA DE REGISTRO': formatearFechaDeTimestamp(it.fechaRegistro),
             'FECHA DE CARGA': formatearFechaDDMMYYYY(it.fecha),
@@ -348,7 +352,7 @@ export const useSolicitudConsignacionData = () => {
             'Id': it.gestionId,
             'Cód': it.codigo,
             'Cant': it.cantidad,
-            'Venta': it.precio,
+            'Venta': it.ventaUnitaria,
             'Médico': it.medico,
             'Fecha': formatearFechaDDMMYYYY(it.fecha),
             'Descripción': it.descripcion,
@@ -416,7 +420,8 @@ export const useSolicitudConsignacionData = () => {
                 gestionId: it.gestionId,
                 codigo: it.codigo,
                 cantidad: it.cantidad,
-                precio: it.precio,
+                costo: it.costo,
+                ventaUnitaria: it.ventaUnitaria,
                 periodoAnio: periodoActivo.anio,
                 periodoMes: periodoActivo.mes
               })

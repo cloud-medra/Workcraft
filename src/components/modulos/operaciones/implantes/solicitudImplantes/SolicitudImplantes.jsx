@@ -244,7 +244,7 @@ const SolicitudImplantes = () => {
                       {item ? item.cantidad : '-'}
                     </td>
                     <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-emerald-700 dark:text-emerald-400 font-semibold">
-                      {item ? `$${Number(item.totalItem || 0).toLocaleString('es-CL')}` : '-'}
+                      {item ? `$${Number(item.precio || 0).toLocaleString('es-CL')}` : '-'}
                     </td>
                     <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
                       {item ? (item.tipoVinculado || 'P') : '-'}

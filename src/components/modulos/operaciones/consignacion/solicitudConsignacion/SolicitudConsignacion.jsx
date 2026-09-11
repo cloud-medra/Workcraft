@@ -50,7 +50,7 @@ const SolicitudConsignacion = () => {
 
   const { periodoAbierto, cargandoPeriodo } = usePeriodoAbiertoModulo('consignacion');
 
-  const totalGeneral = items.reduce((acc, it) => acc + (Number(it.precio) || 0), 0);
+  const totalGeneral = items.reduce((acc, it) => acc + (Number(it.costoTotal) || 0), 0);
   const fechaIngresoHoy = obtenerFechaHoyTexto();
 
   return (
@@ -211,7 +211,7 @@ const SolicitudConsignacion = () => {
                       {it.cantidad}
                     </td>
                     <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-emerald-700 dark:text-emerald-400 font-semibold">
-                      ${Number(it.precio || 0).toLocaleString('es-CL')}
+                      ${Number(it.costo || 0).toLocaleString('es-CL')}
                     </td>
                     <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
                       {it.atributo}
