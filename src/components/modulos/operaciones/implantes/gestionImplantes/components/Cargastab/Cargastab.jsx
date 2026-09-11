@@ -1,4 +1,4 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   UploadCloud,
   Building2,
@@ -14,7 +14,6 @@ import {
 import { formatearFechaTabla, calcularCamposFinancieros, esClasePad, VALOR_LOTE_VENCIMIENTO_PAD } from './cargasHelpers';
 import { useRecargosActivos } from './useRecargosActivos';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
-import { usePeriodoAbiertoModulo } from './usePeriodoAbiertoModulo';
 import { CotizacionCard } from './CotizacionCard';
 import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 
@@ -47,7 +46,7 @@ const DRAFT_CONTENIDO_VACIO = {
   vencimiento: ''
 };
 
-export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem }, ref) => {
+export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem, periodoAbierto, cargandoPeriodo }, ref) => {
   const bloqueActivo = formData?.bloques?.[bloqueActivoIndex];
   const cotizaciones = bloqueActivo?.cotizaciones || [];
 
@@ -62,7 +61,6 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   const [errorDraftContenido, setErrorDraftContenido] = useState({});
 
   const { recargosActivos, cargandoRecargos } = useRecargosActivos();
-  const { periodoAbierto, cargandoPeriodo } = usePeriodoAbiertoModulo('implantes');
   const {
     sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, skipNext
   } = useAutocompleteReferencia(nuevoItem.referencia);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collectionGroup, onSnapshot, collection, query, where } from 'firebase/firestore';
+import { collectionGroup, onSnapshot, collection, query, where, orderBy, documentId } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
 
@@ -12,7 +12,8 @@ export const NOMBRES_MESES = {
 export const ESTADO_CARGA_OPTIONS = ['PENDIENTE', 'CARGADO', 'REVISAR', 'S/COTIZACION'];
 export const TODOS_LOS_MESES = 'TODOS';
 
-const FILTRO_MODULO = null; 
+const RAIZ_IMPLANTES_IMPUTADAS = 'implantes_imputadas/';
+
 
 export const useResumenImplantesData = () => {
   const [anio, setAnio] = useState('');   
@@ -27,13 +28,22 @@ export const useResumenImplantesData = () => {
 
   const { showToast } = useToast();
 
+  // Antes esto escuchaba TODO el collectionGroup "documentos" de la base de
+  // datos (cualquier módulo con una subcolección "documentos" bajo su
+  // colección de imputadas) y filtraba recién en el cliente por el prefijo
+  // 'implantes_imputadas/'. Ahora se acota con un rango sobre el ID de
+  // documento (__name__) para que Firestore solo entregue documentos cuyo
+  // path empieza con ese prefijo — sin necesidad de un índice compuesto.
   useEffect(() => {
-    const constraints = [collectionGroup(db, 'documentos')];
-    if (FILTRO_MODULO) constraints.push(FILTRO_MODULO);
-    const q = query(...constraints);
+    const q = query(
+      collectionGroup(db, 'documentos'),
+      where(documentId(), '>=', RAIZ_IMPLANTES_IMPUTADAS),
+      where(documentId(), '<', RAIZ_IMPLANTES_IMPUTADAS + ''),
+      orderBy(documentId())
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docsImplantes = snapshot.docs.filter(d => d.ref.path.startsWith('implantes_imputadas/'));
+      const docsImplantes = snapshot.docs;
 
       const mapa = {};
       docsImplantes.forEach(d => {
@@ -86,13 +96,20 @@ export const useResumenImplantesData = () => {
     let unsubscribe;
 
     if (mes === TODOS_LOS_MESES) {
-      const constraints = [collectionGroup(db, 'documentos'), where('periodoAnio', '==', anio)];
-      if (FILTRO_MODULO) constraints.push(FILTRO_MODULO);
-      const q = query(...constraints);
+      // Acotado directamente a 'implantes_imputadas/{anio}/' vía rango de
+      // __name__: reemplaza el where('periodoAnio', '==', anio) que antes
+      // corría sobre TODO el collectionGroup de la app (todos los módulos)
+      // y evita además necesitar un índice compuesto.
+      const prefijoAnio = `${RAIZ_IMPLANTES_IMPUTADAS}${anio}/`;
+      const q = query(
+        collectionGroup(db, 'documentos'),
+        where(documentId(), '>=', prefijoAnio),
+        where(documentId(), '<', prefijoAnio + ''),
+        orderBy(documentId())
+      );
 
       unsubscribe = onSnapshot(q, (snapshot) => {
-        const docsImplantes = snapshot.docs.filter(d => d.ref.path.startsWith('implantes_imputadas/'));
-        setDocumentos(docsImplantes.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
+        setDocumentos(snapshot.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
         setCargando(false);
       }, (error) => {
         console.error("Error al escuchar implantes_imputadas (año completo):", error);

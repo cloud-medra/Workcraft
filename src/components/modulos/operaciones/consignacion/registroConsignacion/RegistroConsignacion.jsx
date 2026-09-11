@@ -1,22 +1,25 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   collection,
   collectionGroup,
   query,
   orderBy,
-  onSnapshot,
+  where,
+  limit,
+  startAfter,
+  getDocs,
   doc,
   writeBatch,
   updateDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { db } from '../../../../../firebaseConfig'; 
-import { ClipboardList } from 'lucide-react';
-import { useToast } from '../../../../../context/ToastContext'; 
-import { useModal } from '../../../../../context/ModalContext'; 
-import { useUser } from '../../../../../context/UserContext'; 
-import Spinner from '../../../../ui/Spinner'; 
-import { buscarReporteInfoPorAdmision } from './utils/buscarReporteInfoPorAdmision';
+import { db } from '../../../../../firebaseConfig';
+import { ClipboardList, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
+import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import { useUser } from '../../../../../context/UserContext';
+import Spinner from '../../../../ui/Spinner';
+import { buscarReporteInfoPorAdmisionCacheado, invalidarReporteAdmision } from './utils/cacheMaestros';
 
 import RegistroConsignacionForm from './components/RegistroConsignacionForm';
 import ConsignacionFiltros from './components/ConsignacionFiltros';
@@ -24,6 +27,8 @@ import ConsignacionTable from './components/ConsignacionTable';
 
 const COL_BASE = 'consignacion_registros';
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
+const CENTRO_FIJO = 'PABELLON';
+const TAMANO_PAGINA = 150;
 
 const NOMBRES_MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -45,6 +50,10 @@ const descomponerFecha = (fechaStr) => {
 const RegistroConsignacion = () => {
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [cargandoLista, setCargandoLista] = useState(false);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [ultimoDoc, setUltimoDoc] = useState(null);
+  const [hayMas, setHayMas] = useState(false);
   const [registroEditando, setRegistroEditando] = useState(null);
 
   const [busqueda, setBusqueda] = useState('');
@@ -58,21 +67,55 @@ const RegistroConsignacion = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-    useEffect(() => {
-    const q = query(collectionGroup(db, NOMBRE_SUBCOL_DETALLES), orderBy('fechaRegistro', 'desc'));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const soloConsignacion = snap.docs.filter(d => d.ref.path.startsWith(`${COL_BASE}/`));
-        setRegistros(soloConsignacion.map(d => ({ id: d.id, ref: d.ref, ...d.data() })));
-      },
-      (error) => {
-        console.error('Error al escuchar consignacion_registros:', error);
-        showToast('Error al cargar los registros', 'error');
-      }
-    );
-    return () => unsub();
+  const cargarPrimeraPagina = useCallback(async () => {
+    setCargandoLista(true);
+    try {
+      const q = query(
+        collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+        where('centro', '==', CENTRO_FIJO),
+        orderBy('fechaRegistro', 'desc'),
+        limit(TAMANO_PAGINA)
+      );
+      const snap = await getDocs(q);
+
+      setRegistros(snap.docs.map((d) => ({ id: d.id, ref: d.ref, ...d.data() })));
+      setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
+      setHayMas(snap.docs.length === TAMANO_PAGINA);
+    } catch (error) {
+      console.error('Error al cargar consignacion_registros:', error);
+      showToast('Error al cargar los registros', 'error');
+    } finally {
+      setCargandoLista(false);
+    }
   }, []);
+
+  const cargarMas = async () => {
+    if (!ultimoDoc || cargandoMas) return;
+    setCargandoMas(true);
+    try {
+      const q = query(
+        collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+        where('centro', '==', CENTRO_FIJO),
+        orderBy('fechaRegistro', 'desc'),
+        startAfter(ultimoDoc),
+        limit(TAMANO_PAGINA)
+      );
+      const snap = await getDocs(q);
+
+      setRegistros((prev) => [...prev, ...snap.docs.map((d) => ({ id: d.id, ref: d.ref, ...d.data() }))]);
+      setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
+      setHayMas(snap.docs.length === TAMANO_PAGINA);
+    } catch (error) {
+      console.error('Error al cargar más registros:', error);
+      showToast('Error al cargar más registros', 'error');
+    } finally {
+      setCargandoMas(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarPrimeraPagina();
+  }, [cargarPrimeraPagina]);
 
   const handleRegistrar = async (payload) => {
     const clavesNuevas = descomponerFecha(payload.fecha);
@@ -96,9 +139,9 @@ const RegistroConsignacion = () => {
       referencia: payload.referencia || '',
       cantidad: Number(payload.cantidad) || 0,
       delivery: payload.delivery || '',
-      empresa: payload.empresa || '', 
+      empresa: payload.empresa || '',
 
-      centro: payload.centro || 'PABELLON',
+      centro: payload.centro || CENTRO_FIJO,
       atributo: payload.atributo || payload.tipo || 'CONSIGNACION',
       estado: payload.estado || 'INGRESADO',
       costo: payload.costo !== '' ? Number(payload.costo) : 0,
@@ -121,6 +164,9 @@ const RegistroConsignacion = () => {
 
         if (!seMovioDeCarpeta) {
           await updateDoc(registroEditando.ref, datosDoc);
+          setRegistros((prev) =>
+            prev.map((r) => (r.id === registroEditando.id ? { ...r, ...datosDoc } : r))
+          );
         } else {
           const { anio, nombreMes, dia } = clavesNuevas;
           const batch = writeBatch(db);
@@ -130,17 +176,23 @@ const RegistroConsignacion = () => {
           batch.set(doc(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia), { active: 'true' }, { merge: true });
 
           const nuevoRef = doc(collection(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia, NOMBRE_SUBCOL_DETALLES));
-          batch.set(nuevoRef, {
+          const nuevoDoc = {
             ...datosDoc,
             guias: registroEditando.guias || '',
             orden: registroEditando.orden || '',
             despachado: registroEditando.despachado || 'PENDIENTE',
             fechaRegistro: registroEditando.fechaRegistro || new Date(),
             registradoPor: registroEditando.registradoPor || userData?.nombreCompleto || 'Usuario'
-          });
+          };
+          batch.set(nuevoRef, nuevoDoc);
           batch.delete(registroEditando.ref);
 
           await batch.commit();
+
+          setRegistros((prev) => [
+            { id: nuevoRef.id, ref: nuevoRef, ...nuevoDoc },
+            ...prev.filter((r) => r.id !== registroEditando.id)
+          ]);
         }
 
         showToast('Registro actualizado correctamente', 'success');
@@ -154,16 +206,21 @@ const RegistroConsignacion = () => {
         batch.set(doc(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia), { active: 'true' }, { merge: true });
 
         const detalleRef = doc(collection(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia, NOMBRE_SUBCOL_DETALLES));
-        batch.set(detalleRef, {
+        const fechaRegistro = new Date();
+        const nuevoDoc = {
           ...datosDoc,
           guias: '',
           orden: '',
           despachado: 'PENDIENTE',
-          fechaRegistro: new Date(),
+          fechaRegistro,
           registradoPor: userData?.nombreCompleto || 'Usuario'
-        });
+        };
+        batch.set(detalleRef, nuevoDoc);
 
         await batch.commit();
+
+        setRegistros((prev) => [{ id: detalleRef.id, ref: detalleRef, ...nuevoDoc }, ...prev]);
+
         showToast('Ítem registrado correctamente', 'success');
       }
     } catch (error) {
@@ -190,6 +247,9 @@ const RegistroConsignacion = () => {
   const handleActualizarCampo = async (registro, campo, valor) => {
     try {
       await updateDoc(registro.ref, { [campo]: valor });
+      setRegistros((prev) =>
+        prev.map((r) => (r.id === registro.id ? { ...r, [campo]: valor } : r))
+      );
     } catch (error) {
       console.error('Error al actualizar campo:', error);
       showToast('Error al actualizar', 'error');
@@ -203,18 +263,24 @@ const RegistroConsignacion = () => {
     }
 
     try {
-      const datos = await buscarReporteInfoPorAdmision(db, registro.gestionId);
+      const datos = await buscarReporteInfoPorAdmisionCacheado(db, registro.gestionId, true);
+      invalidarReporteAdmision(registro.gestionId);
 
       if (!datos) {
         showToast('Aún no hay información en Reportes para este ID', 'info');
         return;
       }
 
-      await updateDoc(registro.ref, {
+      const cambios = {
         prevision: datos['Isapre'] || '',
         convenio: datos['Convenio'] || '',
         descripcionPabellon: datos['Descripción'] || ''
-      });
+      };
+
+      await updateDoc(registro.ref, cambios);
+      setRegistros((prev) =>
+        prev.map((r) => (r.id === registro.id ? { ...r, ...cambios } : r))
+      );
 
       showToast('Datos vinculados actualizados correctamente', 'success');
     } catch (error) {
@@ -230,6 +296,7 @@ const RegistroConsignacion = () => {
       async () => {
         try {
           await deleteDoc(registro.ref);
+          setRegistros((prev) => prev.filter((r) => r.id !== registro.id));
           if (registroEditando?.id === registro.id) setRegistroEditando(null);
           showToast('Registro eliminado correctamente', 'info');
         } catch (error) {
@@ -314,6 +381,15 @@ const RegistroConsignacion = () => {
           <ClipboardList size={15} className="text-[#2383C2]" />
           {registroEditando ? 'EDITAR REGISTRO DE CONSIGNACIÓN' : 'REGISTRO DE CONSIGNACIÓN'}
         </h2>
+        <button
+          type="button"
+          onClick={cargarPrimeraPagina}
+          disabled={cargandoLista}
+          title="Actualizar lista"
+          className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-40"
+        >
+          <RefreshCw size={14} className={cargandoLista ? 'animate-spin' : ''} />
+        </button>
       </div>
 
       <RegistroConsignacionForm
@@ -339,13 +415,35 @@ const RegistroConsignacion = () => {
         limpiarFiltros={limpiarFiltros}
       />
 
-      <ConsignacionTable
-        registros={registrosFiltrados}
-        onEliminar={handleEliminar}
-        onEditar={handleIniciarEdicion}
-        onActualizarCampo={handleActualizarCampo}
-        onActualizarVinculados={handleActualizarVinculados}
-      />
+      {cargandoLista ? (
+        <div className="flex-grow flex items-center justify-center gap-2 text-gray-400 dark:text-gray-500 text-[11px]">
+          <Loader2 size={14} className="animate-spin" /> Cargando registros...
+        </div>
+      ) : (
+        <>
+          <ConsignacionTable
+            registros={registrosFiltrados}
+            onEliminar={handleEliminar}
+            onEditar={handleIniciarEdicion}
+            onActualizarCampo={handleActualizarCampo}
+            onActualizarVinculados={handleActualizarVinculados}
+          />
+
+          {hayMas && (
+            <div className="flex justify-center py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40">
+              <button
+                type="button"
+                onClick={cargarMas}
+                disabled={cargandoMas}
+                className="flex items-center gap-1.5 text-[10.5px] font-bold text-[#2383C2] hover:underline disabled:opacity-50"
+              >
+                {cargandoMas ? <Loader2 size={12} className="animate-spin" /> : <ChevronDown size={12} />}
+                Cargar más registros
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

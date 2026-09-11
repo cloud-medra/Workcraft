@@ -1,12 +1,16 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { updateDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { db } from '../../../../../../firebaseConfig'; 
 import { ArrowLeft, ListFilter, Info, Truck, UploadCloud, Save, AlertTriangle, X, Loader2 } from 'lucide-react';
-import { useToast } from '../../../../../../context/ToastContext'; // AJUSTAR ruta
+import { useToast } from '../../../../../../context/ToastContext'; 
 
 import DetalleTab from './DetalleTab';
 import InformacionTab from './InformacionTab';
 import DeliveryTab from './DeliveryTab';
 import CargasTab from './CargasTab';
+
+const COL_BASE = 'consignacion_registros';
+const NOMBRE_SUBCOL_DETALLES = 'detalles';
 
 const construirEstadoInicial = (registro) => ({
   nombre: registro?.nombre || '',
@@ -22,7 +26,6 @@ const construirEstadoInicial = (registro) => ({
 
   delivery: registro?.delivery || '',
 
-  // Campos que se completan desde Delivery (paso 1 y 2)
   numeroGuiaVinculada: registro?.numeroGuiaVinculada || '',
   fechaEmisionGuiaVinculada: registro?.fechaEmisionGuiaVinculada || '',
   loteGuiaVinculado: registro?.loteGuiaVinculado || '',
@@ -35,7 +38,7 @@ const construirEstadoInicial = (registro) => ({
   fechaVinculacionDelivery: registro?.fechaVinculacionDelivery || null
 });
 
-const CargasConsignacionDetalleView = ({ registro, todosLosRegistros = [], onVolver, setCargando }) => {
+const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState('detalle');
 
@@ -47,12 +50,42 @@ const CargasConsignacionDetalleView = ({ registro, todosLosRegistros = [], onVol
 
   const hayCambios = JSON.stringify(formData) !== snapshotInicialRef.current;
 
-  // Todos los ítems (documentos) que pertenecen a la misma admisión.
-  const itemsDeEstaAdmision = useMemo(() => {
-    if (!registro?.gestionId) return registro ? [registro] : [];
-    const filtrados = todosLosRegistros.filter(r => r.gestionId === registro.gestionId);
-    return filtrados.length > 0 ? filtrados : (registro ? [registro] : []);
-  }, [registro, todosLosRegistros]);
+  const [itemsDeEstaAdmision, setItemsDeEstaAdmision] = useState(registro ? [registro] : []);
+  const [cargandoItems, setCargandoItems] = useState(false);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    (async () => {
+      if (!registro?.gestionId) {
+        setItemsDeEstaAdmision(registro ? [registro] : []);
+        return;
+      }
+
+      setCargandoItems(true);
+      try {
+        const q = query(
+          collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+          where('gestionId', '==', registro.gestionId)
+        );
+        const snap = await getDocs(q);
+        const items = snap.docs
+          .filter((d) => d.ref.path.startsWith(`${COL_BASE}/`))
+          .map((d) => ({ id: d.id, ref: d.ref, ...d.data() }));
+
+        if (!cancelado) {
+          setItemsDeEstaAdmision(items.length > 0 ? items : [registro]);
+        }
+      } catch (err) {
+        console.error('Error al cargar los ítems de la admisión:', err);
+        if (!cancelado) setItemsDeEstaAdmision([registro]);
+      } finally {
+        if (!cancelado) setCargandoItems(false);
+      }
+    })();
+
+    return () => { cancelado = true; };
+  }, [registro]);
 
   const registroParaDelivery = useMemo(() => {
     if (!registro) return registro;
@@ -81,8 +114,6 @@ const CargasConsignacionDetalleView = ({ registro, todosLosRegistros = [], onVol
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Delivery llama esto al presionar "Vincular con esta guía": solo
-  // prepara los datos en formData, todavía no escribe en Firestore.
   const handleVincularDelivery = (datosVinculo) => {
     setFormData(prev => ({ ...prev, ...datosVinculo }));
     showToast('Vínculo preparado. Presiona "Guardar Cambios" para guardarlo.', 'info');
@@ -193,6 +224,12 @@ const CargasConsignacionDetalleView = ({ registro, todosLosRegistros = [], onVol
         <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] bg-blue-50 dark:bg-blue-950/50 text-[#2383C2] dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/40 font-bold">
           #{registro?.gestionId || 'N/A'}
         </span>
+
+        {cargandoItems && (
+          <span className="flex items-center gap-1 text-[9px] text-slate-400 dark:text-gray-500">
+            <Loader2 size={11} className="animate-spin" /> Cargando ítems...
+          </span>
+        )}
 
         {hayCambios && (
           <button

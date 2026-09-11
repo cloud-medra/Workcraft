@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     collection,
-    onSnapshot,
     doc,
     query,
+    orderBy,
+    limit,
+    startAfter,
+    documentId,
+    where,
     getDocs,
     writeBatch
 } from 'firebase/firestore';
@@ -21,11 +25,15 @@ import {
     User,
     Activity,
     Stethoscope,
-    Building2
+    Building2,
+    ChevronDown,
+    Loader2
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
+
+const TAMANO_PAGINA = 150;
 
 const ReportesInfo = () => {
     const [reportes, setReportes] = useState([]);
@@ -36,6 +44,10 @@ const ReportesInfo = () => {
     const [filtroAnio, setFiltroAnio] = useState('');
     const [filtroMes, setFiltroMes] = useState('');
     const [cargando, setCargando] = useState(false);
+    const [cargandoLista, setCargandoLista] = useState(false);
+    const [cargandoMas, setCargandoMas] = useState(false);
+    const [ultimoDoc, setUltimoDoc] = useState(null);
+    const [hayMas, setHayMas] = useState(false);
 
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
@@ -80,21 +92,66 @@ const ReportesInfo = () => {
         cargarMeses();
     }, [filtroAnio]);
 
-    // Listener en tiempo real de registros
-    useEffect(() => {
-        if (!filtroAnio || !filtroMes) {
+    // Antes esto era un onSnapshot SIN limit(): traía y mantenía en vivo TODO
+    // el mes completo de registros (potencialmente miles de filas cargadas
+    // por Excel) apenas se elegía año/mes. Ahora se pagina con getDocs +
+    // limit()/startAfter(), igual que CargasConsignacion.jsx, trayendo solo
+    // TAMANO_PAGINA registros por vez y permitiendo pedir más bajo demanda.
+    const cargarPrimeraPagina = useCallback(async (anioOverride, mesOverride) => {
+        const anio = anioOverride ?? filtroAnio;
+        const mes = mesOverride ?? filtroMes;
+
+        if (!anio || !mes) {
             setReportes([]);
+            setUltimoDoc(null);
+            setHayMas(false);
             return;
         }
-        const path = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/registros`;
-        const q = query(collection(db, path));
 
-        return onSnapshot(q, (snapshot) => {
-            setReportes(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-        }, (err) => {
-            console.error("ERROR EN SNAPSHOT REPORTES:", err);
-        });
-    }, [filtroAnio, filtroMes]);
+        setCargandoLista(true);
+        try {
+            const path = `${COL_BASE}/${anio}/meses/${mes}/registros`;
+            const q = query(collection(db, path), orderBy("Fecha", "desc"), limit(TAMANO_PAGINA));
+            const snap = await getDocs(q);
+
+            setReportes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
+            setHayMas(snap.docs.length === TAMANO_PAGINA);
+        } catch (err) {
+            console.error("Error al cargar reportes:", err);
+            showToast("Error al cargar los reportes", "error");
+        } finally {
+            setCargandoLista(false);
+        }
+    }, [filtroAnio, filtroMes, showToast]);
+
+    const cargarMasReportes = async () => {
+        if (!ultimoDoc || cargandoMas || !filtroAnio || !filtroMes) return;
+        setCargandoMas(true);
+        try {
+            const path = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/registros`;
+            const q = query(
+                collection(db, path),
+                orderBy("Fecha", "desc"),
+                startAfter(ultimoDoc),
+                limit(TAMANO_PAGINA)
+            );
+            const snap = await getDocs(q);
+
+            setReportes(prev => [...prev, ...snap.docs.map(d => ({ id: d.id, ...d.data() }))]);
+            setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
+            setHayMas(snap.docs.length === TAMANO_PAGINA);
+        } catch (err) {
+            console.error("Error al cargar más reportes:", err);
+            showToast("Error al cargar más reportes", "error");
+        } finally {
+            setCargandoMas(false);
+        }
+    };
+
+    useEffect(() => {
+        cargarPrimeraPagina();
+    }, [cargarPrimeraPagina]);
 
     // Función para formatear fechas de Excel (Date objects, texto YYYY-MM-DD o seriales)
     const formatearFecha = (valorFecha) => {
@@ -177,11 +234,22 @@ const ReportesInfo = () => {
                     const { y, m, items } = gruposPorAnoMes[keyGroup];
                     fechaResult = { y, m };
 
-                    // 1. Obtener registros existentes para verificar duplicados
-                    const snapshotExistentes = await getDocs(
-                        collection(db, COL_BASE, y, "meses", m, "registros")
-                    );
-                    const idsExistentes = new Set(snapshotExistentes.docs.map(d => d.id));
+                    // 1. Verificar duplicados SOLO para los IDs que se van a
+                    // importar (antes se leía la colección "registros"
+                    // COMPLETA del mes en cada importación, aunque el mes ya
+                    // tuviera miles de filas cargadas de antes). Como el ID
+                    // de cada registro es determinístico, se puede consultar
+                    // por documentId() 'in' en lotes de 30 (límite de Firestore).
+                    const idsUnicos = [...new Set(items.map(item => item.docId))];
+                    const idsExistentes = new Set();
+                    const regsCol = collection(db, COL_BASE, y, "meses", m, "registros");
+                    for (let i = 0; i < idsUnicos.length; i += 30) {
+                        const loteIds = idsUnicos.slice(i, i + 30);
+                        const snapLote = await getDocs(
+                            query(regsCol, where(documentId(), "in", loteIds))
+                        );
+                        snapLote.docs.forEach(d => idsExistentes.add(d.id));
+                    }
 
                     // 2. Filtrar solo los registros que NO existen
                     const itemsNuevos = items.filter(item => !idsExistentes.has(item.docId));
@@ -213,6 +281,13 @@ const ReportesInfo = () => {
             if (fechaResult.y) setFiltroAnio(fechaResult.y);
             if (fechaResult.m) setFiltroMes(fechaResult.m);
 
+            // Ya no hay listener en vivo: se refresca explícitamente la
+            // primera página con los valores recién importados (por si
+            // año/mes no cambiaron y el efecto no se vuelve a disparar solo).
+            if (fechaResult.y && fechaResult.m) {
+                cargarPrimeraPagina(fechaResult.y, fechaResult.m);
+            }
+
             showToast(`Importación realizada: ${totalNuevos} agregados, ${totalOmitidos} omitidos por duplicado`, "success");
             setShowModal(false);
         } catch (e) {
@@ -221,7 +296,7 @@ const ReportesInfo = () => {
         } finally {
             setCargando(false);
         }
-    }, [showToast]);
+    }, [showToast, cargarPrimeraPagina]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,
@@ -292,6 +367,11 @@ const ReportesInfo = () => {
             </div>
 
             {/* Tabla Principal */}
+            {cargandoLista ? (
+                <div className="flex-grow flex items-center justify-center gap-2 text-slate-400 dark:text-gray-500 text-[11px]">
+                    <Loader2 size={14} className="animate-spin" /> Cargando registros...
+                </div>
+            ) : (
             <div className="flex-grow overflow-auto">
                 <table className="w-full text-left text-[11px] border-collapse min-w-[1000px]">
                     <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
@@ -352,12 +432,28 @@ const ReportesInfo = () => {
                         )}
                     </tbody>
                 </table>
+
+                {hayMas && (
+                    <div className="flex justify-center py-2 border-t border-slate-200 dark:border-gray-700 bg-slate-50/40 dark:bg-gray-800/40">
+                        <button
+                            type="button"
+                            onClick={cargarMasReportes}
+                            disabled={cargandoMas}
+                            className="flex items-center gap-1.5 text-[10.5px] font-normal text-[#2383C2] hover:underline disabled:opacity-50"
+                        >
+                            {cargandoMas ? <Loader2 size={12} className="animate-spin" /> : <ChevronDown size={12} />}
+                            Cargar más registros
+                        </button>
+                    </div>
+                )}
             </div>
+            )}
 
             {/* Totalizador Footer */}
             <div className="bg-slate-100 dark:bg-gray-900 border-t border-slate-200 dark:border-gray-700 p-2 flex items-center justify-between">
                 <div className="text-[10px] text-slate-500 dark:text-gray-400">
-                    Total registros cargados: <strong className="text-slate-800 dark:text-gray-200 font-normal">{reportesFiltrados.length}</strong>
+                    Registros cargados en pantalla: <strong className="text-slate-800 dark:text-gray-200 font-normal">{reportesFiltrados.length}</strong>
+                    {hayMas && <span className="text-slate-400 dark:text-gray-500"> (hay más — usa "Cargar más registros")</span>}
                 </div>
             </div>
 

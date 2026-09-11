@@ -1,12 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { writeBatch, doc, collection, serverTimestamp } from 'firebase/firestore';
-
-// ⚠️ Ajusta estas rutas según dónde ubiques finalmente este archivo dentro de
-// components/modulos/... (mismo patrón que el resto del proyecto).
-// Necesitas exportar también `functions` desde tu firebaseConfig:
-//   import { getFunctions } from 'firebase/functions';
-//   export const functions = getFunctions(app);
 import { db, functions } from '../../../../../firebaseConfig';
 import { useToast } from '../../../../../context/ToastContext';
 import Spinner from '../../../../ui/Spinner';
@@ -34,8 +28,6 @@ const NOMBRES_MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
-// Colección raíz. Estructura final:
-// consignacion_guias/{año}/mes/{nombreDelMes}/documento/{numeroDocumento}/detalles/{producto}
 const COLECCION_RAIZ = 'consignacion_guias';
 
 const TIPOS_ACEPTADOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -52,9 +44,6 @@ const FILA_VACIA = () => ({
   incluir: true,
 });
 
-// --- Normaliza distintos formatos de fecha que puede devolver el modelo ---
-// Acepta "AAAA-MM-DD" (ya viene así idealmente), "DD-MM-AAAA" o "DD/MM/AAAA"
-// y siempre devuelve "AAAA-MM-DD" (formato que espera <input type="date">).
 const normalizarFechaParaInput = (valor) => {
   if (!valor || typeof valor !== 'string') return '';
   const limpio = valor.trim();
@@ -70,7 +59,6 @@ const normalizarFechaParaInput = (valor) => {
   return '';
 };
 
-// --- Lee un File del navegador y lo convierte en un "documento" de trabajo ---
 const leerArchivoComoDocumento = (archivo) =>
   new Promise((resolve, reject) => {
     const lector = new FileReader();
@@ -82,7 +70,7 @@ const leerArchivoComoDocumento = (archivo) =>
         mediaType: archivo.type,
         base64: dataUrl.split(',')[1],
         preview: archivo.type.startsWith('image/') ? dataUrl : null,
-        estado: 'pendiente', // pendiente | extrayendo | listo | error | guardado
+        estado: 'pendiente',
         errorMsg: '',
         filas: [],
         fechaEmision: '',
@@ -95,8 +83,6 @@ const leerArchivoComoDocumento = (archivo) =>
     lector.readAsDataURL(archivo);
   });
 
-// Mismo lenguaje visual que el badge de "Estado" en EmpresasMaestros
-// (text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase).
 const BadgeEstado = ({ estado, errorMsg }) => {
   const base = 'inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase whitespace-nowrap';
   if (estado === 'pendiente') {
@@ -138,9 +124,6 @@ const IngresarGuiaDespacho = () => {
 
   const extraerDatos = httpsCallable(functions, 'extraerGuiaDespacho');
 
-  // ============================================================
-  // CARGA DE ARCHIVOS (uno o varios a la vez)
-  // ============================================================
   const agregarArchivos = async (fileList) => {
     const archivos = Array.from(fileList || []);
     if (archivos.length === 0) return;
@@ -194,9 +177,6 @@ const IngresarGuiaDespacho = () => {
     setFilaExpandidaId(null);
   };
 
-  // ============================================================
-  // EXTRACCIÓN EN COLA — UN SOLO BOTÓN "EXTRAER TODO"
-  // ============================================================
   const extraerTodo = async () => {
     const mapaInicial = new Map(documentos.map((d) => [d.id, d]));
     const idsAProcesar = documentos
@@ -294,9 +274,6 @@ const IngresarGuiaDespacho = () => {
     }
   };
 
-  // ============================================================
-  // EDICIÓN POR DOCUMENTO (cabecera y filas)
-  // ============================================================
   const actualizarCampoCabecera = (docId, campo, valor) => {
     setDocumentos((prev) =>
       prev.map((d) =>
@@ -335,9 +312,6 @@ const IngresarGuiaDespacho = () => {
     setDocumentos((prev) => prev.map((d) => (d.id === docId ? { ...d, filas: [...d.filas, FILA_VACIA()] } : d)));
   };
 
-  // ============================================================
-  // GUARDADO EN FIRESTORE (individual o masivo)
-  // ============================================================
   const guardarDocumento = async (docId) => {
     const documento = documentos.find((d) => d.id === docId);
     if (!documento) return false;
@@ -434,7 +408,6 @@ const IngresarGuiaDespacho = () => {
     let fallidas = 0;
 
     for (const documento of listas) {
-      // eslint-disable-next-line no-await-in-loop
       const ok = await guardarDocumento(documento.id);
       if (ok) exitosas += 1;
       else fallidas += 1;
@@ -449,9 +422,6 @@ const IngresarGuiaDespacho = () => {
     }
   };
 
-  // ============================================================
-  // DERIVADOS PARA LA UI
-  // ============================================================
   const totalPendientes = documentos.filter((d) => d.estado === 'pendiente').length;
   const totalErrores = documentos.filter((d) => d.estado === 'error').length;
   const totalListas = documentos.filter((d) => d.estado === 'listo').length;
@@ -474,7 +444,6 @@ const IngresarGuiaDespacho = () => {
         </div>
       )}
 
-      {/* --- CABECERA --- */}
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
           <Layers size={14} className="text-[#2383C2]" />
@@ -501,7 +470,6 @@ const IngresarGuiaDespacho = () => {
         </div>
       </div>
 
-      {/* --- TOOLBAR DE CARGA Y ACCIONES (mismo look que el formulario_registro) --- */}
       <div className="px-3 py-2 flex flex-wrap items-center gap-2.5 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/20">
         <label
           onDragOver={manejarDragOver}
@@ -565,7 +533,6 @@ const IngresarGuiaDespacho = () => {
         )}
       </div>
 
-      {/* --- TABLA --- */}
       <div className="flex-grow overflow-auto">
         <table className="w-full text-left text-[11px] border-collapse">
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">

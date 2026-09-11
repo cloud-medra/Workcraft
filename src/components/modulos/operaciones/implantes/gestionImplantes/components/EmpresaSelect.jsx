@@ -1,7 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; 
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '../../../../../../firebaseConfig';
 import { ChevronDown, Check, Search } from 'lucide-react';
+
+// Caché en memoria compartida entre todas las instancias de EmpresaSelect
+// (se usa tanto en el formulario de listado como en el detalle de admisión,
+// que se montan/desmontan al alternar entre esas dos vistas). Antes cada
+// montaje abría su propio onSnapshot y releía la colección completa; ahora
+// se lee una sola vez por sesión y se reutiliza. "maestros_empresas" es
+// data maestra que rara vez cambia, así que no necesita push en tiempo real.
+let promesaEmpresasCache = null;
+
+const obtenerEmpresasCacheadas = (forzar = false) => {
+  if (!forzar && promesaEmpresasCache) return promesaEmpresasCache;
+
+  promesaEmpresasCache = (async () => {
+    try {
+      const q = query(collection(db, "maestros_empresas"), orderBy("nombre", "asc"));
+      const snap = await getDocs(q);
+      return snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(emp => emp.estado !== 'INACTIVO');
+    } catch (err) {
+      promesaEmpresasCache = null;
+      throw err;
+    }
+  })();
+
+  return promesaEmpresasCache;
+};
 
 const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..." }) => {
   const [empresas, setEmpresas] = useState([]);
@@ -10,15 +37,12 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
   const containerRef = useRef(null);
 
   useEffect(() => {
-    const q = query(collection(db, "maestros_empresas"), orderBy("nombre", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(emp => emp.estado !== 'INACTIVO');
-      setEmpresas(data);
-    });
+    let cancelado = false;
+    obtenerEmpresasCacheadas()
+      .then(data => { if (!cancelado) setEmpresas(data); })
+      .catch(err => console.error("Error al cargar maestros_empresas:", err));
 
-    return () => unsubscribe();
+    return () => { cancelado = true; };
   }, []);
 
   useEffect(() => {

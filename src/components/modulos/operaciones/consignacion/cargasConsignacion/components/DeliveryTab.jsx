@@ -1,18 +1,8 @@
-// ==========================================================
-// DeliveryTab.jsx
-// ==========================================================
 import React, { useEffect, useMemo, useState } from 'react';
-import { collectionGroup, collection, query, where, onSnapshot, getDocs, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; // AJUSTAR según la ubicación real de este archivo
-import { Truck, AlertCircle, CheckCircle2, Package, Loader2, Link2, Save } from 'lucide-react';
-
-const NOMBRE_SUBCOL_DETALLES_GUIAS = 'detalles';
-const COL_MAESTROS_CODIGOS = 'maestros_codigos';
-
-const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
-
-const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
-const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
+import { updateDoc } from 'firebase/firestore';
+import { db } from '../../../../../../firebaseConfig'; 
+import { Truck, AlertCircle, CheckCircle2, Package, Loader2, Link2, Save, RefreshCw } from 'lucide-react';
+import { resolverGuiaCacheada, resolverMaestrosCacheados } from './cacheDelivery';
 
 const formatearFecha = (fechaISO) => {
   if (!fechaISO) return 'N/A';
@@ -22,17 +12,6 @@ const formatearFecha = (fechaISO) => {
   return `${d}-${m}-${y}`;
 };
 
-const trocear = (arr, tamano) => {
-  const bloques = [];
-  for (let i = 0; i < arr.length; i += tamano) {
-    bloques.push(arr.slice(i, i + tamano));
-  }
-  return bloques;
-};
-
-// registro: se espera que traiga también `ref` (referencia de Firestore
-// del documento del ítem en la subcolección `detalles`) para poder
-// persistir el vínculo directamente desde este componente.
 const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = false }) => {
   const deliveryValor = (registro?.delivery || '').trim();
   const referenciaRegistro = (registro?.referencia || '').trim();
@@ -47,52 +26,31 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
   const [guardando, setGuardando] = useState(false);
   const [errorGuardado, setErrorGuardado] = useState('');
 
-  useEffect(() => {
+  const cargarGuia = async (forzar = false) => {
     if (!deliveryValor) {
       setGuiaEncontrada(null);
       setError('');
       return;
     }
-
     setCargandoGuia(true);
     setError('');
+    try {
+      const guia = await resolverGuiaCacheada(db, deliveryValor, forzar);
+      setGuiaEncontrada(guia);
+      if (!guia) setError('');
+    } catch (err) {
+      console.error('Error al buscar guía por N° Documento:', err);
+      setError('No se pudo buscar la guía. Intenta nuevamente.');
+    } finally {
+      setCargandoGuia(false);
+    }
+  };
 
-    const q = query(
-      collectionGroup(db, NOMBRE_SUBCOL_DETALLES_GUIAS),
-      where('numeroDocumento', '==', deliveryValor)
-    );
-
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        if (snap.empty) {
-          setGuiaEncontrada(null);
-        } else {
-          const productos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const primero = productos[0];
-          setGuiaEncontrada({
-            numeroGuia: primero.numeroGuia || '',
-            numeroDocumento: primero.numeroDocumento || deliveryValor,
-            fechaEmision: primero.fechaEmision || '',
-            productos
-          });
-        }
-        setCargandoGuia(false);
-      },
-      (err) => {
-        console.error('Error al buscar guía por N° Documento:', err);
-        setError('No se pudo buscar la guía. Intenta nuevamente.');
-        setCargandoGuia(false);
-      }
-    );
-
-    return () => unsub();
+  useEffect(() => {
+    cargarGuia(false);
   }, [deliveryValor]);
 
-  const productosVisibles = useMemo(
-    () => (guiaEncontrada?.productos || []).filter(p => !estaExcluido(p.codigo)),
-    [guiaEncontrada]
-  );
+  const productosVisibles = guiaEncontrada?.productos || [];
 
   useEffect(() => {
     const referenciasUnicas = [...new Set(productosVisibles.map(p => (p.codigo || '').trim()).filter(Boolean))];
@@ -103,32 +61,10 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
     }
 
     let cancelado = false;
-
     (async () => {
       setCargandoVinculos(true);
       try {
-        const bloques = trocear(referenciasUnicas, 10);
-        const mapa = {};
-
-        for (const bloque of bloques) {
-          const q = query(
-            collection(db, COL_MAESTROS_CODIGOS),
-            where('referencia', 'in', bloque)
-          );
-          const snap = await getDocs(q);
-          snap.docs.forEach(d => {
-            const data = d.data();
-            if (data.referencia) {
-              mapa[data.referencia] = {
-                codigo: data.codigo || '',
-                descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-                tipo: data.tipo || '',
-                empresa: data.empresa || ''
-              };
-            }
-          });
-        }
-
+        const mapa = await resolverMaestrosCacheados(db, referenciasUnicas);
         if (!cancelado) setVinculosCodigos(mapa);
       } catch (err) {
         console.error('Error al vincular códigos desde maestros_codigos:', err);
@@ -138,7 +74,7 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
     })();
 
     return () => { cancelado = true; };
-  }, [productosVisibles]);
+  }, [guiaEncontrada]);
 
   const productoCoincidente = productosVisibles.find(
     p => (p.codigo || '').trim() === referenciaRegistro
@@ -151,8 +87,6 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
   const vinculoIncompletoGuardado = Boolean(vinculoData?.vinculoIncompleto);
   const puedeVincular = Boolean(guiaEncontrada) && Boolean(registro?.ref) && !guardando;
 
-  // Arma el payload completo del vínculo, incluyendo el desglose de la
-  // guía (productosGuiaVinculados), igual que en CargasTab.
   const construirPayload = () => {
     const productosGuiaVinculados = productosVisibles.map(p => {
       const v = vinculosCodigos[(p.codigo || '').trim()];
@@ -205,18 +139,12 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
     };
   };
 
-  // Ahora persiste DIRECTO en Firestore (updateDoc) — ya no depende de que
-  // el usuario recuerde ir a apretar un botón de "Guardar Cambios" en otro
-  // lugar del formulario. También avisa al padre (onVincular) para que la
-  // UI del formulario en pantalla se refresque al toque, si corresponde.
   const handleVincular = async () => {
     if (!guiaEncontrada) return;
 
     const payload = construirPayload();
 
     if (!registro?.ref) {
-      // Fallback: si por alguna razón no tenemos la referencia directa del
-      // documento, delegamos igual que antes al formulario padre.
       onVincular && onVincular(payload);
       return;
     }
@@ -253,6 +181,17 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
                 (tomado de otro ítem de esta admisión)
               </span>
             )}
+            {deliveryValor && (
+              <button
+                type="button"
+                onClick={() => cargarGuia(true)}
+                disabled={cargandoGuia}
+                title="Volver a buscar esta guía (ignora la caché, útil si se acaba de despachar)"
+                className="p-0.5 text-slate-400 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition disabled:opacity-40"
+              >
+                <RefreshCw size={11} className={cargandoGuia ? 'animate-spin' : ''} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -279,7 +218,7 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
           {deliveryValor && !cargandoGuia && !error && !guiaEncontrada && (
             <div className="flex items-center gap-2 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded p-3">
               <AlertCircle size={13} className="shrink-0" />
-              No se encontró ninguna guía con N° Documento <strong>{deliveryValor}</strong>. Aún no ha sido despachada o el número no coincide.
+              No se encontró ninguna guía con N° Documento <strong>{deliveryValor}</strong>. Aún no ha sido despachada o el número no coincide. Si acabas de ingresarla, presiona el ícono de actualizar de arriba.
             </div>
           )}
 

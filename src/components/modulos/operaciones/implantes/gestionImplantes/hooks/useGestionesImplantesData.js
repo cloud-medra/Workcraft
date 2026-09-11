@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   collectionGroup,
@@ -11,6 +11,7 @@ import {
   orderBy,
   getDocs,
   where,
+  documentId,
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
@@ -114,17 +115,39 @@ export const useGestionesImplantesData = () => {
   const { userData } = useUser();
 
   const [sincronizando, setSincronizando] = useState(false);
+  const idChangeTimeoutRef = useRef(null);
+  const idChangeTokenRef = useRef(0);
 
+  // Antes esto escuchaba TODO el collectionGroup "detalles" de la base de
+  // datos (incluye, por ejemplo, las guías de despacho de Consignación, que
+  // usa una subcolección con el mismo nombre) y recién filtraba en el
+  // cliente por el prefijo 'implantes_gestiones/'. Cada cambio en CUALQUIER
+  // módulo que usara una subcolección "detalles" disparaba una lectura
+  // completa acá. Ahora se acota la consulta con un rango sobre el ID de
+  // documento (__name__) para que Firestore solo entregue documentos cuyo
+  // path empieza con 'implantes_gestiones/'. El orden por fecha se resuelve
+  // en memoria (ya no server-side) porque el filtro por rango de __name__
+  // exige que el primer orderBy sea también por __name__.
   useEffect(() => {
-    const q = query(collectionGroup(db, "detalles"), orderBy("fechaRegistro", "desc"));
+    const q = query(
+      collectionGroup(db, "detalles"),
+      where(documentId(), ">=", "implantes_gestiones/"),
+      where(documentId(), "<", "implantes_gestiones/"),
+      orderBy(documentId())
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const soloImplantes = snapshot.docs.filter(d => d.ref.path.startsWith('implantes_gestiones/'));
-      setImplantes(soloImplantes.map(document => ({
+      const mapeados = snapshot.docs.map(document => ({
         id: document.id,
         refPath: document.ref.path,
         active: true,
         ...document.data()
-      })));
+      }));
+      mapeados.sort((a, b) => {
+        const millisA = a.fechaRegistro?.toMillis ? a.fechaRegistro.toMillis() : new Date(a.fechaRegistro || 0).getTime();
+        const millisB = b.fechaRegistro?.toMillis ? b.fechaRegistro.toMillis() : new Date(b.fechaRegistro || 0).getTime();
+        return millisB - millisA;
+      });
+      setImplantes(mapeados);
     }, (error) => {
       console.error("Error al escuchar gestiones:", error);
     });
@@ -237,8 +260,19 @@ export const useGestionesImplantesData = () => {
     showToast("Texto copiado al portapapeles", "success");
   };
 
-  const handleIdChange = async (val) => {
+  // Antes esta función disparaba un getDocs() contra Firestore en CADA
+  // tecla que el usuario tipeaba en el campo ID (ej: escribir "102345"
+  // generaba 6 consultas, una por dígito). Ahora la búsqueda real se
+  // posterga 400ms desde la última tecla (debounce) y se cancela si el
+  // usuario sigue escribiendo o si el campo se vacía antes de disparar.
+  const handleIdChange = (val) => {
     const cleanId = val ? val.trim() : '';
+
+    if (idChangeTimeoutRef.current) {
+      clearTimeout(idChangeTimeoutRef.current);
+      idChangeTimeoutRef.current = null;
+    }
+    const miToken = ++idChangeTokenRef.current;
 
     if (!cleanId) {
       setFormData(prev => ({
@@ -265,49 +299,9 @@ export const useGestionesImplantesData = () => {
       active: true
     }));
 
-    try {
-      const admisionNum = Number(cleanId);
+    const admisionNum = Number(cleanId);
 
-      if (isNaN(admisionNum)) {
-        setFormData(prev => ({
-          ...prev,
-          convenio: 'P',
-          prevision: 'P',
-          medico: 'P',
-          descripcion: 'P',
-          active: true
-        }));
-        return;
-      }
-
-      const q = query(
-        collectionGroup(db, "registros"),
-        where("Admisión", "==", admisionNum)
-      );
-      const snapshot = await getDocs(q);
-
-      if (!snapshot.empty) {
-        const docData = snapshot.docs[0].data();
-        setFormData(prev => ({
-          ...prev,
-          convenio: docData["Convenio"] || 'P',
-          prevision: docData["Isapre"] || 'P',
-          medico: docData["1° Cirujano"] || 'P',
-          descripcion: docData["Descripción"] || 'P',
-          active: true
-        }));
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          convenio: 'P',
-          prevision: 'P',
-          medico: 'P',
-          descripcion: 'P',
-          active: true
-        }));
-      }
-    } catch (error) {
-      console.error("Error al buscar datos vinculados:", error);
+    if (isNaN(admisionNum)) {
       setFormData(prev => ({
         ...prev,
         convenio: 'P',
@@ -316,7 +310,51 @@ export const useGestionesImplantesData = () => {
         descripcion: 'P',
         active: true
       }));
+      return;
     }
+
+    idChangeTimeoutRef.current = setTimeout(async () => {
+      try {
+        const q = query(
+          collectionGroup(db, "registros"),
+          where("Admisión", "==", admisionNum)
+        );
+        const snapshot = await getDocs(q);
+        if (miToken !== idChangeTokenRef.current) return; // superado por una tecla posterior
+
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          setFormData(prev => ({
+            ...prev,
+            convenio: docData["Convenio"] || 'P',
+            prevision: docData["Isapre"] || 'P',
+            medico: docData["1° Cirujano"] || 'P',
+            descripcion: docData["Descripción"] || 'P',
+            active: true
+          }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            convenio: 'P',
+            prevision: 'P',
+            medico: 'P',
+            descripcion: 'P',
+            active: true
+          }));
+        }
+      } catch (error) {
+        console.error("Error al buscar datos vinculados:", error);
+        if (miToken !== idChangeTokenRef.current) return;
+        setFormData(prev => ({
+          ...prev,
+          convenio: 'P',
+          prevision: 'P',
+          medico: 'P',
+          descripcion: 'P',
+          active: true
+        }));
+      }
+    }, 400);
   };
 
   const handleGuardar = async (e) => {

@@ -27,6 +27,10 @@ const GestionesImplantesDetalleView = forwardRef(({
   const [periodoActivo, setPeriodoActivo] = useState(null);
   const [cargandoPeriodo, setCargandoPeriodo] = useState(true);
 
+  // Único listener de "cierres_periodos" para esta vista: se pasa hacia
+  // abajo como prop (periodoAbierto/cargandoPeriodo) a CargasTab, que antes
+  // montaba su propio usePeriodoAbiertoModulo('implantes') con esta misma
+  // query, duplicando el listener mientras la pestaña "Cargas" estaba activa.
   useEffect(() => {
     const q = query(
       collection(db, COLECCIONES.CIERRES),
@@ -591,6 +595,8 @@ const GestionesImplantesDetalleView = forwardRef(({
               onEliminarCotizacion={handleEliminarCotizacion}
               onActualizarEstadoItem={handleActualizarEstadoItem}
               onEditarItem={handleEditarItem}
+              periodoAbierto={periodoActivo}
+              cargandoPeriodo={cargandoPeriodo}
             />
           )}
 

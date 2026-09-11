@@ -1,68 +1,10 @@
-// ==========================================================
-// CargasTab.jsx
-// ==========================================================
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { collectionGroup, collection, query, where, orderBy, onSnapshot, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; // AJUSTAR según la ubicación real de este archivo
+import { collection, query, orderBy, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { db } from '../../../../../../firebaseConfig'; 
 import { User, Package, UploadCloud, Loader2, AlertCircle, CheckCircle2, Save, Link2 } from 'lucide-react';
+import { resolverGuiaCacheada, resolverMaestroCacheado, resolverMaestrosCacheados, normalizarCodigo } from './cacheDelivery';
 
 const COL_MAESTROS_RECARGOS = 'maestros_recargos';
-
-const NOMBRE_SUBCOL_DETALLES_GUIAS = 'detalles';
-const COL_MAESTROS_CODIGOS = 'maestros_codigos';
-
-// Mismos códigos excluidos que en DeliveryTab (kits/bypass internos que no
-// son ítems reales del despacho).
-const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
-
-const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
-const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
-
-// -----------------------------------------------------------------------
-// Celda Empresa (tabla "Cargas"): prioriza lo ya guardado; si no existe,
-// muestra el preview calculado en memoria (pendiente de guardar).
-// -----------------------------------------------------------------------
-const EmpresaCargaCell = ({ it, pendiente }) => {
-  if (it.empresaMaestroVinculada) {
-    return <span>{it.empresaMaestroVinculada}</span>;
-  }
-  if (pendiente) {
-    return (
-      <span className="text-amber-600 dark:text-amber-400" title="Pendiente de guardar">
-        {pendiente.empresaMaestroVinculada || '-'} <span className="text-[8px] font-bold uppercase">(sin guardar)</span>
-      </span>
-    );
-  }
-
-  const deliveryValor = (it.delivery || '').trim();
-  const referencia = (it.referencia || '').trim();
-  if (!deliveryValor || !referencia) return <span>-</span>;
-  if (it.deliveryVinculado) return <span>-</span>;
-
-  return <span className="text-slate-400 dark:text-gray-500 italic">Resolviendo...</span>;
-};
-
-// -----------------------------------------------------------------------
-// Celda N° de Guía ("Ítems Registrados"): mismo criterio que arriba.
-// -----------------------------------------------------------------------
-const NumeroGuiaCell = ({ it, pendiente }) => {
-  if (it.numeroGuiaVinculada) {
-    return <span>{it.numeroGuiaVinculada}</span>;
-  }
-  if (pendiente) {
-    return (
-      <span className="text-amber-600 dark:text-amber-400" title="Pendiente de guardar">
-        {pendiente.numeroGuiaVinculada || '-'} <span className="text-[8px] font-bold uppercase">(sin guardar)</span>
-      </span>
-    );
-  }
-
-  const deliveryValor = (it.delivery || '').trim();
-  if (!deliveryValor) return <span>-</span>;
-  if (it.deliveryVinculado) return <span>-</span>;
-
-  return <span className="text-slate-400 dark:text-gray-500 italic">Resolviendo...</span>;
-};
 
 const formatearFechaTabla = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
@@ -84,23 +26,45 @@ const ESTADO_BADGE = {
   CARGADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
 };
 
-// Firestore permite hasta 30 valores en una cláusula "in"; se trocea por
-// seguridad en bloques más chicos.
-const trocear = (arr, tamano) => {
-  const bloques = [];
-  for (let i = 0; i < arr.length; i += tamano) {
-    bloques.push(arr.slice(i, i + tamano));
+const EmpresaCargaCell = ({ it, pendiente }) => {
+  if (it.empresaMaestroVinculada) {
+    return <span>{it.empresaMaestroVinculada}</span>;
   }
-  return bloques;
+  if (pendiente) {
+    return (
+      <span className="text-amber-600 dark:text-amber-400" title="Pendiente de guardar">
+        {pendiente.empresaMaestroVinculada || '-'} <span className="text-[8px] font-bold uppercase">(sin guardar)</span>
+      </span>
+    );
+  }
+
+  const deliveryValor = (it.delivery || '').trim();
+  const referencia = (it.referencia || '').trim();
+  if (!deliveryValor || !referencia) return <span>-</span>;
+  if (it.deliveryVinculado) return <span>-</span>;
+
+  return <span className="text-slate-400 dark:text-gray-500 italic">Resolviendo...</span>;
 };
 
-// -----------------------------------------------------------------------
-// Desglose de la guía dentro de "Ítems Registrados".
-// Prioriza el snapshot guardado (productosGuiaVinculados). Si aún no hay
-// nada guardado pero sí hay un preview pendiente (con su propio desglose
-// resuelto en memoria), usa ese. Si no hay ninguno de los dos, cae al
-// comportamiento en vivo con onSnapshot (comportamiento original).
-// -----------------------------------------------------------------------
+const NumeroGuiaCell = ({ it, pendiente }) => {
+  if (it.numeroGuiaVinculada) {
+    return <span>{it.numeroGuiaVinculada}</span>;
+  }
+  if (pendiente) {
+    return (
+      <span className="text-amber-600 dark:text-amber-400" title="Pendiente de guardar">
+        {pendiente.numeroGuiaVinculada || '-'} <span className="text-[8px] font-bold uppercase">(sin guardar)</span>
+      </span>
+    );
+  }
+
+  const deliveryValor = (it.delivery || '').trim();
+  if (!deliveryValor) return <span>-</span>;
+  if (it.deliveryVinculado) return <span>-</span>;
+
+  return <span className="text-slate-400 dark:text-gray-500 italic">Resolviendo...</span>;
+};
+
 const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, productosGuardados, productosPendientes }) => {
   const productosAMostrar = (Array.isArray(productosGuardados) && productosGuardados.length > 0)
     ? productosGuardados
@@ -118,91 +82,48 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
   const [cargandoVinculos, setCargandoVinculos] = useState(false);
 
   useEffect(() => {
-    if (productosAMostrar) return; // ya tenemos datos (guardados o pendientes)
-
+    if (productosAMostrar) return; 
     if (!deliveryValor) {
       setGuiaEncontrada(null);
       setError('');
       return;
     }
 
+    let cancelado = false;
     setCargandoGuia(true);
     setError('');
 
-    const q = query(
-      collectionGroup(db, NOMBRE_SUBCOL_DETALLES_GUIAS),
-      where('numeroDocumento', '==', deliveryValor)
-    );
-
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        if (snap.empty) {
-          setGuiaEncontrada(null);
-        } else {
-          const productos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const primero = productos[0];
-          setGuiaEncontrada({
-            numeroGuia: primero.numeroGuia || '',
-            numeroDocumento: primero.numeroDocumento || deliveryValor,
-            fechaEmision: primero.fechaEmision || '',
-            productos
-          });
-        }
-        setCargandoGuia(false);
-      },
-      (err) => {
+    resolverGuiaCacheada(db, deliveryValor)
+      .then((guia) => {
+        if (!cancelado) setGuiaEncontrada(guia);
+      })
+      .catch((err) => {
         console.error('Error al buscar guía por N° Documento:', err);
-        setError('No se pudo buscar la guía. Intenta nuevamente.');
-        setCargandoGuia(false);
-      }
-    );
+        if (!cancelado) setError('No se pudo buscar la guía. Intenta nuevamente.');
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoGuia(false);
+      });
 
-    return () => unsub();
+    return () => { cancelado = true; };
   }, [deliveryValor, productosAMostrar]);
 
-  const productosVisibles = useMemo(
-    () => (guiaEncontrada?.productos || []).filter(p => !estaExcluido(p.codigo)),
-    [guiaEncontrada]
-  );
+  const productosVisibles = guiaEncontrada?.productos || [];
 
   useEffect(() => {
     if (productosAMostrar) return;
 
     const referenciasUnicas = [...new Set(productosVisibles.map(p => (p.codigo || '').trim()).filter(Boolean))];
-
     if (referenciasUnicas.length === 0) {
       setVinculosCodigos({});
       return;
     }
 
     let cancelado = false;
-
     (async () => {
       setCargandoVinculos(true);
       try {
-        const bloques = trocear(referenciasUnicas, 10);
-        const mapa = {};
-
-        for (const bloque of bloques) {
-          const q = query(
-            collection(db, COL_MAESTROS_CODIGOS),
-            where('referencia', 'in', bloque)
-          );
-          const snap = await getDocs(q);
-          snap.docs.forEach(d => {
-            const data = d.data();
-            if (data.referencia) {
-              mapa[data.referencia] = {
-                codigo: data.codigo || '',
-                descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-                tipo: data.tipo || '',
-                empresa: data.empresa || ''
-              };
-            }
-          });
-        }
-
+        const mapa = await resolverMaestrosCacheados(db, referenciasUnicas);
         if (!cancelado) setVinculosCodigos(mapa);
       } catch (err) {
         console.error('Error al vincular códigos desde maestros_codigos:', err);
@@ -212,13 +133,12 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
     })();
 
     return () => { cancelado = true; };
-  }, [productosVisibles, productosAMostrar]);
+  }, [guiaEncontrada, productosAMostrar]);
 
   if (!deliveryValor) {
     return null;
   }
 
-  // ---- Camino con datos ya resueltos (guardados o pendientes) ----
   if (productosAMostrar) {
     return (
       <>
@@ -280,7 +200,6 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
     );
   }
 
-  // ---- Camino en vivo (fallback mientras no hay nada resuelto todavía) ----
   if (cargandoGuia) {
     return (
       <tr>
@@ -379,7 +298,6 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
   const totalItems = items.length;
   const sumaCostos = items.reduce((acc, it) => acc + (Number(it.costo) || 0) * (Number(it.cantidad) || 1), 0);
 
-  // Reglas de recargo (maestros_recargos): desde, hasta, vecesCosto, estado
   const [recargos, setRecargos] = useState([]);
 
   useEffect(() => {
@@ -411,10 +329,6 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
     return { vecesCosto, venta };
   };
 
-  // Este auto-guardado (recargo/venta) es un cálculo puramente numérico y
-  // determinístico según reglas activas — se mantiene como auto-guardado
-  // silencioso porque no requiere revisión humana, a diferencia del
-  // vínculo con la guía de Delivery.
   useEffect(() => {
     if (!recargos.length) return;
 
@@ -431,23 +345,11 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
         }
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, recargos]);
 
-  // -------------------------------------------------------------------
-  // RESOLUCIÓN (SIN GUARDAR) DEL VÍNCULO CON LA GUÍA DE DELIVERY
-  //
-  // Para cada ítem con N° de Delivery pero sin `deliveryVinculado`, busca
-  // la guía y su cruce en maestros_codigos, y deja el resultado en estado
-  // local `pendientes` (NO se escribe en Firestore automáticamente).
-  // El usuario decide cuándo persistirlo con el botón "Guardar
-  // Vinculaciones de Delivery".
-  // -------------------------------------------------------------------
-  const cacheGuiasRef = useRef({});
-  const cacheMaestrosRef = useRef({});
   const procesandoRef = useRef(new Set());
 
-  const [pendientes, setPendientes] = useState({}); // { [itemId]: payloadParaGuardar }
+  const [pendientes, setPendientes] = useState({}); 
   const [guardandoPendientes, setGuardandoPendientes] = useState(false);
 
   const claveVinculacion = items
@@ -456,65 +358,6 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
 
   useEffect(() => {
     let cancelado = false;
-
-    const resolverMaestro = async (referenciaCodigo) => {
-      if (!referenciaCodigo) return null;
-      if (Object.prototype.hasOwnProperty.call(cacheMaestrosRef.current, referenciaCodigo)) {
-        return cacheMaestrosRef.current[referenciaCodigo];
-      }
-      try {
-        const qMaestro = query(
-          collection(db, COL_MAESTROS_CODIGOS),
-          where('referencia', '==', referenciaCodigo)
-        );
-        const snap = await getDocs(qMaestro);
-        const data = snap.docs[0]?.data();
-        const vinculo = data
-          ? {
-              codigo: data.codigo || '',
-              descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-              tipo: data.tipo || '',
-              empresa: data.empresa || ''
-            }
-          : null;
-        cacheMaestrosRef.current[referenciaCodigo] = vinculo;
-        return vinculo;
-      } catch (err) {
-        console.error('Error al resolver maestro_codigos:', err);
-        return null;
-      }
-    };
-
-    const resolverGuia = async (deliveryValor) => {
-      if (cacheGuiasRef.current[deliveryValor] !== undefined) {
-        return cacheGuiasRef.current[deliveryValor];
-      }
-      try {
-        const qGuia = query(
-          collectionGroup(db, NOMBRE_SUBCOL_DETALLES_GUIAS),
-          where('numeroDocumento', '==', deliveryValor)
-        );
-        const snapGuia = await getDocs(qGuia);
-        if (snapGuia.empty) {
-          cacheGuiasRef.current[deliveryValor] = null;
-          return null;
-        }
-        const productos = snapGuia.docs
-          .map(d => d.data())
-          .filter(p => !estaExcluido(p.codigo));
-        const primero = snapGuia.docs[0].data();
-        const guia = {
-          numeroGuia: primero.numeroGuia || '',
-          fechaEmision: primero.fechaEmision || '',
-          productos
-        };
-        cacheGuiasRef.current[deliveryValor] = guia;
-        return guia;
-      } catch (err) {
-        console.error('Error al resolver guía de delivery:', err);
-        return null;
-      }
-    };
 
     (async () => {
       for (const it of items) {
@@ -530,18 +373,20 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
         procesandoRef.current.add(claveEnCurso);
 
         try {
-          const guia = await resolverGuia(deliveryValor);
-          if (!guia) continue; // aún no existe la guía; se reintentará en el próximo cambio
+          const guia = await resolverGuiaCacheada(db, deliveryValor);
+          if (!guia) continue; 
 
           const productoCoincidente = guia.productos.find(
             p => normalizarCodigo(p.codigo) === normalizarCodigo(referencia)
           );
 
-          const productosGuiaVinculados = [];
-          for (const p of guia.productos) {
+          const codigosUnicos = guia.productos.map(p => (p.codigo || '').trim()).filter(Boolean);
+          const mapaMaestros = await resolverMaestrosCacheados(db, codigosUnicos);
+
+          const productosGuiaVinculados = guia.productos.map(p => {
             const codigoRef = (p.codigo || '').trim();
-            const vinculoProducto = codigoRef ? await resolverMaestro(codigoRef) : null;
-            productosGuiaVinculados.push({
+            const vinculoProducto = codigoRef ? mapaMaestros[codigoRef] : null;
+            return {
               codigo: p.codigo || '',
               descripcion: vinculoProducto?.descripcion || '',
               empresa: vinculoProducto?.empresa || '',
@@ -549,11 +394,11 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
               lote: p.lote || '',
               vencimiento: p.vencimiento || '',
               cantidad: p.cantidad ?? null
-            });
-          }
+            };
+          });
 
           const vinculoMaestroCoincidente = productoCoincidente
-            ? await resolverMaestro((productoCoincidente.codigo || '').trim())
+            ? mapaMaestros[(productoCoincidente.codigo || '').trim()]
             : null;
 
           const payload = productoCoincidente
@@ -592,7 +437,6 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
     })();
 
     return () => { cancelado = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveVinculacion]);
 
   const cantidadPendientes = Object.keys(pendientes).length;
@@ -614,7 +458,6 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
     }
   };
 
-  // Marca/desmarca un ítem como CARGADO al tildar el check de la fila.
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState(null);
 
   const handleToggleCargado = async (it, marcado) => {

@@ -8,7 +8,9 @@ import {
   addDoc,
   serverTimestamp,
   query,
-  where
+  where,
+  orderBy,
+  documentId
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '../../../../../../firebaseConfig';
@@ -26,11 +28,25 @@ export const useSolicitudImplantesData = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-    useEffect(() => {
-    const q = query(collectionGroup(db, "detalles"), where("solicitud", "==", "SOLICITAR"));
+    // Antes esto escuchaba, en TODA la app, cualquier documento con
+  // solicitud=='SOLICITAR' dentro de una subcolección "detalles" (incluye
+  // otros módulos, como Consignación) y filtraba recién en el cliente por
+  // el prefijo 'implantes_gestiones/'. Ahora se acota también por rango de
+  // __name__ para que Firestore entregue solo documentos de este módulo.
+  // Nota: esta combinación (equality + rango de __name__) requiere crear un
+  // índice compuesto en Firestore (documentId, solicitud) la primera vez
+  // que corra; la consola de Firebase entrega el link para crearlo.
+  useEffect(() => {
+    const q = query(
+      collectionGroup(db, "detalles"),
+      where("solicitud", "==", "SOLICITAR"),
+      where(documentId(), ">=", "implantes_gestiones/"),
+      where(documentId(), "<", "implantes_gestiones/"),
+      orderBy(documentId())
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docsImplantes = snapshot.docs.filter(d => d.ref.path.startsWith('implantes_gestiones/'));
+      const docsImplantes = snapshot.docs;
 
       const lista = docsImplantes.map(document => {
         const data = document.data();

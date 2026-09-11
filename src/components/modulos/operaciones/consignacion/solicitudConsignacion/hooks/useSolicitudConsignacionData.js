@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   collection,
   collectionGroup,
-  onSnapshot,
   doc,
-  getDoc,
   writeBatch,
   addDoc,
   getDocs,
@@ -14,10 +12,10 @@ import {
   orderBy
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
-import { db } from '../../../../../../firebaseConfig'; 
-import { useToast } from '../../../../../../context/ToastContext'; 
-import { useModal } from '../../../../../../context/ModalContext'; 
-import { useUser } from '../../../../../../context/UserContext'; 
+import { db } from '../../../../../../firebaseConfig';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useModal } from '../../../../../../context/ModalContext';
+import { useUser } from '../../../../../../context/UserContext';
 
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_ORIGEN = 'CARGADO';
@@ -61,6 +59,70 @@ const obtenerFechaHoyTexto = () => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
+const cacheGuiasPorDelivery = new Map(); 
+const cacheMaestrosPorCodigo = new Map(); 
+
+const resolverGuiaCacheada = async (deliveryValor, forzar) => {
+  if (!forzar && cacheGuiasPorDelivery.has(deliveryValor)) {
+    return cacheGuiasPorDelivery.get(deliveryValor);
+  }
+  try {
+    const qGuia = query(
+      collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+      where('numeroDocumento', '==', deliveryValor)
+    );
+    const snapGuia = await getDocs(qGuia);
+    if (snapGuia.empty) {
+      cacheGuiasPorDelivery.set(deliveryValor, null);
+      return null;
+    }
+    const numeroGuia = snapGuia.docs[0]?.data()?.numeroGuia || null;
+    const productos = snapGuia.docs.map(d => d.data()).filter(p => !estaExcluido(p.codigo));
+    const resultado = { numeroGuia, productos };
+    cacheGuiasPorDelivery.set(deliveryValor, resultado);
+    return resultado;
+  } catch (err) {
+    console.error(`Error al resolver la guía ${deliveryValor}:`, err);
+    return null;
+  }
+};
+
+const resolverMaestrosCacheados = async (referencias, forzar) => {
+  const unicas = [...new Set(referencias.map(r => (r || '').trim()).filter(Boolean))];
+  const pendientes = forzar ? unicas : unicas.filter(r => !cacheMaestrosPorCodigo.has(r));
+
+  if (pendientes.length > 0) {
+    const bloques = trocear(pendientes, 10);
+    for (const bloque of bloques) {
+      try {
+        const qMaestro = query(collection(db, COL_MAESTROS_CODIGOS), where('referencia', 'in', bloque));
+        const snapMaestro = await getDocs(qMaestro);
+        const encontrados = new Set();
+        snapMaestro.docs.forEach(d => {
+          const data = d.data();
+          if (data.referencia) {
+            cacheMaestrosPorCodigo.set(data.referencia, {
+              descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
+              tipo: data.tipo || '',
+              empresa: data.empresa || ''
+            });
+            encontrados.add(data.referencia);
+          }
+        });
+        bloque.forEach(r => {
+          if (!encontrados.has(r)) cacheMaestrosPorCodigo.set(r, cacheMaestrosPorCodigo.get(r) ?? null);
+        });
+      } catch (err) {
+        console.error('Error al resolver bloque de maestros_codigos:', bloque, err);
+      }
+    }
+  }
+
+  const resultado = {};
+  unicas.forEach(r => { resultado[r] = cacheMaestrosPorCodigo.get(r) ?? null; });
+  return resultado;
+};
+
 export const useSolicitudConsignacionData = () => {
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -71,14 +133,15 @@ export const useSolicitudConsignacionData = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-    useEffect(() => {
-    const q = query(
-      collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
-      where('estado', '==', ESTADO_ORIGEN),
-      orderBy('fechaRegistro', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
+  const cargarDatos = useCallback(async (forzarRelecturaGuias = false) => {
+    setCargando(true);
+    try {
+      const q = query(
+        collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+        where('estado', '==', ESTADO_ORIGEN),
+        orderBy('fechaRegistro', 'desc')
+      );
+      const snapshot = await getDocs(q);
       const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_registros/'));
 
       const itemsCargados = docsConsignacion.map((document) => {
@@ -92,7 +155,7 @@ export const useSolicitudConsignacionData = () => {
           id: document.id,
           ref: document.ref,
           refPath: document.ref.path,
-          datosOriginales: data, 
+          datosOriginales: data,
           gestionId: data.gestionId || 'P',
           nombre: data.nombre || 'P',
           medico: data.medico || 'P',
@@ -117,82 +180,44 @@ export const useSolicitudConsignacionData = () => {
       });
 
       try {
-        const deliveriesUnicos = [...new Set(
-          itemsCargados.map(it => it.delivery).filter(Boolean)
-        )];
+        const deliveriesUnicos = [...new Set(itemsCargados.map(it => it.delivery).filter(Boolean))];
 
         const filasGuiaPorDelivery = {};
         const numeroGuiaPorDelivery = {};
 
         await Promise.all(deliveriesUnicos.map(async (deliveryValor) => {
-          try {
-            const qGuia = query(
-              collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
-              where('numeroDocumento', '==', deliveryValor)
-            );
-            const snapGuia = await getDocs(qGuia);
-            if (snapGuia.empty) return;
+          const guia = await resolverGuiaCacheada(deliveryValor, forzarRelecturaGuias);
+          if (!guia || guia.productos.length === 0) return;
 
-            numeroGuiaPorDelivery[deliveryValor] = snapGuia.docs[0]?.data()?.numeroGuia || null;
+          numeroGuiaPorDelivery[deliveryValor] = guia.numeroGuia;
 
-            const productos = snapGuia.docs
-              .map(d => d.data())
-              .filter(p => !estaExcluido(p.codigo));
-            if (productos.length === 0) return;
+          const referenciasUnicas = guia.productos.map(p => (p.codigo || '').trim()).filter(Boolean);
+          const vinculosCodigos = await resolverMaestrosCacheados(referenciasUnicas, forzarRelecturaGuias);
 
-            const referenciasUnicas = [...new Set(
-              productos.map(p => (p.codigo || '').trim()).filter(Boolean)
-            )];
-            const vinculosCodigos = {};
+          const itemRelacionado = itemsCargados.find(it => it.delivery === deliveryValor) || null;
 
-            if (referenciasUnicas.length > 0) {
-              const bloques = trocear(referenciasUnicas, 10);
-              for (const bloque of bloques) {
-                const qMaestro = query(
-                  collection(db, COL_MAESTROS_CODIGOS),
-                  where('referencia', 'in', bloque)
-                );
-                const snapMaestro = await getDocs(qMaestro);
-                snapMaestro.docs.forEach(d => {
-                  const data = d.data();
-                  if (data.referencia) {
-                    vinculosCodigos[data.referencia] = {
-                      descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-                      tipo: data.tipo || '',
-                      empresa: data.empresa || ''
-                    };
-                  }
-                });
-              }
-            }
-
-            const itemRelacionado = itemsCargados.find(it => it.delivery === deliveryValor) || null;
-
-            filasGuiaPorDelivery[deliveryValor] = productos.map((p, idx) => {
-              const vinculo = vinculosCodigos[(p.codigo || '').trim()];
-              return {
-                id: `guia-${deliveryValor}-${idx}`,
-                ref: null, 
-                esFilaGuia: true,
-                gestionId: itemRelacionado?.gestionId || '-',
-                nombre: itemRelacionado?.nombre || '-',
-                medico: itemRelacionado?.medico || '-',
-                fecha: itemRelacionado?.fecha || '',
-                empresa: vinculo?.empresa || '-',
-                codigo: 'No lleva OC',
-                descripcion: vinculo?.descripcion || '-',
-                cantidad: p.cantidad ?? 0,
-                precio: 0,
-                atributo: vinculo?.tipo || '-',
-                fechaRegistro: itemRelacionado?.fechaRegistro || null,
-                lote: p.lote || 'N/A',
-                vencimiento: p.vencimiento || 'N/A',
-                numeroGuia: 0 
-              };
-            });
-          } catch (err) {
-            console.error(`Error al construir el desglose de la guía ${deliveryValor}:`, err);
-          }
+          filasGuiaPorDelivery[deliveryValor] = guia.productos.map((p, idx) => {
+            const vinculo = vinculosCodigos[(p.codigo || '').trim()];
+            return {
+              id: `guia-${deliveryValor}-${idx}`,
+              ref: null,
+              esFilaGuia: true,
+              gestionId: itemRelacionado?.gestionId || '-',
+              nombre: itemRelacionado?.nombre || '-',
+              medico: itemRelacionado?.medico || '-',
+              fecha: itemRelacionado?.fecha || '',
+              empresa: vinculo?.empresa || '-',
+              codigo: 'No lleva OC',
+              descripcion: vinculo?.descripcion || '-',
+              cantidad: p.cantidad ?? 0,
+              precio: 0,
+              atributo: vinculo?.tipo || '-',
+              fechaRegistro: itemRelacionado?.fechaRegistro || null,
+              lote: p.lote || 'N/A',
+              vencimiento: p.vencimiento || 'N/A',
+              numeroGuia: 0
+            };
+          });
         }));
 
         const itemsConNumeroGuia = itemsCargados.map(it => ({
@@ -215,16 +240,17 @@ export const useSolicitudConsignacionData = () => {
       } catch (err) {
         console.error('Error al construir filas de guías de Delivery:', err);
         setItems(itemsCargados);
-      } finally {
-        setCargando(false);
       }
-    }, (error) => {
-      console.error('Error al escuchar registros CARGADO de Consignación:', error);
+    } catch (error) {
+      console.error('Error al cargar registros CARGADO de Consignación:', error);
       showToast('Error al cargar los registros pendientes de solicitar', 'error');
+    } finally {
       setCargando(false);
-    });
+    }
+  }, []);
 
-    return () => unsubscribe();
+  useEffect(() => {
+    cargarDatos(false);
   }, []);
 
   const toggleSeleccion = (id) => {
@@ -332,16 +358,6 @@ export const useSolicitudConsignacionData = () => {
               solicitadoPor: userData?.nombreCompleto || 'Usuario'
             }));
 
-            let datosFrescos = it.datosOriginales || {};
-            try {
-              const snapFresco = await getDoc(it.ref);
-              if (snapFresco.exists()) {
-                datosFrescos = snapFresco.data();
-              }
-            } catch (err) {
-              console.error(`Error al releer el ítem ${it.id} antes de imputar (se usa el dato en memoria como respaldo):`, err);
-            }
-
             const imputadaRef = doc(
               db,
               'consignacion_imputadas', String(periodoActivo.anio),
@@ -350,7 +366,7 @@ export const useSolicitudConsignacionData = () => {
             );
 
             agregarOp(b => b.set(imputadaRef, {
-              ...datosFrescos,
+              ...it.datosOriginales,
               estado: ESTADO_DESTINO,
               numeroGuia: it.numeroGuia,
               total: it.costoTotal,
@@ -381,7 +397,25 @@ export const useSolicitudConsignacionData = () => {
             )
           );
 
+          const idsAQuitar = new Set(itemsConRef.map(it => it.id));
+          const deliveriesAfectados = new Set(itemsConRef.map(it => it.delivery).filter(Boolean));
+          setItems(prev => prev.filter(it => {
+            if (idsAQuitar.has(it.id)) return false;
+            if (it.esFilaGuia) {
+              const deliveryDeEstaFila = it.id.startsWith('guia-')
+                ? it.id.slice('guia-'.length, it.id.lastIndexOf('-'))
+                : null;
+              if (deliveryDeEstaFila && deliveriesAfectados.has(deliveryDeEstaFila)) {
+                const siguePresente = prev.some(
+                  o => !idsAQuitar.has(o.id) && !o.esFilaGuia && o.delivery === deliveryDeEstaFila
+                );
+                return siguePresente;
+              }
+            }
+            return true;
+          }));
           setSeleccionados(new Set());
+
           showToast(`${itemsSeleccionados.length} fila(s) exportada(s); ${itemsConRef.length} ítem(s) marcado(s) como ${ESTADO_DESTINO} e imputado(s)`, 'success');
         } catch (error) {
           console.error('Error al exportar solicitud de consignación:', error);
@@ -400,6 +434,7 @@ export const useSolicitudConsignacionData = () => {
     seleccionados,
     toggleSeleccion,
     toggleSeleccionarTodos,
-    handleExportarYMarcarSolicitado
+    handleExportarYMarcarSolicitado,
+    refrescar: () => cargarDatos(true)
   };
 };

@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; // AJUSTAR según la ubicación real de este archivo
-import { Plus, Save, X, Eraser, Info, Loader2, AlertCircle, List } from 'lucide-react';
-import { buscarReporteInfoPorAdmision } from '../utils/buscarReporteInfoPorAdmision'; // AJUSTAR ruta si es necesario
+import { db } from '../../../../../../firebaseConfig'; 
+import { Plus, Save, X, Eraser, Info, Loader2, AlertCircle, List, RefreshCw } from 'lucide-react';
+import { obtenerMedicosCacheados, obtenerCodigosCacheados, buscarReporteInfoPorAdmisionCacheado } from '../utils/cacheMaestros';
 
 const TIPOS = ['CONSIGNACION', 'COTIZACION'];
 const CENTRO_FIJO = 'PABELLON';
@@ -13,16 +12,16 @@ const ESTADO_INICIAL = {
   nombre: '',
   medico: '',
   fecha: '',
-  referencia: '', 
-  codigo: '', 
+  referencia: '',
+  codigo: '',
   cantidad: '',
-  delivery: '', 
-  empresa: '', // NUEVO: se completa automáticamente al elegir la Descripción/Referencia
+  delivery: '',
+  empresa: '',
 
   costo: '',
   convenio: '',
-  prevision: '',   
-  descripcion: '', 
+  prevision: '',
+  descripcion: '',
   descripcionPabellon: ''
 };
 
@@ -79,7 +78,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
     vinculacionDebounceRef.current = setTimeout(async () => {
       setCargandoVinculacion(true);
       try {
-        const datos = await buscarReporteInfoPorAdmision(db, idTexto);
+        const datos = await buscarReporteInfoPorAdmisionCacheado(db, idTexto);
         setFormData(prev => ({
           ...prev,
           convenio: datos?.['Convenio'] || '',
@@ -92,23 +91,28 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
     }, 500);
 
     return () => clearTimeout(vinculacionDebounceRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.gestionId]);
 
   const [medicos, setMedicos] = useState([]);
+  const [cargandoMedicos, setCargandoMedicos] = useState(false);
   const [abiertoMedico, setAbiertoMedico] = useState(false);
   const [verTodosMedicos, setVerTodosMedicos] = useState(false);
   const medicoRef = useRef(null);
 
-  useEffect(() => {
-    const q = query(collection(db, 'maestros_prestadores'), orderBy('nombre', 'asc'));
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(p => (p.estado || 'ACTIVO').toUpperCase() !== 'INACTIVO');
+  const cargarMedicos = async (forzar = false) => {
+    setCargandoMedicos(true);
+    try {
+      const data = await obtenerMedicosCacheados(db, forzar);
       setMedicos(data);
-    });
-    return () => unsub();
+    } catch (err) {
+      console.error('Error al cargar médicos:', err);
+    } finally {
+      setCargandoMedicos(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarMedicos(false);
   }, []);
 
   useEffect(() => {
@@ -144,18 +148,32 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
   const [verTodosCodigos, setVerTodosCodigos] = useState(false);
   const descripcionRef = useRef(null);
 
-  useEffect(() => {
+  const cargarCodigos = async (tipo, forzar = false) => {
     setCargandoCodigos(true);
-    const q = query(collection(db, 'maestros_codigos'), where('tipo', '==', tipoFiltro));
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        setCodigosDisponibles(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-        setCargandoCodigos(false);
-      },
-      () => setCargandoCodigos(false)
-    );
-    return () => unsub();
+    try {
+      const data = await obtenerCodigosCacheados(db, tipo, forzar);
+      setCodigosDisponibles(data);
+    } catch (err) {
+      console.error('Error al cargar códigos maestros:', err);
+    } finally {
+      setCargandoCodigos(false);
+    }
+  };
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      setCargandoCodigos(true);
+      try {
+        const data = await obtenerCodigosCacheados(db, tipoFiltro);
+        if (!cancelado) setCodigosDisponibles(data);
+      } catch (err) {
+        console.error('Error al cargar códigos maestros:', err);
+      } finally {
+        if (!cancelado) setCargandoCodigos(false);
+      }
+    })();
+    return () => { cancelado = true; };
   }, [tipoFiltro]);
 
   useEffect(() => {
@@ -195,7 +213,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
       codigo: item.codigo || '',
       costo: item.precioNeto ?? '',
       descripcion: item.descriptorEmpresa || item.descriptorAuto || '',
-      empresa: item.empresa || '' // NUEVO: trae la empresa desde maestros_codigos
+      empresa: item.empresa || ''
     }));
     setVerTodosCodigos(false);
     setAbiertoDescripcion(false);
@@ -220,7 +238,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
     onRegistrar && onRegistrar({
       ...formData,
       tipo: tipoFiltro,
-      atributo: tipoFiltro, 
+      atributo: tipoFiltro,
       centro: CENTRO_FIJO,
       estado: ESTADO_FIJO
     });
@@ -242,7 +260,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
   const handleLimpiar = () => {
     if (editando) {
       onCancelar && onCancelar();
-      return; 
+      return;
     }
     setFormData(ESTADO_INICIAL);
     setErrores({});
@@ -288,9 +306,17 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
               value={formData.medico}
               onChange={e => { setField('medico', e.target.value); setVerTodosMedicos(false); }}
               onFocus={() => setAbiertoMedico(true)}
-              className="w-full h-7 pl-2 pr-6 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 uppercase"
+              className="w-full h-7 pl-2 pr-12 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 uppercase"
               placeholder="Buscar médico..."
             />
+            <button
+              type="button"
+              onClick={() => cargarMedicos(true)}
+              title="Actualizar listado de médicos"
+              className="absolute right-6 top-1 p-0.5 text-gray-400 hover:text-[#2383C2] transition"
+            >
+              <RefreshCw size={12} className={cargandoMedicos ? 'animate-spin' : ''} />
+            </button>
             <button
               type="button"
               onClick={handleAbrirListaMedicos}
@@ -345,20 +371,30 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
             <span className="text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase flex items-center gap-1">
               Descripción / Referencia <span className="text-red-500 font-bold">*</span>
             </span>
-            <span className="flex items-center rounded overflow-hidden border border-gray-300 dark:border-gray-600 text-[8px] font-bold uppercase">
-              {TIPOS.map(t => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => handleCambiarTipo(t)}
-                  className={`px-1.5 py-0.5 transition ${tipoFiltro === t
-                    ? 'bg-[#2383C2] text-white'
-                    : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                >
-                  {t === 'CONSIGNACION' ? 'CONSIG.' : 'COTIZ.'}
-                </button>
-              ))}
+            <span className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => cargarCodigos(tipoFiltro, true)}
+                title="Actualizar catálogo de códigos"
+                className="p-0.5 text-gray-400 hover:text-[#2383C2] transition"
+              >
+                <RefreshCw size={11} className={cargandoCodigos ? 'animate-spin' : ''} />
+              </button>
+              <span className="flex items-center rounded overflow-hidden border border-gray-300 dark:border-gray-600 text-[8px] font-bold uppercase">
+                {TIPOS.map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => handleCambiarTipo(t)}
+                    className={`px-1.5 py-0.5 transition ${tipoFiltro === t
+                      ? 'bg-[#2383C2] text-white'
+                      : 'bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                  >
+                    {t === 'CONSIGNACION' ? 'CONSIG.' : 'COTIZ.'}
+                  </button>
+                ))}
+              </span>
             </span>
           </label>
 

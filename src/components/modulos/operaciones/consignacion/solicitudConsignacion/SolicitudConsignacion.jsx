@@ -5,11 +5,12 @@ import {
   Calendar as CalendarIcon,
   FileText,
   Lock,
-  Unlock
+  Unlock,
+  RefreshCw
 } from 'lucide-react';
-import Spinner from '../../../../ui/Spinner'; // AJUSTAR ruta
+import Spinner from '../../../../ui/Spinner'; 
 import { useSolicitudConsignacionData } from './hooks/useSolicitudConsignacionData';
-import { usePeriodoAbiertoModulo } from '../../implantes/gestionImplantes/components/Cargastab/usePeriodoAbiertoModulo'; // AJUSTAR ruta
+import { usePeriodoAbiertoModulo } from '../../implantes/gestionImplantes/components/Cargastab/usePeriodoAbiertoModulo'; 
 
 const formatearFechaTabla = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
@@ -17,7 +18,6 @@ const formatearFechaTabla = (fechaString) => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-// Convierte un Timestamp de Firestore (o Date/string) a dd-mm-yyyy.
 const formatearFechaDeTimestamp = (valor) => {
   if (!valor) return '-';
   const date = valor.toDate ? valor.toDate() : new Date(valor);
@@ -28,7 +28,6 @@ const formatearFechaDeTimestamp = (valor) => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-// "Fecha de Ingreso" siempre es el día real de hoy (no se guarda en la BD).
 const obtenerFechaHoyTexto = () => {
   const hoy = new Date();
   const dd = String(hoy.getDate()).padStart(2, '0');
@@ -37,15 +36,6 @@ const obtenerFechaHoyTexto = () => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-/**
- * SolicitudConsignacion.jsx
- *
- * Tabla plana (sin subfilas expandibles): muestra TODOS los ítems cuyo
- * Estado es "CARGADO" (ya pasaron por CargasConsignacion.jsx), uno por
- * fila, con checkbox de selección individual. El botón "Exportar
- * Seleccionados" descarga un Excel con los ítems elegidos y los marca
- * como "SOLICITADO" (dejan de aparecer acá).
- */
 const SolicitudConsignacion = () => {
   const {
     items,
@@ -54,7 +44,8 @@ const SolicitudConsignacion = () => {
     seleccionados,
     toggleSeleccion,
     toggleSeleccionarTodos,
-    handleExportarYMarcarSolicitado
+    handleExportarYMarcarSolicitado,
+    refrescar
   } = useSolicitudConsignacionData();
 
   const { periodoAbierto, cargandoPeriodo } = usePeriodoAbiertoModulo('consignacion');
@@ -82,14 +73,26 @@ const SolicitudConsignacion = () => {
           SOLICITUD DE CONSIGNACIÓN
         </h2>
 
-        <button
-          onClick={() => handleExportarYMarcarSolicitado(periodoAbierto)}
-          disabled={seleccionados.size === 0 || exportando}
-          className="px-3 py-1 bg-[#2383C2] hover:bg-[#1d6fa5] text-white rounded font-semibold flex items-center gap-1.5 transition text-[11px] shadow-xs active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <Download size={13} />
-          <span>Exportar Seleccionados ({seleccionados.size})</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={refrescar}
+            disabled={cargando}
+            title="Actualizar lista (vuelve a leer guías y maestros)"
+            className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-40"
+          >
+            <RefreshCw size={14} className={cargando ? 'animate-spin' : ''} />
+          </button>
+
+          <button
+            onClick={() => handleExportarYMarcarSolicitado(periodoAbierto)}
+            disabled={seleccionados.size === 0 || exportando}
+            className="px-3 py-1 bg-[#2383C2] hover:bg-[#1d6fa5] text-white rounded font-semibold flex items-center gap-1.5 transition text-[11px] shadow-xs active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download size={13} />
+            <span>Exportar Seleccionados ({seleccionados.size})</span>
+          </button>
+        </div>
       </div>
 
       {/* PERÍODO ABIERTO (Control Mensual) — solo referencial. */}
