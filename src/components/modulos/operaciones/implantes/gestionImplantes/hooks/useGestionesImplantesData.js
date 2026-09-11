@@ -121,18 +121,79 @@ export const useGestionesImplantesData = () => {
   // Antes esto escuchaba TODO el collectionGroup "detalles" de la base de
   // datos (incluye, por ejemplo, las guías de despacho de Consignación, que
   // usa una subcolección con el mismo nombre) y recién filtraba en el
-  // cliente por el prefijo 'implantes_gestiones/'. Cada cambio en CUALQUIER
-  // módulo que usara una subcolección "detalles" disparaba una lectura
-  // completa acá. Ahora se acota la consulta con un rango sobre el ID de
-  // documento (__name__) para que Firestore solo entregue documentos cuyo
-  // path empieza con 'implantes_gestiones/'. El orden por fecha se resuelve
-  // en memoria (ya no server-side) porque el filtro por rango de __name__
-  // exige que el primer orderBy sea también por __name__.
+  // cliente por el prefijo 'implantes_gestiones/'. Ahora se acota la
+  // consulta con un rango sobre el ID de documento (__name__).
+  //
+  // OJO: en un collectionGroup, los límites de documentId() deben ser rutas
+  // de documento COMPLETAS (número PAR de segmentos) — 'implantes_gestiones/'
+  // (1 segmento) es inválido y Firestore lo rechaza en tiempo de ejecución.
+  // La ruta real es 'implantes_gestiones/{anio}/mes/.../detalles/{id}', y
+  // {anio} es variable, así que se acota el 2do segmento (el año) a un
+  // rango que cubre cualquier año de 4 dígitos: 'implantes_gestiones/0000'
+  // (mínimo) a 'implantes_gestiones/9999' (máximo) — ambos son rutas
+  // de 2 segmentos válidas, y la comparación de strings sigue capturando
+  // correctamente cualquier profundidad mayor debajo de ese año.
+  const RANGO_MIN_GESTIONES = "implantes_gestiones/0000";
+  const RANGO_MAX_GESTIONES = "implantes_gestiones/9999";
+
+  // DIAGNOSTICO TEMPORAL #2 (solo lectura): recorre la estructura REAL bajo
+  // implantes_gestiones/2026 nivel por nivel, sin asumir nada, para
+  // encontrar en que punto exacto la estructura real diverge de lo que
+  // espera getDetallesRef() (mes -> dia -> admision -> empresa -> detalles).
+  useEffect(() => {
+    (async () => {
+      try {
+        // Nivel 1: meses reales bajo implantes_gestiones/2026
+        const mesesSnap = await getDocs(collection(db, 'implantes_gestiones', '2026', 'mes'));
+        console.log(`[DIAG2-mes] implantes_gestiones/2026/mes => ${mesesSnap.size} documento(s): [${mesesSnap.docs.map(d => d.id).join(', ')}]`);
+
+        if (mesesSnap.empty) {
+          console.log('[DIAG2] No hay documentos de "mes" bajo implantes_gestiones/2026 -- la colección existe pero está vacía en este punto.');
+          return;
+        }
+
+        const primerMes = mesesSnap.docs[0].id;
+
+        // Nivel 2: ¿qué hay bajo ese mes? Probamos "dia" (lo que asume el código)
+        const diaSnap = await getDocs(collection(db, 'implantes_gestiones', '2026', 'mes', primerMes, 'dia'));
+        console.log(`[DIAG2-dia] implantes_gestiones/2026/mes/${primerMes}/dia => ${diaSnap.size} documento(s): [${diaSnap.docs.map(d => d.id).join(', ')}]`);
+
+        if (diaSnap.empty) {
+          console.log(`[DIAG2] "dia" está vacía bajo mes/${primerMes} -- puede que la subcolección real tenga otro nombre.`);
+          return;
+        }
+
+        const primerDia = diaSnap.docs[0].id;
+
+        // Nivel 3: "admision"
+        const admisionSnap = await getDocs(collection(db, 'implantes_gestiones', '2026', 'mes', primerMes, 'dia', primerDia, 'admision'));
+        console.log(`[DIAG2-admision] .../dia/${primerDia}/admision => ${admisionSnap.size} documento(s): [${admisionSnap.docs.map(d => d.id).join(', ')}]`);
+
+        if (admisionSnap.empty) { console.log('[DIAG2] "admision" vacía en ese punto.'); return; }
+        const primeraAdmision = admisionSnap.docs[0].id;
+
+        // Nivel 4: "empresa"
+        const empresaSnap = await getDocs(collection(db, 'implantes_gestiones', '2026', 'mes', primerMes, 'dia', primerDia, 'admision', primeraAdmision, 'empresa'));
+        console.log(`[DIAG2-empresa] .../admision/${primeraAdmision}/empresa => ${empresaSnap.size} documento(s): [${empresaSnap.docs.map(d => d.id).join(', ')}]`);
+
+        if (empresaSnap.empty) { console.log('[DIAG2] "empresa" vacía en ese punto.'); return; }
+        const primeraEmpresa = empresaSnap.docs[0].id;
+
+        // Nivel 5: "detalles"
+        const detallesSnap = await getDocs(collection(db, 'implantes_gestiones', '2026', 'mes', primerMes, 'dia', primerDia, 'admision', primeraAdmision, 'empresa', primeraEmpresa, 'detalles'));
+        console.log(`[DIAG2-detalles] .../empresa/${primeraEmpresa}/detalles => ${detallesSnap.size} documento(s)`);
+        detallesSnap.docs.slice(0, 3).forEach(d => console.log(`  path="${d.ref.path}" data=${JSON.stringify(d.data())}`));
+      } catch (err) {
+        console.error('[DIAG2] Error recorriendo la estructura real:', err);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     const q = query(
       collectionGroup(db, "detalles"),
-      where(documentId(), ">=", "implantes_gestiones/"),
-      where(documentId(), "<", "implantes_gestiones/"),
+      where(documentId(), ">=", RANGO_MIN_GESTIONES),
+      where(documentId(), "<", RANGO_MAX_GESTIONES),
       orderBy(documentId())
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {

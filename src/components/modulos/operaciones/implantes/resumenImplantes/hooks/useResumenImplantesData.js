@@ -12,11 +12,19 @@ export const NOMBRES_MESES = {
 export const ESTADO_CARGA_OPTIONS = ['PENDIENTE', 'CARGADO', 'REVISAR', 'S/COTIZACION'];
 export const TODOS_LOS_MESES = 'TODOS';
 
-const RAIZ_IMPLANTES_IMPUTADAS = 'implantes_imputadas/';
+const RAIZ_IMPLANTES_IMPUTADAS = 'implantes_imputadas';
 
+// En un collectionGroup, los límites de documentId() deben ser rutas de
+// documento COMPLETAS (número PAR de segmentos) — 'implantes_imputadas/'
+// (1 segmento) es inválido y Firestore lo rechaza en tiempo de ejecución.
+// La ruta real es 'implantes_imputadas/{anio}/meses/.../documentos/{id}',
+// con {anio} variable, así que se acota ese 2do segmento a un rango que
+// cubre cualquier año de 4 dígitos.
+const RANGO_MIN_IMPUTADAS = `${RAIZ_IMPLANTES_IMPUTADAS}/0000`;
+const RANGO_MAX_IMPUTADAS = `${RAIZ_IMPLANTES_IMPUTADAS}/9999`;
 
 export const useResumenImplantesData = () => {
-  const [anio, setAnio] = useState('');   
+  const [anio, setAnio] = useState('');
   const [mes, setMes] = useState('');  
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstadoCarga, setFiltroEstadoCarga] = useState('');
@@ -37,8 +45,8 @@ export const useResumenImplantesData = () => {
   useEffect(() => {
     const q = query(
       collectionGroup(db, 'documentos'),
-      where(documentId(), '>=', RAIZ_IMPLANTES_IMPUTADAS),
-      where(documentId(), '<', RAIZ_IMPLANTES_IMPUTADAS + ''),
+      where(documentId(), '>=', RANGO_MIN_IMPUTADAS),
+      where(documentId(), '<', RANGO_MAX_IMPUTADAS),
       orderBy(documentId())
     );
 
@@ -96,15 +104,21 @@ export const useResumenImplantesData = () => {
     let unsubscribe;
 
     if (mes === TODOS_LOS_MESES) {
-      // Acotado directamente a 'implantes_imputadas/{anio}/' vía rango de
+      // Acotado directamente a 'implantes_imputadas/{anio}' vía rango de
       // __name__: reemplaza el where('periodoAnio', '==', anio) que antes
       // corría sobre TODO el collectionGroup de la app (todos los módulos)
       // y evita además necesitar un índice compuesto.
-      const prefijoAnio = `${RAIZ_IMPLANTES_IMPUTADAS}${anio}/`;
+      // OJO: sin slash final — 'implantes_imputadas/{anio}/' tendría 3
+      // segmentos (impar) y sería inválido; 'implantes_imputadas/{anio}' (2
+      // segmentos, año ya es un valor concreto acá) es la ruta de documento
+      // válida, y la comparación de strings igual cubre todo lo que cuelga
+      // debajo (meses/documentos/...).
+      const limiteInferiorAnio = `${RAIZ_IMPLANTES_IMPUTADAS}/${anio}`;
+      const limiteSuperiorAnio = `${RAIZ_IMPLANTES_IMPUTADAS}/${anio}`;
       const q = query(
         collectionGroup(db, 'documentos'),
-        where(documentId(), '>=', prefijoAnio),
-        where(documentId(), '<', prefijoAnio + ''),
+        where(documentId(), '>=', limiteInferiorAnio),
+        where(documentId(), '<', limiteSuperiorAnio),
         orderBy(documentId())
       );
 

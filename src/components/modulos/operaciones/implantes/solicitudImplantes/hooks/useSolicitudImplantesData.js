@@ -33,15 +33,26 @@ export const useSolicitudImplantesData = () => {
   // otros módulos, como Consignación) y filtraba recién en el cliente por
   // el prefijo 'implantes_gestiones/'. Ahora se acota también por rango de
   // __name__ para que Firestore entregue solo documentos de este módulo.
+  //
+  // OJO: en un collectionGroup, los límites de documentId() deben ser rutas
+  // de documento COMPLETAS (número PAR de segmentos) — 'implantes_gestiones/'
+  // (1 segmento) es inválido. La ruta real es
+  // 'implantes_gestiones/{anio}/mes/.../detalles/{id}', con {anio} variable,
+  // así que se acota el año a un rango de 2 segmentos válido que cubre
+  // cualquier año de 4 dígitos: 'implantes_gestiones/0000' a
+  // 'implantes_gestiones/9999'.
   // Nota: esta combinación (equality + rango de __name__) requiere crear un
   // índice compuesto en Firestore (documentId, solicitud) la primera vez
   // que corra; la consola de Firebase entrega el link para crearlo.
+  const RANGO_MIN_GESTIONES = "implantes_gestiones/0000";
+  const RANGO_MAX_GESTIONES = "implantes_gestiones/9999";
+
   useEffect(() => {
     const q = query(
       collectionGroup(db, "detalles"),
       where("solicitud", "==", "SOLICITAR"),
-      where(documentId(), ">=", "implantes_gestiones/"),
-      where(documentId(), "<", "implantes_gestiones/"),
+      where(documentId(), ">=", RANGO_MIN_GESTIONES),
+      where(documentId(), "<", RANGO_MAX_GESTIONES),
       orderBy(documentId())
     );
 
