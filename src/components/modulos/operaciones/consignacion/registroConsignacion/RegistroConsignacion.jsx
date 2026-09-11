@@ -62,10 +62,26 @@ const RegistroConsignacion = () => {
   const [filtroDia, setFiltroDia] = useState('');
   const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroDespachado, setFiltroDespachado] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
   const { userData } = useUser();
+
+  // Antes esto escuchaba TODO el collectionGroup "detalles" de la base de
+  // datos (incluye, por ejemplo, las gestiones de Implantes, que usa una
+  // subcolección con el mismo nombre) y el filtro where('centro','==',...)
+  // no servía para distinguir el origen porque Implantes también usa
+  // centro='PABELLON'. Ahora se filtra en el cliente por el prefijo real
+  // de la ruta ('consignacion_registros/').
+  //
+  // OJO: no se puede acotar con un rango de documentId() como en Implantes
+  // porque esta pantalla pagina con orderBy('fechaRegistro','desc') +
+  // limit/startAfter, y Firestore exige que el PRIMER orderBy coincida con
+  // el campo que tiene el filtro de rango (documentId() en ese caso) — eso
+  // rompería el orden cronológico real de la paginación.
+  const filtrarSoloConsignacion = (docs) =>
+    docs.filter((d) => d.ref.path.startsWith(`${COL_BASE}/`));
 
   const cargarPrimeraPagina = useCallback(async () => {
     setCargandoLista(true);
@@ -78,7 +94,9 @@ const RegistroConsignacion = () => {
       );
       const snap = await getDocs(q);
 
-      setRegistros(snap.docs.map((d) => ({ id: d.id, ref: d.ref, ...d.data() })));
+      const docsConsignacion = filtrarSoloConsignacion(snap.docs);
+
+      setRegistros(docsConsignacion.map((d) => ({ id: d.id, ref: d.ref, ...d.data() })));
       setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
       setHayMas(snap.docs.length === TAMANO_PAGINA);
     } catch (error) {
@@ -102,7 +120,9 @@ const RegistroConsignacion = () => {
       );
       const snap = await getDocs(q);
 
-      setRegistros((prev) => [...prev, ...snap.docs.map((d) => ({ id: d.id, ref: d.ref, ...d.data() }))]);
+      const docsConsignacion = filtrarSoloConsignacion(snap.docs);
+
+      setRegistros((prev) => [...prev, ...docsConsignacion.map((d) => ({ id: d.id, ref: d.ref, ...d.data() }))]);
       setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
       setHayMas(snap.docs.length === TAMANO_PAGINA);
     } catch (error) {
@@ -333,6 +353,7 @@ const RegistroConsignacion = () => {
     setFiltroDia('');
     setFiltroTipo('');
     setFiltroDespachado('');
+    setFiltroEstado('');
   };
 
   const registrosFiltrados = useMemo(() => {
@@ -360,10 +381,11 @@ const RegistroConsignacion = () => {
 
       if (filtroTipo && (r.atributo || '').toUpperCase() !== filtroTipo) return false;
       if (filtroDespachado && (r.despachado || 'PENDIENTE').toUpperCase() !== filtroDespachado) return false;
+      if (filtroEstado && (r.estado || 'INGRESADO').toUpperCase() !== filtroEstado) return false;
 
       return true;
     });
-  }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroTipo, filtroDespachado]);
+  }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroTipo, filtroDespachado, filtroEstado]);
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -412,6 +434,8 @@ const RegistroConsignacion = () => {
         setFiltroTipo={setFiltroTipo}
         filtroDespachado={filtroDespachado}
         setFiltroDespachado={setFiltroDespachado}
+        filtroEstado={filtroEstado}
+        setFiltroEstado={setFiltroEstado}
         limpiarFiltros={limpiarFiltros}
       />
 

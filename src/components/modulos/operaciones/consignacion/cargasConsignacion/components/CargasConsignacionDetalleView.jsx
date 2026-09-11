@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { collectionGroup, query, where, getDocs, updateDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig'; 
 import { ArrowLeft, ListFilter, Info, Truck, UploadCloud, Save, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { useToast } from '../../../../../../context/ToastContext'; 
@@ -54,37 +54,40 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
   const [cargandoItems, setCargandoItems] = useState(false);
 
   useEffect(() => {
-    let cancelado = false;
+    if (!registro?.gestionId) {
+      setItemsDeEstaAdmision(registro ? [registro] : []);
+      setCargandoItems(false);
+      return;
+    }
 
-    (async () => {
-      if (!registro?.gestionId) {
-        setItemsDeEstaAdmision(registro ? [registro] : []);
-        return;
-      }
+    setCargandoItems(true);
+    const q = query(
+      collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+      where('gestionId', '==', registro.gestionId)
+    );
 
-      setCargandoItems(true);
-      try {
-        const q = query(
-          collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
-          where('gestionId', '==', registro.gestionId)
-        );
-        const snap = await getDocs(q);
+    // onSnapshot (en vez de un getDocs de una sola vez) para que cambios como
+    // el checkbox "Cargado" (que escribe directo a Firestore desde CargasTab)
+    // se reflejen de inmediato: el caché local de Firestore dispara este
+    // listener apenas se hace el updateDoc, sin esperar la confirmación del
+    // servidor.
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
         const items = snap.docs
           .filter((d) => d.ref.path.startsWith(`${COL_BASE}/`))
           .map((d) => ({ id: d.id, ref: d.ref, ...d.data() }));
-
-        if (!cancelado) {
-          setItemsDeEstaAdmision(items.length > 0 ? items : [registro]);
-        }
-      } catch (err) {
-        console.error('Error al cargar los ítems de la admisión:', err);
-        if (!cancelado) setItemsDeEstaAdmision([registro]);
-      } finally {
-        if (!cancelado) setCargandoItems(false);
+        setItemsDeEstaAdmision(items.length > 0 ? items : [registro]);
+        setCargandoItems(false);
+      },
+      (err) => {
+        console.error('Error al escuchar los ítems de la admisión:', err);
+        setItemsDeEstaAdmision([registro]);
+        setCargandoItems(false);
       }
-    })();
+    );
 
-    return () => { cancelado = true; };
+    return () => unsubscribe();
   }, [registro]);
 
   const registroParaDelivery = useMemo(() => {

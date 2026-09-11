@@ -1,6 +1,7 @@
 import { collectionGroup, collection, query, where, getDocs } from 'firebase/firestore';
 
 const NOMBRE_SUBCOL_DETALLES_GUIAS = 'detalles';
+const COL_BASE = 'consignacion_registros';
 const COL_MAESTROS_CODIGOS = 'maestros_codigos';
 const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
 
@@ -44,12 +45,15 @@ export function resolverGuiaCacheada(db, numeroDocumento, forzar = false) {
         where('numeroDocumento', '==', clave)
       );
       const snap = await getDocs(q);
-      if (snap.empty) return null;
 
-      const productos = snap.docs
+      const docsConsignacion = snap.docs.filter((d) => d.ref.path.startsWith(`${COL_BASE}/`));
+
+      if (docsConsignacion.length === 0) return null;
+
+      const productos = docsConsignacion
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((p) => !estaExcluido(p.codigo));
-      const primero = snap.docs[0].data();
+      const primero = docsConsignacion[0].data();
 
       return {
         numeroGuia: primero.numeroGuia || '',

@@ -25,9 +25,12 @@ const ConsignacionFiltros = ({
   filtroDespachado,
   setFiltroDespachado,
 
+  filtroEstado,
+  setFiltroEstado,
+
   limpiarFiltros
 }) => {
-  const hayFiltrosActivos = filtroAnio || filtroMes || filtroDia || filtroTipo || filtroDespachado;
+  const hayFiltrosActivos = filtroAnio || filtroMes || filtroDia || filtroTipo || filtroDespachado || filtroEstado;
 
   return (
     <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
@@ -94,6 +97,18 @@ const ConsignacionFiltros = ({
           <option value="">Despachado (Todos)</option>
           <option value="PENDIENTE">PENDIENTE</option>
           <option value="DESPACHADO">DESPACHADO</option>
+        </select>
+
+        <select
+          value={filtroEstado}
+          onChange={e => setFiltroEstado(e.target.value)}
+          className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer"
+        >
+          <option value="">Estado (Todos)</option>
+          <option value="INGRESADO">INGRESADO</option>
+          <option value="PENDIENTE">PENDIENTE</option>
+          <option value="CARGADO">CARGADO</option>
+          <option value="SOLICITADO">SOLICITADO</option>
         </select>
 
         {hayFiltrosActivos && (

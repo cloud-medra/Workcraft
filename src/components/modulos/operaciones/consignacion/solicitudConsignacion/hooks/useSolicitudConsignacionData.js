@@ -331,9 +331,35 @@ export const useSolicitudConsignacionData = () => {
             'VENCIMIENTO': it.vencimiento
           }));
 
+          // Hoja "Resumen", mismo criterio que la de Solicitud Implantes
+          // (useSolicitudImplantesData.js): una fila por ítem, con las
+          // columnas Ingreso/Area/Previsión/Id/Cód/Cant/Venta/Médico/Fecha/
+          // Descripción/Estado. A diferencia de Implantes, en Consignación
+          // no existe un estado de carga por ítem: como el export solo
+          // toma documentos con estado=='CARGADO', ese es el valor fijo
+          // para todas las filas reales. Las filas de desglose de guía
+          // (esFilaGuia) no tienen documento propio, así que Previsión y
+          // Estado quedan en '-' (mismo criterio que ya usan esas filas
+          // para EMPRESA en la hoja principal).
+          const filasResumen = itemsSeleccionados.map(it => ({
+            'Ingreso': fechaIngresoHoy,
+            'Area': 'PABELLON',
+            'Previsión': it.esFilaGuia ? '-' : (it.datosOriginales?.prevision || 'P'),
+            'Id': it.gestionId,
+            'Cód': it.codigo,
+            'Cant': it.cantidad,
+            'Venta': it.precio,
+            'Médico': it.medico,
+            'Fecha': formatearFechaDDMMYYYY(it.fecha),
+            'Descripción': it.descripcion,
+            'Estado': it.esFilaGuia ? '-' : 'CARGADO'
+          }));
+
           const worksheet = XLSX.utils.json_to_sheet(filas);
+          const worksheetResumen = XLSX.utils.json_to_sheet(filasResumen);
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Consignacion');
+          XLSX.utils.book_append_sheet(workbook, worksheetResumen, 'Resumen');
           const fechaArchivo = new Date().toISOString().slice(0, 10);
           XLSX.writeFile(workbook, `solicitud_consignacion_${fechaArchivo}.xlsx`);
 

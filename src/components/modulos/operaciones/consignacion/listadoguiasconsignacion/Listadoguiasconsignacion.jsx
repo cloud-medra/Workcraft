@@ -22,6 +22,14 @@ const NOMBRES_MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
+const COL_BASE = 'consignacion_registros';
+
+// El collectionGroup 'detalles' es compartido con otros módulos (por
+// ejemplo Implantes), así que hay que filtrar por el prefijo real de la
+// ruta para no mezclar documentos de otra colección.
+const filtrarSoloConsignacion = (docs) =>
+  docs.filter((d) => d.ref.path.startsWith(`${COL_BASE}/`));
+
 const ListadoGuiasConsignacion = () => {
   const { showToast } = useToast();
 
@@ -59,8 +67,10 @@ const ListadoGuiasConsignacion = () => {
       const q = query(collectionGroup(db, 'detalles'), orderBy('fechaEmision', 'asc'));
       const snapshot = await getDocs(q);
 
+      const docsConsignacion = filtrarSoloConsignacion(snapshot.docs);
+
       const mapa = {};
-      snapshot.docs.forEach((doc) => {
+      docsConsignacion.forEach((doc) => {
         const fecha = doc.data().fechaEmision;
         if (!fecha || fecha.length < 7) return;
         const [y, m] = fecha.split('-');
@@ -106,7 +116,10 @@ const ListadoGuiasConsignacion = () => {
       );
 
       const snapshot = await getDocs(q);
-      setProductos(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+
+      const docsConsignacion = filtrarSoloConsignacion(snapshot.docs);
+
+      setProductos(docsConsignacion.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error('Error al cargar guías de consignación:', err);
       if (err?.code === 'failed-precondition') {
