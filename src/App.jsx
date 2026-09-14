@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
 import Dashboard from './pages/Dashboard';
@@ -8,20 +7,8 @@ import TestPage from './pages/TestPage';
 import { ToastProvider } from './context/ToastContext';
 import { ModalProvider } from './context/ModalContext';
 import { UserProvider } from './context/UserContext';
-import { signOut } from 'firebase/auth';
-import { auth } from './firebaseConfig';
 
 function App() {
-  useEffect(() => {
-    const sessionActive = sessionStorage.getItem('sessionActive');
-
-    if (!sessionActive) {
-      signOut(auth);
-    }
-
-    sessionStorage.setItem('sessionActive', 'true');
-  }, []);
-
   return (
     <UserProvider>
       <ToastProvider>

@@ -1,10 +1,25 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
 import Spinner from './ui/Spinner';
 
 const ProtectedRoute = ({ children }) => {
   const { userData, loading } = useUser();
+
+  // Defensa contra bfcache: si el navegador restaura esta pantalla protegida
+  // desde el back-forward cache (por ejemplo, con "Atrás" tras cerrar
+  // sesión), event.persisted viene en true — forzamos una recarga real para
+  // que se vuelva a ejecutar la verificación de sesión desde cero en vez de
+  // mostrar el estado congelado que tenía la página antes de salir de ella.
+  useEffect(() => {
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   // 1. Mientras Firebase está verificando la sesión, mostramos el spinner
   if (loading) {

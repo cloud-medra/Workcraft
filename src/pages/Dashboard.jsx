@@ -95,6 +95,10 @@ const Dashboard = () => {
   const [activeView, setActiveView] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAjustesMode, setIsAjustesMode] = useState(false);
+  // Id del usuario cuya creación (wizard de 3 pasos) se quiere retomar desde
+  // ListadoUsuario.jsx -> "Continuar creación". Se limpia una vez consumido
+  // por CrearUsuario.jsx para no reabrirlo en visitas futuras a la vista.
+  const [resumeUsuarioId, setResumeUsuarioId] = useState(null);
 
   const menuRef = useRef(null);
 
@@ -205,8 +209,20 @@ const Dashboard = () => {
     '/administracion/controlMensual': <ControlMensual />,
     '/administracion/ResumenPeriodoAbierto': <ResumenPeriodoAbierto />,
     '/administracion/notasAdmin': <NotasAdmin />,
-    '/administracion/crearUsuario': <CrearUsuario />,
-    '/administracion/listadoUsuario': <ListadoUsuario />,
+    '/administracion/crearUsuario': (
+      <CrearUsuario
+        resumeUsuarioId={resumeUsuarioId}
+        onResumeConsumido={() => setResumeUsuarioId(null)}
+      />
+    ),
+    '/administracion/listadoUsuario': (
+      <ListadoUsuario
+        onContinuarCreacion={(uid) => {
+          setResumeUsuarioId(uid);
+          setActiveView('/administracion/crearUsuario');
+        }}
+      />
+    ),
    
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
@@ -294,6 +310,7 @@ const Dashboard = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      sessionStorage.clear();
       navigate('/');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
