@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, Building2, Stethoscope, Calendar as CalendarIcon, DollarSign } from 'lucide-react';
+import CentroSelect from '../../../../../ui/CentroSelect';
 
 const InformacionTab = ({ formData, onChange }) => {
   const setField = (field, value) => onChange(field, value);
@@ -62,12 +63,11 @@ const InformacionTab = ({ formData, onChange }) => {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="font-semibold text-slate-600 dark:text-gray-300">Centro</label>
-            <input
-              type="text"
+            <label className="font-semibold text-slate-600 dark:text-gray-300">Centro/Unidad</label>
+            <CentroSelect
               value={formData.centro}
-              onChange={e => setField('centro', e.target.value)}
-              className="h-6.5 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none"
+              onChange={(centroSeleccionado) => setField('centro', centroSeleccionado.nombre)}
+              placeholder="Seleccionar centro..."
             />
           </div>
 

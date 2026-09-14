@@ -132,7 +132,11 @@ const DetalleVinculacionOC = ({
                 const precioDocumentoRedondeado = Math.round(precioDocumento);
                 const precioOCRedondeado = Math.round(precioUnitOC);
 
-                const hayDiferenciaCantidad = Math.abs(cantDocumento - cantOC) > 0.001;
+                // Solo es "diferencia" cuando el documento/factura trae MÁS
+                // cantidad que la orden de compra — si trae menos o igual,
+                // no se marca (no es un error, puede ser un despacho
+                // parcial legítimo).
+                const hayDiferenciaCantidad = (cantDocumento - cantOC) > 0.001;
                 const hayDiferenciaPrecio = Math.abs(precioDocumentoRedondeado - precioOCRedondeado) > 0;
 
                 let vincuOCTexto = "Sin diferencias";

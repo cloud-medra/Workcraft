@@ -12,6 +12,7 @@ const COLUMNAS = [
   { key: 'centro', label: 'Centro', ancho: 95, min: 60 },
   { key: 'atributo', label: 'Atributo', ancho: 95, min: 60 },
   { key: 'estadoTexto', label: 'Estado', ancho: 95, min: 60 },
+  { key: 'fechaCarga', label: 'Fecha Carga', ancho: 100, min: 70 },
   { key: 'costo', label: 'Costo', ancho: 90, min: 60 },
   { key: 'solicitud', label: 'Solicitud', ancho: 95, min: 60 },
   { key: 'periodo', label: 'Período', ancho: 110, min: 70 },
@@ -175,6 +176,16 @@ export const GestionesImplantesTable = ({
     return `${dd}-${mm}-${yyyy}`;
   };
 
+  const formatearFechaCarga = (valor) => {
+    if (!valor) return '-';
+    const date = valor.toDate ? valor.toDate() : new Date(valor);
+    if (isNaN(date.getTime())) return '-';
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  };
+
   const celdaBase = 'py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis';
 
   return (
@@ -268,6 +279,7 @@ export const GestionesImplantesTable = ({
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.centro}>{i.centro || 'PABELLON'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.atributo}>{i.atributo || 'IMPLANTES'}</td>
                 <td className={`${celdaBase} font-semibold ${status.textClass}`} title={i.estado}>{i.estado || 'AGENDANDO'}</td>
+                <td className={`${celdaBase} text-gray-600 dark:text-gray-300`}>{formatearFechaCarga(i.fechaCarga)}</td>
                 <td className={`${celdaBase} text-emerald-700 dark:text-emerald-400 font-semibold`}>
                   {new Intl.NumberFormat('es-CL').format(i.costo ?? 0)}
                 </td>

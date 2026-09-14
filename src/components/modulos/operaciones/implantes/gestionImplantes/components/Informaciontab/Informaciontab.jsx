@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import EmpresaSelect from '../EmpresaSelect';
+import CentroSelect from '../../../../../../ui/CentroSelect';
 
 const formatearMiles = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '';
@@ -19,6 +20,18 @@ const formatearMiles = (valor) => {
   if (num === '') return '';
   return new Intl.NumberFormat('es-CL').format(num);
 };
+
+// 'AGENDANDO' es un valor legacy equivalente a 'AGENDADO' (mismo color y
+// label en todos lados de la app que lo leen) — se normaliza acá solo para
+// que el <select> siempre tenga un <option> que matchee su value y nunca
+// caiga al primero por defecto (el mismo bug que ya se arregló una vez).
+const normalizarEstadoOperativo = (estado) => (estado === 'AGENDANDO' ? 'AGENDADO' : (estado || 'AGENDADO'));
+
+const ESTADO_INFORME_ESTILOS = {
+  PENDIENTE: 'border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30',
+  DISPONIBLE: 'border-emerald-400 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30'
+};
+const ESTADO_INFORME_ESTILO_DEFAULT = 'border-slate-300 dark:border-gray-600 text-slate-800 dark:text-gray-100 bg-white dark:bg-gray-900';
 
 export const InformacionTab = ({
   formData,
@@ -202,16 +215,16 @@ export const InformacionTab = ({
               <label className="font-semibold text-slate-600 dark:text-gray-300">Estado Operativo</label>
               <div className="relative">
                 <select
-                  name="estado"
-                  value={formData.estado}
-                  onChange={handleGeneralChange}
-                  className="w-full h-6.5 pl-2 pr-6 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none appearance-none"
+                  value={normalizarEstadoOperativo(formData.bloques[bloqueActivoIndex]?.estado)}
+                  onChange={(e) => handleBloqueChange(bloqueActivoIndex, 'estado', e.target.value)}
+                  disabled={!formData.bloques[bloqueActivoIndex]}
+                  className="w-full h-6.5 pl-2 pr-6 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none appearance-none disabled:opacity-50"
                 >
                   <option value="AGENDADO">AGENDADO</option>
                   <option value="PENDIENTE">PENDIENTE</option>
                   <option value="REVISAR">REVISAR</option>
-                  <option value="CARGADO">CARGADO</option>
                   <option value="S/COTIZACION">S/COTIZACION</option>
+                  <option value="CARGADO">CARGADO</option>
                   <option value="INCOMPLETO">INCOMPLETO</option>
                 </select>
                 <ChevronDown size={12} className="absolute right-2 top-1.5 pointer-events-none text-slate-400" />
@@ -225,7 +238,7 @@ export const InformacionTab = ({
                   name="informe"
                   value={formData.informe}
                   onChange={handleGeneralChange}
-                  className="w-full h-6.5 pl-2 pr-6 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none appearance-none"
+                  className={`w-full h-6.5 pl-2 pr-6 text-[10px] border rounded focus:ring-1 focus:ring-[#2383C2] outline-none appearance-none font-semibold ${ESTADO_INFORME_ESTILOS[formData.informe] || ESTADO_INFORME_ESTILO_DEFAULT}`}
                 >
                   <option value="PENDIENTE">PENDIENTE</option>
                   <option value="DISPONIBLE">DISPONIBLE</option>
@@ -247,13 +260,13 @@ export const InformacionTab = ({
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="font-semibold text-slate-600 dark:text-gray-300">Centro Médico / Pabellón</label>
-              <input
-                type="text"
-                name="centro"
+              <label className="font-semibold text-slate-600 dark:text-gray-300">Centro/Unidad</label>
+              <CentroSelect
                 value={formData.centro}
-                onChange={handleGeneralChange}
-                className="h-6.5 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none"
+                onChange={(centroSeleccionado) =>
+                  handleGeneralChange({ target: { name: 'centro', value: centroSeleccionado.nombre } })
+                }
+                placeholder="Seleccionar centro..."
               />
             </div>
           </div>

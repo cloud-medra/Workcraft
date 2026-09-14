@@ -119,7 +119,9 @@ const GestionesImplantesDetalleView = forwardRef(({
       costo: reg.costo ?? reg.monto ?? 0,
       cotizaciones: Array.isArray(reg.cotizaciones) ? reg.cotizaciones : [],
       solicitud: reg.solicitud || 'PENDIENTE',
-      estado: reg.estado || 'AGENDADO'
+      estado: reg.estado || 'AGENDADO',
+      fechaInicioCarga: reg.fechaInicioCarga || null,
+      fechaCarga: reg.fechaCarga || null
     }));
 
     return {
@@ -184,6 +186,7 @@ const GestionesImplantesDetalleView = forwardRef(({
   const aplicarNuevoItemABloque = (bloque, data) => {
     const { numCotizacion, totalCotizacion, ...itemFields } = data;
     const cotizaciones = [...(bloque.cotizaciones || [])];
+    const esPrimeraReferencia = cotizaciones.length === 0;
 
     const numLimpio = numCotizacion.trim();
     const nuevoItem = {
@@ -193,7 +196,7 @@ const GestionesImplantesDetalleView = forwardRef(({
 
     let totalFinal;
 
-    if (cotizaciones.length === 0) {
+    if (esPrimeraReferencia) {
       totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : (Number(bloque.costo) || 0);
       cotizaciones.push({
         id: `cot_${Date.now()}`,
@@ -212,7 +215,12 @@ const GestionesImplantesDetalleView = forwardRef(({
       };
     }
 
-    return { ...bloque, cotizaciones, costo: totalFinal };
+    return {
+      ...bloque,
+      cotizaciones,
+      costo: totalFinal,
+      ...(esPrimeraReferencia && !bloque.fechaInicioCarga ? { fechaInicioCarga: new Date() } : {})
+    };
   };
 
   const handleAgregarItemCotizacion = (bloqueIndex, data) => {
@@ -313,7 +321,11 @@ const GestionesImplantesDetalleView = forwardRef(({
 
         if (nuevoEstado !== bloque.estado) {
           huboCambios = true;
-          return { ...bloque, estado: nuevoEstado };
+          return {
+            ...bloque,
+            estado: nuevoEstado,
+            ...(nuevoEstado === 'CARGADO' ? { fechaCarga: new Date() } : {})
+          };
         }
         return bloque;
       });
@@ -451,6 +463,8 @@ const GestionesImplantesDetalleView = forwardRef(({
           cotizaciones: b.cotizaciones || [],
           solicitud: b.solicitud || 'PENDIENTE',
           estado: b.estado || 'AGENDADO',
+          fechaInicioCarga: b.fechaInicioCarga || null,
+          fechaCarga: b.fechaCarga || null,
           itemsEliminados,
           nombre: formDataParaGuardar.nombre,
           medico: formDataParaGuardar.medico,
@@ -465,12 +479,6 @@ const GestionesImplantesDetalleView = forwardRef(({
     guardarTodo: handleSubmit,
     hayCambiosSinGuardar: () => hayCambios
   }));
-
-  const estadoResumenAdmision = useMemo(() => {
-    if (!formData.bloques || formData.bloques.length === 0) return 'AGENDADO';
-    const estadosUnicos = [...new Set(formData.bloques.map(b => b.estado || 'AGENDADO'))];
-    return estadosUnicos.length === 1 ? estadosUnicos[0] : 'INCOMPLETO';
-  }, [formData.bloques]);
 
   const refPathBloqueActivo = formData.bloques[bloqueActivoIndex]?.refPath;
 
