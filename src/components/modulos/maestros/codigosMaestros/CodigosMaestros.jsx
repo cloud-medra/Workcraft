@@ -87,7 +87,7 @@ const CodigosMaestros = () => {
     <div className="w-full h-full flex flex-col bg-slate-50/60 dark:bg-gray-900 rounded-xl border border-slate-200/80 dark:border-gray-700/80 shadow-xs overflow-hidden">
       
       {/* Header Superior */}
-      <div className="bg-white dark:bg-gray-800 border-b border-slate-200/80 dark:border-gray-700 px-5 py-2.5">
+      <div className="shrink-0 bg-white dark:bg-gray-800 border-b border-slate-200/80 dark:border-gray-700 px-5 py-2.5">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-sm font-bold text-slate-900 dark:text-gray-100 tracking-tight">
@@ -129,7 +129,7 @@ const CodigosMaestros = () => {
       </div>
 
       {/* Barra de Pestañas (Tabs) con Permisos */}
-      <div className="bg-slate-100/60 dark:bg-gray-800/60 px-5 py-1.5 border-b border-slate-200/80 dark:border-gray-700 overflow-x-auto scrollbar-none">
+      <div className="shrink-0 bg-slate-100/60 dark:bg-gray-800/60 px-5 py-1.5 border-b border-slate-200/80 dark:border-gray-700 overflow-x-auto scrollbar-none">
         <div className="flex items-center gap-1 min-w-max">
           {tabs.map((tab) => {
             const isActive = currentTabObj.id === tab.id;
@@ -157,7 +157,7 @@ const CodigosMaestros = () => {
       </div>
 
       {/* Renderizado de Componentes por Pestaña */}
-      <div className="flex-grow p-4 overflow-auto">
+      <div className="flex-grow min-h-0 p-4 overflow-auto">
         {currentTabObj.id === 'pendientes' && <TabPendientes />}
         {currentTabObj.id === 'con_codigo' && <TabConCodigo />}
         {currentTabObj.id === 'todos' && <TabVistaGeneral />}

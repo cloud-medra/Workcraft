@@ -440,7 +440,7 @@ const TabPendientes = () => {
 
       {/* Tabla */}
       {hasPermission(PATH_VISTA, "tabla_datos") && (
-        <div className="flex-grow overflow-auto">
+        <div className="flex-grow min-h-0 overflow-auto">
           <table className="w-full text-left text-[11px] border-collapse">
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">

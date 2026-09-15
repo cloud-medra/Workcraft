@@ -9,6 +9,7 @@ import { InformacionTab } from './Informaciontab/Informaciontab';
 import { DetallesTab } from './Detallestab/Detallestab';
 import { CargasTab } from './Cargastab/Cargastab';
 import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
+import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
 
@@ -34,7 +35,8 @@ const GestionesImplantesDetalleView = forwardRef(({
   logsList = [],
   loadingLogs = false,
   cargarLogsDeImplante,
-  formatearFecha
+  formatearFecha,
+  handleCopiarTexto
 }, ref) => {
 
   const { hasAccesoProceso } = useGranularPermission();
@@ -214,46 +216,6 @@ const GestionesImplantesDetalleView = forwardRef(({
     });
   };
 
-  const aplicarNuevoItemABloque = (bloque, data) => {
-    const { numCotizacion, totalCotizacion, ...itemFields } = data;
-    const cotizaciones = [...(bloque.cotizaciones || [])];
-    const esPrimeraReferencia = cotizaciones.length === 0;
-
-    const numLimpio = numCotizacion.trim();
-    const nuevoItem = {
-      ...itemFields,
-      id: itemFields.id || `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-    };
-
-    let totalFinal;
-
-    if (esPrimeraReferencia) {
-      totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : (Number(bloque.costo) || 0);
-      cotizaciones.push({
-        id: `cot_${Date.now()}`,
-        numCotizacion: numLimpio,
-        totalCotizacion: totalFinal,
-        items: [nuevoItem]
-      });
-    } else {
-      const cot = cotizaciones[0];
-      totalFinal = Number(totalCotizacion) > 0 ? Number(totalCotizacion) : cot.totalCotizacion;
-      cotizaciones[0] = {
-        ...cot,
-        numCotizacion: numLimpio || cot.numCotizacion,
-        totalCotizacion: totalFinal,
-        items: [...(cot.items || []), nuevoItem]
-      };
-    }
-
-    return {
-      ...bloque,
-      cotizaciones,
-      costo: totalFinal,
-      ...(esPrimeraReferencia && !bloque.fechaInicioCarga ? { fechaInicioCarga: new Date() } : {})
-    };
-  };
-
   const handleAgregarItemCotizacion = (bloqueIndex, data) => {
     setFormData(prev => {
       const nuevosBloques = [...prev.bloques];
@@ -270,7 +232,7 @@ const GestionesImplantesDetalleView = forwardRef(({
         if (cot.id !== cotizacionId) return cot;
         return {
           ...cot,
-          items: (cot.items || []).filter(it => it.id !== itemId && it.padPadreId !== itemId)
+          items: (cot.items || []).filter(it => it.id !== itemId && it.padPadreId !== itemId && it.lotePadreId !== itemId)
         };
       });
       nuevosBloques[bloqueIndex] = { ...bloque, cotizaciones: nuevasCotizaciones };
@@ -621,6 +583,7 @@ const GestionesImplantesDetalleView = forwardRef(({
               onEditarItem={handleEditarItem}
               periodoAbierto={periodoActivo}
               cargandoPeriodo={cargandoPeriodo}
+              handleCopiarTexto={handleCopiarTexto}
             />
           )}
 

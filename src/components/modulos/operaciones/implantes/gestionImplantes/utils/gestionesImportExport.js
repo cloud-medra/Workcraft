@@ -1,6 +1,11 @@
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
+// Mismo formato usado por la columna "Admisión - Nombre" de la tabla
+// principal de gestión y por el botón de copiado en CargasTab, para que
+// ambos copien exactamente el mismo texto.
+export const construirTextoAdmisionNombre = (idMostrado, nombre) => `${idMostrado || 'P'} - ${nombre || 'P'} -`;
+
 export const exportarGestionesAExcel = (implantes, showToast) => {
   if (!implantes || implantes.length === 0) {
     if (showToast) showToast("No hay datos para exportar", "error");

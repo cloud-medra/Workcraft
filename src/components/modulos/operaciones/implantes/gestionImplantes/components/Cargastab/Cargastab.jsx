@@ -8,14 +8,18 @@ import {
   Loader2,
   Lock,
   Package,
+  Layers,
   Check,
-  Trash2
+  Trash2,
+  Copy
 } from 'lucide-react';
 import { formatearFechaTabla, calcularCamposFinancieros, esClasePad, VALOR_LOTE_VENCIMIENTO_PAD } from './cargasHelpers';
+import { construirTextoAdmisionNombre } from '../../utils/gestionesImportExport';
 import { useRecargosActivos } from './useRecargosActivos';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { CotizacionCard } from './CotizacionCard';
 import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
+import { construirItemLoteDesdeFila } from './loteAdicionalHelpers';
 
 const INITIAL_ITEM = {
   numCotizacion: '',
@@ -46,7 +50,9 @@ const DRAFT_CONTENIDO_VACIO = {
   vencimiento: ''
 };
 
-export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem, periodoAbierto, cargandoPeriodo }, ref) => {
+const DRAFT_LOTE_VACIO = { cantidad: '', lote: '', vencimiento: '' };
+
+export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem, periodoAbierto, cargandoPeriodo, handleCopiarTexto }, ref) => {
   const bloqueActivo = formData?.bloques?.[bloqueActivoIndex];
   const cotizaciones = bloqueActivo?.cotizaciones || [];
 
@@ -59,6 +65,10 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
 
   const [draftContenido, setDraftContenido] = useState(DRAFT_CONTENIDO_VACIO);
   const [errorDraftContenido, setErrorDraftContenido] = useState({});
+
+  const [lotesAdicionales, setLotesAdicionales] = useState([]);
+  const [draftLote, setDraftLote] = useState(DRAFT_LOTE_VACIO);
+  const [errorDraftLote, setErrorDraftLote] = useState({});
 
   const { recargosActivos, cargandoRecargos } = useRecargosActivos();
   const {
@@ -79,11 +89,25 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   const cantidadActual = Number(nuevoItem.cantidad) || 1;
   const ventaActual = calcularVentaUnitariaLocal(nuevoItem.precio, vecesCostoActual) * cantidadActual;
 
+  // La referencia principal SIEMPRE factura por la cantidad TOTAL original
+  // (venta/precio/recargo se calculan sobre ella, ver construirItemsDesdeFormulario).
+  // Los lotes adicionales solo descuentan cantidad física del total para
+  // fines de trazabilidad de lote/vencimiento — nunca tienen costo propio.
+  const cantidadTotalReferencia = Number(nuevoItem.cantidad) || 0;
+  const cantidadAsignadaLotes = lotesAdicionales.reduce((acc, f) => acc + (Number(f.cantidad) || 0), 0);
+  const restanteLotes = cantidadTotalReferencia - cantidadAsignadaLotes;
+
   const resetContenidoPad = () => {
     setContenidoPad([]);
     setNumCotizacionPad('');
     setDraftContenido(DRAFT_CONTENIDO_VACIO);
     setErrorDraftContenido({});
+  };
+
+  const resetLotesAdicionales = () => {
+    setLotesAdicionales([]);
+    setDraftLote(DRAFT_LOTE_VACIO);
+    setErrorDraftLote({});
   };
 
   useEffect(() => {
@@ -99,6 +123,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     }
     setEsPad(false);
     resetContenidoPad();
+    resetLotesAdicionales();
     setErrores({});
   }, [bloqueActivoIndex]);
 
@@ -114,6 +139,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     const esPadItem = esClasePad(item.clase);
     setEsPad(esPadItem);
     if (!esPadItem) resetContenidoPad();
+    resetLotesAdicionales();
 
     setNuevoItem(prev => ({
       ...prev,
@@ -146,7 +172,14 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
       }));
       setEsPad(false);
       resetContenidoPad();
+      resetLotesAdicionales();
       return;
+    }
+    if (field === 'cantidad' && lotesAdicionales.length > 0) {
+      // Si ya se habían repartido lotes con la cantidad anterior, cambiar
+      // la cantidad total invalida ese reparto (podría sumar más de lo
+      // nuevo) — se reinicia y el usuario vuelve a repartir si corresponde.
+      resetLotesAdicionales();
     }
     setNuevoItem(prev => ({ ...prev, [field]: value }));
     if (errores[field]) setErrores(prev => ({ ...prev, [field]: false }));
@@ -214,6 +247,42 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     setContenidoPad(prev => prev.filter(f => f.tempId !== tempId));
   };
 
+  const handleDraftLoteChange = (field, value) => {
+    setDraftLote(prev => ({ ...prev, [field]: value }));
+    if (errorDraftLote[field]) setErrorDraftLote(prev => ({ ...prev, [field]: false }));
+  };
+
+  const handleRegistrarLote = () => {
+    const cantidadNum = Number(draftLote.cantidad);
+    const err = {};
+    if (!draftLote.cantidad || isNaN(cantidadNum) || cantidadNum <= 0) {
+      err.cantidad = true;
+    } else if (cantidadNum > restanteLotes) {
+      err.cantidad = true;
+    }
+
+    if (Object.keys(err).length > 0) {
+      setErrorDraftLote(err);
+      return;
+    }
+
+    const filaRegistrada = {
+      ...draftLote,
+      tempId: crypto.randomUUID(),
+      cantidad: cantidadNum,
+      lote: draftLote.lote.trim() || 'Sin lote',
+      vencimiento: draftLote.vencimiento || 'Sin fecha'
+    };
+
+    setLotesAdicionales(prev => [...prev, filaRegistrada]);
+    setDraftLote(DRAFT_LOTE_VACIO);
+    setErrorDraftLote({});
+  };
+
+  const handleEliminarLoteRegistrado = (tempId) => {
+    setLotesAdicionales(prev => prev.filter(f => f.tempId !== tempId));
+  };
+
   const construirItemsDesdeFormulario = () => {
     const sinCodigo = !nuevoItem.codigo;
     const { vecesCosto, recargoEncontrado, venta, totalItem } = calcularCamposFinancieros(
@@ -221,9 +290,11 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     );
 
     const idPadPrincipal = esPad ? crypto.randomUUID() : undefined;
+    const idReferenciaConLotes = (!esPad && lotesAdicionales.length > 0) ? crypto.randomUUID() : undefined;
+    const idPrincipalGenerado = idPadPrincipal || idReferenciaConLotes;
 
     const itemPrincipal = {
-      ...(idPadPrincipal ? { id: idPadPrincipal } : {}),
+      ...(idPrincipalGenerado ? { id: idPrincipalGenerado } : {}),
       esPad,
       numCotizacion: nuevoItem.numCotizacion.trim(),
       totalCotizacion: nuevoItem.totalCotizacion ? Number(nuevoItem.totalCotizacion) : 0,
@@ -261,7 +332,24 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
       });
     }
 
-    return [itemPrincipal, ...itemsContenido];
+    const itemsLotes = [];
+    if (!esPad && lotesAdicionales.length > 0) {
+      lotesAdicionales.forEach(fila => {
+        itemsLotes.push(construirItemLoteDesdeFila(fila, idReferenciaConLotes, {
+          numCotizacion: nuevoItem.numCotizacion.trim(),
+          referencia: nuevoItem.referencia.trim(),
+          empresaVinculada: nuevoItem.empresaVinculada || '',
+          tipoVinculado: nuevoItem.tipoVinculado || 'P',
+          detalle: nuevoItem.detalle || 'P',
+          descriptorAuto: nuevoItem.descriptorAuto || 'P',
+          clase: nuevoItem.clase || 'P',
+          periodoAnio: periodoAbierto.anio,
+          periodoMes: periodoAbierto.mes
+        }));
+      });
+    }
+
+    return [itemPrincipal, ...itemsContenido, ...itemsLotes];
   };
 
   const limpiarFormularioNuevoItem = () => {
@@ -272,6 +360,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     }));
     setEsPad(false);
     resetContenidoPad();
+    resetLotesAdicionales();
     setErrores({});
   };
 
@@ -297,7 +386,8 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
       const hayItemCargado = !!(
         nuevoItem.referencia.trim() ||
         nuevoItem.cantidad ||
-        contenidoPad.length > 0
+        contenidoPad.length > 0 ||
+        lotesAdicionales.length > 0
       );
 
       if (!hayItemCargado) {
@@ -352,8 +442,18 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
         <div className="flex items-center gap-1.5">
           <UploadCloud size={13} className="text-[#2383C2]" />
           <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
-            Cotizaciones — Admisión #{formData?.gestionId || 'N/A'}
+            Cotizaciones — Admisión #{formData?.gestionId || 'N/A'} - {formData?.nombre || 'P'}
           </h3>
+          {handleCopiarTexto && (
+            <button
+              type="button"
+              onClick={() => handleCopiarTexto(construirTextoAdmisionNombre(formData?.gestionId, formData?.nombre))}
+              title="Copiar Admisión - Nombre"
+              className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition shrink-0"
+            >
+              <Copy size={11} />
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-[9px] text-slate-500 dark:text-gray-400">
@@ -708,6 +808,128 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
                 hasta que se lo agregues (ahí mismo, cuando quieras). El ítem principal (el código que buscaste) queda con Lote y
                 Vencimiento = "PAD".
               </p>
+            </div>
+          )}
+
+          {!esPad && cantidadTotalReferencia > 1 && (
+            <div className="border border-sky-200 dark:border-sky-900 bg-sky-50/40 dark:bg-sky-950/10 rounded-lg p-2.5 space-y-2.5">
+              <span className="text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase flex items-center gap-1">
+                <Layers size={12} /> Repartir en varios lotes <span className="text-[9px] font-normal normal-case text-sky-500 dark:text-sky-500">(opcional, solo si esta cantidad viene de lotes/vencimientos distintos)</span>
+              </span>
+
+              <div className="flex flex-wrap items-center gap-3 text-[9px] font-semibold">
+                <span className="text-sky-700 dark:text-sky-400">Cantidad total: {cantidadTotalReferencia}</span>
+                <span className="text-sky-700 dark:text-sky-400">Asignada a otros lotes: {cantidadAsignadaLotes}</span>
+                <span className={restanteLotes === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-sky-700 dark:text-sky-400'}>
+                  Queda en el lote principal ({nuevoItem.lote.trim() || 'sin especificar'}): {restanteLotes}
+                </span>
+              </div>
+
+              {restanteLotes > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-end bg-white dark:bg-gray-900/60 rounded border border-sky-200 dark:border-sky-900/60 p-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">
+                      Cant. <span className="text-slate-400 normal-case font-normal">(máx. {restanteLotes})</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={draftLote.cantidad}
+                      onChange={e => handleDraftLoteChange('cantidad', e.target.value)}
+                      className={`h-7 px-2 text-[10px] border rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none ${errorDraftLote.cantidad ? 'border-red-500 ring-1 ring-red-500/30' : 'border-slate-300 dark:border-gray-600'}`}
+                      placeholder="1"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">Lote</label>
+                    <input
+                      type="text"
+                      value={draftLote.lote}
+                      onChange={e => handleDraftLoteChange('lote', e.target.value)}
+                      className="h-7 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                      placeholder="Ej: L-9921"
+                    />
+                  </div>
+
+                  <div className="flex items-end gap-1.5">
+                    <div className="flex flex-col gap-1 flex-grow">
+                      <label className="text-[9px] font-bold text-slate-500 dark:text-gray-400 uppercase">Vencimiento</label>
+                      <input
+                        type="date"
+                        value={draftLote.vencimiento}
+                        onChange={e => handleDraftLoteChange('vencimiento', e.target.value)}
+                        className="h-7 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRegistrarLote}
+                      className="h-7 px-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded font-semibold flex items-center justify-center gap-1 transition text-[10px] shrink-0"
+                      title="Registrar este lote"
+                    >
+                      <Check size={13} />
+                    </button>
+                  </div>
+
+                  {errorDraftLote.cantidad && (
+                    <div className="md:col-span-4 text-[9px] text-red-500 font-medium flex items-center gap-1">
+                      <AlertCircle size={10} /> La cantidad debe ser mayor a 0 y no puede superar el restante ({restanteLotes})
+                    </div>
+                  )}
+
+                  <div className="md:col-span-4 text-[9px] text-slate-400 dark:text-gray-500">
+                    Este lote adicional se guarda sin código, sin costo y sin venta — la referencia principal ya factura la cantidad total.
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                  <Check size={11} /> Cantidad totalmente repartida entre lotes.
+                </p>
+              )}
+
+              {lotesAdicionales.length > 0 && (
+                <div className="overflow-hidden rounded border border-sky-200 dark:border-sky-900/60">
+                  <table className="w-full text-left text-[10px] border-collapse">
+                    <thead className="bg-sky-100/60 dark:bg-sky-950/30">
+                      <tr className="text-sky-700 dark:text-sky-400 uppercase font-bold text-[9px]">
+                        <th className="px-2 py-1 border-b border-sky-200 dark:border-sky-900/60 text-center">Cant.</th>
+                        <th className="px-2 py-1 border-b border-sky-200 dark:border-sky-900/60">Lote</th>
+                        <th className="px-2 py-1 border-b border-sky-200 dark:border-sky-900/60">Vencimiento</th>
+                        <th className="px-2 py-1 border-b border-sky-200 dark:border-sky-900/60 text-center">Quitar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {lotesAdicionales.map(fila => (
+                        <tr key={fila.tempId} className="bg-white dark:bg-gray-900/40 hover:bg-sky-50/40 dark:hover:bg-sky-950/10">
+                          <td className="px-2 py-1 border-b border-sky-100 dark:border-sky-900/40 text-center text-slate-600 dark:text-gray-300">
+                            {fila.cantidad}
+                          </td>
+                          <td className="px-2 py-1 border-b border-sky-100 dark:border-sky-900/40 text-slate-600 dark:text-gray-300">
+                            {fila.lote === 'Sin lote'
+                              ? <span className="italic text-slate-400 dark:text-gray-500">Sin lote</span>
+                              : fila.lote}
+                          </td>
+                          <td className="px-2 py-1 border-b border-sky-100 dark:border-sky-900/40 text-slate-600 dark:text-gray-300">
+                            {fila.vencimiento === 'Sin fecha'
+                              ? <span className="italic text-slate-400 dark:text-gray-500">Sin fecha</span>
+                              : formatearFechaTabla(fila.vencimiento)}
+                          </td>
+                          <td className="px-2 py-1 border-b border-sky-100 dark:border-sky-900/40 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarLoteRegistrado(fila.tempId)}
+                              className="text-red-500 hover:text-red-700 p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+                              title="Quitar este lote"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

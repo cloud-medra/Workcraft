@@ -7,6 +7,7 @@ export const formatearFechaTabla = (fechaString) => {
 export const calcularEmpresaNoCoincide = (item, bloqueEmpresa) => {
   if (item.sinCodigo) return false;
   if (item.padPadreId) return false; // los ítems de contenido de un PAD no llevan validación de empresa
+  if (item.lotePadreId) return false; // las entradas de lote adicional heredan la empresa de su referencia principal
   if (!item.empresaVinculada || !bloqueEmpresa) return false;
   return item.empresaVinculada.trim().toUpperCase() !== bloqueEmpresa.trim().toUpperCase();
 };

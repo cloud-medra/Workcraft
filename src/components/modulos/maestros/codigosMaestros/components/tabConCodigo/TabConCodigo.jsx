@@ -503,7 +503,7 @@ const TabConCodigo = () => {
 
       {/* Tabla */}
       {hasPermission(PATH_VISTA, "tabla_datos") && (
-        <div className="flex-grow overflow-auto relative">
+        <div className="flex-grow min-h-0 overflow-auto relative">
           {cargandoTabla && (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-gray-900/60">
               <Spinner size="md" color="#2383C2" />

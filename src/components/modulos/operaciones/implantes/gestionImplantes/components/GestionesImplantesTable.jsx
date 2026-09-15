@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Copy, History, Pencil, Trash2, Eye, RotateCcw } from 'lucide-react';
+import { construirTextoAdmisionNombre } from '../utils/gestionesImportExport';
 
 const COLUMNAS = [
   { key: 'estado', label: '•', ancho: 32, min: 24, align: 'center' },
@@ -238,7 +239,7 @@ export const GestionesImplantesTable = ({
             const idMostrado = i.gestionId || i.agendaId;
             const solicitudInfo = getSolicitudEstilo(i.solicitud);
             const informeInfo = getInformeEstilo(i.informe);
-            const textoAdmisionNombre = `${idMostrado || 'P'} - ${i.nombre || 'P'} -`;
+            const textoAdmisionNombre = construirTextoAdmisionNombre(idMostrado, i.nombre);
 
             return (
               <tr

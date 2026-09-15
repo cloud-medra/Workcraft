@@ -13,6 +13,7 @@ import {
   Loader2,
   Package,
   PackagePlus,
+  Layers,
   Lock
 } from 'lucide-react';
 import {
@@ -52,6 +53,7 @@ export const CotizacionCard = ({
   const [borrador, setBorrador] = useState(BORRADOR_VACIO);
   const [edicionEsPad, setEdicionEsPad] = useState(false);
   const [edicionEsContenidoPad, setEdicionEsContenidoPad] = useState(false);
+  const [edicionEsLoteAdicional, setEdicionEsLoteAdicional] = useState(false);
 
   const [agregandoContenidoDePadId, setAgregandoContenidoDePadId] = useState(null);
   const [filasNuevoContenido, setFilasNuevoContenido] = useState([]);
@@ -65,22 +67,28 @@ export const CotizacionCard = ({
   const idMostrado = gestionId || 'P';
   const fechaMostrada = formatearFechaTabla(bloqueFecha);
 
+  // Un ítem puede ser "hijo" de otro por dos vías: contenido de un PAD
+  // (padPadreId) o lote adicional de una referencia normal (lotePadreId).
+  // Ambas se agrupan igual bajo su principal para el orden visual de la tabla.
+  const obtenerPadreId = (it) => it.padPadreId || it.lotePadreId || null;
+
   const itemsOrdenados = useMemo(() => {
-    const principales = items.filter(it => !it.padPadreId);
-    const contenidosPorPadre = {};
+    const principales = items.filter(it => !obtenerPadreId(it));
+    const hijosPorPadre = {};
     items.forEach(it => {
-      if (it.padPadreId) {
-        (contenidosPorPadre[it.padPadreId] ||= []).push(it);
+      const padreId = obtenerPadreId(it);
+      if (padreId) {
+        (hijosPorPadre[padreId] ||= []).push(it);
       }
     });
     const resultado = [];
     principales.forEach(p => {
       resultado.push(p);
-      (contenidosPorPadre[p.id] || []).forEach(c => resultado.push(c));
+      (hijosPorPadre[p.id] || []).forEach(c => resultado.push(c));
     });
-    Object.keys(contenidosPorPadre).forEach(padreId => {
+    Object.keys(hijosPorPadre).forEach(padreId => {
       if (!principales.some(p => p.id === padreId)) {
-        resultado.push(...contenidosPorPadre[padreId]);
+        resultado.push(...hijosPorPadre[padreId]);
       }
     });
     return resultado;
@@ -98,6 +106,7 @@ export const CotizacionCard = ({
     setEditandoId(it.id);
     setEdicionEsPad(!!it.esPad);
     setEdicionEsContenidoPad(!!it.padPadreId);
+    setEdicionEsLoteAdicional(!!it.lotePadreId);
     setBorrador({
       referencia: it.referencia || '',
       codigo: it.codigo || '',
@@ -118,6 +127,7 @@ export const CotizacionCard = ({
     setMostrarSug(false);
     setEdicionEsPad(false);
     setEdicionEsContenidoPad(false);
+    setEdicionEsLoteAdicional(false);
   };
 
   const handleReferenciaChange = (value) => {
@@ -136,11 +146,12 @@ export const CotizacionCard = ({
 
   const handleSeleccionarSugerencia = (sug) => {
     skipNext.current = true;
+    const forzarSinCosto = edicionEsContenidoPad || edicionEsLoteAdicional;
     setBorrador(prev => ({
       ...prev,
       referencia: sug.referencia || prev.referencia,
-      codigo: edicionEsContenidoPad ? CODIGO_SIN_OC : (sug.codigo || ''),
-      precio: edicionEsContenidoPad ? 0 : (sug.precioNeto ?? 0),
+      codigo: forzarSinCosto ? CODIGO_SIN_OC : (sug.codigo || ''),
+      precio: forzarSinCosto ? 0 : (sug.precioNeto ?? 0),
       empresaVinculada: sug.empresa || '',
       tipoVinculado: sug.tipo || '',
       detalle: sug.descriptorEmpresa || sug.descriptorAuto || '',
@@ -173,6 +184,29 @@ export const CotizacionCard = ({
         venta: 0,
         totalItem: 0,
         estadoCarga: 'PAD'
+      });
+      cancelarEdicion();
+      return;
+    }
+
+    if (edicionEsLoteAdicional) {
+      onEditarItem(editandoId, {
+        referencia: borrador.referencia.trim(),
+        codigo: CODIGO_SIN_OC,
+        precio: 0,
+        empresaVinculada: borrador.empresaVinculada || '',
+        tipoVinculado: borrador.tipoVinculado || 'P',
+        detalle: borrador.detalle || 'P',
+        descriptorAuto: borrador.descriptorAuto || 'P',
+        clase: borrador.clase || 'P',
+        cantidad: cantidadNum,
+        lote: borrador.lote.trim() || 'Sin lote',
+        vencimiento: borrador.vencimiento || 'Sin fecha',
+        sinCodigo: false,
+        vecesCosto: 1,
+        recargoEncontrado: true,
+        venta: 0,
+        totalItem: 0
       });
       cancelarEdicion();
       return;
@@ -228,6 +262,25 @@ export const CotizacionCard = ({
     });
 
     cerrarFormularioContenido();
+  };
+
+  // Ítems PAD (principal o contenido) quedan fuera de la carga masiva: no
+  // exponen un <select> real de Estado Carga (ver render más abajo), su
+  // estado se maneja con la lógica propia del flujo PAD.
+  const itemsElegiblesCargaMasiva = items.filter(it => !it.esPad && !it.padPadreId && !it.sinCodigo);
+  const cantidadElegibles = itemsElegiblesCargaMasiva.length;
+  const textoCantidadElegibles = `${cantidadElegibles} ítem${cantidadElegibles === 1 ? '' : 's'}`;
+
+  const [mostrarConfirmCargaMasiva, setMostrarConfirmCargaMasiva] = useState(false);
+
+  const marcarTodosComoCargado = () => {
+    if (cantidadElegibles === 0) return;
+    setMostrarConfirmCargaMasiva(true);
+  };
+
+  const confirmarCargaMasiva = () => {
+    itemsElegiblesCargaMasiva.forEach(it => onActualizarEstadoItem(it.id, 'CARGADO'));
+    setMostrarConfirmCargaMasiva(false);
   };
 
   return (
@@ -290,11 +343,24 @@ export const CotizacionCard = ({
               </span>
             </div>
           )}
-          {items.length > 0 && tieneTotalIngresado && totalCoincide && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded text-[9px] text-emerald-700 dark:text-emerald-400 w-fit">
-              <CheckCircle2 size={11} /> Total cuadrado
-            </div>
-          )}
+
+          <div className="flex items-center justify-between gap-2">
+            {items.length > 0 && tieneTotalIngresado && totalCoincide ? (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded text-[9px] text-emerald-700 dark:text-emerald-400 w-fit">
+                <CheckCircle2 size={11} /> Total cuadrado
+              </div>
+            ) : <span />}
+
+            <button
+              type="button"
+              onClick={marcarTodosComoCargado}
+              disabled={itemsElegiblesCargaMasiva.length === 0}
+              title="Marca como CARGADO todos los ítems de esta cotización (los ítems PAD no se modifican)"
+              className="flex items-center gap-1 h-6 px-2 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <CheckCircle2 size={11} /> Marcar todos como Cargado
+            </button>
+          </div>
 
           <div className="overflow-auto rounded border border-slate-200 dark:border-gray-700">
             <table className="w-full text-left text-[10px] border-collapse">
@@ -332,21 +398,25 @@ export const CotizacionCard = ({
                     const enEdicion = editandoId === it.id;
                     const esPrincipalPad = !!it.esPad;
                     const esContenidoPad = !!it.padPadreId;
+                    const esLoteAdicional = !!it.lotePadreId;
+                    const esSateliteSinCosto = esContenidoPad || esLoteAdicional;
                     const sinContenidoAun = esPrincipalPad && !tieneContenidoPad(items, it.id);
                     const mostrandoFormularioContenido = agregandoContenidoDePadId === it.id;
 
                     if (enEdicion) {
                       return (
-                        <tr key={it.id} className={`bg-blue-50/60 dark:bg-blue-950/20 ${esContenidoPad ? 'border-l-2 border-fuchsia-400 dark:border-fuchsia-700' : ''}`}>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px] text-slate-500 dark:text-gray-400">
+                        <tr key={it.id} className={`bg-blue-50/60 dark:bg-blue-950/20 ${esContenidoPad ? 'border-l-2 border-fuchsia-400 dark:border-fuchsia-700' : esLoteAdicional ? 'border-l-2 border-sky-400 dark:border-sky-700' : ''}`}>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400">
                             {idMostrado}
                           </td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400">
                             {fechaMostrada}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px]">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">
                             {edicionEsContenidoPad ? (
                               <span className="text-fuchsia-600 dark:text-fuchsia-400 italic">{CODIGO_SIN_OC}</span>
+                            ) : edicionEsLoteAdicional ? (
+                              <span className="text-sky-600 dark:text-sky-400 italic">{CODIGO_SIN_OC}</span>
                             ) : (
                               borrador.codigo || <span className="text-red-500 font-bold">S/C</span>
                             )}
@@ -366,6 +436,7 @@ export const CotizacionCard = ({
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRef}>
                             <div className="flex items-center gap-1">
                               {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 text-[10px]">↳</span>}
+                              {esLoteAdicional && <span className="text-sky-400 dark:text-sky-600 text-[10px]">↳</span>}
                               <input
                                 type="text"
                                 value={borrador.referencia}
@@ -413,6 +484,8 @@ export const CotizacionCard = ({
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">
                             {edicionEsContenidoPad ? (
                               <span className="text-fuchsia-600 dark:text-fuchsia-400 italic">$0</span>
+                            ) : edicionEsLoteAdicional ? (
+                              <span className="text-sky-600 dark:text-sky-400 italic">$0</span>
                             ) : (
                               borrador.precio !== '' ? `$${Number(borrador.precio).toLocaleString('es-CL')}` : 'P'
                             )}
@@ -496,20 +569,24 @@ export const CotizacionCard = ({
                             ? 'bg-red-50/70 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
                             : esContenidoPad
                               ? 'bg-fuchsia-50/30 dark:bg-fuchsia-950/10 hover:bg-fuchsia-50/60 dark:hover:bg-fuchsia-950/20'
-                              : 'hover:bg-slate-50/60 dark:hover:bg-gray-700/30'
+                              : esLoteAdicional
+                                ? 'bg-sky-50/30 dark:bg-sky-950/10 hover:bg-sky-50/60 dark:hover:bg-sky-950/20'
+                                : 'hover:bg-slate-50/60 dark:hover:bg-gray-700/30'
                             }`}
                         >
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-slate-500 dark:text-gray-400">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400">
                             {idMostrado}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                             {fechaMostrada}
                           </td>
-                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono ${esContenidoPad
+                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad
                             ? 'text-fuchsia-600 dark:text-fuchsia-400 italic'
-                            : it.sinCodigo
-                              ? 'text-red-600 dark:text-red-400 font-bold'
-                              : 'text-emerald-600 dark:text-emerald-400'
+                            : esLoteAdicional
+                              ? 'text-sky-600 dark:text-sky-400 italic'
+                              : it.sinCodigo
+                                ? 'text-red-600 dark:text-red-400 font-bold'
+                                : 'text-emerald-600 dark:text-emerald-400'
                             }`}>
                             {it.codigo || 'S/C'}
                           </td>
@@ -522,10 +599,16 @@ export const CotizacionCard = ({
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[140px]" title={it.referencia}>
                             <span className="flex items-center gap-1">
                               {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 shrink-0">↳</span>}
+                              {esLoteAdicional && <span className="text-sky-400 dark:text-sky-600 shrink-0">↳</span>}
                               <span className="truncate">{it.referencia}</span>
                               {esPrincipalPad && (
                                 <span className="flex items-center gap-0.5 text-[8px] px-1 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-400 font-bold shrink-0">
                                   <Package size={9} /> PAD
+                                </span>
+                              )}
+                              {esLoteAdicional && (
+                                <span className="flex items-center gap-0.5 text-[8px] px-1 rounded bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 font-bold shrink-0">
+                                  <Layers size={9} /> LOTE
                                 </span>
                               )}
                             </span>
@@ -539,11 +622,11 @@ export const CotizacionCard = ({
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                             {it.tipoVinculado || 'P'}
                           </td>
-                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad ? 'text-fuchsia-500 dark:text-fuchsia-400 italic' : 'text-slate-600 dark:text-gray-300'}`}>
+                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad ? 'text-fuchsia-500 dark:text-fuchsia-400 italic' : esLoteAdicional ? 'text-sky-500 dark:text-sky-400 italic' : 'text-slate-600 dark:text-gray-300'}`}>
                             ${Number(it.precio || 0).toLocaleString('es-CL')}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center">
-                            {esContenidoPad ? (
+                            {esSateliteSinCosto ? (
                               <span className="text-slate-400 dark:text-gray-500">—</span>
                             ) : it.recargoEncontrado ? (
                               <span className="font-semibold text-slate-700 dark:text-gray-200">{it.vecesCosto}</span>
@@ -703,6 +786,51 @@ export const CotizacionCard = ({
                 </tfoot>
               )}
             </table>
+          </div>
+        </div>
+      )}
+
+      {mostrarConfirmCargaMasiva && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-[1px]">
+          <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2 bg-emerald-50/60 dark:bg-emerald-950/20">
+              <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <h3 className="text-[12px] font-bold text-gray-800 dark:text-gray-100">Confirmar carga masiva</h3>
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmCargaMasiva(false)}
+                className="ml-auto text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <div className="px-4 py-3">
+              <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                Esta acción marcará como "Cargado" {textoCantidadElegibles} de esta cotización. Los ítems con referencia PAD
+                no se verán afectados y mantendrán su estado actual.
+              </p>
+              <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-2">
+                ¿Deseas continuar?
+              </p>
+            </div>
+
+            <div className="px-4 py-3 bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMostrarConfirmCargaMasiva(false)}
+                className="h-8 px-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 font-medium transition text-[11px]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarCargaMasiva}
+                className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold transition text-[11px]"
+              >
+                Confirmar
+              </button>
+            </div>
           </div>
         </div>
       )}

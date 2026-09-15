@@ -187,17 +187,12 @@ const TabVistaGeneral = () => {
         </div>
       )}
 
-      <div className="px-3 py-2.5 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
+      <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <div className="flex items-center gap-2">
           <Layers size={15} className="text-[#2383C2]" />
-          <div>
-            <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100">
-              Vista General Consolidada
-            </h2>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Filtros combinables y búsqueda instantánea
-            </p>
-          </div>
+          <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100">
+            Vista General Consolidada
+          </h2>
         </div>
 
         <button
@@ -210,7 +205,7 @@ const TabVistaGeneral = () => {
         </button>
       </div>
 
-      <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-2 flex flex-wrap gap-2 items-center justify-between border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap gap-2 items-center justify-between border-b border-gray-200 dark:border-gray-700">
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={campoBusqueda}
@@ -223,7 +218,7 @@ const TabVistaGeneral = () => {
           </select>
 
           <div className="relative w-48">
-            <Search className="absolute left-2 top-2 text-gray-400 dark:text-gray-500" size={13} />
+            <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />
             <input
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
@@ -301,7 +296,7 @@ const TabVistaGeneral = () => {
         </div>
       </div>
 
-      <div className="flex-grow overflow-auto relative">
+      <div className="flex-grow min-h-0 overflow-auto relative">
         {cargando && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 dark:bg-gray-900/60">
             <Spinner size="md" color="#2383C2" />

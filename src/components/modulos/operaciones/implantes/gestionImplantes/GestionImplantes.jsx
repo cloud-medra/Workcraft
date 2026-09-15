@@ -211,6 +211,7 @@ const GestionesImplantes = () => {
           loadingLogs={loadingLogs}
           cargarLogsDeImplante={cargarLogsDeImplante}
           formatearFecha={formatearFecha}
+          handleCopiarTexto={handleCopiarTexto}
         />
       ) : (
         <>
