@@ -266,8 +266,11 @@ export const CotizacionCard = ({
 
   // Ítems PAD (principal o contenido) quedan fuera de la carga masiva: no
   // exponen un <select> real de Estado Carga (ver render más abajo), su
-  // estado se maneja con la lógica propia del flujo PAD.
-  const itemsElegiblesCargaMasiva = items.filter(it => !it.esPad && !it.padPadreId && !it.sinCodigo);
+  // estado se maneja con la lógica propia del flujo PAD. Los que ya están
+  // en CARGADO tampoco se tocan (no hay nada que cambiar).
+  const itemsElegiblesCargaMasiva = items.filter(it =>
+    !it.esPad && !it.padPadreId && !it.sinCodigo && (it.estadoCarga || 'PENDIENTE') !== 'CARGADO'
+  );
   const cantidadElegibles = itemsElegiblesCargaMasiva.length;
   const textoCantidadElegibles = `${cantidadElegibles} ítem${cantidadElegibles === 1 ? '' : 's'}`;
 

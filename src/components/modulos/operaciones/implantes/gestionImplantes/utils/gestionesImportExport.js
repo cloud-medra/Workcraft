@@ -6,6 +6,17 @@ import * as XLSX from 'xlsx';
 // ambos copien exactamente el mismo texto.
 export const construirTextoAdmisionNombre = (idMostrado, nombre) => `${idMostrado || 'P'} - ${nombre || 'P'} -`;
 
+// "Hoy" en formato "YYYY-MM-DD", igual convención que el campo `fecha` de
+// cada registro (string ISO, sin hora/timezone) — comparable con `<=`/`>=`
+// directamente como string, sin parsear a Date.
+export const obtenerFechaHoyISO = () => {
+  const hoy = new Date();
+  const yyyy = hoy.getFullYear();
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export const exportarGestionesAExcel = (implantes, showToast) => {
   if (!implantes || implantes.length === 0) {
     if (showToast) showToast("No hay datos para exportar", "error");

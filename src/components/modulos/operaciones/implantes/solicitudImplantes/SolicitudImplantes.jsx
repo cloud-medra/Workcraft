@@ -99,7 +99,7 @@ const CAMPOS_A_VALIDAR = [
   { key: 'bloqueDescripcion', label: 'Descripción (gestión)', columna: null, obtener: (b) => b.descripcion },
   { key: 'centro', label: 'Centro', columna: null, obtener: (b) => b.centro },
   { key: 'atributo', label: 'Atributo', columna: null, obtener: (b) => b.atributo },
-  { key: 'numCotizacion', label: 'N° Cotización', columna: 'numCotizacion', obtener: (b) => b.numCotizacion },
+  { key: 'numCotizacion', label: 'N° Cotización', columna: 'numCotizacion', obtener: (b, it) => it?.numCotizacion || b.numCotizacion },
   { key: 'referencia', label: 'Referencia', columna: 'descripcion', obtener: (b, it) => it?.referencia },
   { key: 'codigo', label: 'Código', columna: 'codigo', obtener: (b, it) => it?.codigo },
   // "clase", "descriptorAuto", "tipoVinculado", "detalle" y
@@ -447,7 +447,7 @@ const SolicitudImplantes = () => {
                       {formatearFechaTabla(bloque.fecha)}
                     </td>
                     <td className={cc('numCotizacion', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis')} title={tt('numCotizacion')}>
-                      {bloque.numCotizacion}
+                      {(item?.numCotizacion) || bloque.numCotizacion}
                     </td>
                     <td className="py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
                       {fechaIngresoHoy}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { obtenerFechaHoyISO } from '../utils/gestionesImportExport';
 
 export const useGestionesImplantesFiltros = (implantes) => {
   const [busqueda, setBusqueda] = useState('');
@@ -8,6 +9,12 @@ export const useGestionesImplantesFiltros = (implantes) => {
   const [filtroMes, setFiltroMes] = useState(String(fechaHoy.getMonth() + 1).padStart(2, '0'));
   const [filtroDia, setFiltroDia] = useState('');
   const [filtrosEstados, setFiltrosEstados] = useState([]);
+
+  // Filtro de rango de fecha, independiente y combinable con año/mes/día y
+  // estados: por defecto solo muestra hoy y días anteriores (el caso de uso
+  // más frecuente al revisar/cargar), con opción de ver todos los días
+  // (incluye fechas futuras).
+  const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(true);
 
   const opcionesFechas = useMemo(() => {
     const aniosSet = new Set();
@@ -31,6 +38,8 @@ export const useGestionesImplantesFiltros = (implantes) => {
   }, [implantes]);
 
   const implantesFiltrados = useMemo(() => {
+    const hoyISO = obtenerFechaHoyISO();
+
     return implantes.filter(i => {
       const idParaBuscar = i.gestionId || i.agendaId || '';
       const coincideBusqueda =
@@ -52,15 +61,22 @@ export const useGestionesImplantesFiltros = (implantes) => {
         return false;
       }
 
+      // "YYYY-MM-DD" es comparable lexicográficamente igual que numéricamente,
+      // así que no hace falta parsear a Date (ni lidiar con timezone).
+      let coincideFechaHastaHoy = true;
+      if (filtroSoloHastaHoy) {
+        coincideFechaHastaHoy = !!(i.fecha && i.fecha.includes('-') && i.fecha <= hoyISO);
+      }
+
       let coincideEstado = true;
       if (filtrosEstados.length > 0) {
         const estadoClean = (i.estado || '').toUpperCase().trim();
         coincideEstado = filtrosEstados.includes(estadoClean);
       }
 
-      return coincideBusqueda && coincideAnio && coincideMes && coincideDia && coincideEstado;
+      return coincideBusqueda && coincideAnio && coincideMes && coincideDia && coincideFechaHastaHoy && coincideEstado;
     });
-  }, [implantes, busqueda, filtroAnio, filtroMes, filtroDia, filtrosEstados]);
+  }, [implantes, busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy, filtrosEstados]);
 
   const limpiarFiltrosFecha = () => {
     const d = new Date();
@@ -98,6 +114,8 @@ export const useGestionesImplantesFiltros = (implantes) => {
     setFiltroMes,
     filtroDia,
     setFiltroDia,
+    filtroSoloHastaHoy,
+    setFiltroSoloHastaHoy,
     opcionesFechas,
     limpiarFiltrosFecha,
     opcionesEstados,

@@ -33,6 +33,8 @@ const GestionesImplantes = () => {
     setFiltroMes,
     filtroDia,
     setFiltroDia,
+    filtroSoloHastaHoy,
+    setFiltroSoloHastaHoy,
     opcionesFechas,
     limpiarFiltrosFecha,
     opcionesEstados,
@@ -279,6 +281,31 @@ const GestionesImplantes = () => {
                   toggleFiltroEstado={toggleFiltroEstado}
                   limpiarFiltroEstados={limpiarFiltroEstados}
                 />
+
+                <div className="flex items-center h-7 border border-gray-300 dark:border-gray-600 rounded overflow-hidden text-[11px] shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFiltroSoloHastaHoy(true)}
+                    title="Solo muestra filas con fecha de hoy o anterior (oculta fechas futuras)"
+                    className={`h-full px-2 font-medium transition ${filtroSoloHastaHoy
+                      ? 'bg-[#2383C2] text-white'
+                      : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                  >
+                    Hasta hoy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFiltroSoloHastaHoy(false)}
+                    title="Muestra todas las fechas, incluidas las futuras"
+                    className={`h-full px-2 font-medium border-l border-gray-300 dark:border-gray-600 transition ${!filtroSoloHastaHoy
+                      ? 'bg-[#2383C2] text-white'
+                      : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                  >
+                    Todos los días
+                  </button>
+                </div>
 
                 {(filtroAnio || filtroMes || filtroDia) && (
                   <button

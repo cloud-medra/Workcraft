@@ -242,7 +242,7 @@ export const useSolicitudImplantesData = () => {
                 "ATRIBUTO": it.tipoVinculado || 'P',
                 "FECHA REGISTRO": fechaRegistroBloque,
                 "FECHA CARGA": formatearFechaExcel(bloque.fecha),
-                "N° COTIZACION": bloque.numCotizacion,
+                "N° COTIZACION": it.numCotizacion || bloque.numCotizacion,
                 "FECHA INGRESO": fechaHoyFormato,
                 "LOTE": it.lote || 'P',
                 "VENCIMIENTO": formatearFechaExcel(it.vencimiento)
@@ -327,7 +327,7 @@ export const useSolicitudImplantesData = () => {
                 estado: bloque.estado,
                 costoGestion: bloque.costo,
 
-                numCotizacion: bloque.numCotizacion,
+                numCotizacion: it.numCotizacion || bloque.numCotizacion,
                 itemId: it.id,
                 referencia: it.referencia || 'P',
                 codigo: it.codigo || 'P',
