@@ -22,6 +22,7 @@ import {
   calcularCamposFinancieros,
   ESTADO_CARGA_OPTIONS,
   getEstadoCargaStyle,
+  getEstadoCargaRowStyle,
   CODIGO_SIN_OC,
   VALOR_LOTE_VENCIMIENTO_PAD,
   tieneContenidoPad
@@ -572,9 +573,9 @@ export const CotizacionCard = ({
                             ? 'bg-red-50/70 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
                             : esContenidoPad
                               ? 'bg-fuchsia-50/30 dark:bg-fuchsia-950/10 hover:bg-fuchsia-50/60 dark:hover:bg-fuchsia-950/20'
-                              : esLoteAdicional
-                                ? 'bg-sky-50/30 dark:bg-sky-950/10 hover:bg-sky-50/60 dark:hover:bg-sky-950/20'
-                                : 'hover:bg-slate-50/60 dark:hover:bg-gray-700/30'
+                              // Cualquier ítem con <select> real de Estado Carga (normal,
+                              // PAD principal o lote adicional) se colorea según su estado.
+                              : getEstadoCargaRowStyle(it.estadoCarga)
                             }`}
                         >
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400">

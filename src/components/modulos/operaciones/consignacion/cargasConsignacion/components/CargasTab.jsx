@@ -26,24 +26,24 @@ const ESTADO_BADGE = {
   CARGADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
 };
 
-const EmpresaCargaCell = ({ it, pendiente }) => {
-  if (it.empresaMaestroVinculada) {
-    return <span>{it.empresaMaestroVinculada}</span>;
-  }
-  if (pendiente) {
-    return (
-      <span className="text-amber-600 dark:text-amber-400" title="Pendiente de guardar">
-        {pendiente.empresaMaestroVinculada || '-'} <span className="text-[8px] font-bold uppercase">(sin guardar)</span>
-      </span>
-    );
-  }
+// Opciones del selector "Estado Carga" (columna "Cargar"), igual patrón que
+// CargasTab de Implantes: por-ítem, sin checkboxes. Reusa el mismo campo
+// `estado` que ya escribía el checkbox anterior (solo CARGADO/INGRESADO);
+// esto amplía ese mismo campo a un tercer valor (REVISAR) vía selector.
+const ESTADO_CARGA_OPTIONS = ['PENDIENTE', 'CARGADO', 'REVISAR'];
+const ESTADO_CARGA_SELECT_STYLE = {
+  PENDIENTE: 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300',
+  CARGADO: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400',
+  REVISAR: 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+};
 
-  const deliveryValor = (it.delivery || '').trim();
-  const referencia = (it.referencia || '').trim();
-  if (!deliveryValor || !referencia) return <span>-</span>;
-  if (it.deliveryVinculado) return <span>-</span>;
-
-  return <span className="text-slate-400 dark:text-gray-500 italic">Resolviendo...</span>;
+// Color de fondo de la FILA completa según Estado Carga (distinto del color
+// del pill del selector de arriba, a propósito — mismo valor exacto que en
+// CargasTab de Implantes, para que ambos módulos se vean consistentes.
+const ESTADO_CARGA_ROW_STYLE = {
+  PENDIENTE: 'bg-amber-50/40 dark:bg-amber-950/10',
+  CARGADO: 'bg-emerald-50/40 dark:bg-emerald-950/10',
+  REVISAR: 'bg-orange-50/40 dark:bg-orange-950/10'
 };
 
 const NumeroGuiaCell = ({ it, pendiente }) => {
@@ -460,11 +460,11 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
 
   const [actualizandoEstadoId, setActualizandoEstadoId] = useState(null);
 
-  const handleToggleCargado = async (it, marcado) => {
+  const handleActualizarEstadoCarga = async (it, nuevoEstado) => {
     if (!it.ref) return;
     setActualizandoEstadoId(it.id);
     try {
-      await updateDoc(it.ref, { estado: marcado ? 'CARGADO' : 'INGRESADO' });
+      await updateDoc(it.ref, { estado: nuevoEstado });
     } catch (err) {
       console.error('Error al actualizar el estado del ítem:', err);
     } finally {
@@ -559,10 +559,9 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
           <table className="w-full text-left text-[10px] border-collapse">
             <thead className="bg-slate-50 dark:bg-gray-900/60">
               <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center w-10">Cargar</th>
+                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Estado Carga</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cantidad</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Venta</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Recargo</th>
@@ -572,7 +571,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
+                  <td colSpan={7} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
                     Sin ítems registrados para esta admisión
                   </td>
                 </tr>
@@ -583,29 +582,27 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                   const { vecesCosto: vecesCostoCalculado, venta: ventaCalculada } = calcularVenta(it);
                   const vecesCosto = it.recargoVecesCosto ?? vecesCostoCalculado;
                   const venta = it.venta ?? ventaCalculada;
-                  const estaCargado = estadoKey === 'CARGADO';
                   const actualizando = actualizandoEstadoId === it.id;
-                  const pendiente = pendientes[it.id]?.payload;
+                  const estadoCargaValor = ESTADO_CARGA_OPTIONS.includes(estadoKey) ? estadoKey : 'PENDIENTE';
                   return (
-                    <tr key={it.id} className={estaCargado ? 'bg-emerald-50/40 dark:bg-emerald-950/10' : ''}>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center">
-                        <input
-                          type="checkbox"
-                          checked={estaCargado}
+                    <tr key={it.id} className={ESTADO_CARGA_ROW_STYLE[estadoCargaValor]}>
+                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                        <select
+                          value={estadoCargaValor}
                           disabled={actualizando}
-                          onChange={(e) => handleToggleCargado(it, e.target.checked)}
-                          title={estaCargado ? 'Desmarcar (vuelve a INGRESADO)' : 'Marcar como CARGADO'}
-                          className="w-3.5 h-3.5 accent-[#2383C2] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                        />
+                          onChange={(e) => handleActualizarEstadoCarga(it, e.target.value)}
+                          className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${ESTADO_CARGA_SELECT_STYLE[estadoCargaValor]}`}
+                        >
+                          {ESTADO_CARGA_OPTIONS.map(op => (
+                            <option key={op} value={op}>{op}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-semibold text-[#2383C2]">
                         {registro?.gestionId || 'N/A'}
                       </td>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
                         {it.codigo || 'S/C'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate max-w-[160px]">
-                        <EmpresaCargaCell it={it} pendiente={pendiente} />
                       </td>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold">
                         {it.cantidad ?? 0}

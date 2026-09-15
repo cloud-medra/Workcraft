@@ -45,6 +45,21 @@ const ESTADO_CARGA_STYLES = {
 
 export const getEstadoCargaStyle = (estado) => ESTADO_CARGA_STYLES[estado] || ESTADO_CARGA_STYLES.PENDIENTE;
 
+// Color de fondo de la FILA completa según Estado Carga (distinto del color
+// del pill del <select> de arriba, a propósito — mismo valor exacto que en
+// CargasTab de Consignación, para que ambos módulos se vean consistentes.
+// Solo se aplica a ítems con un <select> real de Estado Carga (ver
+// CotizacionCard.jsx): ítems "Sin código" o contenido de PAD tienen su
+// propio color de fila fijo y no pasan por acá.
+const ESTADO_CARGA_ROW_STYLES = {
+  PENDIENTE: 'bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50/70 dark:hover:bg-amber-950/20',
+  CARGADO: 'bg-emerald-50/40 dark:bg-emerald-950/10 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/20',
+  REVISAR: 'bg-orange-50/40 dark:bg-orange-950/10 hover:bg-orange-50/70 dark:hover:bg-orange-950/20',
+  'S/COTIZACION': 'bg-purple-50/30 dark:bg-purple-950/10 hover:bg-purple-50/60 dark:hover:bg-purple-950/20'
+};
+
+export const getEstadoCargaRowStyle = (estado) => ESTADO_CARGA_ROW_STYLES[estado] || ESTADO_CARGA_ROW_STYLES.PENDIENTE;
+
 // --- Reglas de PAD ---
 export const CLASE_PAD = 'PAD';
 export const CODIGO_SIN_OC = 'No lleva OC';
