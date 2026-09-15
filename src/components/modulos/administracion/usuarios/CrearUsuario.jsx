@@ -92,7 +92,18 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
   // De esas rutas, solo las que tienen mapa de componentes (requieren config granular).
   // El resto (sin entrada en COMPONENT_MAPS) se considera "Finalizado" automáticamente
   // porque no hay nada que configurar (Opción A).
-  const vistasConfigurables = pathsSeleccionados.filter((path) => COMPONENT_MAPS[path]);
+  // Los paths con `procesos` (pantallas multi-proceso, ej. Códigos Maestros)
+  // aportan también cada uno de sus sub-procesos como ítem configurable
+  // independiente, aunque no tengan su propio subItem en modulesConfig.
+  // Solo cuentan los procesos que el admin efectivamente incluyó
+  // (existen en permisosGranulares) — uno que se quitó no necesita
+  // "finalizarse".
+  const vistasConfigurables = pathsSeleccionados.flatMap((path) => {
+    const config = COMPONENT_MAPS[path];
+    if (!config) return [];
+    const procesoPaths = Object.keys(config.procesos || {}).filter((p) => Boolean(permisosGranulares[p]));
+    return [path, ...procesoPaths];
+  });
   const itemsFinalizadosCount = vistasConfigurables.filter(
     (p) => estadoCreacion.itemsFinalizados[p]
   ).length;
@@ -126,7 +137,7 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
           rol: data.rol || 'operador',
         });
         setPermisos(data.permisos || {});
-        setPermisosGranulares(data.permisosGranulares || {});
+        setPermisosGranulares(backfillProcesos(data.permisosGranulares || {}));
         setEstadoCreacion(estado);
         setPasoActual(estado.paso2 ? 3 : 2);
         showToast('Retomando creación de usuario en curso.', 'info');
@@ -140,11 +151,13 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     })();
   }, [resumeUsuarioId, onResumeConsumido, showToast]);
 
-  const generarAccesoTotal = (path) => {
-    const config = COMPONENT_MAPS[path];
+  // Genera el acceso total (todas las secciones/elementos visibles) a partir
+  // de una config de COMPONENT_MAPS. Se reutiliza tanto para la vista
+  // principal de un path como para cada uno de sus `procesos` anidados.
+  const generarAccesoTotalDesdeConfig = (config) => {
     if (!config) return null;
     const secciones = {};
-    Object.entries(config.sections).forEach(([sectionKey, section]) => {
+    Object.entries(config.sections || {}).forEach(([sectionKey, section]) => {
       const elementos = {};
       Object.keys(section.elements || {}).forEach((elKey) => {
         elementos[elKey] = true;
@@ -153,6 +166,22 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     });
     return secciones;
   };
+
+  // Aplana los paths seleccionados de un módulo a la lista de ítems que
+  // realmente se renderizan en el paso 3: cada path, seguido de sus
+  // `procesos` anidados (si los tiene) como sub-ítems propios.
+  const construirItemsRenderables = (items, modulo) =>
+    items.flatMap((path) => {
+      const config = COMPONENT_MAPS[path];
+      const sub = modulo.subItems.find((s) => s.path === path);
+      const procesos = Object.entries(config?.procesos || {}).map(([procesoPath, procesoConfig]) => ({
+        path: procesoPath,
+        config: procesoConfig,
+        sub: null,
+        esProceso: true,
+      }));
+      return [{ path, config, sub, esProceso: false }, ...procesos];
+    });
 
   const calcularCompleto = (itemsFinalizados, listaConfigurables) =>
     listaConfigurables.every((p) => itemsFinalizados[p]);
@@ -178,28 +207,41 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     setPermisosGranulares((prev) => {
       const copia = { ...prev };
       subItems.forEach((s) => {
+        const config = COMPONENT_MAPS[s.path];
+        const procesoPaths = Object.keys(config?.procesos || {});
+
         if (yaCompleto) {
           delete copia[s.path];
-        } else if (!copia[s.path]) {
-          const accesoTotal = generarAccesoTotal(s.path);
-          if (accesoTotal) copia[s.path] = accesoTotal;
+          procesoPaths.forEach((p) => delete copia[p]);
+          return;
         }
+
+        if (!copia[s.path] && config) {
+          copia[s.path] = generarAccesoTotalDesdeConfig(config);
+        }
+        procesoPaths.forEach((p) => {
+          if (!copia[p]) copia[p] = generarAccesoTotalDesdeConfig(config.procesos[p]);
+        });
       });
       return copia;
     });
 
-    // Si se está desmarcando todo el módulo, los ítems que ya estaban
-    // "Finalizado" en el paso 3 dejan de existir como selección — se limpia
-    // su estado para que no queden colgados si vuelven a marcarse.
+    // Si se está desmarcando todo el módulo, los ítems (incluidos los
+    // procesos anidados) que ya estaban "Finalizado" en el paso 3 dejan de
+    // existir como selección — se limpia su estado para que no queden
+    // colgados si vuelven a marcarse.
     if (yaCompleto) {
       setEstadoCreacion((prev) => {
         const nuevosFinalizados = { ...prev.itemsFinalizados };
         let cambio = false;
         subItems.forEach((s) => {
-          if (s.path in nuevosFinalizados) {
-            delete nuevosFinalizados[s.path];
-            cambio = true;
-          }
+          const procesoPaths = Object.keys(COMPONENT_MAPS[s.path]?.procesos || {});
+          [s.path, ...procesoPaths].forEach((p) => {
+            if (p in nuevosFinalizados) {
+              delete nuevosFinalizados[p];
+              cambio = true;
+            }
+          });
         });
         if (!cambio) return prev;
         return { ...prev, itemsFinalizados: nuevosFinalizados, completo: false };
@@ -210,6 +252,8 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
   const toggleSubItem = (moduloKey, path) => {
     const actuales = permisos[moduloKey] || [];
     const existeAhora = actuales.includes(path);
+    const config = COMPONENT_MAPS[path];
+    const procesoPaths = Object.keys(config?.procesos || {});
 
     setPermisos((prev) => {
       const arr = prev[moduloKey] || [];
@@ -219,20 +263,33 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
 
     setPermisosGranulares((prev) => {
       if (existeAhora) {
-        const { [path]: _omit, ...resto } = prev;
-        return resto;
+        const copia = { ...prev };
+        delete copia[path];
+        procesoPaths.forEach((p) => delete copia[p]);
+        return copia;
       }
-      if (prev[path]) return prev;
-      const accesoTotal = generarAccesoTotal(path);
-      if (!accesoTotal) return prev; // vista sin COMPONENT_MAPS, no requiere granularidad
-      return { ...prev, [path]: accesoTotal };
+      const copia = { ...prev };
+      if (!copia[path] && config) {
+        copia[path] = generarAccesoTotalDesdeConfig(config);
+      }
+      procesoPaths.forEach((p) => {
+        if (!copia[p]) copia[p] = generarAccesoTotalDesdeConfig(config.procesos[p]);
+      });
+      return copia;
     });
 
     if (existeAhora) {
       setEstadoCreacion((prev) => {
-        if (!(path in prev.itemsFinalizados)) return prev;
-        const { [path]: _omit, ...restoFinalizados } = prev.itemsFinalizados;
-        return { ...prev, itemsFinalizados: restoFinalizados, completo: false };
+        const nuevosFinalizados = { ...prev.itemsFinalizados };
+        let cambio = false;
+        [path, ...procesoPaths].forEach((p) => {
+          if (p in nuevosFinalizados) {
+            delete nuevosFinalizados[p];
+            cambio = true;
+          }
+        });
+        if (!cambio) return prev;
+        return { ...prev, itemsFinalizados: nuevosFinalizados, completo: false };
       });
     }
   };
@@ -265,6 +322,47 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
         },
       };
     });
+  };
+
+  // Incluye/quita un `proceso` (pestaña con path propio) directamente por
+  // existencia en permisosGranulares — reemplaza al viejo checkbox maestro
+  // de sección "navegacion" que podía apagar todas las pestañas hermanas
+  // de golpe (ver nota en useGranularPermission.js).
+  const toggleProceso = (procesoPath, procesoConfig) => {
+    setPermisosGranulares((prev) => {
+      if (prev[procesoPath]) {
+        const copia = { ...prev };
+        delete copia[procesoPath];
+        return copia;
+      }
+      return { ...prev, [procesoPath]: generarAccesoTotalDesdeConfig(procesoConfig) || {} };
+    });
+
+    setEstadoCreacion((prev) => {
+      if (!(procesoPath in prev.itemsFinalizados)) return prev;
+      const { [procesoPath]: _omit, ...restoFinalizados } = prev.itemsFinalizados;
+      return { ...prev, itemsFinalizados: restoFinalizados, completo: false };
+    });
+  };
+
+  // Migración perezosa: usuarios cuyo módulo padre ya estaba asignado
+  // antes de que ese módulo tuviera `procesos` en el componentMap (o antes
+  // de que se agregara un `proceso` nuevo) no tienen esas entradas en su
+  // permisosGranulares guardado. Se completan acá con acceso total (mismo
+  // comportamiento "todo visible" que ya tenían) la primera vez que se
+  // carga el usuario — así el admin puede empezar a restringir pestañas
+  // puntuales desde el checkbox de cada una, sin necesidad de un script de
+  // migración en Firestore.
+  const backfillProcesos = (permisosGranularesGuardados) => {
+    const resultado = { ...permisosGranularesGuardados };
+    Object.entries(COMPONENT_MAPS).forEach(([path, config]) => {
+      if (!resultado[path] || !config.procesos) return;
+      Object.entries(config.procesos).forEach(([procesoPath, procesoConfig]) => {
+        if (resultado[procesoPath]) return;
+        resultado[procesoPath] = generarAccesoTotalDesdeConfig(procesoConfig) || {};
+      });
+    });
+    return resultado;
   };
 
   const resetWizard = () => {
@@ -810,48 +908,68 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
                     </span>
 
                     <div className="flex flex-col gap-1.5">
-                      {items.map((path) => {
-                        const sub = modulo.subItems.find((s) => s.path === path);
-                        const config = COMPONENT_MAPS[path];
-                        const finalizado = config ? !!estadoCreacion.itemsFinalizados[path] : true;
+                      {construirItemsRenderables(items, modulo).map(({ path, config, sub, esProceso }) => {
+                        // Un `proceso` (pestaña/sub-vista con path propio) se puede
+                        // incluir o quitar directamente por existencia — sin pasar
+                        // por un checkbox maestro de sección compartido. Ver nota
+                        // en useGranularPermission.js.
+                        const procesoIncluido = !esProceso || Boolean(permisosGranulares[path]);
+                        const finalizado = config && procesoIncluido ? !!estadoCreacion.itemsFinalizados[path] : true;
                         const expandido = itemAbierto === path;
+                        const puedeExpandir = Boolean(config) && procesoIncluido;
 
                         return (
                           <div
                             key={path}
-                            className="border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40 rounded-lg overflow-hidden"
+                            className={`border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40 rounded-lg overflow-hidden ${
+                              esProceso ? 'ml-4' : ''
+                            }`}
                           >
-                            <button
-                              type="button"
-                              disabled={!config}
-                              onClick={() => setItemAbierto(expandido ? null : path)}
-                              className={`w-full flex items-center justify-between p-2.5 transition-colors ${
-                                config
-                                  ? 'hover:bg-gray-100 dark:hover:bg-gray-800/60 cursor-pointer'
-                                  : 'cursor-default'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-200">
-                                <span className="opacity-70">{sub?.icon}</span>
-                                {sub?.label || path}
-                              </span>
-                              <span className="flex items-center gap-2">
-                                <span
-                                  className={`flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full ${
-                                    finalizado
-                                      ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                      : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                            <div className="w-full flex items-center justify-between p-2.5 gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {esProceso && (
+                                  <input
+                                    type="checkbox"
+                                    checked={procesoIncluido}
+                                    onChange={() => toggleProceso(path, config)}
+                                    className="accent-[#2383C2] shrink-0"
+                                    title={procesoIncluido ? 'Quitar esta pestaña' : 'Incluir esta pestaña'}
+                                  />
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={!puedeExpandir}
+                                  onClick={() => setItemAbierto(expandido ? null : path)}
+                                  className={`flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-200 flex-1 min-w-0 text-left transition-colors ${
+                                    puedeExpandir ? 'hover:text-[#2383C2] cursor-pointer' : 'cursor-default'
                                   }`}
                                 >
-                                  {finalizado ? <CheckCircle2 size={11} /> : <CircleDashed size={11} />}
-                                  {finalizado ? 'Finalizado' : 'Pendiente'}
-                                </span>
+                                  {esProceso && <span className="text-gray-400 dark:text-gray-500 shrink-0">↳</span>}
+                                  <span className="opacity-70 shrink-0">{sub?.icon}</span>
+                                  <span className="truncate">{sub?.label || config?.label || path}</span>
+                                </button>
+                              </div>
+                              <span className="flex items-center gap-2 shrink-0">
+                                {esProceso && !procesoIncluido ? (
+                                  <span className="text-[9.5px] text-gray-400 dark:text-gray-500">Sin incluir</span>
+                                ) : (
+                                  <span
+                                    className={`flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full ${
+                                      finalizado
+                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                        : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                                    }`}
+                                  >
+                                    {finalizado ? <CheckCircle2 size={11} /> : <CircleDashed size={11} />}
+                                    {finalizado ? 'Finalizado' : 'Pendiente'}
+                                  </span>
+                                )}
                                 {!config && (
                                   <span className="text-[9.5px] text-gray-400 dark:text-gray-500">
                                     (sin configuración adicional)
                                   </span>
                                 )}
-                                {config && (
+                                {puedeExpandir && (
                                   expandido ? (
                                     <ChevronDown size={14} className="text-gray-400" />
                                   ) : (
@@ -859,9 +977,9 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
                                   )
                                 )}
                               </span>
-                            </button>
+                            </div>
 
-                            {expandido && config && (
+                            {expandido && config && procesoIncluido && (
                               <div className="p-3 pt-0 flex flex-col gap-3">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                   {Object.entries(config.sections).map(([sectionKey, section]) => {

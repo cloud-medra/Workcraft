@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { Info, ListFilter, UploadCloud, Unlock, Lock, History } from 'lucide-react';
+import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert } from 'lucide-react';
 
 import { db } from '../../../../../../firebaseConfig';
+import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { COLECCIONES, MESES } from '../../../../administracion/controlMensual/constants';
 import { InformacionTab } from './Informaciontab/Informaciontab';
 import { DetallesTab } from './Detallestab/Detallestab';
@@ -12,6 +13,18 @@ import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
 
 const MODULO_ACTUAL = 'implantes';
+
+// Cada pestaña es un `proceso` propio (path independiente) del
+// componentMap de la pantalla contenedora (ver
+// src/config/componentMaps/implantes.js) — su visibilidad se decide por
+// existencia con hasAccesoProceso(path), no por un checkbox maestro de
+// sección compartido entre las 4 (ver nota de useGranularPermission.js).
+const ALL_TABS = [
+  { id: 'detalles', label: 'Detalles', Icon: ListFilter, path: '/implantes/gestionImplantes/detalles' },
+  { id: 'informacion', label: 'Información', Icon: Info, path: '/implantes/gestionImplantes/informacion' },
+  { id: 'cargas', label: 'Cargas', Icon: UploadCloud, path: '/implantes/gestionImplantes/cargas' },
+  { id: 'logs', label: 'Logs', Icon: History, path: '/implantes/gestionImplantes/logs' },
+];
 
 const GestionesImplantesDetalleView = forwardRef(({
   item,
@@ -23,6 +36,12 @@ const GestionesImplantesDetalleView = forwardRef(({
   cargarLogsDeImplante,
   formatearFecha
 }, ref) => {
+
+  const { hasAccesoProceso } = useGranularPermission();
+  const tabsPermitidas = useMemo(
+    () => ALL_TABS.filter(t => hasAccesoProceso(t.path)),
+    [hasAccesoProceso]
+  );
 
   const [periodoActivo, setPeriodoActivo] = useState(null);
   const [cargandoPeriodo, setCargandoPeriodo] = useState(true);
@@ -107,7 +126,19 @@ const GestionesImplantesDetalleView = forwardRef(({
     return filtrados.length > 0 ? filtrados : (item ? [item] : []);
   }, [admisionCodigoTarget, todosLosRegistros, item]);
 
-  const [activeTab, setActiveTab] = useState('detalles');
+  const [activeTab, setActiveTab] = useState(() => tabsPermitidas[0]?.id || null);
+
+  // Fuente de verdad para qué pestaña se muestra realmente: si `activeTab`
+  // quedó en un id que el usuario no tiene permitido (permisos que
+  // cambiaron, o el valor por defecto de más arriba), cae al primer tab
+  // permitido — mismo patrón que ArchivosControlVacunatorio/Laboratorio y
+  // CodigosMaestros. Todo el render de abajo usa `tabActual`, nunca el
+  // `activeTab` crudo, para que no haya forma de quedar mostrando una
+  // pestaña sin permiso.
+  const tabActual = useMemo(
+    () => tabsPermitidas.find(t => t.id === activeTab) || tabsPermitidas[0] || null,
+    [tabsPermitidas, activeTab]
+  );
 
   const construirEstadoInicial = () => {
     const bloquesEmpresas = registrosDeEstaAdmision.map((reg, index) => ({
@@ -483,13 +514,13 @@ const GestionesImplantesDetalleView = forwardRef(({
   const refPathBloqueActivo = formData.bloques[bloqueActivoIndex]?.refPath;
 
   useEffect(() => {
-    if (activeTab !== 'logs' || !refPathBloqueActivo || !cargarLogsDeImplante) return;
+    if (tabActual?.id !== 'logs' || !refPathBloqueActivo || !cargarLogsDeImplante) return;
     cargarLogsDeImplante({
       refPath: refPathBloqueActivo,
       nombre: formData.nombre,
       gestionId: formData.gestionId
     });
-  }, [activeTab, refPathBloqueActivo]);
+  }, [tabActual?.id, refPathBloqueActivo]);
 
   return (
     <div className="flex-grow flex flex-col bg-slate-50/50 dark:bg-gray-900 overflow-hidden text-[10px]">
@@ -517,58 +548,36 @@ const GestionesImplantesDetalleView = forwardRef(({
             </h2>
           </div>
 
-          <div className="p-1.5 space-y-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('detalles')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'detalles'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <ListFilter size={13} />
-              <span className="truncate">Detalles</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('informacion')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'informacion'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <Info size={13} />
-              <span className="truncate">Información</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('cargas')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'cargas'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <UploadCloud size={13} />
-              <span className="truncate">Cargas</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('logs')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'logs'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <History size={13} />
-              <span className="truncate">Logs</span>
-            </button>
-          </div>
+          {tabsPermitidas.length === 0 ? (
+            <div className="p-2.5 text-[10px] text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+              <ShieldAlert size={13} className="shrink-0 mt-0.5" />
+              Sin pestañas habilitadas para su perfil.
+            </div>
+          ) : (
+            <div className="p-1.5 space-y-1">
+              {tabsPermitidas.map((tab) => {
+                const TabIcon = tab.Icon;
+                const isActive = tabActual?.id === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${isActive
+                      ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
+                      : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                      }`}
+                  >
+                    <TabIcon size={13} />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {(activeTab === 'informacion' || activeTab === 'cargas' || activeTab === 'logs') && (
+        {(tabActual?.id === 'informacion' || tabActual?.id === 'cargas' || tabActual?.id === 'logs') && (
           <EmpresasFechasPanel
             bloques={formData.bloques}
             bloqueActivoIndex={bloqueActivoIndex}
@@ -579,7 +588,14 @@ const GestionesImplantesDetalleView = forwardRef(({
 
         <div className="flex-grow flex flex-col overflow-auto">
 
-          {activeTab === 'informacion' && (
+          {!tabActual && (
+            <div className="flex-grow flex flex-col items-center justify-center text-center p-6 text-slate-500 dark:text-gray-400 text-[10px] gap-1.5">
+              <ShieldAlert size={22} className="text-amber-500" />
+              Su perfil no tiene acceso a ninguna pestaña de esta vista de detalle.
+            </div>
+          )}
+
+          {tabActual?.id === 'informacion' && (
             <InformacionTab
               formData={formData}
               handleGeneralChange={handleGeneralChange}
@@ -589,11 +605,11 @@ const GestionesImplantesDetalleView = forwardRef(({
             />
           )}
 
-          {activeTab === 'detalles' && (
+          {tabActual?.id === 'detalles' && (
             <DetallesTab formData={formData} />
           )}
 
-          {activeTab === 'cargas' && (
+          {tabActual?.id === 'cargas' && (
             <CargasTab
               ref={cargasTabRef}
               formData={formData}
@@ -608,7 +624,7 @@ const GestionesImplantesDetalleView = forwardRef(({
             />
           )}
 
-          {activeTab === 'logs' && (
+          {tabActual?.id === 'logs' && (
             <div className="flex-grow overflow-y-auto p-3">
               {refPathBloqueActivo ? (
                 <HistorialLogsContenido

@@ -60,7 +60,7 @@ const TabPendientes = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigos-pendientes";
+  const PATH_VISTA = "/maestros/codigosMaestros/pendientes";
 
   // Toda la lógica de importar / exportar / plantilla vive en este hook
   const {

@@ -34,5 +34,13 @@ export const useGranularPermission = () => {
     return true;
   };
 
-  return { hasPermission };
+  const hasAccesoProceso = (procesoPath) => {
+    if (!userData) return false;
+    if (userData.rol === 'admin' || userData.rol === 'dev') return true;
+
+    const granularMap = userData.permisosGranulares || {};
+    return Boolean(granularMap[procesoPath]);
+  };
+
+  return { hasPermission, hasAccesoProceso };
 };

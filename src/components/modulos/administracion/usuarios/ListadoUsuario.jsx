@@ -13,6 +13,7 @@ import {
 // components/modulos/... (mismo nivel de anidamiento que CrearUsuario.jsx).
 import { db } from '../../../../firebaseConfig';
 import { COMPONENT_MAPS } from '../../../../config/componentMaps.jsx';
+import { MODULES } from '../../../../config/modulesConfig.jsx';
 
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
@@ -30,6 +31,7 @@ import {
   CircleDashed,
   PlayCircle,
   Trash2,
+  Layers,
 } from 'lucide-react';
 
 // TODO: mantener sincronizado con la lista de roles de CrearUsuario.jsx.
@@ -162,6 +164,12 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
 
   const usuarioEditando = usuarios.find((u) => u.id === usuarioEditandoId) || null;
 
+  const modulosAsignados = (usuario) => {
+    const claves = Object.keys(usuario.permisos || {}).filter((k) => (usuario.permisos[k] || []).length > 0);
+    const labels = claves.map((k) => MODULES[k]?.label || k);
+    return { cantidad: claves.length, labels };
+  };
+
   const iniciales = (nombre = '') =>
     nombre
       .trim()
@@ -226,133 +234,171 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
           No se encontraron usuarios con estos filtros.
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
-          {usuariosFiltrados.map((usuario) => {
-            const activo = estaActivo(usuario);
-            const enEdicion = usuarioEditandoId === usuario.id;
-            const rolLabel = ROLES.find((r) => r.value === usuario.rol)?.label || usuario.rol;
-            const incompleta = creacionIncompleta(usuario);
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
+          <div className="overflow-auto">
+            <table className="w-full text-left text-[11px] border-collapse">
+              <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+                <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8 text-center">#</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Nombre Completo</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Usuario</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Email</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Rol</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Módulos asignados</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
+                  <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usuariosFiltrados.map((usuario, index) => {
+                  const activo = estaActivo(usuario);
+                  const enEdicion = usuarioEditandoId === usuario.id;
+                  const rolLabel = ROLES.find((r) => r.value === usuario.rol)?.label || usuario.rol;
+                  const incompleta = creacionIncompleta(usuario);
+                  const { cantidad: cantidadModulos, labels: labelsModulos } = modulosAsignados(usuario);
 
-            return (
-              <div key={usuario.id}>
-                {/* Fila */}
-                <div
-                  onClick={() => (incompleta ? null : abrirEdicion(usuario))}
-                  className={`flex items-center justify-between gap-3 px-3 py-1.5 transition-colors ${
-                    incompleta
-                      ? 'bg-amber-50/60 dark:bg-amber-900/10'
-                      : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-[#2383C2]/10 text-[#2383C2] text-[10px] font-bold flex items-center justify-center shrink-0">
-                      {iniciales(usuario.nombreCompleto) || '?'}
-                    </div>
-                    <div className="min-w-0 flex items-baseline gap-1.5">
-                      <p className="text-xs font-bold text-gray-700 dark:text-gray-100 truncate">
-                        {usuario.nombreCompleto || 'Sin nombre'}
-                      </p>
-                      <p className="text-[10.5px] text-gray-400 dark:text-gray-500 truncate hidden md:block">
-                        @{usuario.nombreUsuario} · {usuario.email}
-                      </p>
-                      {incompleta && (
-                        <span className="flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">
-                          <CircleDashed size={10} />
-                          Creación incompleta · {labelPasoIncompleto(usuario)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                  return (
+                    <tr
+                      key={usuario.id}
+                      onClick={() => (incompleta ? null : abrirEdicion(usuario))}
+                      className={`border-l-2 transition-colors ${
+                        incompleta
+                          ? 'border-transparent bg-amber-50/60 dark:bg-amber-900/10'
+                          : `cursor-pointer hover:bg-gray-50/80 dark:hover:bg-gray-700/40 ${
+                              enEdicion ? 'border-[#2383C2] bg-[#2383C2]/5' : 'border-transparent'
+                            }`
+                      }`}
+                    >
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
+                        {index + 1}
+                      </td>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {incompleta ? (
-                      <>
-                        <button
-                          type="button"
-                          title="Continuar creación"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onContinuarCreacion?.(usuario.id);
-                          }}
-                          className="flex items-center gap-1 text-[10.5px] font-bold px-2 py-1 rounded text-[#2383C2] hover:bg-[#2383C2]/10 transition-colors"
-                        >
-                          <PlayCircle size={13} />
-                          Continuar creación
-                        </button>
-                        <button
-                          type="button"
-                          title="Cancelar creación"
-                          disabled={cancelandoId === usuario.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            cancelarCreacionUsuario(usuario);
-                          }}
-                          className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
-                        >
-                          {cancelandoId === usuario.id ? <Spinner size="sm" /> : <Trash2 size={13} />}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="hidden sm:flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-[#2383C2]/10 text-[#2383C2] text-[9px] font-bold flex items-center justify-center shrink-0">
+                            {iniciales(usuario.nombreCompleto) || '?'}
+                          </div>
+                          <span className="truncate">{usuario.nombreCompleto || 'Sin nombre'}</span>
+                        </div>
+                      </td>
+
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                        @{usuario.nombreUsuario}
+                      </td>
+
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                        {usuario.email}
+                      </td>
+
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        <span className="flex items-center gap-1 w-fit text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                           <Shield size={10} className="text-[#2383C2]" />
                           {rolLabel}
                         </span>
+                      </td>
 
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
                         <span
-                          className={`hidden sm:flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                            activo
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                          }`}
+                          title={labelsModulos.join(', ') || 'Sin módulos asignados'}
+                          className="flex items-center gap-1 w-fit text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
                         >
-                          {activo ? <CircleCheck size={10} /> : <CircleX size={10} />}
-                          {activo ? 'Activo' : 'Inactivo'}
+                          <Layers size={10} className="text-[#2383C2]" />
+                          {cantidadModulos}
                         </span>
+                      </td>
 
-                        <button
-                          type="button"
-                          title={activo ? 'Inactivar usuario' : 'Activar usuario'}
-                          disabled={actualizandoEstadoId === usuario.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleActivoUsuario(usuario);
-                          }}
-                          className={`p-1 rounded transition-colors disabled:opacity-50 ${
-                            activo
-                              ? 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
-                              : 'text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                          }`}
-                        >
-                          {actualizandoEstadoId === usuario.id ? (
-                            <Spinner size="sm" />
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        {incompleta ? (
+                          <span className="flex items-center gap-1 w-fit text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                            <CircleDashed size={10} />
+                            Incompleta · {labelPasoIncompleto(usuario)}
+                          </span>
+                        ) : (
+                          <span
+                            className={`flex items-center gap-1 w-fit text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                              activo
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                            }`}
+                          >
+                            {activo ? <CircleCheck size={10} /> : <CircleX size={10} />}
+                            {activo ? 'Activo' : 'Inactivo'}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center">
+                        <div className="flex justify-center items-center gap-2">
+                          {incompleta ? (
+                            <>
+                              <button
+                                type="button"
+                                title="Continuar creación"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onContinuarCreacion?.(usuario.id);
+                                }}
+                                className="text-[#2383C2] hover:text-[#1d6fa5] transition"
+                              >
+                                <PlayCircle size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Cancelar creación"
+                                disabled={cancelandoId === usuario.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  cancelarCreacionUsuario(usuario);
+                                }}
+                                className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition disabled:opacity-50"
+                              >
+                                {cancelandoId === usuario.id ? <Spinner size="sm" /> : <Trash2 size={13} />}
+                              </button>
+                            </>
                           ) : (
-                            <Power size={13} />
-                          )}
-                        </button>
+                            <>
+                              <button
+                                type="button"
+                                title={activo ? 'Inactivar usuario' : 'Activar usuario'}
+                                disabled={actualizandoEstadoId === usuario.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleActivoUsuario(usuario);
+                                }}
+                                className={`transition disabled:opacity-50 ${
+                                  activo
+                                    ? 'text-gray-500 hover:text-red-500 dark:text-gray-400'
+                                    : 'text-gray-500 hover:text-green-600 dark:text-gray-400'
+                                }`}
+                              >
+                                {actualizandoEstadoId === usuario.id ? <Spinner size="sm" /> : <Power size={13} />}
+                              </button>
 
-                        <button
-                          type="button"
-                          title="Editar acceso"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            abrirEdicion(usuario);
-                          }}
-                          className={`p-1 rounded transition-colors ${
-                            enEdicion
-                              ? 'text-white bg-[#2383C2]'
-                              : 'text-gray-400 hover:text-[#2383C2] hover:bg-[#2383C2]/10'
-                          }`}
-                        >
-                          <Pencil size={13} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                              <button
+                                type="button"
+                                title="Editar acceso"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  abrirEdicion(usuario);
+                                }}
+                                className={`transition ${
+                                  enEdicion
+                                    ? 'text-[#2383C2]'
+                                    : 'text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300'
+                                }`}
+                              >
+                                <Pencil size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

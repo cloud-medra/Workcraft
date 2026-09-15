@@ -1,0 +1,172 @@
+// NOTA GENERAL DEL MÓDULO: ninguna de las 5 pantallas de administración usa
+// `hasPermission`/`useGranularPermission` hoy (a diferencia de laboratorio y
+// maestros). Todo lo de abajo es documentación de referencia para cuando se
+// decida cablear la granularidad — no tiene efecto real en la app todavía.
+export const administracionComponentMaps = {
+  '/administracion/controlMensual': {
+    label: 'Control y Cierre de Períodos (ControlMensual.jsx) — sin granularidad cableada aún',
+    sections: {
+      header: {
+        label: 'Sección: Encabezado y Filtros',
+        elements: {
+          select_modulo_filtro: { label: 'Campo: Filtro por Módulo' },
+          select_anio_filtro: { label: 'Campo: Filtro por Año' },
+          btn_abrir_periodo: { label: 'Acción: Botón Abrir Período' },
+        },
+      },
+      tabla_periodos: {
+        label: 'Sección: Matriz de Períodos por Módulo/Mes',
+        elements: {
+          col_estado: { label: 'Columna: Estado (Abierto/Reabierto/Cerrado/Sin Iniciar)' },
+          col_documentos: { label: 'Columna: Cantidad de Documentos' },
+          col_monto: { label: 'Columna: Monto Total Imputado' },
+          btn_abrir_mes: { label: 'Acción: Abrir mes para un módulo' },
+          btn_cerrar_mes: { label: 'Acción: Cerrar mes para un módulo' },
+          btn_reabrir_mes: { label: 'Acción: Reabrir mes (abre modal de motivo)' },
+          btn_ver_historial: { label: 'Acción: Ver historial de reaperturas' },
+          btn_cerrar_todos: { label: 'Acción: Cerrar todos los módulos del período' },
+        },
+      },
+      panel_apertura_periodo: {
+        label: 'Sección: Drawer de Apertura de Período',
+        elements: {
+          select_anio: { label: 'Campo: Año del Período' },
+          select_mes: { label: 'Campo: Mes a Abrir' },
+          selector_modulos: { label: 'Campo: Selección de Módulos Afectados' },
+          btn_confirmar_apertura: { label: 'Acción: Confirmar Apertura' },
+        },
+      },
+      modal_reapertura: {
+        label: 'Sección: Modal de Reapertura',
+        elements: {
+          input_motivo: { label: 'Campo: Motivo de la Reapertura' },
+          btn_confirmar_reapertura: { label: 'Acción: Confirmar Reapertura' },
+        },
+      },
+      modal_historial: {
+        label: 'Sección: Modal de Historial de Reaperturas (solo lectura)',
+        elements: {},
+      },
+    },
+  },
+
+  '/administracion/ResumenPeriodoAbierto': {
+    label: 'Resumen Ejecutivo del Período Activo (ResumenPeriodoAbierto.jsx) — solo lectura, sin granularidad cableada aún',
+    sections: {
+      header: {
+        label: 'Sección: Encabezado del Período',
+        elements: {},
+      },
+      kpis: {
+        label: 'Sección: Tarjetas KPI',
+        elements: {
+          card_monto_total: { label: 'Tarjeta: Monto Total Imputado' },
+          card_documentos: { label: 'Tarjeta: Documentos Imputados' },
+          card_promedio: { label: 'Tarjeta: Monto Promedio por Documento' },
+        },
+      },
+      tabla_desglose: {
+        label: 'Sección: Desglose por Módulo',
+        elements: {
+          col_estado: { label: 'Columna: Estado del Módulo' },
+          col_participacion: { label: 'Columna: Barra de Participación (%)' },
+          col_documentos: { label: 'Columna: Documentos' },
+          col_monto: { label: 'Columna: Monto Imputado' },
+        },
+      },
+    },
+  },
+
+  '/administracion/notasAdmin': {
+    label: 'Administrador de Notas (NotasAdmin.jsx) — sin granularidad cableada aún',
+    sections: {
+      formulario_nota: {
+        label: 'Sección: Formulario de Nota',
+        elements: {
+          selector_tipo: { label: 'Campo: Tipo de Nota (Texto Libre / Checklist)' },
+          input_titulo: { label: 'Campo: Título' },
+          input_contenido: { label: 'Campo: Contenido (texto libre)' },
+          items_checklist: { label: 'Campo: Elementos de la Lista (checklist)' },
+          btn_publicar: { label: 'Acción: Publicar / Guardar Cambios' },
+          btn_cancelar_edicion: { label: 'Acción: Cancelar Edición' },
+        },
+      },
+      listado_notas: {
+        label: 'Sección: Notas Publicadas',
+        elements: {
+          btn_mover: { label: 'Acción: Reordenar (Arriba/Abajo)' },
+          btn_editar: { label: 'Acción: Editar Nota' },
+          btn_eliminar: { label: 'Acción: Eliminar Nota' },
+        },
+      },
+    },
+  },
+
+  '/administracion/crearUsuario': {
+    label: 'Asistente de Creación de Usuario (CrearUsuario.jsx) — sin granularidad cableada aún',
+    sections: {
+      paso1_datos_basicos: {
+        label: 'Sección: Paso 1 — Datos Básicos',
+        elements: {
+          input_nombre_completo: { label: 'Campo: Nombre Completo' },
+          input_nombre_usuario: { label: 'Campo: Nombre de Usuario' },
+          input_email: { label: 'Campo: Correo' },
+          select_rol: { label: 'Campo: Rol' },
+          input_password: { label: 'Campo: Contraseña' },
+          btn_guardar_continuar: { label: 'Acción: Guardar y Continuar' },
+        },
+      },
+      paso2_modulos_permisos: {
+        label: 'Sección: Paso 2 — Módulos y Permisos',
+        elements: {
+          selector_modulos_items: { label: 'Campo: Selección de Módulos/Ítems con Acceso' },
+        },
+      },
+      paso3_configuracion_granular: {
+        label: 'Sección: Paso 3 — Configuración Granular por Ítem',
+        elements: {
+          acordeon_items: { label: 'Bloque: Acordeón de Ítems Configurables' },
+          btn_finalizar_item: { label: 'Acción: Finalizar Ítem' },
+          btn_finalizar_creacion: { label: 'Acción: Finalizar Creación' },
+        },
+      },
+    },
+  },
+
+  '/administracion/listadoUsuario': {
+    label: 'Listado de Usuarios (ListadoUsuario.jsx) — sin granularidad cableada aún',
+    sections: {
+      header_filtros: {
+        label: 'Sección: Filtros',
+        elements: {
+          input_buscar: { label: 'Campo: Búsqueda por nombre/usuario/correo' },
+          select_rol: { label: 'Campo: Filtro por Rol' },
+          select_estado: { label: 'Campo: Filtro por Estado (Activo/Inactivo)' },
+        },
+      },
+      tabla_usuarios: {
+        label: 'Sección: Tabla de Usuarios',
+        elements: {
+          col_nombre: { label: 'Columna: Nombre Completo' },
+          col_usuario: { label: 'Columna: Nombre de Usuario' },
+          col_email: { label: 'Columna: Email' },
+          col_rol: { label: 'Columna: Rol' },
+          col_modulos: { label: 'Columna: Módulos Asignados' },
+          col_estado: { label: 'Columna: Estado' },
+          btn_activar_inactivar: { label: 'Acción: Activar/Inactivar Usuario' },
+          btn_editar_acceso: { label: 'Acción: Editar Acceso (abre drawer)' },
+          btn_continuar_creacion: { label: 'Acción: Continuar Creación Incompleta' },
+          btn_cancelar_creacion: { label: 'Acción: Cancelar Creación Incompleta' },
+        },
+      },
+      drawer_edicion_permisos: {
+        label: 'Sección: Drawer de Edición de Permisos (EditarPermisosUsuarioDrawer.jsx)',
+        elements: {
+          select_rol: { label: 'Campo: Rol' },
+          selector_modulos_items: { label: 'Campo: Módulos e Ítems con Acceso' },
+          configuracion_detallada: { label: 'Bloque: Configuración Detallada por Ítem' },
+        },
+      },
+    },
+  },
+};

@@ -77,7 +77,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
 
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/inventario/existencias";
+  const PATH_VISTA = "/inventario/existenciasInventario";
   const COL_BASE = "inventario_general";
 
   // 1. Obtener datos de Firestore si no vienen por props

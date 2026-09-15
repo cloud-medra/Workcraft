@@ -44,7 +44,7 @@ const EmpresasMaestros = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/empresas";
+  const PATH_VISTA = "/maestros/empresasMaestros";
   const COL_BASE = "maestros_empresas";
 
   useEffect(() => {

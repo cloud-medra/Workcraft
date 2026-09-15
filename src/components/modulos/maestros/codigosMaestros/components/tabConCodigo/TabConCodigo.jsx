@@ -67,7 +67,7 @@ const TabConCodigo = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigos-con-codigo";
+  const PATH_VISTA = "/maestros/codigosMaestros/conCodigo";
 
   const constraints = useMemo(() => {
     const termino = busqueda.trim().toUpperCase();

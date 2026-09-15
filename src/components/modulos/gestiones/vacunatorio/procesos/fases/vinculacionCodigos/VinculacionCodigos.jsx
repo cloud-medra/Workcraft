@@ -26,7 +26,7 @@ const VinculacionCodigos = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/archivosControl";
+  const PATH_VISTA = "/vacunatorio/archivosControlVacunatorio";
   const COL_BASE = "vacunatorio_documentos";
   const COL_MAESTRO = "vacunatorio_codigos";
   const ESTADOS_PERMITIDOS = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];

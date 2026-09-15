@@ -31,7 +31,7 @@ const DocumentosEditor = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/archivosControl";
+  const PATH_VISTA = "/vacunatorio/archivosControlVacunatorio";
   const COL_BASE = "vacunatorio_documentos";
 
   const formatearFechaEmision = (fechaStr) => {

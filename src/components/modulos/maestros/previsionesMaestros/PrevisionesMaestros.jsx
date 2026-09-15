@@ -44,7 +44,7 @@ const PrevisionesMaestros = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/previsiones";
+  const PATH_VISTA = "/maestros/previsionesMaestros";
   const COL_BASE = "maestros_previsiones";
 
   useEffect(() => {

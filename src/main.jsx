@@ -1,13 +1,30 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.jsx'
-import { ToastProvider } from './context/ToastContext'
+import Spinner from './components/ui/Spinner'
+import { listenForSessionRequests, syncSessionFromOtherTabs } from './services/sessionSync'
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <ToastProvider>
-      <App />
-    </ToastProvider>
-  </StrictMode>,
+const root = createRoot(document.getElementById('root'))
+
+root.render(
+  <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+    <Spinner size="lg" />
+  </div>,
 )
+
+listenForSessionRequests()
+
+syncSessionFromOtherTabs().then(async () => {
+  const [{ default: App }, { ToastProvider }] = await Promise.all([
+    import('./App.jsx'),
+    import('./context/ToastContext'),
+  ])
+
+  root.render(
+    <StrictMode>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </StrictMode>,
+  )
+})

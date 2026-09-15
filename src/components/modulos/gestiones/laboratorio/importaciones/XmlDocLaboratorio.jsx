@@ -38,7 +38,7 @@ const XmlDocLaboratorio = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/XmlDocLaboratorio";
+  const PATH_VISTA = "/laboratorio/xmlDocLaboratorio";
   const COL_BASE = "laboratorio_documentos";
 
   const getEstadoBadgeStyle = (estado) => {

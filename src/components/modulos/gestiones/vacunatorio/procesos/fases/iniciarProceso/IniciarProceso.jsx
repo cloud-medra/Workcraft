@@ -27,7 +27,7 @@ const IniciarProceso = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/archivosControl";
+  const PATH_VISTA = "/vacunatorio/archivosControlVacunatorio";
   const COL_BASE = "vacunatorio_documentos";
   const COL_CIERRES = "cierres_periodos";
 

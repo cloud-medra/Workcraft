@@ -25,6 +25,7 @@ import {
   Microscope,
   Hash,
   Handshake,
+  HeartPulse,
   Hospital,
   History,
   LayoutDashboard,
@@ -153,6 +154,13 @@ export const MODULES = {
       { label: 'Gestion', path: '/implantes/gestionImplantes', icon: <FolderKanban size={14} /> },
       { label: 'Solicitud', path: '/implantes/solicitudImplantes', icon: <FilePlus size={14} /> },
       { label: 'Resumen', path: '/implantes/resumenImplantes', icon: <BarChart2 size={14} /> },
+    ]
+  },
+  hemodinamia: {
+    label: 'Hemodinamia',
+    icon: <HeartPulse size={18} />,
+    subItems: [
+      { label: 'Gestion', path: '/hemodinamia/gestionHemodinamia', icon: <FolderKanban size={14} /> },
     ]
   }
 };

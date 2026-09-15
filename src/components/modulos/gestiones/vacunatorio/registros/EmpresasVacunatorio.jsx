@@ -23,7 +23,7 @@ const EmpresasVacunatorio = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/empresas";
+  const PATH_VISTA = "/vacunatorio/empresasVacunatorio";
   const COL_BASE = "vacunatorio_empresas";
 
   useEffect(() => {

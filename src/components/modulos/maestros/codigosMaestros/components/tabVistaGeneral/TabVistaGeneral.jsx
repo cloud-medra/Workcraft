@@ -50,7 +50,7 @@ const TabVistaGeneral = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigos-vista-general";
+  const PATH_VISTA = "/maestros/codigosMaestros/vistaGeneral";
 
   const { allDocs, loading: cargando, reload } = useCollectionCache(COL_BASE);
 

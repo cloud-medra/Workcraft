@@ -237,6 +237,11 @@ const ControlMensual = () => {
                     numeroMesReal = mes.id || 'N/A';
                   }
 
+                  const hayModuloAbiertoEnMes = MODULOS.some(mod => {
+                    const estadoMod = estadosModulos[mod.id]?.[mes.id]?.estado;
+                    return estadoMod === 'ABIERTO' || estadoMod === 'REABIERTO';
+                  });
+
                   return (
                     <tr key={mes.id} className="hover:bg-slate-50/80 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="py-2 px-3 font-bold text-slate-800 dark:text-gray-100 border-r border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky left-0 z-10">
@@ -244,15 +249,17 @@ const ControlMensual = () => {
                           <span className="uppercase">
                             {numeroMesReal} {anioSeleccionado}
                           </span>
-                          <button
-                            onClick={() => handleCerrarTodos(mes.id)}
-                            disabled={procesandoAccion}
-                            title={`Cerrar todos los módulos para el período ${numeroMesReal} ${anioSeleccionado}`}
-                            className="px-1 py-0.5 bg-slate-100 hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300 rounded text-[8px] font-bold flex items-center gap-0.5 transition cursor-pointer disabled:opacity-50 shrink-0"
-                          >
-                            <ShieldAlert size={9} className="text-amber-500" />
-                            Cerrar Todos
-                          </button>
+                          {hayModuloAbiertoEnMes && (
+                            <button
+                              onClick={() => handleCerrarTodos(mes.id)}
+                              disabled={procesandoAccion}
+                              title={`Cerrar todos los módulos para el período ${numeroMesReal} ${anioSeleccionado}`}
+                              className="px-1 py-0.5 bg-slate-100 hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300 rounded text-[8px] font-bold flex items-center gap-0.5 transition cursor-pointer disabled:opacity-50 shrink-0"
+                            >
+                              <ShieldAlert size={9} className="text-amber-500" />
+                              Cerrar Todos
+                            </button>
+                          )}
                         </div>
                       </td>
 

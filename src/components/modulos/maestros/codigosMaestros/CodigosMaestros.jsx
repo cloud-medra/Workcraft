@@ -18,16 +18,21 @@ import TabPendientes from './components/tabPendientes/TabPendientes';
 import TabConCodigo from './components/tabConCodigo/TabConCodigo';
 import TabVistaGeneral from './components/tabVistaGeneral/TabVistaGeneral';
 
+// Cada pestaña es un `proceso` propio (path independiente) del
+// componentMap de esta pantalla (ver
+// src/config/componentMaps/maestros.js) — su visibilidad se decide por
+// existencia con hasAccesoProceso(path), no por un checkbox maestro de
+// sección compartido entre las 3 (ver nota de useGranularPermission.js).
 const ALL_TABS = [
-  { id: 'pendientes', label: 'Sin Código / Pendientes', Icon: Clock, perm: 'tab_codigos_pendientes' },
-  { id: 'con_codigo', label: 'Con Código', Icon: CheckCircle2, perm: 'tab_codigos_asignados' },
-  { id: 'todos', label: 'Vista General', Icon: List, perm: 'tab_codigos_general' },
+  { id: 'pendientes', label: 'Sin Código / Pendientes', Icon: Clock, path: '/maestros/codigosMaestros/pendientes' },
+  { id: 'con_codigo', label: 'Con Código', Icon: CheckCircle2, path: '/maestros/codigosMaestros/conCodigo' },
+  { id: 'todos', label: 'Vista General', Icon: List, path: '/maestros/codigosMaestros/vistaGeneral' },
 ];
 
-const PATH_VISTA = "/maestros/codigos";
+const PATH_VISTA = "/maestros/codigosMaestros";
 
 const CodigosMaestros = () => {
-  const { hasPermission } = useGranularPermission();
+  const { hasAccesoProceso } = useGranularPermission();
   const [periodoAbierto, setPeriodoAbierto] = useState(null);
 
   // Escuchar período activo (opcional, mantiene la consistencia con tus otros módulos)
@@ -46,9 +51,9 @@ const CodigosMaestros = () => {
     return () => unsubscribe();
   }, []);
 
-  const tabs = useMemo(() => 
-    ALL_TABS.filter(t => hasPermission(PATH_VISTA, "navegacion", t.perm)), 
-    [hasPermission]
+  const tabs = useMemo(() =>
+    ALL_TABS.filter(t => hasAccesoProceso(t.path)),
+    [hasAccesoProceso]
   );
 
   const [activeTab, setActiveTab] = useState(() => tabs[0]?.id || '');
@@ -182,8 +187,8 @@ const CodigosMaestros = () => {
                 <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{PATH_VISTA}</span>
               </div>
               <div>
-                <span className="block text-slate-400 dark:text-gray-500">PERMISO REQUERIDO</span>
-                <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{currentTabObj.perm}</span>
+                <span className="block text-slate-400 dark:text-gray-500">PATH DE LA PESTAÑA</span>
+                <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{currentTabObj.path}</span>
               </div>
             </div>
           </div>

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { collectionGroup, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; 
-import { ArrowLeft, ListFilter, Info, Truck, UploadCloud, Save, AlertTriangle, X, Loader2 } from 'lucide-react';
-import { useToast } from '../../../../../../context/ToastContext'; 
+import { db } from '../../../../../../firebaseConfig';
+import { ArrowLeft, ListFilter, Info, Truck, UploadCloud, Save, AlertTriangle, X, Loader2, ShieldAlert } from 'lucide-react';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 
 import DetalleTab from './DetalleTab';
 import InformacionTab from './InformacionTab';
@@ -11,6 +12,18 @@ import CargasTab from './CargasTab';
 
 const COL_BASE = 'consignacion_registros';
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
+
+// Cada pestaña es un `proceso` propio (path independiente) del
+// componentMap de la pantalla contenedora (ver
+// src/config/componentMaps/consignacion.js) — su visibilidad se decide por
+// existencia con hasAccesoProceso(path), no por un checkbox maestro de
+// sección compartido entre las 4 (ver nota de useGranularPermission.js).
+const ALL_TABS = [
+  { id: 'detalle', label: 'Detalle', Icon: ListFilter, path: '/consignacion/cargasConsignacion/detalle' },
+  { id: 'informacion', label: 'Información', Icon: Info, path: '/consignacion/cargasConsignacion/informacion' },
+  { id: 'delivery', label: 'Delivery', Icon: Truck, path: '/consignacion/cargasConsignacion/delivery' },
+  { id: 'cargas', label: 'Cargas', Icon: UploadCloud, path: '/consignacion/cargasConsignacion/cargas' },
+];
 
 const construirEstadoInicial = (registro) => ({
   nombre: registro?.nombre || '',
@@ -40,7 +53,21 @@ const construirEstadoInicial = (registro) => ({
 
 const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState('detalle');
+  const { hasAccesoProceso } = useGranularPermission();
+  const tabsPermitidas = useMemo(
+    () => ALL_TABS.filter(t => hasAccesoProceso(t.path)),
+    [hasAccesoProceso]
+  );
+
+  const [activeTab, setActiveTab] = useState(() => tabsPermitidas[0]?.id || null);
+
+  // Fuente de verdad de qué pestaña se muestra: si `activeTab` quedó en un
+  // id sin permiso, cae al primer tab permitido — todo el render de abajo
+  // usa `tabActual`, nunca el `activeTab` crudo.
+  const tabActual = useMemo(
+    () => tabsPermitidas.find(t => t.id === activeTab) || tabsPermitidas[0] || null,
+    [tabsPermitidas, activeTab]
+  );
 
   const [formData, setFormData] = useState(() => construirEstadoInicial(registro));
   const snapshotInicialRef = useRef(JSON.stringify(construirEstadoInicial(registro)));
@@ -254,65 +281,50 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
             </h2>
           </div>
 
-          <div className="p-1.5 space-y-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab('detalle')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'detalle'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <ListFilter size={13} />
-              <span className="truncate">Detalle</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('informacion')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'informacion'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <Info size={13} />
-              <span className="truncate">Información</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('delivery')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'delivery'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <Truck size={13} />
-              <span className="truncate">Delivery</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('cargas')}
-              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${activeTab === 'cargas'
-                ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
-                : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
-                }`}
-            >
-              <UploadCloud size={13} />
-              <span className="truncate">Cargas</span>
-            </button>
-          </div>
+          {tabsPermitidas.length === 0 ? (
+            <div className="p-2.5 text-[10px] text-amber-700 dark:text-amber-400 flex items-start gap-1.5">
+              <ShieldAlert size={13} className="shrink-0 mt-0.5" />
+              Sin pestañas habilitadas para su perfil.
+            </div>
+          ) : (
+            <div className="p-1.5 space-y-1">
+              {tabsPermitidas.map((tab) => {
+                const TabIcon = tab.Icon;
+                const isActive = tabActual?.id === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md font-medium transition text-left ${isActive
+                      ? 'bg-[#2383C2]/10 text-[#2383C2] dark:bg-blue-950/50 dark:text-blue-400 font-semibold'
+                      : 'text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50'
+                      }`}
+                  >
+                    <TabIcon size={13} />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className="flex-grow flex flex-col overflow-auto">
-          {activeTab === 'detalle' && <DetalleTab registro={registro} items={itemsDeEstaAdmision} />}
+          {!tabActual && (
+            <div className="flex-grow flex flex-col items-center justify-center text-center p-6 text-slate-500 dark:text-gray-400 text-[10px] gap-1.5">
+              <ShieldAlert size={22} className="text-amber-500" />
+              Su perfil no tiene acceso a ninguna pestaña de esta vista de detalle.
+            </div>
+          )}
 
-          {activeTab === 'informacion' && (
+          {tabActual?.id === 'detalle' && <DetalleTab registro={registro} items={itemsDeEstaAdmision} />}
+
+          {tabActual?.id === 'informacion' && (
             <InformacionTab formData={formData} onChange={handleFieldChange} />
           )}
 
-          {activeTab === 'delivery' && (
+          {tabActual?.id === 'delivery' && (
             <DeliveryTab
               registro={registroParaDelivery}
               vinculoData={formData}
@@ -321,7 +333,7 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
             />
           )}
 
-          {activeTab === 'cargas' && (
+          {tabActual?.id === 'cargas' && (
             <CargasTab
               registro={registro}
               items={itemsDeEstaAdmision}

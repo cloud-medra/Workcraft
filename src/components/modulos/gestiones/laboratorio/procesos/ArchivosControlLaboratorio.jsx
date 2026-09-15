@@ -28,21 +28,29 @@ import DocumentosListasIngreso from './fases/documentosListasIngreso/DocListasIn
 import DocImputados from './fases/documentosImputados/DocumentosImputados';
 import DocumentosEditor from './fases/documentosEditor/DocumentosEditor';
 
+// Cada pestaña es un `proceso` propio (path independiente) del
+// componentMap de esta pantalla (ver
+// src/config/componentMaps/laboratorio.js) — su visibilidad se decide por
+// existencia con hasAccesoProceso(path), no por un checkbox maestro de
+// sección compartido entre las 8 (ver nota de useGranularPermission.js).
+// OJO: esto solo cambia la visibilidad de la PESTAÑA; el contenido interno
+// de cada fase (filtros_busqueda/tabla_documentos) sigue compartiendo el
+// mismo PATH_VISTA del orquestador, por diseño — eso no se tocó.
 const ALL_TABS = [
-  { id: 'documentos_recibidos', label: 'Documentos Recibidos', Icon: Inbox, perm: 'tab_documentos_recibidos' },
-  { id: 'iniciar_procesos', label: 'Ingreso de Folios', Icon: FileText, perm: 'tab_iniciar_procesos' },
-  { id: 'vinculacion_codigos', label: 'Vinculación de Códigos', Icon: ClipboardList, perm: 'tab_vinculacion_codigos' },
-  { id: 'vinculacion_ordenes', label: 'Vinculación de Órdenes', Icon: Link2, perm: 'tab_vinculacion_ordenes' },
-  { id: 'solicitud_diferencias', label: 'Solicitud Diferencias', Icon: AlertTriangle, perm: 'tab_solicitud_diferencias' },
-  { id: 'documentos_listos', label: 'Documentos Listos', Icon: CheckSquare, perm: 'tab_documentos_listos' },
-  { id: 'documentos_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, perm: 'tab_documentos_imputados' },
-  { id: 'documentos_edicion', label: 'Edición', Icon: Edit3, perm: 'tab_documentos_edicion' },
+  { id: 'documentos_recibidos', label: 'Documentos Recibidos', Icon: Inbox, path: '/laboratorio/archivosControlLaboratorio/documentosRecibidos' },
+  { id: 'iniciar_procesos', label: 'Ingreso de Folios', Icon: FileText, path: '/laboratorio/archivosControlLaboratorio/iniciarProcesos' },
+  { id: 'vinculacion_codigos', label: 'Vinculación de Códigos', Icon: ClipboardList, path: '/laboratorio/archivosControlLaboratorio/vinculacionCodigos' },
+  { id: 'vinculacion_ordenes', label: 'Vinculación de Órdenes', Icon: Link2, path: '/laboratorio/archivosControlLaboratorio/vinculacionOrdenes' },
+  { id: 'solicitud_diferencias', label: 'Solicitud Diferencias', Icon: AlertTriangle, path: '/laboratorio/archivosControlLaboratorio/solicitudDiferencias' },
+  { id: 'documentos_listos', label: 'Documentos Listos', Icon: CheckSquare, path: '/laboratorio/archivosControlLaboratorio/documentosListos' },
+  { id: 'documentos_imputados', label: 'Documentos Imputados', Icon: CheckCircle2, path: '/laboratorio/archivosControlLaboratorio/documentosImputados' },
+  { id: 'documentos_edicion', label: 'Edición', Icon: Edit3, path: '/laboratorio/archivosControlLaboratorio/documentosEdicion' },
 ];
 
-const PATH_VISTA = "/laboratorio/archivosControl";
+const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
 
 const ArchivosControl = () => {
-  const { hasPermission } = useGranularPermission();
+  const { hasAccesoProceso } = useGranularPermission();
   const [periodoAbierto, setPeriodoAbierto] = useState(null);
   const tabsRef = useRef(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
@@ -63,9 +71,9 @@ const ArchivosControl = () => {
     return () => unsubscribe();
   }, []);
 
-  const tabs = useMemo(() => 
-    ALL_TABS.filter(t => hasPermission(PATH_VISTA, "navegacion", t.perm)), 
-    [hasPermission]
+  const tabs = useMemo(() =>
+    ALL_TABS.filter(t => hasAccesoProceso(t.path)),
+    [hasAccesoProceso]
   );
 
   const [activeTab, setActiveTab] = useState(() => tabs[0]?.id || '');
@@ -257,8 +265,8 @@ const ArchivosControl = () => {
                 <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{PATH_VISTA}</span>
               </div>
               <div>
-                <span className="block text-slate-400 dark:text-gray-500">PERMISO REQUERIDO</span>
-                <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{currentTabObj.perm}</span>
+                <span className="block text-slate-400 dark:text-gray-500">PATH DE LA PESTAÑA</span>
+                <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{currentTabObj.path}</span>
               </div>
             </div>
           </div>

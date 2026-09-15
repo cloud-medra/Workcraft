@@ -44,7 +44,7 @@ const RecargosMaestros = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/recargos";
+  const PATH_VISTA = "/maestros/recargosMaestros";
   const COL_BASE = "maestros_recargos";
 
   useEffect(() => {

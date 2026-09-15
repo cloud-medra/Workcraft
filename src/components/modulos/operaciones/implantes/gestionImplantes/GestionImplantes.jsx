@@ -10,7 +10,7 @@ import { GestionesImplantesTable } from './components/GestionesImplantesTable';
 import GestionesImplantesDetalleView from './components/GestionesImplantesDetalleView';
 import { EstadoFilterDropdown } from './components/EstadoFilterDropdown';
 
-const PATH_VISTA = "/implantes/gestiones";
+const PATH_VISTA = "/implantes/gestionImplantes";
 
 const NOMBRES_MESES = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",

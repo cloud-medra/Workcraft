@@ -195,6 +195,16 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
   };
 
   const handleCerrarTodos = (mesId) => {
+    const modulosAbiertos = MODULOS.filter(mod => {
+      const estado = estadosModulos[mod.id]?.[mesId]?.estado;
+      return estado === 'ABIERTO' || estado === 'REABIERTO';
+    });
+
+    if (modulosAbiertos.length === 0) {
+      showToast("No hay módulos abiertos para cerrar en este período", "info");
+      return;
+    }
+
     confirmAction(
       "Cierre Masivo de Período",
       `¿Deseas cerrar TODOS los módulos para el mes de ${mesId.toUpperCase()} ${anioSeleccionado}? Quedarán bloqueados para nuevas imputaciones.`,
@@ -204,10 +214,10 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
           const usuario = obtenerUsuarioLog();
           const batch = writeBatch(db);
 
-          for (const mod of MODULOS) {
+          for (const mod of modulosAbiertos) {
             const docId = `${anioSeleccionado}_${mesId}_${mod.id}`;
             const docRef = doc(db, COLECCIONES.CIERRES, docId);
-            
+
             batch.set(docRef, {
               anio: anioSeleccionado,
               mes: mesId,

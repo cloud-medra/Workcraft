@@ -27,7 +27,7 @@ const IniciarProceso = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
+  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
   const COL_BASE = "laboratorio_documentos";
   const COL_CIERRES = "cierres_periodos";
 

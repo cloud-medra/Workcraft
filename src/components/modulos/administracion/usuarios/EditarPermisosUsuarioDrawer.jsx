@@ -56,13 +56,54 @@ const EditarPermisosUsuarioDrawer = ({ isOpen, usuario, onClose }) => {
   );
 };
 
+// Genera el acceso total a partir de una config de COMPONENT_MAPS. Se
+// reutiliza tanto para la vista principal de un path como para cada uno de
+// sus `procesos` anidados (pantallas multi-proceso, ej. Códigos Maestros).
+// Vive fuera del componente (junto con backfillProcesos) porque el
+// useState inicial de más abajo necesita llamarla en su inicializador
+// perezoso, que corre antes que cualquier `const` declarada dentro del
+// componente.
+const generarAccesoTotalDesdeConfig = (config) => {
+  if (!config) return null;
+  const secciones = {};
+  Object.entries(config.sections || {}).forEach(([sectionKey, section]) => {
+    const elementos = {};
+    Object.keys(section.elements || {}).forEach((elKey) => {
+      elementos[elKey] = true;
+    });
+    secciones[sectionKey] = { visible: true, elements: elementos };
+  });
+  return secciones;
+};
+
+// Migración perezosa: usuarios cuyo módulo padre ya estaba asignado antes
+// de que ese módulo tuviera `procesos` en el componentMap (o antes de que
+// se agregara un `proceso` nuevo) no tienen esas entradas en su
+// permisosGranulares guardado. Se completan acá con acceso total (mismo
+// comportamiento "todo visible" que ya tenían) apenas se abre el drawer —
+// así el admin puede empezar a restringir pestañas puntuales desde el
+// checkbox de cada una, sin necesidad de un script de migración en
+// Firestore. Ver nota en useGranularPermission.js sobre por qué se
+// reemplazó el viejo checkbox maestro de sección "navegacion".
+const backfillProcesos = (permisosGranularesGuardados) => {
+  const resultado = { ...permisosGranularesGuardados };
+  Object.entries(COMPONENT_MAPS).forEach(([path, config]) => {
+    if (!resultado[path] || !config.procesos) return;
+    Object.entries(config.procesos).forEach(([procesoPath, procesoConfig]) => {
+      if (resultado[procesoPath]) return;
+      resultado[procesoPath] = generarAccesoTotalDesdeConfig(procesoConfig) || {};
+    });
+  });
+  return resultado;
+};
+
 const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
   const { showToast } = useToast();
 
   const [edicion, setEdicion] = useState(() => ({
     rol: usuario.rol || 'operador',
     permisos: clonar(usuario.permisos),
-    permisosGranulares: clonar(usuario.permisosGranulares),
+    permisosGranulares: backfillProcesos(clonar(usuario.permisosGranulares)),
   }));
   const [modulosExpandidos, setModulosExpandidos] = useState({});
   const [vistasExpandidas, setVistasExpandidas] = useState({});
@@ -73,19 +114,21 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
     ([, modulo]) => modulo.subItems?.length
   );
 
-  const generarAccesoTotal = (path) => {
-    const config = COMPONENT_MAPS[path];
-    if (!config) return null;
-    const secciones = {};
-    Object.entries(config.sections).forEach(([sectionKey, section]) => {
-      const elementos = {};
-      Object.keys(section.elements || {}).forEach((elKey) => {
-        elementos[elKey] = true;
-      });
-      secciones[sectionKey] = { visible: true, elements: elementos };
+  // Aplana los paths seleccionados de un módulo a la lista de ítems que se
+  // renderizan en "Configuración detallada": cada path, seguido de sus
+  // `procesos` anidados (si los tiene) como sub-ítems propios.
+  const construirItemsRenderables = (items, modulo) =>
+    items.flatMap((path) => {
+      const config = COMPONENT_MAPS[path];
+      const sub = modulo.subItems.find((s) => s.path === path);
+      const procesos = Object.entries(config?.procesos || {}).map(([procesoPath, procesoConfig]) => ({
+        path: procesoPath,
+        config: procesoConfig,
+        sub: null,
+        esProceso: true,
+      }));
+      return [{ path, config, sub, esProceso: false }, ...procesos];
     });
-    return secciones;
-  };
 
   const cerrar = () => {
     if (guardando) return;
@@ -113,12 +156,21 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
 
       const nuevosGranulares = { ...prev.permisosGranulares };
       subItems.forEach((s) => {
+        const config = COMPONENT_MAPS[s.path];
+        const procesoPaths = Object.keys(config?.procesos || {});
+
         if (yaCompleto) {
           delete nuevosGranulares[s.path];
-        } else if (!nuevosGranulares[s.path]) {
-          const accesoTotal = generarAccesoTotal(s.path);
-          if (accesoTotal) nuevosGranulares[s.path] = accesoTotal;
+          procesoPaths.forEach((p) => delete nuevosGranulares[p]);
+          return;
         }
+
+        if (!nuevosGranulares[s.path] && config) {
+          nuevosGranulares[s.path] = generarAccesoTotalDesdeConfig(config);
+        }
+        procesoPaths.forEach((p) => {
+          if (!nuevosGranulares[p]) nuevosGranulares[p] = generarAccesoTotalDesdeConfig(config.procesos[p]);
+        });
       });
 
       return { ...prev, permisos: nuevosPermisos, permisosGranulares: nuevosGranulares };
@@ -127,12 +179,17 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
     setPendientesRevision((prev) => {
       const next = new Set(prev);
       subItems.forEach((s) => {
+        const config = COMPONENT_MAPS[s.path];
+        const procesoPaths = Object.keys(config?.procesos || {});
+
         if (yaCompleto) {
           next.delete(s.path);
-        } else if (COMPONENT_MAPS[s.path] && !edicion.permisosGranulares[s.path]) {
+          procesoPaths.forEach((p) => next.delete(p));
+        } else if (config && !edicion.permisosGranulares[s.path]) {
           // Solo se marca "pendiente de revisión" si antes no tenía config
           // (recién se está agregando ahora, con acceso total por defecto).
           next.add(s.path);
+          procesoPaths.forEach((p) => next.add(p));
         }
       });
       return next;
@@ -142,21 +199,25 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
   const toggleSubItem = (moduloKey, path) => {
     const actuales = edicion.permisos[moduloKey] || [];
     const existeAhora = actuales.includes(path);
+    const config = COMPONENT_MAPS[path];
+    const procesoPaths = Object.keys(config?.procesos || {});
 
     setEdicion((prev) => {
       const arr = prev.permisos[moduloKey] || [];
       const nuevos = existeAhora ? arr.filter((p) => p !== path) : [...arr, path];
       const nuevosPermisos = { ...prev.permisos, [moduloKey]: nuevos };
 
-      let nuevosGranulares = prev.permisosGranulares;
+      const nuevosGranulares = { ...prev.permisosGranulares };
       if (existeAhora) {
-        const { [path]: _omit, ...resto } = prev.permisosGranulares;
-        nuevosGranulares = resto;
-      } else if (!prev.permisosGranulares[path]) {
-        const accesoTotal = generarAccesoTotal(path);
-        if (accesoTotal) {
-          nuevosGranulares = { ...prev.permisosGranulares, [path]: accesoTotal };
+        delete nuevosGranulares[path];
+        procesoPaths.forEach((p) => delete nuevosGranulares[p]);
+      } else {
+        if (!nuevosGranulares[path] && config) {
+          nuevosGranulares[path] = generarAccesoTotalDesdeConfig(config);
         }
+        procesoPaths.forEach((p) => {
+          if (!nuevosGranulares[p]) nuevosGranulares[p] = generarAccesoTotalDesdeConfig(config.procesos[p]);
+        });
       }
 
       return { ...prev, permisos: nuevosPermisos, permisosGranulares: nuevosGranulares };
@@ -166,8 +227,10 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
       const next = new Set(prev);
       if (existeAhora) {
         next.delete(path);
-      } else if (COMPONENT_MAPS[path]) {
+        procesoPaths.forEach((p) => next.delete(p));
+      } else if (config) {
         next.add(path);
+        procesoPaths.forEach((p) => next.add(p));
       }
       return next;
     });
@@ -220,6 +283,28 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
           },
         },
       };
+    });
+  };
+
+  // Incluye/quita un `proceso` (pestaña con path propio) directamente por
+  // existencia en permisosGranulares — reemplaza al viejo checkbox maestro
+  // de sección "navegacion" que podía apagar todas las pestañas hermanas
+  // de golpe (ver nota en useGranularPermission.js).
+  const toggleProceso = (procesoPath, procesoConfig) => {
+    setEdicion((prev) => {
+      const permisosGranulares = { ...prev.permisosGranulares };
+      if (permisosGranulares[procesoPath]) {
+        delete permisosGranulares[procesoPath];
+      } else {
+        permisosGranulares[procesoPath] = generarAccesoTotalDesdeConfig(procesoConfig) || {};
+      }
+      return { ...prev, permisosGranulares };
+    });
+    setPendientesRevision((prev) => {
+      if (!prev.has(procesoPath)) return prev;
+      const next = new Set(prev);
+      next.delete(procesoPath);
+      return next;
     });
   };
 
@@ -400,34 +485,52 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
                     </span>
 
                     <div className="flex flex-col gap-1.5">
-                      {items.map((path) => {
-                        const sub = modulo.subItems.find((s) => s.path === path);
-                        const config = COMPONENT_MAPS[path];
+                      {construirItemsRenderables(items, modulo).map(({ path, config, sub, esProceso }) => {
+                        // Un `proceso` (pestaña/sub-vista con path propio) se puede
+                        // incluir o quitar directamente por existencia — sin pasar
+                        // por un checkbox maestro de sección compartido. Ver nota
+                        // en useGranularPermission.js.
                         const vistaPermisos = edicion.permisosGranulares[path];
                         const pendiente = pendientesRevision.has(path);
                         const expandida = !!vistasExpandidas[path];
+                        const procesoIncluido = !esProceso || Boolean(vistaPermisos);
+                        const puedeExpandir = Boolean(config) && procesoIncluido;
 
                         return (
                           <div
                             key={path}
-                            className="border border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-900/40 rounded-lg overflow-hidden"
+                            className={`border border-gray-100 dark:border-gray-700/60 bg-white dark:bg-gray-900/40 rounded-lg overflow-hidden ${
+                              esProceso ? 'ml-4' : ''
+                            }`}
                           >
-                            <button
-                              type="button"
-                              disabled={!config || !vistaPermisos}
-                              onClick={() => toggleVistaExpandida(path)}
-                              className={`w-full flex items-center justify-between p-2.5 transition-colors ${
-                                config
-                                  ? 'hover:bg-gray-100 dark:hover:bg-gray-800/60 cursor-pointer'
-                                  : 'cursor-default'
-                              }`}
-                            >
-                              <span className="flex items-center gap-2 text-[11.5px] font-bold text-gray-700 dark:text-gray-200 min-w-0">
-                                <span className="opacity-70 shrink-0">{sub?.icon}</span>
-                                <span className="truncate">{sub?.label || path}</span>
-                              </span>
+                            <div className="w-full flex items-center justify-between p-2.5 gap-2">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                {esProceso && (
+                                  <input
+                                    type="checkbox"
+                                    checked={procesoIncluido}
+                                    onChange={() => toggleProceso(path, config)}
+                                    className="accent-[#2383C2] shrink-0"
+                                    title={procesoIncluido ? 'Quitar esta pestaña' : 'Incluir esta pestaña'}
+                                  />
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={!puedeExpandir}
+                                  onClick={() => toggleVistaExpandida(path)}
+                                  className={`flex items-center gap-2 text-[11.5px] font-bold text-gray-700 dark:text-gray-200 flex-1 min-w-0 text-left transition-colors ${
+                                    puedeExpandir ? 'hover:text-[#2383C2] cursor-pointer' : 'cursor-default'
+                                  }`}
+                                >
+                                  {esProceso && <span className="text-gray-400 dark:text-gray-500 shrink-0">↳</span>}
+                                  <span className="opacity-70 shrink-0">{sub?.icon}</span>
+                                  <span className="truncate">{sub?.label || config?.label || path}</span>
+                                </button>
+                              </div>
                               <span className="flex items-center gap-1.5 shrink-0">
-                                {config ? (
+                                {esProceso && !procesoIncluido ? (
+                                  <span className="text-[9.5px] text-gray-400 dark:text-gray-500">Sin incluir</span>
+                                ) : config ? (
                                   <span
                                     className={`flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full ${
                                       pendiente
@@ -443,7 +546,7 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
                                     Sin configuración adicional
                                   </span>
                                 )}
-                                {config && (
+                                {puedeExpandir && (
                                   expandida ? (
                                     <ChevronDown size={14} className="text-gray-400" />
                                   ) : (
@@ -451,9 +554,9 @@ const EditarPermisosUsuarioDrawerContenido = ({ usuario, onClose }) => {
                                   )
                                 )}
                               </span>
-                            </button>
+                            </div>
 
-                            {expandida && config && vistaPermisos && (
+                            {expandida && config && procesoIncluido && vistaPermisos && (
                               <div className="p-2.5 pt-0 grid grid-cols-1 gap-2">
                                 {Object.entries(config.sections).map(([sectionKey, section]) => {
                                   const seccionEstado = vistaPermisos[sectionKey];

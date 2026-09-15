@@ -26,7 +26,7 @@ const VinculacionCodigos = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
+  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
   const COL_BASE = "laboratorio_documentos";
   const COL_MAESTRO = "laboratorio_codigos";
   const ESTADOS_PERMITIDOS = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];

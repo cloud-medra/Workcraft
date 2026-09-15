@@ -22,7 +22,7 @@ const CalculadorMaestros = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/calculador";
+  const PATH_VISTA = "/maestros/calculadorMaestros";
   const COL_BASE = "maestros_recargos";
 
   // Cargar reglas de recargos en tiempo real

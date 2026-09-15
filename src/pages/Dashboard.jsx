@@ -64,6 +64,8 @@ import GestionImplantes from '../components/modulos/operaciones/implantes/gestio
 import SolicitudImplantes from '../components/modulos/operaciones/implantes/solicitudImplantes/SolicitudImplantes';
 import ResumenImplantes from '../components/modulos/operaciones/implantes/resumenImplantes/ResumenImplantes.jsx';
 
+import GestionHemodinamia from '../components/modulos/operaciones/hemodinamia/gestionHemodinamia/GestionHemodinamia';
+
 // --- CONSIGNACION ---
 import IngresarGuiaDespacho from '../components/modulos/operaciones/consignacion/ingresarGuiaDespacho/IngresarGuiaDespacho';
 import Listadoguiasconsignacion from '../components/modulos/operaciones/consignacion/listadoguiasconsignacion/Listadoguiasconsignacion';
@@ -267,6 +269,8 @@ const Dashboard = () => {
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,
     '/implantes/resumenImplantes': <ResumenImplantes />,
+
+    '/hemodinamia/gestionHemodinamia': <GestionHemodinamia />,
 
     '/settings/datosUsuarios': <DatosUsuarios userData={userData} />,
     '/settings/cambiarPasswordAjustes': <CambiarPasswordAjustes userData={userData} />,

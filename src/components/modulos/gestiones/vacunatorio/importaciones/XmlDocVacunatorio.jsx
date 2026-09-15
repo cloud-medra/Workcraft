@@ -38,7 +38,7 @@ const XmlFacturasVacunatorio = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/XmlDocVacunatorio";
+  const PATH_VISTA = "/vacunatorio/xmlDocVacunatorio";
   const COL_BASE = "vacunatorio_documentos";
 
   useEffect(() => {

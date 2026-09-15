@@ -31,7 +31,7 @@ const DocumentosEditor = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControl";
+  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
   const COL_BASE = "laboratorio_documentos";
 
   const formatearFechaEmision = (fechaStr) => {
