@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3, DollarSign } from 'lucide-react';
 import Spinner from '../../../../../ui/Spinner';
+import { construirCambiosRegistro } from './camposAuditablesRegistro';
 
 const ModificarRegistroDrawer = ({
   show,
@@ -21,6 +22,7 @@ const ModificarRegistroDrawer = ({
     descriptorAuto: '',
     precioNeto: '',
     cx: '',
+    estado: 'ACTIVO',
     observacion: ''
   });
 
@@ -40,6 +42,7 @@ const ModificarRegistroDrawer = ({
         descriptorAuto: itemSeleccionado.descriptorAuto || '',
         precioNeto: itemSeleccionado.precioNeto ? new Intl.NumberFormat('es-ES').format(itemSeleccionado.precioNeto) : '',
         cx: itemSeleccionado.cx || '',
+        estado: itemSeleccionado.estado || 'ACTIVO',
         observacion: '' // Se limpia la observación para el nuevo registro de cambio
       });
     }
@@ -63,28 +66,32 @@ const ModificarRegistroDrawer = ({
 
     // Convertir el precio neto a numérico eliminando puntos de miles
     const precioNumericoNuevo = Number(formData.precioNeto.toString().replace(/\./g, '').replace(/,/g, '') || 0);
-    const precioNumericoAnterior = Number(itemSeleccionado?.precioNeto || 0);
 
-    // Validar si hubo cambios reales para el log (especialmente el precio)
-    const precioCambio = precioNumericoAnterior !== precioNumericoNuevo;
+    const datosNuevos = { ...formData, precioNeto: precioNumericoNuevo };
 
-    // Estructuramos los datos incluyendo el payload detallado para el LOG de auditoría
+    // Compara TODOS los campos auditables (no solo el precio) contra el
+    // registro original y arma un diff campo por campo.
+    const cambios = construirCambiosRegistro(itemSeleccionado, datosNuevos);
+
+    // La observación es un motivo/nota libre para esta modificación puntual
+    // (no se compara contra el valor anterior, ver camposAuditablesRegistro.js).
+    const notaObservacion = formData.observacion?.trim();
+    const detalles = {
+      ...cambios,
+      ...(notaObservacion ? { observacionModificacion: notaObservacion } : {})
+    };
+    const huboCambios = Object.keys(detalles).length > 0;
+
+    // Estructuramos los datos incluyendo el payload detallado para el LOG de auditoría.
+    // Si no hubo ningún cambio real ni nota, no generamos entrada de log.
     const datosConLog = {
       ...formData,
       precioNeto: precioNumericoNuevo,
-      logAuditoria: {
+      logAuditoria: huboCambios ? {
         accion: 'ACTUALIZACION_REGISTRO',
         fecha: new Date().toISOString(),
-        detalles: {
-          codigo: formData.codigo,
-          referencia: formData.referencia,
-          empresa: formData.empresa,
-          precioNetoAnterior: precioNumericoAnterior,
-          precioNetoNuevo: precioNumericoNuevo,
-          cambioPrecio: precioCambio ? `${precioNumericoAnterior} -> ${precioNumericoNuevo}` : 'Sin cambios en precio',
-          observacionModificacion: formData.observacion || 'Sin observaciones adicionales'
-        }
-      }
+        detalles
+      } : null
     };
 
     onActualizarRegistro(itemSeleccionado.id, datosConLog);
@@ -156,7 +163,7 @@ const ModificarRegistroDrawer = ({
         </div>
 
         <div>
-          <label className="block font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Empresa</label>
+          <label className="block font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Maestro (Empresa)</label>
           <input
             value={formData.descriptorEmpresa}
             onChange={e => setFormData({ ...formData, descriptorEmpresa: e.target.value })}
@@ -256,12 +263,24 @@ const ModificarRegistroDrawer = ({
         </div>
 
         <div>
-          <label className="block font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Auto</label>
+          <label className="block font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Maestro</label>
           <input
             value={formData.descriptorAuto}
             onChange={e => setFormData({ ...formData, descriptorAuto: e.target.value })}
             className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
           />
+        </div>
+
+        <div className="w-[140px]">
+          <label className="block font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Estado</label>
+          <select
+            value={formData.estado}
+            onChange={e => setFormData({ ...formData, estado: e.target.value })}
+            className="w-full h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 cursor-pointer"
+          >
+            <option value="ACTIVO">ACTIVO</option>
+            <option value="INACTIVO">INACTIVO</option>
+          </select>
         </div>
 
         <div>

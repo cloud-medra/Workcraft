@@ -12,6 +12,11 @@ import {
   Edit3
 } from 'lucide-react';
 import Spinner from '../../../../../ui/Spinner';
+import { CAMPOS_AUDITABLES_REGISTRO } from './camposAuditablesRegistro';
+
+const CAMPOS_LOG_GENERICOS = CAMPOS_AUDITABLES_REGISTRO.filter(
+  ({ key }) => key !== 'precioNeto' && key !== 'estado'
+);
 
 export const DrawersOverlay = ({ show, onClick }) => {
   if (!show) return null;
@@ -144,20 +149,46 @@ export const LogDrawer = ({
                   </div>
                 )}
 
-                {/* Vista específica para la Actualización de Registro y Precios */}
+                {/* Vista específica para la Actualización de Registro (Vista General):
+                    muestra cualquier campo que haya cambiado, no solo el precio. */}
                 {log.accion === 'ACTUALIZACION_REGISTRO' && (
                   <div className="space-y-1">
-                    <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
-                      <p className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                        <DollarSign size={12} /> Cambio de Precio Neto:
+                    {(log.detalles?.precioNetoAnterior !== undefined || log.detalles?.precioNetoNuevo !== undefined) && (
+                      <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
+                        <p className="font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                          <DollarSign size={12} /> Cambio de Precio Neto:
+                        </p>
+                        <p className="text-gray-700 dark:text-gray-300 mt-0.5">
+                          Anterior: <span className="font-semibold">${formatearPrecioLog(log.detalles?.precioNetoAnterior)}</span> → Nuevo: <span className="font-bold text-emerald-600">${formatearPrecioLog(log.detalles?.precioNetoNuevo)}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {log.detalles?.estadoNuevo !== undefined && (
+                      <p className={`font-bold flex items-center gap-1 ${log.detalles.estadoNuevo === 'INACTIVO' ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        {log.detalles.estadoNuevo === 'INACTIVO' ? 'Código inactivado' : 'Código activado'}
                       </p>
-                      <p className="text-gray-700 dark:text-gray-300 mt-0.5">
-                        Anterior: <span className="font-semibold">${formatearPrecioLog(log.detalles?.precioNetoAnterior)}</span> → Nuevo: <span className="font-bold text-emerald-600">${formatearPrecioLog(log.detalles?.precioNetoNuevo)}</span>
-                      </p>
-                    </div>
-                    <p><strong>Referencia:</strong> {log.detalles?.referencia}</p>
-                    <p><strong>Empresa:</strong> {log.detalles?.empresa}</p>
-                    <p><strong>Observación:</strong> {log.detalles?.observacionModificacion || 'N/A'}</p>
+                    )}
+
+                    {CAMPOS_LOG_GENERICOS.map(({ key, label }) => (
+                      log.detalles?.[`${key}Anterior`] !== undefined && (
+                        <p key={key}>
+                          <strong>{label}:</strong> {log.detalles[`${key}Anterior`] || 'Vacío'} → {log.detalles[`${key}Nuevo`] || 'Vacío'}
+                        </p>
+                      )
+                    ))}
+
+                    {/* Compatibilidad con logs generados antes de este cambio
+                        (solo tenían referencia/empresa/observación fijas) */}
+                    {log.detalles?.referenciaAnterior === undefined && log.detalles?.referencia !== undefined && (
+                      <p><strong>Referencia:</strong> {log.detalles.referencia}</p>
+                    )}
+                    {log.detalles?.empresaAnterior === undefined && log.detalles?.empresa !== undefined && (
+                      <p><strong>Empresa:</strong> {log.detalles.empresa}</p>
+                    )}
+                    {log.detalles?.observacionModificacion !== undefined && (
+                      <p><strong>Observación:</strong> {log.detalles.observacionModificacion || 'N/A'}</p>
+                    )}
                   </div>
                 )}
 

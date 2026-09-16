@@ -33,11 +33,12 @@ const COLUMNAS = [
   { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
   { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
   { key: 'referencia', label: 'Referencia', ancho: 150, min: 80 },
-  { key: 'descEmpresa', label: 'Desc. Empresa', ancho: 300, min: 80 },
+  { key: 'descEmpresa', label: 'Desc. Maestro', ancho: 300, min: 80 },
   { key: 'empresa', label: 'Empresa', ancho: 300, min: 80 },
   { key: 'tipo', label: 'Tipo', ancho: 100, min: 60 },
   { key: 'segmento', label: 'Segmento', ancho: 110, min: 60 },
   { key: 'clase', label: 'Clase', ancho: 90, min: 60 },
+  { key: 'estado', label: 'Estado', ancho: 90, min: 60, align: 'center' },
   { key: 'precioNeto', label: 'Precio Neto', ancho: 100, min: 70 },
   { key: 'registradoPor', label: 'Registrado por', ancho: 150, min: 70 },
   { key: 'fecha', label: 'Fecha', ancho: 130, min: 90 },
@@ -377,6 +378,11 @@ const TabVistaGeneral = () => {
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.tipo || 'N/A'}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.segmento || 'N/A'}</td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.clase || 'N/A'}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center overflow-hidden">
+                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${item.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
+                      {item.estado || 'ACTIVO'}
+                    </span>
+                  </td>
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 font-bold overflow-hidden text-ellipsis whitespace-nowrap">
                     ${new Intl.NumberFormat('es-ES').format(item.precioNeto || 0)}
                   </td>
