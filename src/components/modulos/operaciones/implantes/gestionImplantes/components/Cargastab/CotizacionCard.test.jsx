@@ -14,6 +14,7 @@ vi.mock('./useAutocompleteReferencia', () => ({
     mostrarSug: false,
     setMostrarSug: () => {},
     containerRef: { current: null },
+    portalRef: { current: null },
     skipNext: { current: false }
   })
 }));

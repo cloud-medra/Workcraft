@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FileText,
   Trash2,
@@ -30,6 +31,41 @@ import {
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { PadContenidoRow, crearFilaContenidoPadVacia, construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 
+// El listado de sugerencias vive dentro de la tabla de ítems, que tiene
+// overflow-auto (para poder hacer scroll horizontal/vertical) — eso recorta
+// cualquier dropdown posicionado con `absolute` que se salga de sus bordes.
+// Se resuelve sacándolo del flujo de la tabla con un portal a document.body,
+// posicionado en coordenadas de viewport (position: fixed) en base al
+// elemento ancla, recalculadas en cada scroll/resize.
+const DropdownReferenciaPortal = ({ anchorRef, portalRef, children }) => {
+  const [rect, setRect] = useState(null);
+
+  useLayoutEffect(() => {
+    const actualizarPosicion = () => {
+      if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+    };
+    actualizarPosicion();
+    window.addEventListener('scroll', actualizarPosicion, true);
+    window.addEventListener('resize', actualizarPosicion);
+    return () => {
+      window.removeEventListener('scroll', actualizarPosicion, true);
+      window.removeEventListener('resize', actualizarPosicion);
+    };
+  }, [anchorRef]);
+
+  if (!rect) return null;
+
+  return createPortal(
+    <div
+      ref={portalRef}
+      style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, zIndex: 9999 }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
 const BORRADOR_VACIO = {
   referencia: '', codigo: '', precio: '', empresaVinculada: '', tipoVinculado: '', detalle: '', descriptorAuto: '', clase: '',
   cantidad: '', lote: '', vencimiento: ''
@@ -60,7 +96,7 @@ export const CotizacionCard = ({
   const [filasNuevoContenido, setFilasNuevoContenido] = useState([]);
 
   const {
-    sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, skipNext
+    sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, portalRef, skipNext
   } = useAutocompleteReferencia(editandoId ? borrador.referencia : '');
 
   const items = cotizacion.items || [];
@@ -165,6 +201,11 @@ export const CotizacionCard = ({
   const guardarEdicion = () => {
     const cantidadNum = Number(borrador.cantidad);
     if (!borrador.referencia.trim() || !borrador.cantidad || isNaN(cantidadNum) || cantidadNum <= 0) return;
+
+    if (!edicionEsContenidoPad && !edicionEsLoteAdicional) {
+      const precioValido = Number(borrador.precio);
+      if (borrador.precio === '' || isNaN(precioValido) || precioValido <= 0) return;
+    }
 
     if (edicionEsContenidoPad) {
       onEditarItem(editandoId, {
@@ -407,6 +448,12 @@ export const CotizacionCard = ({
                     const sinContenidoAun = esPrincipalPad && !tieneContenidoPad(items, it.id);
                     const mostrandoFormularioContenido = agregandoContenidoDePadId === it.id;
 
+                    // Preview en vivo de recargo/venta/total mientras se edita el precio
+                    // (mismo cálculo que se usa al guardar, ver guardarEdicion).
+                    const financierosPreview = (enEdicion && !edicionEsContenidoPad && !edicionEsLoteAdicional)
+                      ? calcularCamposFinancieros(borrador.precio, borrador.cantidad, recargosActivos)
+                      : null;
+
                     if (enEdicion) {
                       return (
                         <tr key={it.id} className={`bg-blue-50/60 dark:bg-blue-950/20 ${esContenidoPad ? 'border-l-2 border-fuchsia-400 dark:border-fuchsia-700' : esLoteAdicional ? 'border-l-2 border-sky-400 dark:border-sky-700' : ''}`}>
@@ -435,7 +482,9 @@ export const CotizacionCard = ({
                             />
                           </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 font-medium">
+                            {financierosPreview ? `$${Number(financierosPreview.venta).toLocaleString('es-CL')}` : <span className="text-slate-400">—</span>}
+                          </td>
 
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRef}>
                             <div className="flex items-center gap-1">
@@ -452,31 +501,33 @@ export const CotizacionCard = ({
                               />
                             </div>
                             {mostrarSug && (
-                              <div className="absolute top-full left-0 mt-1 w-56 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded shadow-lg z-30">
-                                {buscando ? (
-                                  <div className="px-2.5 py-2 text-[10px] text-slate-400 flex items-center gap-1.5">
-                                    <Loader2 size={11} className="animate-spin" /> Buscando...
-                                  </div>
-                                ) : sugerencias.length === 0 ? (
-                                  <div className="px-2.5 py-2 text-[10px] text-slate-400">Sin coincidencias</div>
-                                ) : (
-                                  sugerencias.map(sug => (
-                                    <button
-                                      key={sug.id}
-                                      type="button"
-                                      onClick={() => handleSeleccionarSugerencia(sug)}
-                                      className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-gray-700/60 border-b border-slate-100 dark:border-gray-700/50 last:border-b-0"
-                                    >
-                                      <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{sug.referencia}</div>
-                                      <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
-                                        <span className="font-mono text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
-                                        <span>·</span>
-                                        <span className="truncate">{sug.empresa}</span>
-                                      </div>
-                                    </button>
-                                  ))
-                                )}
-                              </div>
+                              <DropdownReferenciaPortal anchorRef={containerRef} portalRef={portalRef}>
+                                <div className="w-56 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded shadow-lg">
+                                  {buscando ? (
+                                    <div className="px-2.5 py-2 text-[10px] text-slate-400 flex items-center gap-1.5">
+                                      <Loader2 size={11} className="animate-spin" /> Buscando...
+                                    </div>
+                                  ) : sugerencias.length === 0 ? (
+                                    <div className="px-2.5 py-2 text-[10px] text-slate-400">Sin coincidencias</div>
+                                  ) : (
+                                    sugerencias.map(sug => (
+                                      <button
+                                        key={sug.id}
+                                        type="button"
+                                        onClick={() => handleSeleccionarSugerencia(sug)}
+                                        className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-gray-700/60 border-b border-slate-100 dark:border-gray-700/50 last:border-b-0"
+                                      >
+                                        <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{sug.referencia}</div>
+                                        <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
+                                          <span className="font-mono text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
+                                          <span>·</span>
+                                          <span className="truncate">{sug.empresa}</span>
+                                        </div>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </DropdownReferenciaPortal>
                             )}
                           </td>
 
@@ -491,12 +542,30 @@ export const CotizacionCard = ({
                             ) : edicionEsLoteAdicional ? (
                               <span className="text-sky-600 dark:text-sky-400 italic">$0</span>
                             ) : (
-                              borrador.precio !== '' ? `$${Number(borrador.precio).toLocaleString('es-CL')}` : 'P'
+                              <input
+                                type="number"
+                                min="0"
+                                value={borrador.precio}
+                                onChange={e => setBorrador(prev => ({ ...prev, precio: e.target.value }))}
+                                className="w-20 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                              />
                             )}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px]">
+                            {financierosPreview ? (
+                              financierosPreview.recargoEncontrado ? (
+                                <span className="font-semibold text-slate-700 dark:text-gray-200">{financierosPreview.vecesCosto}</span>
+                              ) : (
+                                <span className="text-purple-600 dark:text-purple-400 font-semibold" title="No hay rango configurado para este precio">1*</span>
+                              )
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-[9px] text-slate-400">—</td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 font-medium">
+                            {financierosPreview ? `$${Number(financierosPreview.totalItem).toLocaleString('es-CL')}` : <span className="text-slate-400">—</span>}
+                          </td>
 
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
                             {edicionEsPad ? (

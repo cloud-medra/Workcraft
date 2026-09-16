@@ -23,6 +23,7 @@ import Spinner from '../../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabPendientesDrawers';
 import AsignarCodigoDrawer from './AsignarCodigoDrawer';
 import { useImportExportPendientes } from './useImportExportPendientes';
+import { normalizarDescriptorEmpresa } from './normalizarDescriptorEmpresa';
 
 const COL_BASE = "maestros_codigos";
 
@@ -336,7 +337,13 @@ const TabPendientes = () => {
 
           <div className="w-[170px]">
             <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Empresa</label>
-            <input value={formData.descriptorEmpresa} onChange={e => setFormData({ ...formData, descriptorEmpresa: e.target.value })} className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100" placeholder="Descriptor empresa" />
+            <input
+              value={formData.descriptorEmpresa}
+              onChange={e => setFormData({ ...formData, descriptorEmpresa: e.target.value })}
+              onBlur={e => setFormData(prev => ({ ...prev, descriptorEmpresa: normalizarDescriptorEmpresa(e.target.value) }))}
+              className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
+              placeholder="Descriptor empresa"
+            />
           </div>
 
           {/* Campo Empresa Autocompletable / Buscador */}

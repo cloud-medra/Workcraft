@@ -50,6 +50,11 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
   const [buscando, setBuscando] = useState(false);
   const [mostrarSug, setMostrarSug] = useState(false);
   const containerRef = useRef(null);
+  // Ref opcional para cuando el listado se renderiza vía portal (fuera del
+  // árbol de containerRef, ver DropdownReferenciaPortal en CotizacionCard.jsx):
+  // sin esto, un click en una sugerencia se interpretaría como "click afuera"
+  // y cerraría el listado antes de que el onClick de selección llegue a disparar.
+  const portalRef = useRef(null);
   const skipNext = useRef(false);
   const ultimoTextoRef = useRef('');
 
@@ -60,7 +65,9 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) setMostrarSug(false);
+      const dentroContainer = containerRef.current && containerRef.current.contains(e.target);
+      const dentroPortal = portalRef.current && portalRef.current.contains(e.target);
+      if (!dentroContainer && !dentroPortal) setMostrarSug(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -122,5 +129,5 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
     return () => listenersCache.delete(cb);
   }, []);
 
-  return { sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, skipNext };
+  return { sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, portalRef, skipNext };
 };
