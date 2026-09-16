@@ -14,13 +14,15 @@ import {
 import { db } from '../../../../../../firebaseConfig';
 import {
   CheckCircle2, Plus, Trash2, Search, Pencil, Save, X, ChevronDown,
-  History, Settings, ChevronLeft, ChevronRight
+  History, Settings, ChevronLeft, ChevronRight, RotateCcw
 } from 'lucide-react';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { useFirestorePagination } from '../../../../../../hooks/useFirestorePagination';
+import { useColumnResize } from '../../../../../../hooks/useColumnResize';
+import { ManijaRedimension } from '../../../../../ui/ManijaRedimension';
 import Spinner from '../../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabConCodigoDrawers';
 import { useImportExportConCodigo } from './UsoImportExportConCodigo';
@@ -32,6 +34,23 @@ const CAMPOS_BUSQUEDA = [
   { value: 'codigo', label: 'Código' },
   { value: 'referencia', label: 'Referencia' },
   { value: 'empresa', label: 'Empresa' }
+];
+
+const COLUMNAS = [
+  { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
+  { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
+  { key: 'referencia', label: 'Referencia', ancho: 150, min: 80 },
+  { key: 'descEmpresa', label: 'Desc. Empresa', ancho: 300, min: 80 },
+  { key: 'empresa', label: 'Empresa', ancho: 200, min: 80 },
+  { key: 'tipo', label: 'Tipo', ancho: 100, min: 60 },
+  { key: 'segmento', label: 'Segmento', ancho: 110, min: 60 },
+  { key: 'clase', label: 'Clase', ancho: 90, min: 60 },
+  { key: 'descriptorMaestro', label: 'Descriptor Maestro', ancho: 200, min: 80 },
+  { key: 'precioNeto', label: 'Precio Neto', ancho: 100, min: 70 },
+  { key: 'estado', label: 'Estado', ancho: 100, min: 70 },
+  { key: 'registradoPor', label: 'Registrado por', ancho: 120, min: 70 },
+  { key: 'fecha', label: 'Fecha', ancho: 130, min: 90 },
+  { key: 'acciones', label: 'Acciones', ancho: 90, min: 70, align: 'center' }
 ];
 
 const TabConCodigo = () => {
@@ -97,6 +116,8 @@ const TabConCodigo = () => {
     goPrev,
     reload
   } = useFirestorePagination({ colName: COL_BASE, constraints, pageSize: PAGE_SIZE });
+
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(COLUMNAS);
 
   const {
     showConfigDrawer,
@@ -509,48 +530,67 @@ const TabConCodigo = () => {
               <Spinner size="md" color="#2383C2" />
             </div>
           )}
-          <table className="w-full text-left text-[11px] border-collapse">
-            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
+          <div className="sticky top-0 z-20 flex justify-end px-1 py-0.5 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={restablecerAnchos}
+              title="Restablecer ancho de columnas"
+              className="flex items-center gap-1 text-[9px] font-medium text-gray-400 hover:text-[#2383C2] dark:text-gray-500 dark:hover:text-[#2383C2] transition px-1.5 py-0.5 rounded hover:bg-white dark:hover:bg-gray-800"
+            >
+              <RotateCcw size={10} /> Restablecer columnas
+            </button>
+          </div>
+          <table
+            className="text-left text-[11px] border-collapse"
+            style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: anchoTotalTabla }}
+          >
+            <colgroup>
+              {COLUMNAS.map(col => (
+                <col key={col.key} style={{ width: anchos[col.key] }} />
+              ))}
+            </colgroup>
+            <thead className="bg-gray-100 dark:bg-gray-900 sticky top-[22px] z-10">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Código</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Referencia</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Desc. Empresa</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Empresa</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Tipo</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Segmento</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Clase</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descriptor Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Precio Neto</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Registrado por</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Fecha</th>
-                <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
+                {COLUMNAS.map(col => (
+                  <th
+                    key={col.key}
+                    className={`relative py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 overflow-hidden ${col.align === 'center' ? 'text-center' : ''}`}
+                    title={col.label}
+                  >
+                    <span className="block truncate">{col.label}</span>
+                    <ManijaRedimension
+                      colKey={col.key}
+                      anchoActual={anchos[col.key]}
+                      anchoMin={col.min}
+                      onResize={handleResize}
+                    />
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {registros.map((item, index) => (
                 <tr key={item.id} className="border-l-2 border-transparent hover:border-emerald-600 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{pageIndex * PAGE_SIZE + index + 1}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400">{item.codigo}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{item.referencia}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.descriptorEmpresa}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.empresa}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.tipo}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.segmento}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">{item.clase}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{item.descriptorAuto}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300">
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center overflow-hidden text-ellipsis whitespace-nowrap">{pageIndex * PAGE_SIZE + index + 1}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400 overflow-hidden text-ellipsis whitespace-nowrap">{item.codigo}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={item.referencia}>{item.referencia}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorEmpresa}>{item.descriptorEmpresa}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.empresa}>{item.empresa}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.tipo}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.segmento}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.clase}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorAuto}>{item.descriptorAuto}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">
                     ${new Intl.NumberFormat('es-ES').format(item.precioNeto || 0)}
                   </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 overflow-hidden">
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 flex items-center gap-1 w-max">
                       <CheckCircle2 size={10} /> Con Código
                     </span>
                   </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{item.registradoPor || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{formatearFecha(item.fechaRegistro)}</td>
-                  <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center">
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.registradoPor}>{item.registradoPor || 'N/A'}</td>
+                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap">{formatearFecha(item.fechaRegistro)}</td>
+                  <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center overflow-hidden">
                     <div className="flex justify-center gap-2">
                       {hasPermission(PATH_VISTA, "btn_log") && (
                         <button onClick={() => abrirHistorialLogs(item)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
@@ -570,7 +610,7 @@ const TabConCodigo = () => {
 
               {!cargandoTabla && registros.length === 0 && (
                 <tr>
-                  <td colSpan={14} className="py-8 text-center text-gray-400 dark:text-gray-500 text-[11px]">
+                  <td colSpan={COLUMNAS.length} className="py-8 text-center text-gray-400 dark:text-gray-500 text-[11px]">
                     No hay registros que coincidan con la búsqueda.
                   </td>
                 </tr>

@@ -45,16 +45,6 @@ const AsignarCodigoDrawer = ({
     }
   }, [itemSeleccionado]);
 
-  // Autogenerar descriptor si cambia referencia o descriptorEmpresa
-  useEffect(() => {
-    const parts = [formData.referencia, formData.descriptorEmpresa].filter(Boolean);
-    if (parts.length > 0) {
-      setFormData(prev => ({ ...prev, descriptorAuto: parts.join(' ').toUpperCase() }));
-    } else {
-      setFormData(prev => ({ ...prev, descriptorAuto: '' }));
-    }
-  }, [formData.referencia, formData.descriptorEmpresa]);
-
   if (!show) return null;
 
   const formatearMiles = (valor) => {
@@ -256,9 +246,9 @@ const AsignarCodigoDrawer = ({
         <div>
           <label className="block font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Descriptor Auto</label>
           <input
-            readOnly
             value={formData.descriptorAuto}
-            className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded bg-gray-100 dark:bg-gray-900 text-gray-500 outline-none"
+            onChange={e => setFormData({ ...formData, descriptorAuto: e.target.value })}
+            className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
           />
         </div>
 
