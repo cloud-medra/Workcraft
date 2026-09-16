@@ -12,6 +12,14 @@ export const MODULOS = [
   { id: 'hemodinamia', nombre: 'Hemodinamia' },
 ];
 
+// Agrupación del consolidado según el origen de los datos:
+// Facturación = módulos alimentados por ingreso de factura electrónica.
+// Consumos = módulos alimentados por cargas manuales.
+export const GRUPOS = [
+  { id: 'facturacion', nombre: 'Facturación', moduloIds: ['laboratorio', 'vacunatorio'] },
+  { id: 'consumos', nombre: 'Consumos', moduloIds: ['implantes', 'consignacion', 'hemodinamia'] },
+];
+
 export const MESES = [
   { id: 'enero', nombre: 'Enero', num: 1 },
   { id: 'febrero', nombre: 'Febrero', num: 2 },

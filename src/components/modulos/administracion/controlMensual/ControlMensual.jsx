@@ -4,7 +4,7 @@ import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useUser } from '../../../../context/UserContext';
 
-import { MODULOS, MESES } from './constants';
+import { MODULOS, MESES, GRUPOS } from './constants';
 import PanelAperturaPeriodo from './PanelAperturaPeriodo';
 import { useControlMensualData } from './useControlMensualData';
 import { ModalReapertura, ModalHistorial } from './ModalesControlMensual';
@@ -59,9 +59,13 @@ const ControlMensual = () => {
     });
   });
 
+  // Los módulos se ordenan por grupo (Facturación primero, luego Consumos) en vez
+  // de mezclados, para que la matriz se lea agrupada en los dos bloques del consolidado.
+  const modulosOrdenadosPorGrupo = GRUPOS.flatMap(grupo => MODULOS.filter(m => grupo.moduloIds.includes(m.id)));
+
   const modulosVisibles = moduloFiltro === 'TODOS'
-    ? MODULOS
-    : MODULOS.filter(m => m.id === moduloFiltro);
+    ? modulosOrdenadosPorGrupo
+    : modulosOrdenadosPorGrupo.filter(m => m.id === moduloFiltro);
 
   const mesesIniciados = MESES.filter((mes, index) => {
     const numeroMesStr = String(index + 1).padStart(2, '0');
@@ -195,10 +199,27 @@ const ControlMensual = () => {
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-slate-200 dark:border-gray-700 overflow-hidden shadow-xs min-w-max">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-100 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
-                  <th rowSpan={2} className="py-2.5 px-3 border-r border-slate-200 dark:border-gray-700 bg-slate-100 dark:bg-gray-900 sticky left-0 z-10 w-36">
+                <tr className="bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-gray-400">
+                  <th rowSpan={3} className="py-2.5 px-3 border-r border-slate-200 dark:border-gray-700 bg-slate-100 dark:bg-gray-900 sticky left-0 z-10 w-36">
                     Período
                   </th>
+                  {GRUPOS.map((grupo) => {
+                    const modulosGrupoVisibles = modulosVisibles.filter(m => grupo.moduloIds.includes(m.id));
+                    if (modulosGrupoVisibles.length === 0) return null;
+
+                    return (
+                      <th
+                        key={grupo.id}
+                        colSpan={modulosGrupoVisibles.length * 3}
+                        className="py-1.5 px-2 text-center border-r border-slate-200 dark:border-gray-700"
+                      >
+                        {grupo.nombre}
+                      </th>
+                    );
+                  })}
+                </tr>
+
+                <tr className="bg-slate-100 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-gray-200">
                   {modulosVisibles.map((mod) => {
                     const modIndex = MODULOS.findIndex(m => m.id === mod.id);
                     const colorConfig = MODULO_COLORES[modIndex % MODULO_COLORES.length];

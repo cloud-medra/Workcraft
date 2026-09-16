@@ -4,6 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
 import { MODULOS, MESES, COLECCIONES } from './constants';
+import { calcularTotalMesDesdeDocumentos, guardarSnapshotMensual, invalidarSnapshotMensual } from './snapshotMensual';
 
 export const useControlMensualData = (anioSeleccionado, userData, showToast, confirmAction) => {
   const [estadosModulos, setEstadosModulos] = useState({});
@@ -183,6 +184,11 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
             usuarioCierre: usuario
           }, { merge: true });
 
+          // Snapshot único del total del mes cerrado, para no tener que recalcularlo
+          // sumando documentos crudos cada vez que se necesite como "mes anterior".
+          const totalMes = await calcularTotalMesDesdeDocumentos(modId, anioSeleccionado, mesId);
+          await guardarSnapshotMensual(modId, anioSeleccionado, mesId, totalMes, 'cierre');
+
           showToast(`Mes de ${mesId} cerrado para ${modObj?.nombre}`, 'info');
         } catch (error) {
           console.error("Error al cerrar mes:", error);
@@ -229,6 +235,13 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
           }
 
           await batch.commit();
+
+          // Snapshot único por módulo cerrado, mismo motivo que en el cierre individual.
+          await Promise.all(modulosAbiertos.map(async (mod) => {
+            const totalMes = await calcularTotalMesDesdeDocumentos(mod.id, anioSeleccionado, mesId);
+            await guardarSnapshotMensual(mod.id, anioSeleccionado, mesId, totalMes, 'cierre');
+          }));
+
           showToast(`Todos los módulos cerrados para el mes de ${mesId}`, 'info');
         } catch (error) {
           console.error("Error al cerrar todos los módulos:", error);
@@ -278,6 +291,11 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
       });
 
       await batch.commit();
+
+      // El snapshot cerrado deja de ser confiable: puede haber correcciones
+      // retroactivas mientras el período está reabierto. Se invalida y se
+      // regenera en el próximo cierre (o vía cálculo lazy si se lee antes).
+      await invalidarSnapshotMensual(modId, anioSeleccionado, mesId);
 
       showToast(`Mes de ${mesId} reabierto correctamente`, 'warning');
       if (onSuccess) onSuccess();
