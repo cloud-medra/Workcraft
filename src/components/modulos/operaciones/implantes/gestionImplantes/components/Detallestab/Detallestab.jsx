@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  ListFilter,
   User,
   Building2,
   Calendar as CalendarIcon,
@@ -9,9 +8,30 @@ import {
   Tag
 } from 'lucide-react';
 import { formatearFechaTabla, getEstadoCargaStyle } from '../Cargastab/cargasHelpers';
+import { formatearFecha } from '../../utils/gestionesImportExport';
+import { MESES } from '../../../../../administracion/controlMensual/constants';
 
 export const DetallesTab = ({ formData }) => {
   const bloques = formData?.bloques || [];
+
+  // Período/fecha de carga son datos de la ADMISIÓN (no de una empresa en
+  // particular), así que se toman del primer ítem que ya tenga periodoAnio/
+  // periodoMes asignado (mismo campo que usa el candado en Cargas) en
+  // cualquiera de los bloques de esta admisión. Si ninguno lo tiene todavía
+  // (nunca pasó por Solicitud/Imputación), no se muestra nada.
+  let itemConPeriodo = null;
+  let bloqueDelPeriodo = null;
+  for (const bloque of bloques) {
+    const encontrado = (bloque.cotizaciones?.[0]?.items || []).find(it => it.periodoAnio && it.periodoMes);
+    if (encontrado) {
+      itemConPeriodo = encontrado;
+      bloqueDelPeriodo = bloque;
+      break;
+    }
+  }
+  const nombrePeriodo = itemConPeriodo
+    ? `${MESES.find(m => m.id === itemConPeriodo.periodoMes)?.nombre || itemConPeriodo.periodoMes} ${itemConPeriodo.periodoAnio}`
+    : '';
 
   return (
     <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
@@ -57,6 +77,19 @@ export const DetallesTab = ({ formData }) => {
             <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Atributo</span>
             <span className="text-slate-700 dark:text-gray-200">{formData?.atributo || 'P'}</span>
           </div>
+
+          {itemConPeriodo && (
+            <>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Período</span>
+                <span className="text-slate-700 dark:text-gray-200 font-semibold">{nombrePeriodo}</span>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Fecha de Carga</span>
+                <span className="text-slate-700 dark:text-gray-200">{formatearFecha(bloqueDelPeriodo?.fechaCarga)}</span>
+              </div>
+            </>
+          )}
 
           {formData?.descripcion && formData.descripcion !== 'P' && (
             <div className="flex flex-col gap-0.5 col-span-2 md:col-span-3 lg:col-span-4">

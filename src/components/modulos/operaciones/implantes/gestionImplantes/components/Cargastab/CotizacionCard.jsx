@@ -83,7 +83,8 @@ export const CotizacionCard = ({
   onEliminarCotizacion,
   onActualizarEstadoItem,
   onEditarItem,
-  defaultOpen = false
+  defaultOpen = false,
+  soloLectura = false
 }) => {
   const [abierto, setAbierto] = useState(defaultOpen);
   const [editandoId, setEditandoId] = useState(null);
@@ -369,8 +370,9 @@ export const CotizacionCard = ({
           <button
             type="button"
             onClick={() => onEliminarCotizacion(cotizacion.id)}
-            title="Eliminar cotización completa"
-            className="text-red-500 hover:text-red-700 transition p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+            disabled={soloLectura}
+            title={soloLectura ? 'Bloqueado: ya imputado' : 'Eliminar cotización completa'}
+            className="text-red-500 hover:text-red-700 transition p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
             <Trash2 size={12} />
           </button>
@@ -399,8 +401,8 @@ export const CotizacionCard = ({
             <button
               type="button"
               onClick={marcarTodosComoCargado}
-              disabled={itemsElegiblesCargaMasiva.length === 0}
-              title="Marca como CARGADO todos los ítems de esta cotización (los ítems PAD no se modifican)"
+              disabled={itemsElegiblesCargaMasiva.length === 0 || soloLectura}
+              title={soloLectura ? 'Bloqueado: ya imputado' : 'Marca como CARGADO todos los ítems de esta cotización (los ítems PAD no se modifican)'}
               className="flex items-center gap-1 h-6 px-2 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <CheckCircle2 size={11} /> Marcar todos como Cargado
@@ -730,7 +732,8 @@ export const CotizacionCard = ({
                                 <select
                                   value={it.estadoCarga || 'PENDIENTE'}
                                   onChange={(e) => onActualizarEstadoItem(it.id, e.target.value)}
-                                  className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer ${estilo.bg} ${estilo.border} ${estilo.text}`}
+                                  disabled={soloLectura}
+                                  className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${estilo.bg} ${estilo.border} ${estilo.text}`}
                                 >
                                   {ESTADO_CARGA_OPTIONS.map(op => (
                                     <option key={op} value={op}>{op}</option>
@@ -760,8 +763,9 @@ export const CotizacionCard = ({
                                 <button
                                   type="button"
                                   onClick={() => mostrandoFormularioContenido ? cerrarFormularioContenido() : abrirFormularioContenido(it.id)}
-                                  title={sinContenidoAun ? "Agregar contenido del PAD" : "Agregar más contenido a este PAD"}
-                                  className="text-fuchsia-600 hover:text-fuchsia-800 transition p-0.5 rounded hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30"
+                                  disabled={soloLectura}
+                                  title={soloLectura ? 'Bloqueado: ya imputado' : sinContenidoAun ? "Agregar contenido del PAD" : "Agregar más contenido a este PAD"}
+                                  className="text-fuchsia-600 hover:text-fuchsia-800 transition p-0.5 rounded hover:bg-fuchsia-50 dark:hover:bg-fuchsia-950/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                                 >
                                   <PackagePlus size={13} />
                                 </button>
@@ -769,16 +773,18 @@ export const CotizacionCard = ({
                               <button
                                 type="button"
                                 onClick={() => iniciarEdicion(it)}
-                                title="Editar ítem"
-                                className="text-blue-600 hover:text-blue-800 transition p-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                                disabled={soloLectura}
+                                title={soloLectura ? 'Bloqueado: ya imputado' : 'Editar ítem'}
+                                className="text-blue-600 hover:text-blue-800 transition p-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                               >
                                 <Pencil size={12} />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => onEliminarItem(it.id)}
-                                title="Eliminar ítem"
-                                className="text-red-500 hover:text-red-700 transition p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
+                                disabled={soloLectura}
+                                title={soloLectura ? 'Bloqueado: ya imputado' : 'Eliminar ítem'}
+                                className="text-red-500 hover:text-red-700 transition p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                               >
                                 <Trash2 size={12} />
                               </button>

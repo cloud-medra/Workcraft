@@ -20,6 +20,7 @@ import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { exportarGestionesAExcel, descargarPlantillaCSV, parsearArchivoImportacion } from '../utils/gestionesImportExport';
+import { periodoEstaAbierto } from '../components/Cargastab/verificacionPeriodoBloque';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -473,6 +474,30 @@ export const useGestionesImplantesData = () => {
       const batch = writeBatch(db);
       const logsAAgregar = [];
 
+      // Fallback de período para ítems legacy sin periodoAnio/periodoMes
+      // (gap "a" del re-sync automático hacia implantes_imputadas): se
+      // resuelve como mucho una vez por guardado, no por ítem.
+      let periodoAbiertoFallback = null;
+      let periodoAbiertoFallbackCargado = false;
+      const obtenerPeriodoAbiertoFallback = async () => {
+        if (periodoAbiertoFallbackCargado) return periodoAbiertoFallback;
+        periodoAbiertoFallbackCargado = true;
+        const qFallback = query(
+          collection(db, 'cierres_periodos'),
+          where('modulo', '==', 'implantes'),
+          where('estado', 'in', ['ABIERTO', 'REABIERTO'])
+        );
+        const snapFallback = await getDocs(qFallback);
+        if (!snapFallback.empty) {
+          const d = snapFallback.docs[0].data();
+          periodoAbiertoFallback = { anio: d.anio, mes: d.mes };
+        }
+        return periodoAbiertoFallback;
+      };
+
+      let totalImputadasActualizadas = 0;
+      const itemsNoSincronizados = [];
+
       for (const registro of registrosActualizados) {
         const dataNormalizada = {
           gestionId: gestionIdLimpio,
@@ -596,16 +621,46 @@ export const useGestionesImplantesData = () => {
         if (bloqueEstaSolicitado) {
           const itemsActuales = registro.cotizaciones?.[0]?.items || [];
           const { anio, mes, dia } = descomponerFecha(dataNormalizada.fecha);
+          const itemsResincronizados = [];
+          const itemsNoSincronizadosBloque = [];
 
-          itemsActuales.forEach(it => {
-            if (!it.periodoAnio || !it.periodoMes) return;
+          for (const it of itemsActuales) {
+            let periodoAnioItem = it.periodoAnio;
+            let periodoMesItem = it.periodoMes;
+
+            // Gap (a): ítem legacy sin período propio — usar el período
+            // actualmente abierto como fallback en vez de saltarlo en silencio.
+            if (!periodoAnioItem || !periodoMesItem) {
+              const fallback = await obtenerPeriodoAbiertoFallback();
+              if (!fallback) {
+                const noSync = { itemId: it.id, referencia: it.referencia, motivo: 'SIN_PERIODO' };
+                itemsNoSincronizados.push(noSync);
+                itemsNoSincronizadosBloque.push(noSync);
+                continue;
+              }
+              periodoAnioItem = fallback.anio;
+              periodoMesItem = fallback.mes;
+            }
+
+            // Gap (b): no sobrescribir en silencio una imputación cuyo
+            // período ya fue cerrado (posiblemente en el medio de esta edición).
+            const abierto = await periodoEstaAbierto(periodoAnioItem, periodoMesItem);
+            if (!abierto) {
+              const noSync = { itemId: it.id, referencia: it.referencia, motivo: 'PERIODO_CERRADO' };
+              itemsNoSincronizados.push(noSync);
+              itemsNoSincronizadosBloque.push(noSync);
+              continue;
+            }
 
             const imputadaRef = doc(
               db,
-              'implantes_imputadas', String(it.periodoAnio),
-              'meses', it.periodoMes,
+              'implantes_imputadas', String(periodoAnioItem),
+              'meses', periodoMesItem,
               'documentos', it.id
             );
+
+            itemsResincronizados.push(it.id);
+            totalImputadasActualizadas++;
 
             batch.set(imputadaRef, {
               gestionId: dataNormalizada.gestionId,
@@ -647,15 +702,30 @@ export const useGestionesImplantesData = () => {
               vencimiento: it.vencimiento || '',
               sinCodigo: !!it.sinCodigo,
               estadoCarga: it.estadoCarga || 'PENDIENTE',
-              periodoAnio: it.periodoAnio,
-              periodoMes: it.periodoMes,
+              periodoAnio: periodoAnioItem,
+              periodoMes: periodoMesItem,
               esPad: !!it.esPad,
               padPadreId: it.padPadreId || null,
 
               registradoPor: userData?.nombreCompleto || 'Usuario',
               actualizadoEn: new Date()
             }, { merge: true });
-          });
+          }
+
+          // Deja constancia explícita de que este guardado volvió a
+          // sincronizar la imputación (ej. tras editar un bloque ya
+          // SOLICITADO con el candado abierto) — antes quedaba implícito
+          // dentro del mismo log ITEM_EDITADO, sin una acción propia.
+          if (itemsResincronizados.length > 0 || itemsNoSincronizadosBloque.length > 0) {
+            logsAAgregar.push({
+              docRef: docRefFinal,
+              accion: 'IMPUTACION_RESINCRONIZADA',
+              detalles: {
+                itemsActualizados: itemsResincronizados,
+                itemsNoSincronizados: itemsNoSincronizadosBloque
+              }
+            });
+          }
         }
 
         (registro.itemsEliminados || []).forEach(itEliminado => {
@@ -678,7 +748,22 @@ export const useGestionesImplantesData = () => {
         logsAAgregar.map(({ docRef, accion, detalles }) => registrarLog(docRef, accion, detalles))
       );
 
-      showToast("Gestión actualizada correctamente", "success");
+      if (totalImputadasActualizadas > 0) {
+        const sufijoNoSincronizados = itemsNoSincronizados.length > 0
+          ? ` (${itemsNoSincronizados.length} ítem${itemsNoSincronizados.length === 1 ? '' : 's'} no se pudo sincronizar: período cerrado)`
+          : '';
+        showToast(
+          `Gestión actualizada correctamente. ${totalImputadasActualizadas} ítem${totalImputadasActualizadas === 1 ? '' : 's'} actualizado${totalImputadasActualizadas === 1 ? '' : 's'} también en Resumen${sufijoNoSincronizados}`,
+          "success"
+        );
+      } else if (itemsNoSincronizados.length > 0) {
+        showToast(
+          `Gestión actualizada, pero ${itemsNoSincronizados.length} ítem${itemsNoSincronizados.length === 1 ? '' : 's'} no se pudo sincronizar con Resumen: período cerrado`,
+          "info"
+        );
+      } else {
+        showToast("Gestión actualizada correctamente", "success");
+      }
     } catch (error) {
       console.error("Error al guardar:", error);
       showToast("Error al guardar: " + error.message, "error");

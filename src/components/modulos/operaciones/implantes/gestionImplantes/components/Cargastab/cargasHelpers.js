@@ -76,3 +76,17 @@ export const esEstadoCargaCompleto = (estado) => estado === 'CARGADO' || estado 
 // PAD "padre" ya tiene al menos un ítem de contenido asociado.
 export const tieneContenidoPad = (items, padPadreId) =>
   (items || []).some(it => it.padPadreId === padPadreId);
+
+// Lista (sin duplicados) de los períodos {anio, mes} presentes entre los
+// ítems de un bloque — usada por el candado de bloqueo para saber contra
+// qué período(s) de Control Mensual hay que validar antes de permitir editar
+// un bloque ya imputado.
+export const obtenerPeriodosDeItems = (items) => {
+  const mapa = new Map();
+  (items || []).forEach(it => {
+    if (!it.periodoAnio || !it.periodoMes) return;
+    const clave = `${it.periodoAnio}__${it.periodoMes}`;
+    if (!mapa.has(clave)) mapa.set(clave, { anio: it.periodoAnio, mes: it.periodoMes });
+  });
+  return [...mapa.values()];
+};

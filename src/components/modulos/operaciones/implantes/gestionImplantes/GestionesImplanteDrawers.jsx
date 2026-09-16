@@ -30,7 +30,8 @@ const ACCION_LABELS = {
   ELIMINACION: 'Eliminación de Gestión',
   ITEM_CREADO: 'Ítem Registrado (Carga)',
   ITEM_EDITADO: 'Ítem Editado (Carga)',
-  ITEM_ELIMINADO: 'Ítem Eliminado (Carga)'
+  ITEM_ELIMINADO: 'Ítem Eliminado (Carga)',
+  IMPUTACION_RESINCRONIZADA: 'Re-sincronización con Imputadas'
 };
 
 const ACCION_ESTILOS = {
@@ -42,7 +43,8 @@ const ACCION_ESTILOS = {
   ELIMINACION: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
   ITEM_CREADO: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
   ITEM_EDITADO: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  ITEM_ELIMINADO: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+  ITEM_ELIMINADO: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
+  IMPUTACION_RESINCRONIZADA: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400'
 };
 
 const getAccionEstilo = (accion) => ACCION_ESTILOS[accion] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
@@ -181,6 +183,36 @@ const DetalleLog = ({ log }) => {
           (cantidad: {d.cantidad ?? '-'}){d.paciente ? <> de <strong>{d.paciente}</strong></> : null}
         </p>
       );
+
+    case 'IMPUTACION_RESINCRONIZADA': {
+      const actualizados = d.itemsActualizados || [];
+      const noSincronizados = d.itemsNoSincronizados || [];
+      return (
+        <div className="space-y-1.5">
+          {actualizados.length > 0 && (
+            <p className="text-emerald-600 dark:text-emerald-400">
+              {actualizados.length} ítem{actualizados.length === 1 ? '' : 's'} actualizado{actualizados.length === 1 ? '' : 's'} en <strong>implantes_imputadas</strong>.
+            </p>
+          )}
+          {noSincronizados.length > 0 && (
+            <div className="space-y-0.5">
+              <p className="text-purple-600 dark:text-purple-400 font-medium">
+                {noSincronizados.length} ítem{noSincronizados.length === 1 ? '' : 's'} NO sincronizado{noSincronizados.length === 1 ? '' : 's'}:
+              </p>
+              <ul className="pl-3 list-disc text-gray-500 dark:text-gray-400">
+                {noSincronizados.map((it, idx) => (
+                  <li key={idx}>
+                    <span className="font-mono">{it.referencia || it.itemId}</span>
+                    {' — '}
+                    {it.motivo === 'PERIODO_CERRADO' ? 'período ya cerrado' : 'sin período asociado'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     default:
       return (

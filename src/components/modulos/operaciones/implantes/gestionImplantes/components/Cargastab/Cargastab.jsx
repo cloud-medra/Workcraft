@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Loader2,
   Lock,
+  Unlock,
   Package,
   Layers,
   Check,
@@ -14,12 +15,16 @@ import {
   Copy
 } from 'lucide-react';
 import { formatearFechaTabla, calcularCamposFinancieros, esClasePad, VALOR_LOTE_VENCIMIENTO_PAD } from './cargasHelpers';
+import { verificarPeriodosBloque } from './verificacionPeriodoBloque';
 import { construirTextoAdmisionNombre } from '../../utils/gestionesImportExport';
 import { useRecargosActivos } from './useRecargosActivos';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
+import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import { CotizacionCard } from './CotizacionCard';
 import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 import { construirItemLoteDesdeFila } from './loteAdicionalHelpers';
+
+const PATH_VISTA = '/implantes/gestionImplantes/cargas';
 
 const INITIAL_ITEM = {
   numCotizacion: '',
@@ -55,6 +60,19 @@ const DRAFT_LOTE_VACIO = { cantidad: '', lote: '', vencimiento: '' };
 export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem, periodoAbierto, cargandoPeriodo, handleCopiarTexto }, ref) => {
   const bloqueActivo = formData?.bloques?.[bloqueActivoIndex];
   const cotizaciones = bloqueActivo?.cotizaciones || [];
+
+  // Candado de bloqueo: un bloque ya SOLICITADO (ya copiado a
+  // implantes_imputadas) queda de solo lectura hasta que el usuario lo
+  // desbloquea explícitamente. Se resetea al cambiar de bloque a propósito
+  // — no queremos que quede "abierto" silenciosamente si el usuario navega
+  // a otro bloque y vuelve.
+  const [desbloqueadoLocal, setDesbloqueadoLocal] = useState(false);
+  const [verificandoCandado, setVerificandoCandado] = useState(false);
+  const [errorCandado, setErrorCandado] = useState('');
+  const { hasPermission } = useGranularPermission();
+
+  const bloqueSolicitado = (bloqueActivo?.solicitud || '').toUpperCase() === 'SOLICITADO';
+  const bloqueado = bloqueSolicitado && !desbloqueadoLocal;
 
   const [nuevoItem, setNuevoItem] = useState(INITIAL_ITEM);
   const [errores, setErrores] = useState({});
@@ -125,6 +143,8 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     resetContenidoPad();
     resetLotesAdicionales();
     setErrores({});
+    setDesbloqueadoLocal(false);
+    setErrorCandado('');
   }, [bloqueActivoIndex]);
 
   const formatearMiles = (valor) => {
@@ -381,7 +401,32 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     limpiarFormularioNuevoItem();
   };
 
+  const handleAbrirCandado = async () => {
+    if (!bloqueActivo || verificandoCandado) return;
+    setErrorCandado('');
+    setVerificandoCandado(true);
+    try {
+      const items = bloqueActivo.cotizaciones?.[0]?.items || [];
+      const resultado = await verificarPeriodosBloque(items);
+      if (resultado.estado !== 'ABIERTO') {
+        setErrorCandado(
+          resultado.estado === 'CERRADO'
+            ? 'No se puede editar: el período de este bloque ya fue cerrado.'
+            : 'No se pudo determinar el período de este bloque — contactá a un administrador.'
+        );
+        return;
+      }
+      setDesbloqueadoLocal(true);
+    } catch (error) {
+      console.error('Error al verificar período para desbloquear candado:', error);
+      setErrorCandado('No se pudo verificar el período. Intentá de nuevo.');
+    } finally {
+      setVerificandoCandado(false);
+    }
+  };
+
   useImperativeHandle(ref, () => ({
+    estaBloqueDesbloqueado: () => desbloqueadoLocal,
     confirmarItemPendiente: () => {
       const hayItemCargado = !!(
         nuevoItem.referencia.trim() ||
@@ -454,6 +499,32 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               <Copy size={11} />
             </button>
           )}
+          {bloqueSolicitado && hasPermission(PATH_VISTA, 'tabla_cotizaciones', 'accion_desbloquear_candado') && (
+            <button
+              type="button"
+              onClick={bloqueado ? handleAbrirCandado : undefined}
+              disabled={!bloqueado || verificandoCandado}
+              title={
+                bloqueado
+                  ? 'Este bloque ya está imputado — click para desbloquear edición'
+                  : 'Desbloqueado — edita y presiona "Guardar Todo" para volver a bloquearlo'
+              }
+              className={`flex items-center gap-1 h-6 px-2 rounded text-[9px] font-bold transition shrink-0 ${
+                bloqueado
+                  ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-950/50 cursor-pointer'
+                  : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 cursor-default'
+              } disabled:opacity-60`}
+            >
+              {verificandoCandado ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : bloqueado ? (
+                <Lock size={11} />
+              ) : (
+                <Unlock size={11} />
+              )}
+              <span>{bloqueado ? 'Imputado' : 'Editando'}</span>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center gap-2 text-[9px] text-slate-500 dark:text-gray-400">
@@ -486,7 +557,23 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
         </div>
       )}
 
-      <fieldset disabled={sinPeriodoAbierto} className={sinPeriodoAbierto ? 'opacity-60' : ''}>
+      {bloqueado && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-700 dark:text-amber-400">
+          <Lock size={14} className="shrink-0" />
+          <span>
+            Este bloque ya fue solicitado e imputado. Está en solo lectura — presiona el candado para desbloquearlo y poder editarlo.
+          </span>
+        </div>
+      )}
+
+      {errorCandado && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-[11px] text-red-700 dark:text-red-400">
+          <AlertCircle size={14} className="shrink-0" />
+          <span>{errorCandado}</span>
+        </div>
+      )}
+
+      <fieldset disabled={sinPeriodoAbierto || bloqueado} className={sinPeriodoAbierto || bloqueado ? 'opacity-60' : ''}>
         <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-lg shadow-xs p-3 space-y-2.5">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 items-end">
 
@@ -624,9 +711,9 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               <button
                 type="button"
                 onClick={handleAgregar}
-                disabled={sinPeriodoAbierto}
+                disabled={sinPeriodoAbierto || bloqueado}
                 className="h-7 px-2.5 bg-[#2383C2] hover:bg-[#1d6fa5] text-white rounded font-semibold flex items-center justify-center gap-1 transition text-[10px] shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                title={sinPeriodoAbierto ? "No hay período abierto para Implantes" : "Agregar ítem"}
+                title={bloqueado ? 'Bloqueado: desbloquea el candado para agregar ítems' : sinPeriodoAbierto ? "No hay período abierto para Implantes" : "Agregar ítem"}
               >
                 <Plus size={13} />
               </button>
@@ -1009,6 +1096,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               recargosActivos={recargosActivos}
               defaultOpen={idx === cotizaciones.length - 1}
               periodoAbierto={periodoAbierto}
+              soloLectura={bloqueado}
               onAgregarItem={(itemData) => onAgregarItem(bloqueActivoIndex, itemData)}
               onEliminarItem={(itemId) => onEliminarItem(bloqueActivoIndex, cot.id, itemId)}
               onEliminarCotizacion={() => onEliminarCotizacion(bloqueActivoIndex, cot.id)}

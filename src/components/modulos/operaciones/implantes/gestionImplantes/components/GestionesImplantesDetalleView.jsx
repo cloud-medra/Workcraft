@@ -4,11 +4,13 @@ import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert } fro
 
 import { db } from '../../../../../../firebaseConfig';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import { useToast } from '../../../../../../context/ToastContext';
 import { COLECCIONES, MESES } from '../../../../administracion/controlMensual/constants';
 import { InformacionTab } from './Informaciontab/Informaciontab';
 import { DetallesTab } from './Detallestab/Detallestab';
 import { CargasTab } from './Cargastab/Cargastab';
 import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
+import { verificarPeriodosBloque } from './Cargastab/verificacionPeriodoBloque';
 import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
@@ -40,6 +42,7 @@ const GestionesImplantesDetalleView = forwardRef(({
 }, ref) => {
 
   const { hasAccesoProceso } = useGranularPermission();
+  const { showToast } = useToast();
   const tabsPermitidas = useMemo(
     () => ALL_TABS.filter(t => hasAccesoProceso(t.path)),
     [hasAccesoProceso]
@@ -363,8 +366,29 @@ const GestionesImplantesDetalleView = forwardRef(({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hayCambios]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
+
+    // Candado de bloqueo (bloque ya SOLICITADO/imputado, desbloqueado a
+    // propósito para esta edición): antes de guardar, re-verificar que su
+    // período siga abierto — pudo haberse cerrado mientras el usuario
+    // editaba. Si ya cerró, se aborta el guardado completo (no se toca
+    // Cargas ni implantes_imputadas) y se avisa, en vez de sobrescribir en
+    // silencio una imputación de un período ya cerrado.
+    if (cargasTabRef.current?.estaBloqueDesbloqueado?.()) {
+      const bloqueDesbloqueado = formData.bloques[bloqueActivoIndex];
+      const itemsBloqueDesbloqueado = bloqueDesbloqueado?.cotizaciones?.[0]?.items || [];
+      const resultadoPeriodo = await verificarPeriodosBloque(itemsBloqueDesbloqueado);
+      if (resultadoPeriodo.estado !== 'ABIERTO') {
+        showToast(
+          resultadoPeriodo.estado === 'CERRADO'
+            ? 'No se guardó: el período de este bloque ya fue cerrado mientras lo editabas.'
+            : 'No se guardó: no se pudo determinar el período de este bloque.',
+          'error'
+        );
+        return;
+      }
+    }
 
     let formDataParaGuardar = formData;
 
