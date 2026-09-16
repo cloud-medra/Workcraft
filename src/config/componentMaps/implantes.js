@@ -162,6 +162,7 @@ export const implantesComponentMaps = {
               action_eliminar_item: { label: 'Operación: Eliminar Ítem' },
               action_eliminar_cotizacion: { label: 'Operación: Eliminar Cotización Completa' },
               formulario_contenido_pad: { label: 'Bloque: Agregar Contenido de PAD (referencia, cantidad, lote, vencimiento)' },
+              accion_desbloquear_candado: { label: 'Operación: Desbloquear edición de un bloque ya imputado (candado)' },
             },
           },
         },
@@ -248,6 +249,29 @@ export const implantesComponentMaps = {
           col_vencimiento: { label: 'Columna: Vencimiento' },
           col_estado_carga: { label: 'Columna: Estado Carga' },
           col_periodo: { label: 'Columna: Período' },
+        },
+      },
+    },
+  },
+
+  '/implantes/sincronizacionImputadas': {
+    label: 'Sincronización de Imputadas (SincronizacionImputadas.jsx) — compara y corrige implantes_gestiones vs. implantes_imputadas',
+    sections: {
+      busqueda: {
+        label: 'Sección: Búsqueda por Admisión',
+        elements: {
+          input_admisiones: { label: 'Campo: N° de Admisión(es) a comparar' },
+          btn_buscar: { label: 'Acción: Buscar y Comparar' },
+        },
+      },
+      acciones: {
+        label: 'Sección: Acciones sobre el Diff',
+        elements: {
+          // Corrige un bloque ya imputado, saltándose el flujo normal de
+          // edición + candado de Cargas — por eso va con permiso propio,
+          // pensado para quedar restringido a los mismos usuarios que ya
+          // pueden desbloquear el candado en Cargas (accion_desbloquear_candado).
+          btn_aplicar_correccion: { label: 'Acción: Aplicar Corrección (re-sincroniza un bloque puntual)' },
         },
       },
     },

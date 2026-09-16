@@ -21,6 +21,8 @@ import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { exportarGestionesAExcel, descargarPlantillaCSV, parsearArchivoImportacion } from '../utils/gestionesImportExport';
 import { periodoEstaAbierto } from '../components/Cargastab/verificacionPeriodoBloque';
+import { refImputada, construirPayloadImputada } from '../utils/imputadaSync';
+import { registrarLogImplantes } from '../utils/registrarLogImplantes';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -84,14 +86,6 @@ const getDetallesRef = (fechaString, admisionId, empresaNombre) => {
     'empresa', empresaClean,
     'detalles'
   );
-};
-
-const descomponerFecha = (fechaString) => {
-  if (fechaString && fechaString.includes('-')) {
-    const [anio, mes, dia] = fechaString.split('-');
-    return { anio, mes, dia };
-  }
-  return { anio: '0000', mes: '00', dia: '00' };
 };
 
 export const useGestionesImplantesData = () => {
@@ -164,21 +158,7 @@ export const useGestionesImplantesData = () => {
     return () => unsubscribe();
   }, []);
 
-  const registrarLog = async (docRef, accion, detalles) => {
-    try {
-      const logsSubcollectionRef = collection(docRef, "logs");
-      await addDoc(logsSubcollectionRef, {
-        accion,
-        detalles,
-        active: true,
-        usuario: userData?.nombreCompleto || 'Usuario Desconocido',
-        usuarioEmail: userData?.email || '',
-        timestamp: serverTimestamp()
-      });
-    } catch (err) {
-      console.error("Error al registrar log de auditoría:", err);
-    }
-  };
+  const registrarLog = (docRef, accion, detalles) => registrarLogImplantes(docRef, accion, detalles, userData);
 
   const handleSincronizarVinculados = async () => {
     setSincronizando(true);
@@ -620,7 +600,6 @@ export const useGestionesImplantesData = () => {
 
         if (bloqueEstaSolicitado) {
           const itemsActuales = registro.cotizaciones?.[0]?.items || [];
-          const { anio, mes, dia } = descomponerFecha(dataNormalizada.fecha);
           const itemsResincronizados = [];
           const itemsNoSincronizadosBloque = [];
 
@@ -652,64 +631,14 @@ export const useGestionesImplantesData = () => {
               continue;
             }
 
-            const imputadaRef = doc(
-              db,
-              'implantes_imputadas', String(periodoAnioItem),
-              'meses', periodoMesItem,
-              'documentos', it.id
-            );
-
             itemsResincronizados.push(it.id);
             totalImputadasActualizadas++;
 
-            batch.set(imputadaRef, {
-              gestionId: dataNormalizada.gestionId,
-              agendaId: dataNormalizada.agendaId,
-              admision: dataNormalizada.admision,
-              paciente: dataNormalizada.nombre,
-              medico: dataNormalizada.medico,
-              fecha: dataNormalizada.fecha,
-              anio,
-              mes,
-              dia,
-              empresa: dataNormalizada.empresa,
-              informe: dataNormalizada.informe,
-              convenio: dataNormalizada.convenio,
-              prevision: dataNormalizada.prevision,
-              descripcion: dataNormalizada.descripcion,
-              centro: dataNormalizada.centro,
-              atributo: dataNormalizada.atributo,
-              estado: dataNormalizada.estado,
-              costoGestion: dataNormalizada.costo,
-
-              numCotizacion: it.numCotizacion || 'P',
-              totalCotizacion: Number(it.totalCotizacion) || 0,
-              itemId: it.id,
-              referencia: it.referencia || 'P',
-              codigo: it.codigo || 'P',
-              descriptorAuto: it.descriptorAuto || 'P',
-              clase: it.clase || 'P',
-              tipoVinculado: it.tipoVinculado || 'P',
-              detalle: it.detalle || 'P',
-              empresaVinculada: it.empresaVinculada || 'P',
-              precio: Number(it.precio) || 0,
-              cantidad: Number(it.cantidad) || 0,
-              vecesCosto: Number(it.vecesCosto) || 1,
-              recargoEncontrado: !!it.recargoEncontrado,
-              venta: Number(it.venta) || 0,
-              total: Number(it.totalItem) || 0,
-              lote: it.lote || 'P',
-              vencimiento: it.vencimiento || '',
-              sinCodigo: !!it.sinCodigo,
-              estadoCarga: it.estadoCarga || 'PENDIENTE',
-              periodoAnio: periodoAnioItem,
-              periodoMes: periodoMesItem,
-              esPad: !!it.esPad,
-              padPadreId: it.padPadreId || null,
-
-              registradoPor: userData?.nombreCompleto || 'Usuario',
-              actualizadoEn: new Date()
-            }, { merge: true });
+            batch.set(
+              refImputada(periodoAnioItem, periodoMesItem, it.id),
+              construirPayloadImputada(it, dataNormalizada, periodoAnioItem, periodoMesItem, userData?.nombreCompleto),
+              { merge: true }
+            );
           }
 
           // Deja constancia explícita de que este guardado volvió a

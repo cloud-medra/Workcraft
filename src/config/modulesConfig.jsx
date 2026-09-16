@@ -22,6 +22,7 @@ import {
   FilePlus,
   Folder,
   FolderKanban,
+  GitCompareArrows,
   Microscope,
   Hash,
   Handshake,
@@ -154,6 +155,7 @@ export const MODULES = {
       { label: 'Gestion', path: '/implantes/gestionImplantes', icon: <FolderKanban size={14} /> },
       { label: 'Solicitud', path: '/implantes/solicitudImplantes', icon: <FilePlus size={14} /> },
       { label: 'Resumen', path: '/implantes/resumenImplantes', icon: <BarChart2 size={14} /> },
+      { label: 'Sincronizar', path: '/implantes/sincronizacionImputadas', icon: <GitCompareArrows size={14} /> },
     ]
   },
   hemodinamia: {

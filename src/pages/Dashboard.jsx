@@ -63,6 +63,7 @@ import ReportesInfo from '../components/modulos/operaciones/documentos/reportesI
 import GestionImplantes from '../components/modulos/operaciones/implantes/gestionImplantes/GestionImplantes';
 import SolicitudImplantes from '../components/modulos/operaciones/implantes/solicitudImplantes/SolicitudImplantes';
 import ResumenImplantes from '../components/modulos/operaciones/implantes/resumenImplantes/ResumenImplantes.jsx';
+import SincronizacionImputadas from '../components/modulos/operaciones/implantes/sincronizacionImputadas/SincronizacionImputadas.jsx';
 
 import GestionHemodinamia from '../components/modulos/operaciones/hemodinamia/gestionHemodinamia/GestionHemodinamia';
 
@@ -269,6 +270,7 @@ const Dashboard = () => {
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,
     '/implantes/resumenImplantes': <ResumenImplantes />,
+    '/implantes/sincronizacionImputadas': <SincronizacionImputadas />,
 
     '/hemodinamia/gestionHemodinamia': <GestionHemodinamia />,
 
