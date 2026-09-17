@@ -67,6 +67,8 @@ import ResumenImplantes from '../components/modulos/operaciones/implantes/resume
 import SincronizacionImputadas from '../components/modulos/operaciones/implantes/sincronizacionImputadas/SincronizacionImputadas.jsx';
 
 import GestionHemodinamia from '../components/modulos/operaciones/hemodinamia/gestionHemodinamia/GestionHemodinamia';
+import SolicitudHemodinamia from '../components/modulos/operaciones/hemodinamia/solicitudHemodinamia/SolicitudHemodinamia';
+import ResumenHemodinamia from '../components/modulos/operaciones/hemodinamia/resumenHemodinamia/ResumenHemodinamia';
 
 // --- CONSIGNACION ---
 import IngresarGuiaDespacho from '../components/modulos/operaciones/consignacion/ingresarGuiaDespacho/IngresarGuiaDespacho';
@@ -275,6 +277,8 @@ const Dashboard = () => {
     '/implantes/sincronizacionImputadas': <SincronizacionImputadas />,
 
     '/hemodinamia/gestionHemodinamia': <GestionHemodinamia />,
+    '/hemodinamia/solicitudHemodinamia': <SolicitudHemodinamia />,
+    '/hemodinamia/resumenHemodinamia': <ResumenHemodinamia />,
 
     '/settings/datosUsuarios': <DatosUsuarios userData={userData} />,
     '/settings/cambiarPasswordAjustes': <CambiarPasswordAjustes userData={userData} />,

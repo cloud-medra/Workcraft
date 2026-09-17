@@ -9,17 +9,20 @@
 
 export const ORIGEN = {
   IMPLANTES: 'IMPLANTES',
-  CONSIGNACION: 'CONSIGNACION'
+  CONSIGNACION: 'CONSIGNACION',
+  HEMODINAMIA: 'HEMODINAMIA'
 };
 
 export const ORIGEN_LABEL = {
   [ORIGEN.IMPLANTES]: 'Implantes',
-  [ORIGEN.CONSIGNACION]: 'Consignación'
+  [ORIGEN.CONSIGNACION]: 'Consignación',
+  [ORIGEN.HEMODINAMIA]: 'Hemodinamia'
 };
 
 export const ORIGEN_BADGE_STYLE = {
   [ORIGEN.IMPLANTES]: 'bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-400 border-violet-300 dark:border-violet-800',
-  [ORIGEN.CONSIGNACION]: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800'
+  [ORIGEN.CONSIGNACION]: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800',
+  [ORIGEN.HEMODINAMIA]: 'bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800'
 };
 
 // --- Gestión (tabla principal) ---
@@ -39,6 +42,26 @@ const obtenerPeriodoBloqueImplantes = (bloque) => {
 
 export const normalizarFilaGestionImplantes = (bloque) => ({
   origen: ORIGEN.IMPLANTES,
+  id: bloque.id,
+  refPath: bloque.refPath,
+  gestionId: bloque.gestionId || bloque.agendaId || 'P',
+  nombre: bloque.nombre || 'P',
+  medico: bloque.medico || 'P',
+  fecha: bloque.fecha || '',
+  empresa: bloque.empresa || 'P',
+  centro: bloque.centro || 'P',
+  atributo: bloque.atributo || 'P',
+  estado: bloque.estado || 'AGENDADO',
+  costo: Number(bloque.costo) || 0,
+  solicitud: bloque.solicitud || 'PENDIENTE',
+  registradoPor: bloque.registradoPor || '',
+  fechaRegistro: bloque.fechaRegistro || null,
+  ...obtenerPeriodoBloqueImplantes(bloque),
+  _raw: bloque
+});
+
+export const normalizarFilaGestionHemodinamia = (bloque) => ({
+  origen: ORIGEN.HEMODINAMIA,
   id: bloque.id,
   refPath: bloque.refPath,
   gestionId: bloque.gestionId || bloque.agendaId || 'P',
@@ -82,6 +105,29 @@ export const normalizarFilaGestionConsignacion = (item) => ({
 
 export const normalizarImputadaImplantes = (doc) => ({
   origen: ORIGEN.IMPLANTES,
+  id: doc.id,
+  gestionId: doc.gestionId || doc.agendaId || 'P',
+  paciente: doc.paciente || 'P',
+  medico: doc.medico || 'P',
+  fecha: doc.fecha || '',
+  empresa: doc.empresa || 'P',
+  codigo: doc.codigo || 'P',
+  referencia: doc.referencia || 'P',
+  cantidad: Number(doc.cantidad) || 0,
+  costoUnitario: Number(doc.precio) || 0,
+  vecesCosto: doc.vecesCosto ?? null,
+  venta: Number(doc.venta) || 0,
+  total: Number(doc.total) || 0,
+  lote: doc.lote || '',
+  vencimiento: doc.vencimiento || '',
+  estado: doc.estado || 'AGENDADO',
+  periodoAnio: doc.periodoAnio || '',
+  periodoMes: doc.periodoMes || '',
+  _raw: doc
+});
+
+export const normalizarImputadaHemodinamia = (doc) => ({
+  origen: ORIGEN.HEMODINAMIA,
   id: doc.id,
   gestionId: doc.gestionId || doc.agendaId || 'P',
   paciente: doc.paciente || 'P',
