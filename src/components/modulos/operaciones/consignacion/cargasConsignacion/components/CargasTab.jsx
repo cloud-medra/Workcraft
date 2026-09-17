@@ -1,10 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; 
-import { User, Package, UploadCloud, Loader2, AlertCircle, CheckCircle2, Save, Link2 } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { collection, doc, query, orderBy, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { db } from '../../../../../../firebaseConfig';
+import { useToast } from '../../../../../../context/ToastContext';
+import { useUser } from '../../../../../../context/UserContext';
+import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import { User, Package, UploadCloud, Loader2, AlertCircle, CheckCircle2, Save, Link2, Pencil, Check, X, Lock, Unlock } from 'lucide-react';
 import { resolverGuiaCacheada, resolverMaestroCacheado, resolverMaestrosCacheados, normalizarCodigo } from './cacheDelivery';
+import { useAutocompleteReferenciaConsignacion } from './useAutocompleteReferenciaConsignacion';
+import { periodoEstaAbierto } from './verificacionPeriodoConsignacion';
+import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
 
 const COL_MAESTROS_RECARGOS = 'maestros_recargos';
+const VIEW_PATH_CARGAS = '/consignacion/cargasConsignacion/cargas';
 
 const formatearFechaTabla = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
@@ -294,9 +302,54 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
   );
 };
 
+// El listado de sugerencias vive dentro de la tabla de ítems, que tiene
+// overflow-auto — eso recorta cualquier dropdown posicionado con `absolute`
+// que se salga de sus bordes. Se resuelve sacándolo del flujo con un portal
+// a document.body, posicionado en coordenadas de viewport (mismo patrón que
+// CotizacionCard.jsx de Implantes).
+const DropdownReferenciaPortal = ({ anchorRef, portalRef, children }) => {
+  const [rect, setRect] = useState(null);
+
+  useLayoutEffect(() => {
+    const actualizarPosicion = () => {
+      if (anchorRef.current) setRect(anchorRef.current.getBoundingClientRect());
+    };
+    actualizarPosicion();
+    window.addEventListener('scroll', actualizarPosicion, true);
+    window.addEventListener('resize', actualizarPosicion);
+    return () => {
+      window.removeEventListener('scroll', actualizarPosicion, true);
+      window.removeEventListener('resize', actualizarPosicion);
+    };
+  }, [anchorRef]);
+
+  if (!rect) return null;
+
+  return createPortal(
+    <div
+      ref={portalRef}
+      style={{ position: 'fixed', top: rect.bottom + 4, left: rect.left, zIndex: 9999 }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
+const BORRADOR_ITEM_VACIO = {
+  referencia: '', codigo: '', empresa: '', descripcion: '', costo: '',
+  cantidad: '', lote: '', vencimiento: ''
+};
+
 const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) => {
   const totalItems = items.length;
   const sumaCostos = items.reduce((acc, it) => acc + (Number(it.costo) || 0) * (Number(it.cantidad) || 1), 0);
+
+  const { showToast } = useToast();
+  const { userData } = useUser();
+  const { hasPermission } = useGranularPermission();
+
+  const registrarLog = (docRef, accion, detalles) => registrarLogConsignacion(docRef, accion, detalles, userData);
 
   const [recargos, setRecargos] = useState([]);
 
@@ -462,13 +515,200 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
 
   const handleActualizarEstadoCarga = async (it, nuevoEstado) => {
     if (!it.ref) return;
+    const estaSolicitado = (it.estado || '').toUpperCase() === 'SOLICITADO';
     setActualizandoEstadoId(it.id);
     try {
-      await updateDoc(it.ref, { estado: nuevoEstado });
+      if (estaSolicitado) {
+        // El ítem ya fue exportado a consignacion_imputadas — solo llega
+        // acá con el candado desbloqueado (el select está deshabilitado si
+        // no), así que el cambio también se resincroniza en el mismo batch.
+        if (!it.periodoAnio || !it.periodoMes) {
+          showToast('No se pudo actualizar: este ítem no tiene un período registrado (dato legado). Contactá a un administrador.', 'error');
+          return;
+        }
+        const abierto = await periodoEstaAbierto(it.periodoAnio, it.periodoMes);
+        if (!abierto) {
+          showToast('No se actualizó: el período de este ítem ya fue cerrado.', 'error');
+          return;
+        }
+
+        const batch = writeBatch(db);
+        batch.update(it.ref, { estado: nuevoEstado });
+        batch.set(
+          doc(db, 'consignacion_imputadas', String(it.periodoAnio), 'meses', it.periodoMes, 'documentos', it.id),
+          { estado: nuevoEstado, actualizadoEn: new Date() },
+          { merge: true }
+        );
+        await batch.commit();
+        await registrarLog(it.ref, 'ITEM_EDITADO', { estadoCargaAnterior: it.estado, estadoCargaNuevo: nuevoEstado });
+      } else {
+        await updateDoc(it.ref, { estado: nuevoEstado });
+      }
     } catch (err) {
       console.error('Error al actualizar el estado del ítem:', err);
+      showToast('Error al actualizar el estado del ítem', 'error');
     } finally {
       setActualizandoEstadoId(null);
+    }
+  };
+
+  // Edición inline por fila de la tabla "Ítems Registrados" — mismo patrón
+  // que CotizacionCard.jsx de Implantes (lápiz → fila editable → guardar),
+  // pero acá cada ítem es un documento propio y se persiste al toque con
+  // updateDoc (no hay "Guardar Todo" en este módulo). El recargo/venta no
+  // se recalcula acá: al cambiar `costo` (vía referencia) el useEffect de
+  // más arriba (líneas ~332) lo detecta y lo vuelve a guardar solo.
+  const [editandoId, setEditandoId] = useState(null);
+  const [borradorItem, setBorradorItem] = useState(BORRADOR_ITEM_VACIO);
+  const [guardandoEdicionId, setGuardandoEdicionId] = useState(null);
+
+  // Candado por ítem (equivalente al candado por bloque de implantes, pero
+  // acá cada carga es su propio documento): un ítem con estado SOLICITADO
+  // ya fue exportado a consignacion_imputadas y queda de solo lectura hasta
+  // que se desbloquea a propósito. `desbloqueados` es puramente de sesión —
+  // no se persiste, se vuelve a bloquear automáticamente tras guardar.
+  const [desbloqueados, setDesbloqueados] = useState(new Set());
+  const [verificandoCandadoId, setVerificandoCandadoId] = useState(null);
+  const puedeDesbloquearCandado = hasPermission(VIEW_PATH_CARGAS, 'tabla_items_completa', 'accion_desbloquear_candado');
+
+  const handleAbrirCandadoItem = async (it) => {
+    if (verificandoCandadoId) return;
+    setVerificandoCandadoId(it.id);
+    try {
+      if (!it.periodoAnio || !it.periodoMes) {
+        showToast('No se puede editar: este ítem no tiene un período registrado (dato legado). Contactá a un administrador.', 'error');
+        return;
+      }
+      const abierto = await periodoEstaAbierto(it.periodoAnio, it.periodoMes);
+      if (!abierto) {
+        showToast('No se puede editar: el período de este ítem ya fue cerrado.', 'error');
+        return;
+      }
+      setDesbloqueados(prev => new Set(prev).add(it.id));
+    } catch (err) {
+      console.error('Error al verificar período para desbloquear candado:', err);
+      showToast('No se pudo verificar el período. Intentá de nuevo.', 'error');
+    } finally {
+      setVerificandoCandadoId(null);
+    }
+  };
+
+  const {
+    sugerencias: sugerenciasEdicion, buscando: buscandoEdicion, mostrarSug: mostrarSugEdicion,
+    setMostrarSug: setMostrarSugEdicion, containerRef: containerRefEdicion, portalRef: portalRefEdicion, skipNext: skipNextEdicion
+  } = useAutocompleteReferenciaConsignacion(editandoId ? borradorItem.referencia : '');
+
+  const iniciarEdicionItem = (it) => {
+    const estaSolicitado = (it.estado || '').toUpperCase() === 'SOLICITADO';
+    if (estaSolicitado && !desbloqueados.has(it.id)) return;
+    setEditandoId(it.id);
+    setBorradorItem({
+      referencia: it.referencia || '',
+      codigo: it.codigo || '',
+      empresa: it.empresa || '',
+      descripcion: it.descripcion || '',
+      costo: it.costo ?? '',
+      cantidad: String(it.cantidad ?? ''),
+      lote: it.lote || '',
+      vencimiento: it.vencimiento || ''
+    });
+  };
+
+  const cancelarEdicionItem = () => {
+    setEditandoId(null);
+    setBorradorItem(BORRADOR_ITEM_VACIO);
+    setMostrarSugEdicion(false);
+  };
+
+  const handleReferenciaEdicionChange = (value) => {
+    setBorradorItem(prev => ({
+      ...prev,
+      referencia: value,
+      codigo: '',
+      empresa: '',
+      descripcion: '',
+      costo: ''
+    }));
+  };
+
+  const handleSeleccionarSugerenciaEdicion = (item) => {
+    skipNextEdicion.current = true;
+    setBorradorItem(prev => ({
+      ...prev,
+      referencia: item.referencia || prev.referencia,
+      codigo: item.codigo || '',
+      empresa: item.empresa || '',
+      descripcion: item.descriptorEmpresa || item.descriptorAuto || '',
+      costo: item.precioNeto ?? 0
+    }));
+    setMostrarSugEdicion(false);
+  };
+
+  const guardarEdicionItem = async (it) => {
+    const cantidadNum = Number(borradorItem.cantidad);
+    if (!borradorItem.referencia.trim() || !borradorItem.cantidad || isNaN(cantidadNum) || cantidadNum <= 0) return;
+    if (!it.ref) return;
+
+    const estaSolicitado = (it.estado || '').toUpperCase() === 'SOLICITADO';
+    const costoNum = borradorItem.costo !== '' ? Number(borradorItem.costo) : 0;
+    const camposEditados = {
+      referencia: borradorItem.referencia.trim(),
+      codigo: borradorItem.codigo || '',
+      empresa: borradorItem.empresa || '',
+      descripcion: borradorItem.descripcion || '',
+      costo: costoNum,
+      cantidad: cantidadNum,
+      lote: borradorItem.lote.trim(),
+      vencimiento: borradorItem.vencimiento || ''
+    };
+
+    setGuardandoEdicionId(it.id);
+    try {
+      if (estaSolicitado) {
+        // Solo se llega acá con el candado ya desbloqueado (el lápiz está
+        // reemplazado por el candado si no) — de todos modos se re-verifica
+        // el período por si se cerró mientras se editaba, mismo criterio que
+        // el "Guardar Todo" de implantes.
+        if (!it.periodoAnio || !it.periodoMes) {
+          showToast('No se guardó: este ítem no tiene un período registrado (dato legado). Contactá a un administrador.', 'error');
+          return;
+        }
+        const abierto = await periodoEstaAbierto(it.periodoAnio, it.periodoMes);
+        if (!abierto) {
+          showToast('No se guardó: el período de este ítem ya fue cerrado mientras lo editabas.', 'error');
+          return;
+        }
+
+        const { vecesCosto, venta } = calcularVenta({ costo: costoNum, cantidad: cantidadNum });
+        const camposFinancieros = vecesCosto != null ? { recargoVecesCosto: vecesCosto, venta } : {};
+
+        const batch = writeBatch(db);
+        batch.update(it.ref, { ...camposEditados, ...camposFinancieros });
+        batch.set(
+          doc(db, 'consignacion_imputadas', String(it.periodoAnio), 'meses', it.periodoMes, 'documentos', it.id),
+          { ...camposEditados, ...camposFinancieros, total: costoNum * cantidadNum, actualizadoEn: new Date() },
+          { merge: true }
+        );
+        await batch.commit();
+
+        await registrarLog(it.ref, 'ITEM_EDITADO', camposEditados);
+        await registrarLog(it.ref, 'IMPUTACION_RESINCRONIZADA', { periodoAnio: it.periodoAnio, periodoMes: it.periodoMes });
+
+        setDesbloqueados(prev => {
+          const next = new Set(prev);
+          next.delete(it.id);
+          return next;
+        });
+      } else {
+        await updateDoc(it.ref, camposEditados);
+      }
+
+      cancelarEdicionItem();
+    } catch (err) {
+      console.error('Error al guardar la edición del ítem:', err);
+      showToast('Error al guardar los cambios', 'error');
+    } finally {
+      setGuardandoEdicionId(null);
     }
   };
 
@@ -583,14 +823,19 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                   const vecesCosto = it.recargoVecesCosto ?? vecesCostoCalculado;
                   const venta = it.venta ?? ventaCalculada;
                   const actualizando = actualizandoEstadoId === it.id;
-                  const estadoCargaValor = ESTADO_CARGA_OPTIONS.includes(estadoKey) ? estadoKey : 'PENDIENTE';
+                  const estaSolicitadoResumen = estadoKey === 'SOLICITADO';
+                  const candadoBloqueadoResumen = estaSolicitadoResumen && !desbloqueados.has(it.id);
+                  const estadoCargaValor = ESTADO_CARGA_OPTIONS.includes(estadoKey)
+                    ? estadoKey
+                    : (estaSolicitadoResumen ? 'CARGADO' : 'PENDIENTE');
                   return (
                     <tr key={it.id} className={ESTADO_CARGA_ROW_STYLE[estadoCargaValor]}>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
                         <select
                           value={estadoCargaValor}
-                          disabled={actualizando}
+                          disabled={actualizando || candadoBloqueadoResumen}
                           onChange={(e) => handleActualizarEstadoCarga(it, e.target.value)}
+                          title={candadoBloqueadoResumen ? 'Bloqueado: ya fue solicitado/imputado — desbloqueá desde "Ítems Registrados"' : undefined}
                           className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${ESTADO_CARGA_SELECT_STYLE[estadoCargaValor]}`}
                         >
                           {ESTADO_CARGA_OPTIONS.map(op => (
@@ -658,13 +903,14 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Delivery</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">N° Guía</th>
                 <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Atributo</th>
-                <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700">Estado</th>
+                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Estado Carga</th>
+                <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={13} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
+                  <td colSpan={14} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
                     Sin ítems registrados para esta admisión
                   </td>
                 </tr>
@@ -673,11 +919,151 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                   const deliveriesMostrados = new Set();
                   return items.map((it) => {
                     const estadoKey = (it.estado || 'INGRESADO').toUpperCase();
+                    const estaSolicitado = estadoKey === 'SOLICITADO';
+                    const desbloqueado = desbloqueados.has(it.id);
+                    const candadoBloqueado = estaSolicitado && !desbloqueado;
+                    const estadoCargaValor = ESTADO_CARGA_OPTIONS.includes(estadoKey)
+                      ? estadoKey
+                      : (estaSolicitado ? 'CARGADO' : 'PENDIENTE');
                     const total = (Number(it.costo) || 0) * (Number(it.cantidad) || 1);
                     const deliveryValor = (it.delivery || '').trim();
                     const mostrarDesglose = Boolean(deliveryValor) && !deliveriesMostrados.has(deliveryValor);
                     if (mostrarDesglose) deliveriesMostrados.add(deliveryValor);
                     const pendiente = pendientes[it.id]?.payload;
+                    const actualizandoEstado = actualizandoEstadoId === it.id;
+                    const enEdicion = editandoId === it.id;
+                    const guardandoEsteItem = guardandoEdicionId === it.id;
+                    const verificandoEsteCandado = verificandoCandadoId === it.id;
+
+                    if (enEdicion) {
+                      return (
+                        <tr key={it.id} className="bg-blue-50/60 dark:bg-blue-950/20">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px]">
+                            {borradorItem.codigo || <span className="text-red-500 font-bold">S/C</span>}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRefEdicion}>
+                            <input
+                              type="text"
+                              value={borradorItem.referencia}
+                              onChange={e => handleReferenciaEdicionChange(e.target.value)}
+                              onFocus={() => sugerenciasEdicion.length > 0 && setMostrarSugEdicion(true)}
+                              autoComplete="off"
+                              autoFocus
+                              className="w-full h-6.5 px-1.5 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                            />
+                            {mostrarSugEdicion && (
+                              <DropdownReferenciaPortal anchorRef={containerRefEdicion} portalRef={portalRefEdicion}>
+                                <div className="w-56 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded shadow-lg">
+                                  {buscandoEdicion ? (
+                                    <div className="px-2.5 py-2 text-[10px] text-slate-400 flex items-center gap-1.5">
+                                      <Loader2 size={11} className="animate-spin" /> Buscando...
+                                    </div>
+                                  ) : sugerenciasEdicion.length === 0 ? (
+                                    <div className="px-2.5 py-2 text-[10px] text-slate-400">Sin coincidencias</div>
+                                  ) : (
+                                    sugerenciasEdicion.map(sug => (
+                                      <button
+                                        key={sug.id}
+                                        type="button"
+                                        onClick={() => handleSeleccionarSugerenciaEdicion(sug)}
+                                        className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-gray-700/60 border-b border-slate-100 dark:border-gray-700/50 last:border-b-0"
+                                      >
+                                        <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{sug.referencia}</div>
+                                        <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
+                                          <span className="font-mono text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
+                                          <span>·</span>
+                                          <span className="truncate">{sug.empresa}</span>
+                                        </div>
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </DropdownReferenciaPortal>
+                            )}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400 truncate max-w-[140px]" title={borradorItem.descripcion}>
+                            {borradorItem.descripcion || '-'}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                            {renderP(borradorItem.empresa)}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center">
+                            <input
+                              type="number"
+                              value={borradorItem.cantidad}
+                              onChange={e => setBorradorItem(prev => ({ ...prev, cantidad: e.target.value }))}
+                              className="w-14 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none text-center"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400">
+                            {borradorItem.costo !== '' ? `$${Number(borradorItem.costo).toLocaleString('es-CL')}` : '-'}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                            <input
+                              type="text"
+                              value={borradorItem.lote}
+                              onChange={e => setBorradorItem(prev => ({ ...prev, lote: e.target.value }))}
+                              placeholder="Sin lote"
+                              className="w-20 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                            <input
+                              type="date"
+                              value={borradorItem.vencimiento}
+                              onChange={e => setBorradorItem(prev => ({ ...prev, vencimiento: e.target.value }))}
+                              className="h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-400 dark:text-gray-500">
+                            —
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                            {it.delivery || '-'}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                            <NumeroGuiaCell it={it} pendiente={pendiente} />
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                            {it.atributo || '-'}
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                            <select
+                              value={estadoCargaValor}
+                              disabled={actualizandoEstado}
+                              onChange={(e) => handleActualizarEstadoCarga(it, e.target.value)}
+                              className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${ESTADO_CARGA_SELECT_STYLE[estadoCargaValor]}`}
+                            >
+                              {ESTADO_CARGA_OPTIONS.map(op => (
+                                <option key={op} value={op}>{op}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-2 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => guardarEdicionItem(it)}
+                                disabled={guardandoEsteItem}
+                                title="Guardar cambios"
+                                className="text-emerald-600 hover:text-emerald-800 transition p-0.5 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/30 disabled:opacity-40"
+                              >
+                                {guardandoEsteItem ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelarEdicionItem}
+                                disabled={guardandoEsteItem}
+                                title="Cancelar edición"
+                                className="text-slate-400 hover:text-slate-600 transition p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700 disabled:opacity-40"
+                              >
+                                <X size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
 
                     return (
                       <React.Fragment key={it.id}>
@@ -701,10 +1087,12 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                             {it.costo ? `$${Number(it.costo).toLocaleString('es-CL')}` : '-'}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                            {deliveryValor ? 'PAD' : 'Sin lote'}
+                            {it.lote || (deliveryValor ? 'PAD' : 'Sin lote')}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                            {deliveryValor ? 'PAD' : 'Sin fecha'}
+                            {it.vencimiento
+                              ? formatearFechaTabla(it.vencimiento)
+                              : (deliveryValor ? 'PAD' : 'Sin fecha')}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
                             {total ? `$${Math.round(total).toLocaleString('es-CL')}` : '-'}
@@ -718,10 +1106,54 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                             {it.atributo || '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60">
-                            <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${ESTADO_BADGE[estadoKey] || 'bg-slate-100 text-slate-600'}`}>
-                              {estadoKey}
-                            </span>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                            {candadoBloqueado ? (
+                              <span
+                                title="Bloqueado: ya fue solicitado/imputado"
+                                className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-100 dark:bg-gray-800 border-slate-300 dark:border-gray-700 text-slate-500 dark:text-gray-400"
+                              >
+                                <Lock size={9} /> SOLICITADO
+                              </span>
+                            ) : (
+                              <select
+                                value={estadoCargaValor}
+                                disabled={actualizandoEstado}
+                                onChange={(e) => handleActualizarEstadoCarga(it, e.target.value)}
+                                className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${ESTADO_CARGA_SELECT_STYLE[estadoCargaValor]}`}
+                              >
+                                {ESTADO_CARGA_OPTIONS.map(op => (
+                                  <option key={op} value={op}>{op}</option>
+                                ))}
+                              </select>
+                            )}
+                          </td>
+                          <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
+                            {candadoBloqueado ? (
+                              puedeDesbloquearCandado ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleAbrirCandadoItem(it)}
+                                  disabled={verificandoEsteCandado}
+                                  title="Este ítem ya está imputado — click para desbloquear edición"
+                                  className="text-amber-600 hover:text-amber-800 transition p-0.5 rounded hover:bg-amber-50 dark:hover:bg-amber-950/30 disabled:opacity-40"
+                                >
+                                  {verificandoEsteCandado ? <Loader2 size={12} className="animate-spin" /> : <Lock size={12} />}
+                                </button>
+                              ) : (
+                                <span title="Bloqueado: ya fue solicitado/imputado. No tenés permiso para desbloquear." className="inline-flex text-slate-300 dark:text-gray-600">
+                                  <Lock size={12} />
+                                </span>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => iniciarEdicionItem(it)}
+                                title={estaSolicitado ? 'Desbloqueado — editá y guardá para volver a bloquearlo' : 'Editar ítem'}
+                                className="text-blue-600 hover:text-blue-800 transition p-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                              >
+                                {estaSolicitado ? <Unlock size={12} className="text-emerald-600" /> : <Pencil size={12} />}
+                              </button>
+                            )}
                           </td>
                         </tr>
 
@@ -729,7 +1161,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                           <DesgloseGuia
                             deliveryValor={deliveryValor}
                             referenciaDestacada={it.referencia}
-                            colSpanTotal={13}
+                            colSpanTotal={14}
                             productosGuardados={it.productosGuiaVinculados}
                             productosPendientes={pendiente?.productosGuiaVinculados}
                           />
@@ -749,7 +1181,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                   <td className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-emerald-700 dark:text-emerald-400">
                     ${Math.round(sumaCostos).toLocaleString('es-CL')}
                   </td>
-                  <td colSpan={4} className="border-t border-slate-200 dark:border-gray-700"></td>
+                  <td colSpan={5} className="border-t border-slate-200 dark:border-gray-700"></td>
                 </tr>
               </tfoot>
             )}

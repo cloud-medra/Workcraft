@@ -1,14 +1,17 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { collectionGroup, query, where, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
-import { ArrowLeft, ListFilter, Info, Truck, UploadCloud, Save, AlertTriangle, X, Loader2, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ListFilter, Info, Truck, UploadCloud, Save, AlertTriangle, X, Loader2, ShieldAlert, History } from 'lucide-react';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
+import { useUser } from '../../../../../../context/UserContext';
+import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
 
 import DetalleTab from './DetalleTab';
 import InformacionTab from './InformacionTab';
 import DeliveryTab from './DeliveryTab';
 import CargasTab from './CargasTab';
+import HistorialTab from './HistorialTab';
 
 const COL_BASE = 'consignacion_registros';
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
@@ -23,6 +26,7 @@ const ALL_TABS = [
   { id: 'informacion', label: 'Información', Icon: Info, path: '/consignacion/cargasConsignacion/informacion' },
   { id: 'delivery', label: 'Delivery', Icon: Truck, path: '/consignacion/cargasConsignacion/delivery' },
   { id: 'cargas', label: 'Cargas', Icon: UploadCloud, path: '/consignacion/cargasConsignacion/cargas' },
+  { id: 'logs', label: 'Logs', Icon: History, path: '/consignacion/cargasConsignacion/logs' },
 ];
 
 const construirEstadoInicial = (registro) => ({
@@ -53,6 +57,7 @@ const construirEstadoInicial = (registro) => ({
 
 const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
   const { showToast } = useToast();
+  const { userData } = useUser();
   const { hasAccesoProceso } = useGranularPermission();
   const tabsPermitidas = useMemo(
     () => ALL_TABS.filter(t => hasAccesoProceso(t.path)),
@@ -156,10 +161,12 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
     }
     setGuardando(true);
     try {
-      await updateDoc(registro.ref, {
+      const datosGuardados = {
         ...formData,
         costo: formData.costo !== '' ? Number(formData.costo) : 0
-      });
+      };
+      await updateDoc(registro.ref, datosGuardados);
+      await registrarLogConsignacion(registro.ref, 'EDICION', datosGuardados, userData);
       snapshotInicialRef.current = JSON.stringify(formData);
       showToast('Cambios guardados correctamente', 'success');
       return true;
@@ -342,6 +349,8 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
               setCargando={setCargando}
             />
           )}
+
+          {tabActual?.id === 'logs' && <HistorialTab registro={registro} />}
         </div>
       </div>
     </div>

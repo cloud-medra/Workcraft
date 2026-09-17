@@ -18,6 +18,7 @@ import ResumenPeriodoAbierto from '../components/modulos/administracion/resumenP
 import NotasAdmin from '../components/modulos/administracion/notasAdmin/NotasAdmin';
 import CrearUsuario from '../components/modulos/administracion/usuarios/CrearUsuario';
 import ListadoUsuario from '../components/modulos/administracion/usuarios/ListadoUsuario';
+import CargasConsolidado from '../components/modulos/administracion/cargasConsolidado/CargasConsolidado';
 
 // --- LABORATORIO ---
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
@@ -226,7 +227,8 @@ const Dashboard = () => {
         }}
       />
     ),
-   
+    '/administracion/cargasConsolidado': <CargasConsolidado />,
+
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,
     '/laboratorio/ordenLaboratorio': <OrdenLaboratorio />,

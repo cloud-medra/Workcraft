@@ -312,6 +312,22 @@ export const consignacionComponentMaps = {
           },
           tabla_items_completa: {
             label: 'Sección: Ítems Registrados (con desglose de guía vinculada)',
+            elements: {
+              action_editar_item: { label: 'Operación: Editar Ítem (referencia, cantidad, lote, vencimiento)' },
+              // Corrige un ítem ya SOLICITADO (exportado a
+              // consignacion_imputadas), saltándose el candado — mismo
+              // criterio que accion_desbloquear_candado en Implantes
+              // (Cargastab.jsx / componentMaps/implantes.js).
+              accion_desbloquear_candado: { label: 'Operación: Desbloquear edición de un ítem ya solicitado/imputado (candado)' },
+            },
+          },
+        },
+      },
+      '/consignacion/cargasConsignacion/logs': {
+        label: 'Pestaña: Logs — historial del registro activo (HistorialTab.jsx), solo lectura',
+        sections: {
+          historial_logs: {
+            label: 'Sección: Historial de Logs',
             elements: {},
           },
         },

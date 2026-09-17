@@ -1,0 +1,99 @@
+import { useColumnResize } from '../../../../../hooks/useColumnResize';
+import { ManijaRedimension } from '../../../../ui/ManijaRedimension';
+import { ORIGEN_LABEL, ORIGEN_BADGE_STYLE } from '../utils/normalizarFila';
+
+const COLUMNAS = [
+  { key: 'origen', label: 'Origen', ancho: 105, min: 90 },
+  { key: 'gestionId', label: 'ID', ancho: 85, min: 60 },
+  { key: 'paciente', label: 'Paciente', ancho: 160, min: 80 },
+  { key: 'medico', label: 'Médico', ancho: 120, min: 70 },
+  { key: 'fecha', label: 'Fecha', ancho: 85, min: 65 },
+  { key: 'empresa', label: 'Empresa', ancho: 150, min: 80 },
+  { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
+  { key: 'referencia', label: 'Referencia', ancho: 150, min: 80 },
+  { key: 'cantidad', label: 'Cant.', ancho: 65, min: 45 },
+  { key: 'costoUnitario', label: 'Costo Unit.', ancho: 95, min: 60 },
+  { key: 'venta', label: 'Venta', ancho: 95, min: 60 },
+  { key: 'total', label: 'Total', ancho: 95, min: 60 },
+  { key: 'lote', label: 'Lote', ancho: 85, min: 50 },
+  { key: 'vencimiento', label: 'Vencimiento', ancho: 95, min: 65 },
+  { key: 'estado', label: 'Estado', ancho: 95, min: 60 },
+  { key: 'periodo', label: 'Período', ancho: 100, min: 65 },
+];
+
+const formatearFechaTabla = (fechaString) => {
+  if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
+  const [yyyy, mm, dd] = fechaString.split('-');
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+const ImputadasUnificadasTable = ({ filas }) => {
+  const { anchos, handleResize } = useColumnResize(COLUMNAS);
+
+  const totalVenta = filas.reduce((acc, f) => acc + (Number(f.venta) || 0), 0);
+
+  return (
+    <div className="flex-grow flex flex-col overflow-hidden">
+      <div className="px-3 py-1.5 flex items-center justify-between border-b border-slate-200 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/30 text-[10px]">
+        <span className="text-slate-500 dark:text-gray-400">{filas.length} registro{filas.length === 1 ? '' : 's'}</span>
+        <span className="font-bold text-emerald-700 dark:text-emerald-400">Total venta: ${totalVenta.toLocaleString('es-CL')}</span>
+      </div>
+      <div className="flex-grow overflow-auto">
+        <table className="text-left text-[10.5px] border-collapse" style={{ tableLayout: 'fixed', width: '100%' }}>
+          <thead className="bg-slate-50 dark:bg-gray-900/60 sticky top-0 z-10">
+            <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
+              {COLUMNAS.map(col => (
+                <th
+                  key={col.key}
+                  className="relative px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700"
+                  style={{ width: anchos[col.key] }}
+                >
+                  {col.label}
+                  <ManijaRedimension colKey={col.key} anchoActual={anchos[col.key]} anchoMin={col.min} onResize={handleResize} />
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filas.length === 0 ? (
+              <tr>
+                <td colSpan={COLUMNAS.length} className="px-3 py-6 text-center text-slate-400 dark:text-gray-500">
+                  Sin registros imputados
+                </td>
+              </tr>
+            ) : (
+              filas.map((fila) => (
+                <tr key={`${fila.origen}:${fila.id}`}>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                    <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded border uppercase ${ORIGEN_BADGE_STYLE[fila.origen]}`}>
+                      {ORIGEN_LABEL[fila.origen]}
+                    </span>
+                  </td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-semibold text-[#2383C2] truncate">{fila.gestionId}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate">{fila.paciente}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.medico}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{formatearFechaTabla(fila.fecha)}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.empresa}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400 truncate">{fila.codigo}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate">{fila.referencia}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200">{fila.cantidad}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">${Number(fila.costoUnitario).toLocaleString('es-CL')}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-medium">${Number(fila.venta).toLocaleString('es-CL')}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">${Number(fila.total).toLocaleString('es-CL')}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.lote}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{fila.vencimiento ? formatearFechaTabla(fila.vencimiento) : '-'}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{fila.estado}</td>
+                  <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                    {fila.periodoMes && fila.periodoAnio ? `${fila.periodoMes} ${fila.periodoAnio}` : '-'}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default ImputadasUnificadasTable;

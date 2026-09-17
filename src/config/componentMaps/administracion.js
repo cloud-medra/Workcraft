@@ -169,4 +169,53 @@ export const administracionComponentMaps = {
       },
     },
   },
+
+  '/administracion/cargasConsolidado': {
+    label: 'Cargas Consolidado (CargasConsolidado.jsx) — vista combinada de Consignación + Implantes',
+    sections: {
+      header: {
+        label: 'Sección: Encabezado',
+        elements: {},
+      },
+    },
+    procesos: {
+      '/administracion/cargasConsolidado/gestion': {
+        label: 'Pestaña: Gestión — tabla combinada, doble clic abre el detalle nativo de cada origen',
+        sections: {
+          tabla_gestion: {
+            label: 'Sección: Tabla de Gestión Combinada',
+            elements: {
+              col_origen: { label: 'Columna: Origen (Implantes/Consignación)' },
+              action_abrir_detalle: { label: 'Operación: Abrir Detalle (doble clic)' },
+            },
+          },
+        },
+      },
+      '/administracion/cargasConsolidado/imputadas': {
+        label: 'Pestaña: Imputadas — implantes_imputadas + consignacion_imputadas combinadas',
+        sections: {
+          tabla_imputadas: {
+            label: 'Sección: Tabla de Imputadas Combinadas',
+            elements: {
+              col_origen: { label: 'Columna: Origen (Implantes/Consignación)' },
+            },
+          },
+        },
+      },
+      '/administracion/cargasConsolidado/solicitudes': {
+        label: 'Pestaña: Solicitudes — candidatos a SOLICITADO de ambos módulos',
+        sections: {
+          tabla_solicitudes: {
+            label: 'Sección: Tabla de Solicitudes Combinadas',
+            elements: {
+              col_origen: { label: 'Columna: Origen (Implantes/Consignación)' },
+              checkbox_seleccionar_fila: { label: 'Campo: Seleccionar Fila' },
+              checkbox_seleccionar_todos: { label: 'Campo: Seleccionar Todos' },
+              btn_exportar_marcar_solicitado: { label: 'Acción: Exportar y Marcar Solicitado (ambos orígenes, cada uno a su colección de imputadas)' },
+            },
+          },
+        },
+      },
+    },
+  },
 };

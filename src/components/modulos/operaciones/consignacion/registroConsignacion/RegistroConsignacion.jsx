@@ -20,6 +20,7 @@ import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
 import Spinner from '../../../../ui/Spinner';
 import { buscarReporteInfoPorAdmisionCacheado, invalidarReporteAdmision } from './utils/cacheMaestros';
+import { registrarLogConsignacion } from '../utils/registrarLogConsignacion';
 
 import RegistroConsignacionForm from './components/RegistroConsignacionForm';
 import ConsignacionFiltros from './components/ConsignacionFiltros';
@@ -187,6 +188,7 @@ const RegistroConsignacion = () => {
           setRegistros((prev) =>
             prev.map((r) => (r.id === registroEditando.id ? { ...r, ...datosDoc } : r))
           );
+          await registrarLogConsignacion(registroEditando.ref, 'EDICION', datosDoc, userData);
         } else {
           const { anio, nombreMes, dia } = clavesNuevas;
           const batch = writeBatch(db);
@@ -213,6 +215,7 @@ const RegistroConsignacion = () => {
             { id: nuevoRef.id, ref: nuevoRef, ...nuevoDoc },
             ...prev.filter((r) => r.id !== registroEditando.id)
           ]);
+          await registrarLogConsignacion(nuevoRef, 'EDICION', nuevoDoc, userData);
         }
 
         showToast('Registro actualizado correctamente', 'success');
@@ -240,6 +243,7 @@ const RegistroConsignacion = () => {
         await batch.commit();
 
         setRegistros((prev) => [{ id: detalleRef.id, ref: detalleRef, ...nuevoDoc }, ...prev]);
+        await registrarLogConsignacion(detalleRef, 'CREACION', nuevoDoc, userData);
 
         showToast('Ítem registrado correctamente', 'success');
       }
@@ -315,6 +319,11 @@ const RegistroConsignacion = () => {
       '¿Estás seguro de eliminar este registro de consignación? Esta acción no se puede deshacer.',
       async () => {
         try {
+          await registrarLogConsignacion(registro.ref, 'ELIMINACION', {
+            gestionId: registro.gestionId || '',
+            nombre: registro.nombre || '',
+            referencia: registro.referencia || ''
+          }, userData);
           await deleteDoc(registro.ref);
           setRegistros((prev) => prev.filter((r) => r.id !== registro.id));
           if (registroEditando?.id === registro.id) setRegistroEditando(null);

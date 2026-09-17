@@ -4,9 +4,7 @@ import {
   collectionGroup,
   doc,
   writeBatch,
-  addDoc,
   getDocs,
-  serverTimestamp,
   query,
   where,
   orderBy
@@ -16,6 +14,7 @@ import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
+import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
 
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_ORIGEN = 'CARGADO';
@@ -277,21 +276,7 @@ export const useSolicitudConsignacionData = () => {
     }
   };
 
-  const registrarLog = async (docRef, accion, detalles) => {
-    try {
-      const logsSubcollectionRef = collection(docRef, 'logs');
-      await addDoc(logsSubcollectionRef, {
-        accion,
-        detalles,
-        active: true,
-        usuario: userData?.nombreCompleto || 'Usuario Desconocido',
-        usuarioEmail: userData?.email || '',
-        timestamp: serverTimestamp()
-      });
-    } catch (err) {
-      console.error('Error al registrar log de auditoría:', err);
-    }
-  };
+  const registrarLog = (docRef, accion, detalles) => registrarLogConsignacion(docRef, accion, detalles, userData);
 
   const handleExportarYMarcarSolicitado = (periodoActivo) => {
     const itemsSeleccionados = items.filter(it => seleccionados.has(it.id));
@@ -382,10 +367,17 @@ export const useSolicitudConsignacionData = () => {
           };
 
           for (const it of itemsConRef) {
+            // periodoAnio/periodoMes quedan también en el ítem origen (no solo
+            // en el doc de imputadas) — es lo que le permite al candado de
+            // CargasConsignación (CargasTab.jsx) saber, más adelante, a qué
+            // período/documento de consignacion_imputadas debe resincronizar
+            // si alguien edita este ítem después de solicitado.
             agregarOp(b => b.update(it.ref, {
               estado: ESTADO_DESTINO,
               fechaSolicitud: new Date(),
-              solicitadoPor: userData?.nombreCompleto || 'Usuario'
+              solicitadoPor: userData?.nombreCompleto || 'Usuario',
+              periodoAnio: periodoActivo.anio,
+              periodoMes: periodoActivo.mes
             }));
 
             const imputadaRef = doc(

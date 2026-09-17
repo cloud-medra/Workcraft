@@ -31,7 +31,8 @@ const ACCION_LABELS = {
   ITEM_CREADO: 'Ítem Registrado (Carga)',
   ITEM_EDITADO: 'Ítem Editado (Carga)',
   ITEM_ELIMINADO: 'Ítem Eliminado (Carga)',
-  IMPUTACION_RESINCRONIZADA: 'Re-sincronización con Imputadas'
+  IMPUTACION_RESINCRONIZADA: 'Re-sincronización con Imputadas',
+  SOLICITUD_EXPORTADA: 'Solicitud Exportada'
 };
 
 const ACCION_ESTILOS = {
@@ -44,7 +45,8 @@ const ACCION_ESTILOS = {
   ITEM_CREADO: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
   ITEM_EDITADO: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
   ITEM_ELIMINADO: 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400',
-  IMPUTACION_RESINCRONIZADA: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400'
+  IMPUTACION_RESINCRONIZADA: 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400',
+  SOLICITUD_EXPORTADA: 'bg-sky-100 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400'
 };
 
 const getAccionEstilo = (accion) => ACCION_ESTILOS[accion] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
@@ -213,6 +215,22 @@ const DetalleLog = ({ log }) => {
         </div>
       );
     }
+
+    case 'SOLICITUD_EXPORTADA':
+      return (
+        <div className="space-y-0.5">
+          <p className="text-sky-600 dark:text-sky-400">
+            Exportado y marcado como <strong>SOLICITADO</strong>
+            {d.periodo || (d.periodoMes && d.periodoAnio) ? <> — período {d.periodo || `${d.periodoMes} ${d.periodoAnio}`}</> : null}.
+          </p>
+          <p><strong>ID:</strong> {d.gestionId || '-'}</p>
+          {d.empresa && <p><strong>Empresa:</strong> {d.empresa}</p>}
+          {d.fecha && <p><strong>Fecha:</strong> {d.fecha}</p>}
+          {d.cantidadItems !== undefined && <p><strong>Ítems exportados:</strong> {d.cantidadItems}</p>}
+          {d.codigo && <p><strong>Código:</strong> {d.codigo}</p>}
+          {d.cantidad !== undefined && <p><strong>Cantidad:</strong> {d.cantidad}</p>}
+        </div>
+      );
 
     default:
       return (
