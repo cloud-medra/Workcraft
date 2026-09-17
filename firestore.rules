@@ -1,9 +1,282 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    function getUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
+    function esAdminODev() {
+      let u = getUsuario();
+      return u.rol == 'admin' || u.rol == 'dev';
+    }
+    function tienePermiso(modulo) {
+      let u = getUsuario();
+      return u.permisos[modulo] != null;
+    }
+
+    match /{path=**}/documentos/{documentId} {
+      allow read: if request.auth != null;
+    }
+
+    // =================================================================
+    // REGLA PARA COLLECTION GROUP "detalles" Y SUS SUBCOLECCIONES (logs)
+    // =================================================================
+    match /{path=**}/detalles/{detalleId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+    }
+
+    match /{path=**}/detalles/{detalleId}/logs/{logId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+    }
+
+    // =================================================================
+    // USUARIOS
+    // =================================================================
+
+    match /usuarios/{userId} {
+      allow read: if request.auth != null;
+      allow update: if request.auth != null && (request.auth.uid == userId || esAdminODev());
+      allow create, delete: if request.auth != null && esAdminODev();
+    }
+
+    // =================================================================
+    // LABORATORIO
+    // =================================================================
+
+    match /laboratorio_empresas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+    }
+
+    match /laboratorio_codigos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+    }
+
+    match /laboratorio_ordenes/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+    }
+
+    match /laboratorio_documentos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+    }
+
+    match /laboratorio_cierres/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+    }
+    match /laboratorio_imputadas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+    }
+
+    // =================================================================
+    // VACUNATORIO
+    // =================================================================
+
+    match /vacunatorio_empresas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+    }
+
+    match /vacunatorio_codigos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+    }
+
+    match /vacunatorio_ordenes/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+    }
+
+    match /vacunatorio_documentos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+    }
+
+    match /vacunatorio_cierres/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+    }
+    match /vacunatorio_imputadas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+    }
+
+    // =================================================================
+    // ADMINISTRACION -PERÍODOS (multi-módulo: laboratorio, vacunatorio, hemodinamia,
+    // implantes, consignación, etc. — según CierreMes.jsx)
+    // =================================================================
+
+    match /cierres_periodos/{cierreId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        (esAdminODev() || tienePermiso(request.resource.data.modulo));
+      allow update, delete: if request.auth != null &&
+        (esAdminODev() || tienePermiso(resource.data.modulo));
+    }
+
+    // Snapshot mensual consolidado por módulo (usado por "Período Actual" para
+    // comparar mes actual vs. mes anterior sin recalcular sumando documentos crudos).
+    // Doc ID: {anio}_{mes}_{modulo}, con campo "modulo" siempre presente.
+    match /imputaciones_periodos/{snapshotId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        (esAdminODev() || tienePermiso(request.resource.data.modulo));
+      allow update, delete: if request.auth != null &&
+        (esAdminODev() || tienePermiso(resource.data.modulo));
+    }
+
+    match /documentos_imputados/{modulo}/{path=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        (esAdminODev() || tienePermiso(modulo));
+    }
+
+    match /configuracion_periodos/{modulo} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        (esAdminODev() || tienePermiso(modulo));
+    }
+
+    match /administracion_notas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('administracion'));
+    }
+
+    // =================================================================
+    // MAESTRO
+    // =================================================================
+
+    match /maestros_empresas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_prestadores/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_centros/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_previsiones/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_convenios/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_recargos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_codigos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_pad/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    match /maestros_listados/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    // =================================================================
+    // CONSIGNACION
+    // =================================================================
+
+    match /consignacion_guias/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('consignacion'));
+    }
+
+    match /consignacion_registros/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('consignacion'));
+    }
+
+    match /consignacion_imputadas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('consignacion'));
+    }
+
+    // =================================================================
+    // INVENTARIO
+    // =================================================================
+
+    match /inventario_general/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('inventario'));
+    }
+
+    match /inventario_transito/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('inventario'));
+    }
+
+    match /inventario_historial/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('inventario'));
+    }
+
+    match /inventario_egresos/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('inventario'));
+    }
+
+    // =================================================================
+    // DOCUMENTOS
+    // =================================================================
+
+
+    match /{path=**}/registros/{registroId} {
+     allow read: if request.auth != null;
+     allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+    }
+
+    match /documentos_reportesInfo/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+    }
+
+    // =================================================================
+    // IMPLANTES
+    // =================================================================
+
+    match /implantes_gestiones/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+    }
+
+    match /implantes_imputadas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+    }
+
+    // =================================================================
+    // HEMODINAMIA
+    // =================================================================
+
+    match /hemodinamia_imputadas/{document=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('hemodinamia'));
+    }
+
   }
 }
