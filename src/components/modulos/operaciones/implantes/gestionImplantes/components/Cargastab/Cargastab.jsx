@@ -856,7 +856,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
                     </thead>
                     <tbody>
                       {contenidoPad.map(fila => (
-                        <tr key={fila.tempId} className="bg-white dark:bg-gray-900/40 hover:bg-fuchsia-50/40 dark:hover:bg-fuchsia-950/10">
+                        <tr key={fila.tempId} className="border-l-2 border-transparent hover:border-[#2383C2] bg-white dark:bg-gray-900/40 hover:bg-fuchsia-50/40 dark:hover:bg-fuchsia-950/10">
                           <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 font-semibold text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={fila.referencia}>
                             {fila.referencia}
                           </td>
@@ -987,7 +987,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
                     </thead>
                     <tbody>
                       {lotesAdicionales.map(fila => (
-                        <tr key={fila.tempId} className="bg-white dark:bg-gray-900/40 hover:bg-sky-50/40 dark:hover:bg-sky-950/10">
+                        <tr key={fila.tempId} className="border-l-2 border-transparent hover:border-[#2383C2] bg-white dark:bg-gray-900/40 hover:bg-sky-50/40 dark:hover:bg-sky-950/10">
                           <td className="px-2 py-1 border-b border-sky-100 dark:border-sky-900/40 text-center text-slate-600 dark:text-gray-300">
                             {fila.cantidad}
                           </td>

@@ -177,6 +177,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
   const [erroresFecha, setErroresFecha] = useState({});
   const [bloqueActivoIndex, setBloqueActivoIndex] = useState(0);
   const cargasTabRef = useRef(null);
+  const informacionTabRef = useRef(null);
 
   const handleGeneralChange = (e) => {
     const { name, value } = e.target;
@@ -354,7 +355,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
-    if (cargasTabRef.current?.estaBloqueDesbloqueado?.()) {
+    if (cargasTabRef.current?.estaBloqueDesbloqueado?.() || informacionTabRef.current?.estaBloqueDesbloqueado?.()) {
       const bloqueDesbloqueado = formData.bloques[bloqueActivoIndex];
       const itemsBloqueDesbloqueado = bloqueDesbloqueado?.cotizaciones?.[0]?.items || [];
       const resultadoPeriodo = await verificarPeriodosBloque(itemsBloqueDesbloqueado);
@@ -506,7 +507,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
 
       <div className="flex-grow flex overflow-hidden">
 
-        <div className="w-40 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col">
+        <div className="w-36 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col">
           <div className="p-2 border-b border-slate-200 dark:border-gray-700">
             <h2 className="text-[10px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
               Menú de Opción
@@ -562,6 +563,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
 
           {tabActual?.id === 'informacion' && (
             <InformacionTab
+              ref={informacionTabRef}
               formData={formData}
               handleGeneralChange={handleGeneralChange}
               handleBloqueChange={handleBloqueChange}

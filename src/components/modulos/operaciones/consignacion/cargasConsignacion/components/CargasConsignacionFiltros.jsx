@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search, FilterX } from 'lucide-react';
+import { EstadoFilterDropdown } from './EstadoFilterDropdown';
 
 const NOMBRES_MESES = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -19,17 +20,17 @@ const CargasConsignacionFiltros = ({
   setFiltroDia,
   opcionesFechas,
 
-  filtroAtributo,
-  setFiltroAtributo,
-
-  filtroEstado,
-  setFiltroEstado,
+  filtrosEstados,
+  toggleFiltroEstado,
+  limpiarFiltroEstados,
   opcionesEstados = [],
+
+  filtroSoloHastaHoy,
+  setFiltroSoloHastaHoy,
+  hayFiltrosActivos,
 
   limpiarFiltros
 }) => {
-  const hayFiltrosActivos = filtroAnio || filtroMes || filtroDia || filtroAtributo || filtroEstado;
-
   return (
     <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
 
@@ -77,26 +78,37 @@ const CargasConsignacionFiltros = ({
           ))}
         </select>
 
-        <select
-          value={filtroAtributo}
-          onChange={e => setFiltroAtributo(e.target.value)}
-          className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer"
-        >
-          <option value="">Atributo (Todos)</option>
-          <option value="CONSIGNACION">CONSIGNACION</option>
-          <option value="COTIZACION">COTIZACION</option>
-        </select>
+        <EstadoFilterDropdown
+          opcionesEstados={opcionesEstados}
+          filtrosEstados={filtrosEstados}
+          toggleFiltroEstado={toggleFiltroEstado}
+          limpiarFiltroEstados={limpiarFiltroEstados}
+        />
 
-        <select
-          value={filtroEstado}
-          onChange={e => setFiltroEstado(e.target.value)}
-          className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer"
-        >
-          <option value="">Estado (Todos)</option>
-          {opcionesEstados.map(est => (
-            <option key={est} value={est}>{est}</option>
-          ))}
-        </select>
+        <div className="flex items-center h-7 border border-gray-300 dark:border-gray-600 rounded overflow-hidden text-[11px] shrink-0">
+          <button
+            type="button"
+            onClick={() => setFiltroSoloHastaHoy(true)}
+            title="Solo muestra filas con fecha de hoy o anterior (oculta fechas futuras)"
+            className={`h-full px-2 font-medium transition ${filtroSoloHastaHoy
+              ? 'bg-[#2383C2] text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+          >
+            Hasta hoy
+          </button>
+          <button
+            type="button"
+            onClick={() => setFiltroSoloHastaHoy(false)}
+            title="Muestra todas las fechas, incluidas las futuras"
+            className={`h-full px-2 font-medium border-l border-gray-300 dark:border-gray-600 transition ${!filtroSoloHastaHoy
+              ? 'bg-[#2383C2] text-white'
+              : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+          >
+            Todos los días
+          </button>
+        </div>
 
         {hayFiltrosActivos && (
           <button

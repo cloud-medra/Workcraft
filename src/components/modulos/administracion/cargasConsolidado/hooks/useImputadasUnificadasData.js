@@ -6,10 +6,11 @@ import {
   construirQueryAnioImputadas,
   calcularMesPorDefecto
 } from './periodoQueryHelpers';
-import { normalizarImputadaImplantes, normalizarImputadaConsignacion } from '../utils/normalizarFila';
+import { normalizarImputadaImplantes, normalizarImputadaConsignacion, normalizarImputadaHemodinamia } from '../utils/normalizarFila';
 
 const RAIZ_IMPLANTES = 'implantes_imputadas';
 const RAIZ_CONSIGNACION = 'consignacion_imputadas';
+const RAIZ_HEMODINAMIA = 'hemodinamia_imputadas';
 export const TODOS_LOS_MESES = 'TODOS';
 const PAGE_SIZE = 50;
 
@@ -27,6 +28,7 @@ export const useImputadasUnificadasData = () => {
 
   const [docsImplantes, setDocsImplantes] = useState([]);
   const [docsConsignacion, setDocsConsignacion] = useState([]);
+  const [docsHemodinamia, setDocsHemodinamia] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [pagina, setPagina] = useState(1);
 
@@ -37,12 +39,13 @@ export const useImputadasUnificadasData = () => {
     (async () => {
       setCargandoAnios(true);
       try {
-        const [aniosImplantes, aniosConsignacion] = await Promise.all([
+        const [aniosImplantes, aniosConsignacion, aniosHemodinamia] = await Promise.all([
           aniosDisponiblesPorSondeoImputadas(RAIZ_IMPLANTES),
-          aniosDisponiblesPorSondeoImputadas(RAIZ_CONSIGNACION)
+          aniosDisponiblesPorSondeoImputadas(RAIZ_CONSIGNACION),
+          aniosDisponiblesPorSondeoImputadas(RAIZ_HEMODINAMIA)
         ]);
         if (cancelado) return;
-        const union = Array.from(new Set([...aniosImplantes, ...aniosConsignacion])).sort((a, b) => b.localeCompare(a));
+        const union = Array.from(new Set([...aniosImplantes, ...aniosConsignacion, ...aniosHemodinamia])).sort((a, b) => b.localeCompare(a));
         setAniosDisponibles(union);
       } catch (err) {
         console.error('Error al obtener años disponibles de Imputadas:', err);
@@ -56,13 +59,14 @@ export const useImputadasUnificadasData = () => {
   useEffect(() => {
     setDocsImplantes([]);
     setDocsConsignacion([]);
+    setDocsHemodinamia([]);
     setPagina(1);
     necesitaMesPorDefectoRef.current = true;
 
     if (!anio) return;
 
     setCargandoDatos(true);
-    let faltanPorLlegar = 2;
+    let faltanPorLlegar = 3;
     const unaLlego = () => { faltanPorLlegar -= 1; if (faltanPorLlegar <= 0) setCargandoDatos(false); };
 
     const unsubImplantes = onSnapshot(
@@ -76,13 +80,20 @@ export const useImputadasUnificadasData = () => {
       (err) => { console.error('Error al escuchar consignacion_imputadas por año:', err); unaLlego(); }
     );
 
-    return () => { unsubImplantes(); unsubConsignacion(); };
+    const unsubHemodinamia = onSnapshot(
+      construirQueryAnioImputadas(RAIZ_HEMODINAMIA, anio),
+      (snap) => { setDocsHemodinamia(snap.docs.map(d => ({ id: d.id, ...d.data() }))); unaLlego(); },
+      (err) => { console.error('Error al escuchar hemodinamia_imputadas por año:', err); unaLlego(); }
+    );
+
+    return () => { unsubImplantes(); unsubConsignacion(); unsubHemodinamia(); };
   }, [anio]);
 
   const filasAnio = useMemo(() => [
     ...docsImplantes.map(normalizarImputadaImplantes),
-    ...docsConsignacion.map(normalizarImputadaConsignacion)
-  ].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')), [docsImplantes, docsConsignacion]);
+    ...docsConsignacion.map(normalizarImputadaConsignacion),
+    ...docsHemodinamia.map(normalizarImputadaHemodinamia)
+  ].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')), [docsImplantes, docsConsignacion, docsHemodinamia]);
 
   // Meses disponibles del año elegido, ya ordenados de enero a diciembre
   // (se recorre MESES, que ya está en ese orden) — se derivan de lo ya

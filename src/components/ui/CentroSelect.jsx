@@ -29,7 +29,7 @@ const obtenerCentrosCacheados = (forzar = false) => {
   return promesaCentrosCache;
 };
 
-const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro..." }) => {
+const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro...", disabled = false }) => {
   const [centros, setCentros] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [abierto, setAbierto] = useState(false);
@@ -104,8 +104,8 @@ const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro..." }
   return (
     <div className="relative w-full" ref={containerRef}>
       <div
-        onClick={handleToggle}
-        className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex items-center justify-between cursor-pointer focus-within:border-[#2383C2]"
+        onClick={disabled ? undefined : handleToggle}
+        className={`w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex items-center justify-between focus-within:border-[#2383C2] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span className={`truncate ${!centroSeleccionado ? 'text-gray-400' : ''}`}>
           {centroSeleccionado ? centroSeleccionado.nombre : placeholder}

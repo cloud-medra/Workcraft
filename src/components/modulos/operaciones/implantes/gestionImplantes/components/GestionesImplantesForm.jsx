@@ -121,7 +121,7 @@ const GestionesImplantesForm = ({
             <input
               type="text"
               value={formData.observacion || ''}
-              onChange={e => setFormData({ ...formData, observacion: e.target.value })}
+              onChange={e => setFormData({ ...formData, observacion: e.target.value.toUpperCase() })}
               className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100"
               placeholder="Observación libre..."
             />

@@ -3,6 +3,9 @@ import { FolderKanban, BarChart2, FilePlus, ArrowLeft, Save, AlertTriangle, X, S
 import Spinner from '../../../ui/Spinner';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 
+import { useGestionesHemodinamia } from '../../operaciones/hemodinamia/gestionHemodinamia/hooks/useGestionesHemodinamia';
+import { formatearFecha as formatearFechaHemodinamia } from '../../operaciones/hemodinamia/gestionHemodinamia/utils/gestionesImportExport';
+import GestionesHemodinamiaDetalleView from '../../operaciones/hemodinamia/gestionHemodinamia/components/GestionesHemodinamiaDetalleView';
 import { useGestionesImplantes } from '../../operaciones/implantes/gestionImplantes/hooks/useGestionesImplantes';
 import { formatearFecha } from '../../operaciones/implantes/gestionImplantes/utils/gestionesImportExport';
 import GestionesImplantesDetalleView from '../../operaciones/implantes/gestionImplantes/components/GestionesImplantesDetalleView';
@@ -36,8 +39,10 @@ const ALL_TABS = [
 // esa lectura completa solo se dispara cuando de verdad se abre el detalle
 // de un registro de Implantes, no cada vez que se entra al módulo o se
 // mira la tabla de Gestión (que ya trae sus propios datos acotados por año).
-const DetalleImplantesConHeader = ({ fila, onVolver }) => {
-  const implantesHook = useGestionesImplantes();
+// Hemodinamia comparte la misma cáscara (mismo contrato de hook y de vista de
+// detalle), por eso el componente recibe hook/vista/título por props.
+const DetalleGestionConHeader = ({ fila, onVolver, useGestiones, DetalleView, titulo, formatearFechaFn }) => {
+  const implantesHook = useGestiones();
   const detalleRef = useRef(null);
   const [showConfirmSalir, setShowConfirmSalir] = useState(false);
 
@@ -113,7 +118,7 @@ const DetalleImplantesConHeader = ({ fila, onVolver }) => {
           <ArrowLeft size={13} />
         </button>
         <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-400">
-          Detalle de Gestión de Implante
+          {titulo}
         </span>
         <button
           onClick={() => detalleRef.current?.guardarTodo()}
@@ -123,7 +128,7 @@ const DetalleImplantesConHeader = ({ fila, onVolver }) => {
         </button>
       </div>
 
-      <GestionesImplantesDetalleView
+      <DetalleView
         ref={detalleRef}
         item={itemActual}
         todosLosRegistros={implantesHook.implantes}
@@ -132,7 +137,7 @@ const DetalleImplantesConHeader = ({ fila, onVolver }) => {
         logsList={implantesHook.logsList}
         loadingLogs={implantesHook.loadingLogs}
         cargarLogsDeImplante={implantesHook.cargarLogsDeImplante}
-        formatearFecha={formatearFecha}
+        formatearFecha={formatearFechaFn}
         handleCopiarTexto={implantesHook.handleCopiarTexto}
       />
     </div>
@@ -171,7 +176,7 @@ const CargasConsolidado = () => {
 
       <div className="px-3 py-2 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/80">
         <h2 className="text-[12px] font-bold text-gray-700 dark:text-gray-100 flex items-center gap-1.5">
-          Cargas Consolidado — Consignación + Implantes
+          Cargas Consolidado — Consignación + Implantes + Hemodinamia
         </h2>
       </div>
 
@@ -208,7 +213,23 @@ const CargasConsolidado = () => {
           {tabActual?.id === 'gestion' && (
             filaSeleccionada ? (
               filaSeleccionada.origen === ORIGEN.IMPLANTES ? (
-                <DetalleImplantesConHeader fila={filaSeleccionada} onVolver={handleVolverDeDetalle} />
+                <DetalleGestionConHeader
+                  fila={filaSeleccionada}
+                  onVolver={handleVolverDeDetalle}
+                  useGestiones={useGestionesImplantes}
+                  DetalleView={GestionesImplantesDetalleView}
+                  titulo="Detalle de Gestión de Implante"
+                  formatearFechaFn={formatearFecha}
+                />
+              ) : filaSeleccionada.origen === ORIGEN.HEMODINAMIA ? (
+                <DetalleGestionConHeader
+                  fila={filaSeleccionada}
+                  onVolver={handleVolverDeDetalle}
+                  useGestiones={useGestionesHemodinamia}
+                  DetalleView={GestionesHemodinamiaDetalleView}
+                  titulo="Detalle de Gestión de Hemodinamia"
+                  formatearFechaFn={formatearFechaHemodinamia}
+                />
               ) : (
                 <CargasConsignacionDetalleView
                   registro={filaSeleccionada._raw}

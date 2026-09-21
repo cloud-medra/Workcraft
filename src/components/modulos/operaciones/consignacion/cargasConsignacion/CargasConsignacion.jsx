@@ -22,14 +22,21 @@ import CargasConsignacionFiltros from './components/CargasConsignacionFiltros';
 import CargasConsignacionTable from './components/CargasConsignacionTable';
 import CargasConsignacionDetalleView from './components/CargasConsignacionDetalleView';
 
+const obtenerFechaHoyISO = () => {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+};
+
 const COL_BASE = 'consignacion_registros';
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_POR_DEFECTO = 'INGRESADO';
 const TAMANO_PAGINA = 150;
 
-const ESTADOS_DISPONIBLES = [
-  'AGENDADO', 'CARGADO', 'INCOMPLETO', 'INGRESADO', 'PENDIENTE', 'REVISAR', 'S/COTIZACION'
-];
+// Semilla del filtro de Estado: los únicos estados que Consignación escribe en
+// un registro — INGRESADO (alta en Registro), PENDIENTE/CARGADO/REVISAR
+// (selector de CargasTab) y SOLICITADO (export en Solicitud). Los estados
+// reales encontrados en los datos se suman a esta lista.
+const ESTADOS_SEMILLA = ['INGRESADO', 'PENDIENTE', 'CARGADO', 'REVISAR', 'SOLICITADO'];
 
 const CargasConsignacion = () => {
   const [registros, setRegistros] = useState([]);
@@ -40,27 +47,44 @@ const CargasConsignacion = () => {
   const [hayMas, setHayMas] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
-  const [filtroAnio, setFiltroAnio] = useState('');
-  const [filtroMes, setFiltroMes] = useState('');
+  // Por defecto parte en el año y mes actuales (filtro del lado del cliente).
+  const [filtroAnio, setFiltroAnio] = useState(() => new Date().getFullYear().toString());
+  const [filtroMes, setFiltroMes] = useState(() => String(new Date().getMonth() + 1).padStart(2, '0'));
   const [filtroDia, setFiltroDia] = useState('');
-  const [filtroAtributo, setFiltroAtributo] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState(ESTADO_POR_DEFECTO);
+  const [filtrosEstados, setFiltrosEstados] = useState([ESTADO_POR_DEFECTO]);
+  const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(true);
+  // Estados vistos en cualquier carga de datos (unión acumulada): como la
+  // consulta filtra por estado en el servidor, `registros` solo trae los
+  // seleccionados; acumular evita que las demás opciones desaparezcan.
+  const [estadosVistos, setEstadosVistos] = useState(() => new Set());
 
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
 
-  const procesarSnap = (snap) =>
-    snap.docs
+  const procesarSnap = (snap) => {
+    const lista = snap.docs
       .filter((d) => d.ref.path.startsWith(`${COL_BASE}/`))
       .map((d) => ({ id: d.id, ref: d.ref, ...d.data() }));
+
+    const nuevos = lista.map(r => (r.estado || '').toUpperCase().trim()).filter(Boolean);
+    setEstadosVistos(prev => (nuevos.every(e => prev.has(e)) ? prev : new Set([...prev, ...nuevos])));
+    return lista;
+  };
+
+  // Sin estados seleccionados = todos. 1 estado usa '==' y varios usan 'in'
+  // (mismo índice compuesto estado + fechaRegistro; 'in' admite hasta 30).
+  const agregarRestriccionEstados = (restricciones) => {
+    if (filtrosEstados.length === 1) restricciones.push(where('estado', '==', filtrosEstados[0]));
+    else if (filtrosEstados.length > 1) restricciones.push(where('estado', 'in', filtrosEstados));
+  };
 
   const cargarPrimeraPagina = useCallback(async () => {
     setCargandoLista(true);
     try {
       const restricciones = [];
-      if (filtroEstado) restricciones.push(where('estado', '==', filtroEstado));
+      agregarRestriccionEstados(restricciones);
       restricciones.push(orderBy('fechaRegistro', 'desc'));
       restricciones.push(limit(TAMANO_PAGINA));
 
@@ -76,14 +100,14 @@ const CargasConsignacion = () => {
     } finally {
       setCargandoLista(false);
     }
-  }, [filtroEstado]);
+  }, [filtrosEstados]);
 
   const cargarMas = async () => {
     if (!ultimoDoc || cargandoMas) return;
     setCargandoMas(true);
     try {
       const restricciones = [];
-      if (filtroEstado) restricciones.push(where('estado', '==', filtroEstado));
+      agregarRestriccionEstados(restricciones);
       restricciones.push(orderBy('fechaRegistro', 'desc'));
       restricciones.push(startAfter(ultimoDoc));
       restricciones.push(limit(TAMANO_PAGINA));
@@ -176,9 +200,14 @@ const CargasConsignacion = () => {
     }
   };
 
+  const anioActual = new Date().getFullYear().toString();
+  const mesActual = String(new Date().getMonth() + 1).padStart(2, '0');
+
   const opcionesFechas = useMemo(() => {
-    const anios = new Set();
-    const meses = new Set();
+    // Año/mes actuales siempre son opción, aunque aún no haya registros cargados,
+    // para que el select nunca quede en blanco con el valor por defecto.
+    const anios = new Set([anioActual]);
+    const meses = new Set([mesActual]);
     const dias = new Set();
 
     registros.forEach(r => {
@@ -195,17 +224,36 @@ const CargasConsignacion = () => {
       meses: [...meses].sort((a, b) => a.localeCompare(b)),
       dias: [...dias].sort((a, b) => a.localeCompare(b))
     };
-  }, [registros]);
+  }, [registros, anioActual, mesActual]);
 
-  const limpiarFiltros = () => {
-    setFiltroAnio('');
-    setFiltroMes('');
-    setFiltroDia('');
-    setFiltroAtributo('');
-    setFiltroEstado(ESTADO_POR_DEFECTO);
+  const opcionesEstados = useMemo(
+    () => [...new Set([...ESTADOS_SEMILLA, ...estadosVistos, ...filtrosEstados])].sort(),
+    [estadosVistos, filtrosEstados]
+  );
+
+  const toggleFiltroEstado = (estado) => {
+    setFiltrosEstados(prev =>
+      prev.includes(estado) ? prev.filter(e => e !== estado) : [...prev, estado]
+    );
   };
 
+  const limpiarFiltroEstados = () => setFiltrosEstados([]);
+
+  const limpiarFiltros = () => {
+    setFiltroAnio(anioActual);
+    setFiltroMes(mesActual);
+    setFiltroDia('');
+    setFiltrosEstados([ESTADO_POR_DEFECTO]);
+    setFiltroSoloHastaHoy(true);
+  };
+
+  const hayFiltrosActivos = !!(
+    filtroAnio !== anioActual || filtroMes !== mesActual || filtroDia || !filtroSoloHastaHoy ||
+    filtrosEstados.length !== 1 || filtrosEstados[0] !== ESTADO_POR_DEFECTO
+  );
+
   const registrosFiltrados = useMemo(() => {
+    const hoyISO = obtenerFechaHoyISO();
     const termino = busqueda.trim().toLowerCase();
 
     return registros.filter(r => {
@@ -228,11 +276,11 @@ const CargasConsignacion = () => {
         return false;
       }
 
-      if (filtroAtributo && (r.atributo || '').toUpperCase() !== filtroAtributo) return false;
+      if (filtroSoloHastaHoy && !(r.fecha && r.fecha.includes('-') && r.fecha <= hoyISO)) return false;
 
       return true;
     });
-  }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroAtributo]);
+  }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy]);
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -281,11 +329,13 @@ const CargasConsignacion = () => {
             filtroDia={filtroDia}
             setFiltroDia={setFiltroDia}
             opcionesFechas={opcionesFechas}
-            filtroAtributo={filtroAtributo}
-            setFiltroAtributo={setFiltroAtributo}
-            filtroEstado={filtroEstado}
-            setFiltroEstado={setFiltroEstado}
-            opcionesEstados={ESTADOS_DISPONIBLES}
+            filtrosEstados={filtrosEstados}
+            toggleFiltroEstado={toggleFiltroEstado}
+            limpiarFiltroEstados={limpiarFiltroEstados}
+            opcionesEstados={opcionesEstados}
+            filtroSoloHastaHoy={filtroSoloHastaHoy}
+            setFiltroSoloHastaHoy={setFiltroSoloHastaHoy}
+            hayFiltrosActivos={hayFiltrosActivos}
             limpiarFiltros={limpiarFiltros}
           />
 

@@ -6,6 +6,7 @@ import { useToast } from '../../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { useUser } from '../../../../../../context/UserContext';
 import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
+import { periodoEstaAbierto } from './verificacionPeriodoConsignacion';
 
 import DetalleTab from './DetalleTab';
 import InformacionTab from './InformacionTab';
@@ -77,6 +78,7 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
   const [formData, setFormData] = useState(() => construirEstadoInicial(registro));
   const snapshotInicialRef = useRef(JSON.stringify(construirEstadoInicial(registro)));
 
+  const informacionTabRef = useRef(null);
   const [guardando, setGuardando] = useState(false);
   const [showConfirmSalir, setShowConfirmSalir] = useState(false);
 
@@ -158,6 +160,16 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
     if (!registro?.ref) {
       showToast('No se encontró la referencia del registro', 'error');
       return false;
+    }
+    // Candado de Información (ítem SOLICITADO/imputado, desbloqueado a
+    // propósito): re-verificar que su período siga abierto antes de guardar.
+    const itemDesbloqueado = informacionTabRef.current?.itemDesbloqueado?.();
+    if (itemDesbloqueado) {
+      const abierto = await periodoEstaAbierto(itemDesbloqueado.periodoAnio, itemDesbloqueado.periodoMes);
+      if (!abierto) {
+        showToast('No se guardó: el período de este ítem ya fue cerrado mientras lo editabas.', 'error');
+        return false;
+      }
     }
     setGuardando(true);
     try {
@@ -281,7 +293,7 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
       </div>
 
       <div className="flex-grow flex overflow-hidden">
-        <div className="w-40 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col">
+        <div className="w-36 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col">
           <div className="p-2 border-b border-slate-200 dark:border-gray-700">
             <h2 className="text-[10px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
               Menú de Opción
@@ -328,7 +340,7 @@ const CargasConsignacionDetalleView = ({ registro, onVolver, setCargando }) => {
           {tabActual?.id === 'detalle' && <DetalleTab registro={registro} items={itemsDeEstaAdmision} />}
 
           {tabActual?.id === 'informacion' && (
-            <InformacionTab formData={formData} onChange={handleFieldChange} />
+            <InformacionTab ref={informacionTabRef} registro={registro} items={itemsDeEstaAdmision} formData={formData} onChange={handleFieldChange} />
           )}
 
           {tabActual?.id === 'delivery' && (

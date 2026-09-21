@@ -1,11 +1,13 @@
-// Capa de normalización: Implantes (bloques anidados en
-// implantes_gestiones) y Consignación (ítems planos en
+// Capa de normalización: Implantes y Hemodinamia (bloques anidados en
+// implantes_gestiones / hemodinamia_gestiones) y Consignación (ítems planos en
 // consignacion_registros) tienen formas de datos distintas — acá se
 // mapean a una forma común para que la tabla combinada, Imputadas y
 // Solicitudes puedan renderizar ambos orígenes con las mismas columnas.
 // `_raw` conserva el documento original tal cual lo entrega el hook de
 // cada módulo, para que el modal de detalle y la acción de exportar
 // puedan seguir operando con la forma nativa de cada uno.
+
+import { CENTRO_HEMODINAMIA } from '../../../operaciones/hemodinamia/gestionHemodinamia/utils/constantesHemodinamia';
 
 export const ORIGEN = {
   IMPLANTES: 'IMPLANTES',
@@ -69,8 +71,8 @@ export const normalizarFilaGestionHemodinamia = (bloque) => ({
   medico: bloque.medico || 'P',
   fecha: bloque.fecha || '',
   empresa: bloque.empresa || 'P',
-  centro: bloque.centro || 'P',
-  atributo: bloque.atributo || 'P',
+  centro: CENTRO_HEMODINAMIA,
+  atributo: bloque.atributo || 'HEMODINAMIA',
   estado: bloque.estado || 'AGENDADO',
   costo: Number(bloque.costo) || 0,
   solicitud: bloque.solicitud || 'PENDIENTE',
@@ -206,3 +208,47 @@ export const normalizarSolicitudConsignacion = (item) => ({
   costo: Number(item.costo) || 0,
   _raw: item
 });
+
+// Hemodinamia guarda igual que Implantes (bloques con cotizaciones[0].items).
+// `_raw` toma la forma nativa que arma useSolicitudHemodinamiaData (con
+// `items` ya extraídos y valores por defecto), porque el export de este
+// módulo la necesita tal cual para escribir en hemodinamia_imputadas.
+export const normalizarSolicitudHemodinamia = (doc) => {
+  const items = doc.cotizaciones?.[0]?.items || [];
+  const bloque = {
+    id: doc.id,
+    refPath: doc.refPath,
+    gestionId: doc.gestionId || doc.agendaId || 'P',
+    agendaId: doc.agendaId || doc.gestionId || 'P',
+    admision: doc.admision || 'P',
+    nombre: doc.nombre || 'P',
+    medico: doc.medico || 'P',
+    empresa: doc.empresa || 'P',
+    fecha: doc.fecha || 'P',
+    informe: doc.informe || 'PENDIENTE',
+    convenio: doc.convenio || 'P',
+    prevision: doc.prevision || 'P',
+    descripcion: doc.descripcion || 'P',
+    centro: CENTRO_HEMODINAMIA,
+    atributo: doc.atributo || 'HEMODINAMIA',
+    estado: doc.estado || 'AGENDANDO',
+    costo: doc.costo || 0,
+    registradoPor: doc.registradoPor || 'Usuario',
+    fechaRegistro: doc.fechaRegistro || null,
+    numCotizacion: doc.cotizaciones?.[0]?.numCotizacion || 'P',
+    items
+  };
+  return {
+    origen: ORIGEN.HEMODINAMIA,
+    id: bloque.refPath,
+    refPath: bloque.refPath,
+    gestionId: bloque.gestionId,
+    paciente: bloque.nombre,
+    medico: bloque.medico,
+    fecha: bloque.fecha === 'P' ? '' : bloque.fecha,
+    empresa: bloque.empresa,
+    cantidadItems: items.length,
+    costo: Number(bloque.costo) || 0,
+    _raw: bloque
+  };
+};

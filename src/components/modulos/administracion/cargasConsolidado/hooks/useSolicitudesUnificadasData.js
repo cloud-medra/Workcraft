@@ -18,10 +18,13 @@ import { useUser } from '../../../../../context/UserContext';
 import { refImputada as refImputadaImplantes, construirPayloadImputada } from '../../../operaciones/implantes/gestionImplantes/utils/imputadaSync';
 import { registrarLogImplantes } from '../../../operaciones/implantes/gestionImplantes/utils/registrarLogImplantes';
 import { registrarLogConsignacion } from '../../../operaciones/consignacion/utils/registrarLogConsignacion';
-import { ORIGEN, normalizarSolicitudImplantes, normalizarSolicitudConsignacion } from '../utils/normalizarFila';
+import { registrarLogHemodinamia } from '../../../operaciones/hemodinamia/gestionHemodinamia/utils/registrarLogHemodinamia';
+import { ORIGEN, normalizarSolicitudImplantes, normalizarSolicitudConsignacion, normalizarSolicitudHemodinamia } from '../utils/normalizarFila';
 
 const RANGO_MIN_IMPLANTES = 'implantes_gestiones/0000';
 const RANGO_MAX_IMPLANTES = 'implantes_gestiones/9999';
+const RANGO_MIN_HEMODINAMIA = 'hemodinamia_gestiones/0000';
+const RANGO_MAX_HEMODINAMIA = 'hemodinamia_gestiones/9999';
 const COL_CONSIGNACION = 'consignacion_registros';
 
 const formatearFechaExcel = (fechaString) => {
@@ -54,6 +57,7 @@ const usePeriodoActivo = (modulo) => {
 export const useSolicitudesUnificadasData = () => {
   const [bloquesImplantes, setBloquesImplantes] = useState([]);
   const [itemsConsignacion, setItemsConsignacion] = useState([]);
+  const [docsHemodinamia, setDocsHemodinamia] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [seleccionados, setSeleccionados] = useState(new Set());
@@ -64,6 +68,7 @@ export const useSolicitudesUnificadasData = () => {
 
   const periodoImplantes = usePeriodoActivo('implantes');
   const periodoConsignacion = usePeriodoActivo('consignacion');
+  const periodoHemodinamia = usePeriodoActivo('hemodinamia');
 
   useEffect(() => {
     const q = query(
@@ -76,6 +81,20 @@ export const useSolicitudesUnificadasData = () => {
     const unsub = onSnapshot(q, (snap) => {
       setBloquesImplantes(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
     }, (err) => console.error('Error al escuchar solicitudes de Implantes:', err));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const q = query(
+      collectionGroup(db, 'detalles'),
+      where('solicitud', '==', 'SOLICITAR'),
+      where(documentId(), '>=', RANGO_MIN_HEMODINAMIA),
+      where(documentId(), '<', RANGO_MAX_HEMODINAMIA),
+      orderBy(documentId())
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setDocsHemodinamia(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
+    }, (err) => console.error('Error al escuchar solicitudes de Hemodinamia:', err));
     return () => unsub();
   }, []);
 
@@ -99,7 +118,8 @@ export const useSolicitudesUnificadasData = () => {
 
   const filas = [
     ...bloquesImplantes.map(normalizarSolicitudImplantes),
-    ...itemsConsignacion.map(normalizarSolicitudConsignacion)
+    ...itemsConsignacion.map(normalizarSolicitudConsignacion),
+    ...docsHemodinamia.map(normalizarSolicitudHemodinamia)
   ];
 
   const toggleSeleccion = (id) => {
@@ -123,6 +143,7 @@ export const useSolicitudesUnificadasData = () => {
 
     const seleccionImplantes = filasSeleccionadas.filter(f => f.origen === ORIGEN.IMPLANTES);
     const seleccionConsignacion = filasSeleccionadas.filter(f => f.origen === ORIGEN.CONSIGNACION);
+    const seleccionHemodinamia = filasSeleccionadas.filter(f => f.origen === ORIGEN.HEMODINAMIA);
 
     if (seleccionImplantes.length > 0 && !periodoImplantes) {
       showToast('No hay un período abierto para Implantes en Control Mensual. Ábrelo antes de exportar.', 'error');
@@ -133,9 +154,14 @@ export const useSolicitudesUnificadasData = () => {
       return;
     }
 
+    if (seleccionHemodinamia.length > 0 && !periodoHemodinamia) {
+      showToast('No hay un período abierto para Hemodinamia en Control Mensual. Ábrelo antes de exportar.', 'error');
+      return;
+    }
+
     confirmAction(
       'Exportar y Marcar como Solicitado',
-      `Se exportarán ${filasSeleccionadas.length} registro(s) (${seleccionImplantes.length} de Implantes, ${seleccionConsignacion.length} de Consignación) a un único Excel y quedarán marcados como SOLICITADO — cada uno se copiará a la colección de imputadas de su propio módulo. ¿Continuar?`,
+      `Se exportarán ${filasSeleccionadas.length} registro(s) (${seleccionImplantes.length} de Implantes, ${seleccionConsignacion.length} de Consignación, ${seleccionHemodinamia.length} de Hemodinamia) a un único Excel y quedarán marcados como SOLICITADO — cada uno se copiará a la colección de imputadas de su propio módulo. ¿Continuar?`,
       async () => {
         setExportando(true);
         try {
@@ -144,6 +170,7 @@ export const useSolicitudesUnificadasData = () => {
 
           const filasImplantesExcel = [];
           const filasConsignacionExcel = [];
+          const filasHemodinamiaExcel = [];
           const filasResumen = [];
 
           seleccionImplantes.forEach(fila => {
@@ -205,12 +232,46 @@ export const useSolicitudesUnificadasData = () => {
             });
           });
 
+          seleccionHemodinamia.forEach(fila => {
+            const bloque = fila._raw;
+            const items = bloque.items?.length ? bloque.items : [null];
+            items.forEach(it => {
+              filasHemodinamiaExcel.push({
+                'ID': fila.gestionId,
+                'PACIENTE': fila.paciente,
+                'MEDICO': fila.medico,
+                'FECHA': formatearFechaExcel(fila.fecha),
+                'EMPRESA': fila.empresa,
+                'CODIGO': it ? (it.codigo || 'P') : '',
+                'DESCRIPCION': it ? (it.descriptorAuto || 'P') : '',
+                'CANTIDAD': it ? (it.cantidad || 0) : '',
+                'PRECIO': it ? (it.precio || 0) : '',
+                'LOTE': it ? (it.lote || 'P') : '',
+                'VENCIMIENTO': it?.vencimiento ? formatearFechaExcel(it.vencimiento) : ''
+              });
+              filasResumen.push({
+                'Origen': 'Hemodinamia',
+                'Ingreso': fechaHoyFormato,
+                'Id': fila.gestionId,
+                'Cód': it ? (it.codigo || 'P') : '',
+                'Cant': it ? (it.cantidad || 0) : '',
+                'Venta': it ? (it.venta || 0) : '',
+                'Médico': fila.medico,
+                'Fecha': formatearFechaExcel(fila.fecha),
+                'Descripción': it ? (it.descriptorAuto || 'P') : ''
+              });
+            });
+          });
+
           const workbook = XLSX.utils.book_new();
           if (filasImplantesExcel.length > 0) {
             XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(filasImplantesExcel), 'Solicitud Implantes');
           }
           if (filasConsignacionExcel.length > 0) {
             XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(filasConsignacionExcel), 'Solicitud Consignación');
+          }
+          if (filasHemodinamiaExcel.length > 0) {
+            XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(filasHemodinamiaExcel), 'Solicitud Hemodinamia');
           }
           XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(filasResumen), 'Resumen');
           XLSX.writeFile(workbook, `solicitud_unificada_${fechaHoy}.xlsx`);
@@ -304,6 +365,96 @@ export const useSolicitudesUnificadasData = () => {
             }, userData));
           });
 
+          // Hemodinamia: mismo criterio que su Solicitud nativa — todos los
+          // ítems se imputan al período abierto (periodoAnioCarga/MesCarga
+          // conservan el de la carga original).
+          const periodoTextoHemodinamia = periodoHemodinamia
+            ? `${periodoHemodinamia.mes.charAt(0).toUpperCase()}${periodoHemodinamia.mes.slice(1).toLowerCase()} ${periodoHemodinamia.anio}`
+            : '';
+
+          seleccionHemodinamia.forEach(fila => {
+            const bloque = fila._raw;
+            const docRef = doc(db, bloque.refPath);
+            agregarOp(b => b.update(docRef, {
+              solicitud: 'SOLICITADO',
+              fechaSolicitud: new Date(),
+              solicitadoPor: userData?.nombreCompleto || 'Usuario',
+              periodo: periodoTextoHemodinamia
+            }));
+
+            const [anioF, mesF, diaF] = bloque.fecha && bloque.fecha.includes('-')
+              ? bloque.fecha.split('-')
+              : ['0000', '00', '00'];
+
+            bloque.items.forEach(it => {
+              const imputadaRef = doc(
+                db,
+                'hemodinamia_imputadas', String(periodoHemodinamia.anio),
+                'meses', periodoHemodinamia.mes,
+                'documentos', it.id
+              );
+              agregarOp(b => b.set(imputadaRef, {
+                gestionId: bloque.gestionId,
+                agendaId: bloque.agendaId,
+                admision: bloque.admision,
+                paciente: bloque.nombre,
+                medico: bloque.medico,
+                fecha: bloque.fecha,
+                anio: anioF,
+                mes: mesF,
+                dia: diaF,
+                empresa: bloque.empresa,
+                informe: bloque.informe,
+                convenio: bloque.convenio,
+                prevision: bloque.prevision,
+                descripcion: bloque.descripcion,
+                centro: bloque.centro,
+                atributo: bloque.atributo,
+                estado: bloque.estado,
+                costoGestion: bloque.costo,
+
+                numCotizacion: it.numCotizacion || bloque.numCotizacion,
+                itemId: it.id,
+                referencia: it.referencia || 'P',
+                codigo: it.codigo || 'P',
+                descriptorAuto: it.descriptorAuto || 'P',
+                clase: it.clase || 'P',
+                tipoVinculado: it.tipoVinculado || 'P',
+                detalle: it.detalle || 'P',
+                empresaVinculada: it.empresaVinculada || 'P',
+                precio: Number(it.precio) || 0,
+                cantidad: Number(it.cantidad) || 0,
+                vecesCosto: Number(it.vecesCosto) || 1,
+                recargoEncontrado: !!it.recargoEncontrado,
+                venta: Number(it.venta) || 0,
+                total: Number(it.totalItem) || 0,
+                lote: it.lote || 'P',
+                vencimiento: it.vencimiento || '',
+                sinCodigo: !!it.sinCodigo,
+                estadoCarga: it.estadoCarga || 'PENDIENTE',
+
+                periodoAnio: periodoHemodinamia.anio,
+                periodoMes: periodoHemodinamia.mes,
+                periodo: periodoTextoHemodinamia,
+                periodoAnioCarga: it.periodoAnio || null,
+                periodoMesCarga: it.periodoMes || null,
+
+                registradoPor: userData?.nombreCompleto || 'Usuario',
+                actualizadoEn: new Date()
+              }, { merge: true }));
+            });
+
+            logsAEjecutar.push(() => registrarLogHemodinamia(docRef, 'SOLICITUD_EXPORTADA', {
+              gestionId: fila.gestionId,
+              empresa: fila.empresa,
+              fecha: fila.fecha,
+              cantidadItems: bloque.items.length,
+              periodoAnio: periodoHemodinamia.anio,
+              periodoMes: periodoHemodinamia.mes,
+              periodo: periodoTextoHemodinamia
+            }, userData));
+          });
+
           for (const b of batches) {
             await b.commit();
           }
@@ -331,6 +482,7 @@ export const useSolicitudesUnificadasData = () => {
     toggleSeleccionarTodos,
     periodoImplantes,
     periodoConsignacion,
+    periodoHemodinamia,
     handleExportarYMarcarSolicitado
   };
 };

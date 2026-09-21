@@ -33,6 +33,7 @@ const SolicitudesUnificadasTable = () => {
     toggleSeleccionarTodos,
     periodoImplantes,
     periodoConsignacion,
+    periodoHemodinamia,
     handleExportarYMarcarSolicitado
   } = useSolicitudesUnificadasData();
 
@@ -48,6 +49,10 @@ const SolicitudesUnificadasTable = () => {
           <span className={`flex items-center gap-1 ${periodoConsignacion ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
             {periodoConsignacion ? <Unlock size={11} /> : <Lock size={11} />}
             Consignación: {periodoConsignacion ? `${periodoConsignacion.mes} ${periodoConsignacion.anio}` : 'sin período abierto'}
+          </span>
+          <span className={`flex items-center gap-1 ${periodoHemodinamia ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            {periodoHemodinamia ? <Unlock size={11} /> : <Lock size={11} />}
+            Hemodinamia: {periodoHemodinamia ? `${periodoHemodinamia.mes} ${periodoHemodinamia.anio}` : 'sin período abierto'}
           </span>
         </div>
         <button

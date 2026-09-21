@@ -30,7 +30,7 @@ const obtenerEmpresasCacheadas = (forzar = false) => {
   return promesaEmpresasCache;
 };
 
-const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..." }) => {
+const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa...", disabled = false }) => {
   const [empresas, setEmpresas] = useState([]);
   const [busqueda, setBusqueda] = useState('');
   const [abierto, setAbierto] = useState(false);
@@ -71,8 +71,8 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
   return (
     <div className="relative w-full" ref={containerRef}>
       <div
-        onClick={() => setAbierto(!abierto)}
-        className="w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex items-center justify-between cursor-pointer focus-within:border-[#2383C2]"
+        onClick={disabled ? undefined : () => setAbierto(!abierto)}
+        className={`w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex items-center justify-between focus-within:border-[#2383C2] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <span className={`truncate ${!empresaSeleccionada ? 'text-gray-400' : ''}`}>
           {empresaSeleccionada ? `${empresaSeleccionada.nombre} (${empresaSeleccionada.rut})` : placeholder}

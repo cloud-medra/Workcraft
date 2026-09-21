@@ -32,16 +32,16 @@ const CAMPOS_BUSQUEDA = [
 const COLUMNAS = [
   { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
   { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
-  { key: 'referencia', label: 'Referencia', ancho: 150, min: 80 },
+  { key: 'referencia', label: 'Referencia', ancho: 140, min: 80 },
   { key: 'descEmpresa', label: 'Desc. Maestro', ancho: 300, min: 80 },
   { key: 'empresa', label: 'Empresa', ancho: 300, min: 80 },
-  { key: 'tipo', label: 'Tipo', ancho: 100, min: 60 },
-  { key: 'segmento', label: 'Segmento', ancho: 110, min: 60 },
+  { key: 'tipo', label: 'Tipo', ancho: 90, min: 60 },
+  { key: 'segmento', label: 'Segmento', ancho: 90, min: 60 },
   { key: 'clase', label: 'Clase', ancho: 90, min: 60 },
   { key: 'estado', label: 'Estado', ancho: 90, min: 60, align: 'center' },
-  { key: 'precioNeto', label: 'Precio Neto', ancho: 100, min: 70 },
-  { key: 'registradoPor', label: 'Registrado por', ancho: 150, min: 70 },
-  { key: 'fecha', label: 'Fecha', ancho: 130, min: 90 },
+  { key: 'precioNeto', label: 'Precio Neto', ancho: 90, min: 70 },
+  { key: 'registradoPor', label: 'Registrado por', ancho: 120, min: 70 },
+  { key: 'fecha', label: 'Fecha', ancho: 90, min: 50 },
   { key: 'acciones', label: 'Acciones', ancho: 90, min: 70, align: 'center' }
 ];
 

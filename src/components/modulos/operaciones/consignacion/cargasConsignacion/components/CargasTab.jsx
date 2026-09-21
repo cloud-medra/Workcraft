@@ -829,7 +829,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                     ? estadoKey
                     : (estaSolicitadoResumen ? 'CARGADO' : 'PENDIENTE');
                   return (
-                    <tr key={it.id} className={ESTADO_CARGA_ROW_STYLE[estadoCargaValor]}>
+                    <tr key={it.id} className={`border-l-2 border-transparent hover:border-[#2383C2] transition-colors ${ESTADO_CARGA_ROW_STYLE[estadoCargaValor]}`}>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
                         <select
                           value={estadoCargaValor}
@@ -1067,7 +1067,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
 
                     return (
                       <React.Fragment key={it.id}>
-                        <tr>
+                        <tr className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
                             {it.codigo || 'S/C'}
                           </td>

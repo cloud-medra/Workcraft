@@ -6,10 +6,11 @@ import {
   construirQueryAnioGestion,
   calcularMesPorDefecto
 } from './periodoQueryHelpers';
-import { normalizarFilaGestionImplantes, normalizarFilaGestionConsignacion } from '../utils/normalizarFila';
+import { normalizarFilaGestionImplantes, normalizarFilaGestionConsignacion, normalizarFilaGestionHemodinamia } from '../utils/normalizarFila';
 
 const RAIZ_IMPLANTES = 'implantes_gestiones';
 const RAIZ_CONSIGNACION = 'consignacion_registros';
+const RAIZ_HEMODINAMIA = 'hemodinamia_gestiones';
 export const TODOS_LOS_MESES = 'TODOS';
 const PAGE_SIZE = 50;
 
@@ -27,6 +28,7 @@ export const useGestionConsolidadaData = () => {
 
   const [bloquesImplantes, setBloquesImplantes] = useState([]);
   const [itemsConsignacion, setItemsConsignacion] = useState([]);
+  const [bloquesHemodinamia, setBloquesHemodinamia] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [pagina, setPagina] = useState(1);
 
@@ -43,12 +45,13 @@ export const useGestionConsolidadaData = () => {
     (async () => {
       setCargandoAnios(true);
       try {
-        const [aniosConsignacion, aniosImplantes] = await Promise.all([
+        const [aniosConsignacion, aniosImplantes, aniosHemodinamia] = await Promise.all([
           aniosDisponiblesPorMarcador(RAIZ_CONSIGNACION),
-          aniosDisponiblesPorSondeo(RAIZ_IMPLANTES)
+          aniosDisponiblesPorSondeo(RAIZ_IMPLANTES),
+          aniosDisponiblesPorSondeo(RAIZ_HEMODINAMIA)
         ]);
         if (cancelado) return;
-        const union = Array.from(new Set([...aniosConsignacion, ...aniosImplantes])).sort((a, b) => b.localeCompare(a));
+        const union = Array.from(new Set([...aniosConsignacion, ...aniosImplantes, ...aniosHemodinamia])).sort((a, b) => b.localeCompare(a));
         setAniosDisponibles(union);
       } catch (err) {
         console.error('Error al obtener años disponibles de Gestión:', err);
@@ -67,13 +70,14 @@ export const useGestionConsolidadaData = () => {
     // snapshot del año nuevo.
     setBloquesImplantes([]);
     setItemsConsignacion([]);
+    setBloquesHemodinamia([]);
     setPagina(1);
     necesitaMesPorDefectoRef.current = true;
 
     if (!anio) return;
 
     setCargandoDatos(true);
-    let faltanPorLlegar = 2;
+    let faltanPorLlegar = 3;
     const unaLlego = () => { faltanPorLlegar -= 1; if (faltanPorLlegar <= 0) setCargandoDatos(false); };
 
     const unsubImplantes = onSnapshot(
@@ -87,13 +91,20 @@ export const useGestionConsolidadaData = () => {
       (err) => { console.error('Error al escuchar Gestión de Consignación por año:', err); unaLlego(); }
     );
 
-    return () => { unsubImplantes(); unsubConsignacion(); };
+    const unsubHemodinamia = onSnapshot(
+      construirQueryAnioGestion(RAIZ_HEMODINAMIA, anio),
+      (snap) => { setBloquesHemodinamia(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() }))); unaLlego(); },
+      (err) => { console.error('Error al escuchar Gestión de Hemodinamia por año:', err); unaLlego(); }
+    );
+
+    return () => { unsubImplantes(); unsubConsignacion(); unsubHemodinamia(); };
   }, [anio]);
 
   const filasAnio = useMemo(() => [
     ...bloquesImplantes.map(normalizarFilaGestionImplantes),
-    ...itemsConsignacion.map(normalizarFilaGestionConsignacion)
-  ], [bloquesImplantes, itemsConsignacion]);
+    ...itemsConsignacion.map(normalizarFilaGestionConsignacion),
+    ...bloquesHemodinamia.map(normalizarFilaGestionHemodinamia)
+  ], [bloquesImplantes, itemsConsignacion, bloquesHemodinamia]);
 
   const mesesDisponibles = useMemo(() => {
     const set = new Set();

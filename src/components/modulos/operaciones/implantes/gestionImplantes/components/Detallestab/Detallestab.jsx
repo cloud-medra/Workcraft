@@ -178,7 +178,7 @@ export const DetallesTab = ({ formData }) => {
                       items.map(it => {
                         const estilo = getEstadoCargaStyle(it.estadoCarga);
                         return (
-                          <tr key={it.id} className={it.sinCodigo ? 'bg-red-50/50 dark:bg-red-950/20' : ''}>
+                          <tr key={it.id} className={`border-l-2 border-transparent hover:border-[#2383C2] transition-colors ${it.sinCodigo ? 'bg-red-50/50 dark:bg-red-950/20' : 'hover:bg-gray-50/80 dark:hover:bg-gray-700/40'}`}>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={it.referencia}>
                               {it.referencia}
                             </td>

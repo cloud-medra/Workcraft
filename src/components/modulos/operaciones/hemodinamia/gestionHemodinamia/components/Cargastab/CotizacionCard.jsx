@@ -660,7 +660,7 @@ export const CotizacionCard = ({
                     return (
                       <React.Fragment key={it.id}>
                         <tr
-                          className={`transition ${it.sinCodigo
+                          className={`border-l-2 border-transparent hover:border-[#2383C2] transition ${it.sinCodigo
                             ? 'bg-red-50/70 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30'
                             : esContenidoPad
                               ? 'bg-fuchsia-50/30 dark:bg-fuchsia-950/10 hover:bg-fuchsia-50/60 dark:hover:bg-fuchsia-950/20'
