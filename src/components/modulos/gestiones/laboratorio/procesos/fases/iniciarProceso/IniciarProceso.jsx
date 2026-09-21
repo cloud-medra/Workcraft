@@ -6,6 +6,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
+import { useLaboratorioData } from '../../../LaboratorioDataContext';
 
 const IniciarProceso = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -23,6 +24,8 @@ const IniciarProceso = () => {
   const [periodoAbierto, setPeriodoAbierto] = useState({ mes: '', anio: '', estado: '', cargando: true });
 
   const { showToast } = useToast();
+
+  const { getAnios, getMeses } = useLaboratorioData();
   const { confirmAction } = useModal();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
@@ -81,15 +84,14 @@ const IniciarProceso = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   useEffect(() => {
     if (!filtroAnio) {
@@ -101,11 +103,10 @@ const IniciarProceso = () => {
     const cargarDocumentosDelAnio = async () => {
       setLoading(true);
       try {
-        const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
+        const mesesIds = await getMeses(COL_BASE, filtroAnio);
         let docsAcumulados = [];
 
-        for (const mesDoc of mesesSnap.docs) {
-          const mesId = mesDoc.id;
+        for (const mesId of mesesIds) {
           const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
 
           docsSnap.docs.forEach(d => {
@@ -135,7 +136,7 @@ const IniciarProceso = () => {
     };
 
     cargarDocumentosDelAnio();
-  }, [filtroAnio]);
+  }, [filtroAnio, getMeses]);
 
   const toggleSeleccion = (documento) => {
     setSeleccionadas(prev => {

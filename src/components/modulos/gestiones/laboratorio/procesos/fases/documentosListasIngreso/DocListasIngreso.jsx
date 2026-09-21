@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
 import {
     CheckCircle2,
@@ -14,6 +14,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleListasIngreso from './DetalleListasIngreso';
+import { useLaboratorioData } from '../../../LaboratorioDataContext';
 
 const DocListasIngreso = () => {
     const [documentos, setDocumentos] = useState([]);
@@ -25,6 +26,8 @@ const DocListasIngreso = () => {
     const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
     const { showToast } = useToast();
+
+    const { getAnios, getMeses } = useLaboratorioData();
     const { hasPermission } = useGranularPermission();
 
     const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
@@ -69,15 +72,14 @@ const DocListasIngreso = () => {
     useEffect(() => {
         const cargarAnios = async () => {
             try {
-                const snap = await getDocs(collection(db, COL_BASE));
-                const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+                const anios = await getAnios(COL_BASE);
                 setAniosDisponibles(anios);
             } catch (error) {
                 console.error("Error al cargar años:", error);
             }
         };
         cargarAnios();
-    }, []);
+    }, [getAnios]);
 
     const cargarDocumentosListos = useCallback(async () => {
         if (!filtroAnio) {
@@ -87,11 +89,13 @@ const DocListasIngreso = () => {
 
         setLoading(true);
         try {
-            const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
+            const mesesIds = await getMeses(COL_BASE, filtroAnio);
 
-            const promesasMeses = mesesSnap.docs.map(async (mesDoc) => {
-                const mesId = mesDoc.id;
-                const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
+            const promesasMeses = mesesIds.map(async (mesId) => {
+                const docsSnap = await getDocs(query(
+                    collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"),
+                    where("estado", "in", ESTADOS_PERMITIDOS)
+                ));
 
                 return docsSnap.docs
                     .map(d => ({ id: d.id, mesId, anio: filtroAnio, ...d.data() }))
@@ -109,7 +113,7 @@ const DocListasIngreso = () => {
         } finally {
             setLoading(false);
         }
-    }, [filtroAnio, showToast]);
+    }, [filtroAnio, showToast, getMeses]);
 
     useEffect(() => {
         cargarDocumentosListos();

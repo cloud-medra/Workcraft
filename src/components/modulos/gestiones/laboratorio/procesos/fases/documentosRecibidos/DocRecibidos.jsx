@@ -8,6 +8,7 @@ import { useGranularPermission } from '../../../../../../../hooks/useGranularPer
 import DetalleFacturaModal from '../../../vizualizador/XmlDetallesDoc';
 import EditorDocumentos from './EditorDocumentos';
 import HistorialDocumentos from './HistorialDocumentos'; 
+import { useLaboratorioData } from '../../../LaboratorioDataContext';
 
 const DocumentosRecibidos = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -27,6 +28,8 @@ const DocumentosRecibidos = () => {
   const [filtroMes, setFiltroMes] = useState("");
 
   const { showToast } = useToast();
+
+  const { getAnios, getMeses } = useLaboratorioData();
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
@@ -80,29 +83,27 @@ const DocumentosRecibidos = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   useEffect(() => {
     if (!filtroAnio) { setMesesDisponibles([]); return; }
     const cargarMeses = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-        const meses = snap.docs.map(d => d.id);
+        const meses = await getMeses(COL_BASE, filtroAnio);
         setMesesDisponibles(meses);
       } catch (error) {
         console.error("Error al cargar meses:", error);
       }
     };
     cargarMeses();
-  }, [filtroAnio]);
+  }, [filtroAnio, getMeses]);
 
   useEffect(() => {
     if (!filtroAnio || !filtroMes) { setDocumentos([]); return; }

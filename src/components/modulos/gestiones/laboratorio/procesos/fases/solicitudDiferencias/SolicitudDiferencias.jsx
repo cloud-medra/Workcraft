@@ -16,6 +16,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleSolicitudDif from './DetalleSolicitudDif';
+import { useLaboratorioData } from '../../../LaboratorioDataContext';
 
 const SolicitudDiferencias = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -28,6 +29,8 @@ const SolicitudDiferencias = () => {
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
   const { showToast } = useToast();
+
+  const { getAnios, getMeses } = useLaboratorioData();
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
@@ -75,15 +78,14 @@ const SolicitudDiferencias = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   const cargarDocumentosDiferencias = useCallback(async () => {
     if (!filtroAnio) {
@@ -93,10 +95,9 @@ const SolicitudDiferencias = () => {
 
     setLoading(true);
     try {
-      const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
+      const mesesIds = await getMeses(COL_BASE, filtroAnio);
 
-      const promesasMeses = mesesSnap.docs.map(async (mesDoc) => {
-        const mesId = mesDoc.id;
+      const promesasMeses = mesesIds.map(async (mesId) => {
         const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
 
         return docsSnap.docs
@@ -115,7 +116,7 @@ const SolicitudDiferencias = () => {
     } finally {
       setLoading(false);
     }
-  }, [filtroAnio, showToast]);
+  }, [filtroAnio, showToast, getMeses]);
 
   useEffect(() => {
     cargarDocumentosDiferencias();

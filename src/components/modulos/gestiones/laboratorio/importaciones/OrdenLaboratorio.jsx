@@ -27,6 +27,7 @@ import {
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
+import { useFacturacionOrden, normalizarCodigo } from './useFacturacionOrden';
 
 const OrdenLaboratorio = () => {
     const [ordenes, setOrdenes] = useState([]);
@@ -41,6 +42,7 @@ const OrdenLaboratorio = () => {
     const [cargando, setCargando] = useState(false);
 
     const { showToast } = useToast();
+    const { porCodigo: facturacion, error: errorFacturacion } = useFacturacionOrden(ordenSeleccionada?.id);
     const { hasPermission } = useGranularPermission();
 
     const PATH_VISTA = "/laboratorio/ordenLaboratorio";
@@ -173,6 +175,7 @@ const OrdenLaboratorio = () => {
     }, 0);
 
     const totalUnidades = detalle.reduce((acc, item) => acc + (parseFloat(item["Cant."]) || 0), 0);
+    const totalFacturadas = detalle.reduce((acc, item) => acc + (facturacion[normalizarCodigo(item["Cod.Artículo"])]?.cantidadFacturada || 0), 0);
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden p-0 relative font-sans">
@@ -335,11 +338,14 @@ const OrdenLaboratorio = () => {
                         <table className="w-full text-left text-[11px] border-collapse table-fixed">
                             <thead className="bg-slate-100/90 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
                                 <tr className="text-slate-500 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider border-b border-slate-200 dark:border-gray-700">
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[15%]">Código</th>
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[50%]">Descripción del Artículo</th>
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[10%] text-center">Cant.</th>
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[12%] text-right">Precio Unit.</th>
-                                    <th className="px-3 py-1.5 w-[13%] text-right">Subtotal</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[11%]">Código</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[26%]">Descripción del Artículo</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[7%] text-center">Cant.</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[10%] text-right">Precio Unit.</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[11%] text-right">Subtotal</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[15%]">N° Documento</th>
+                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[10%] text-center">Cant. Facturada</th>
+                                    <th className="px-3 py-1.5 w-[10%] text-center">Cant. Pendiente</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/40 bg-white dark:bg-gray-800">
@@ -347,6 +353,18 @@ const OrdenLaboratorio = () => {
                                     const cantidad = parseFloat(item["Cant."]) || 0;
                                     const precioUnidad = parseFloat(item["P.Unitario"]) || 0;
                                     const totalLinea = cantidad * precioUnidad;
+                                    const fact = facturacion[normalizarCodigo(item["Cod.Artículo"])];
+                                    const facturada = fact?.cantidadFacturada || 0;
+                                    const pendiente = cantidad - facturada;
+                                    const claseFacturada = fact?.tieneTemporal
+                                        ? 'text-orange-600 dark:text-orange-400'
+                                        : fact?.todosFinales
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : 'text-slate-700 dark:text-gray-300';
+                                    const tituloFacturada = fact?.tieneTemporal
+                                        ? 'Temporal: incluye facturas con diferencia por resolver, sujeto a cambios'
+                                        : fact?.todosFinales ? 'Definitivo: todas las facturas están sin diferencias' : undefined;
+                                    const documentosTitle = fact?.documentos.map(x => `${x.folio} (${x.cantidad}) — ${x.estado || 'Sin estado'}`).join('\n') || '';
 
                                     return (
                                         <tr
@@ -371,8 +389,27 @@ const OrdenLaboratorio = () => {
                                                 ${precioUnidad.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
                                             </td>
 
-                                            <td className="px-3 py-1 text-slate-900 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                                            <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-900 dark:text-gray-100 font-normal text-right whitespace-nowrap">
                                                 ${totalLinea.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
+                                            </td>
+
+                                            <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-[10px] text-slate-600 dark:text-gray-300 truncate" title={documentosTitle}>
+                                                {fact ? fact.documentos.map((x, idx) => (
+                                                    <span key={x.id} className={x.temporal ? 'text-orange-600 dark:text-orange-400' : ''}>
+                                                        {idx > 0 && ', '}{x.folio} ({x.cantidad}){x.temporal && ' ⚠'}
+                                                    </span>
+                                                )) : '-'}
+                                            </td>
+
+                                            <td className={`px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-center font-normal ${claseFacturada}`} title={tituloFacturada}>
+                                                {facturada}
+                                            </td>
+
+                                            <td
+                                                className={`px-3 py-1 text-center font-normal ${pendiente < 0 ? 'text-red-600 dark:text-red-400' : pendiente === 0 && facturada > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-gray-300'}`}
+                                                title={pendiente < 0 ? 'Facturado sobre la cantidad de la orden' : undefined}
+                                            >
+                                                {pendiente}
                                             </td>
                                         </tr>
                                     );
@@ -384,6 +421,8 @@ const OrdenLaboratorio = () => {
                             <div className="flex items-center gap-4 text-[10px] text-slate-500 dark:text-gray-400">
                                 <span>Líneas: <strong className="text-slate-800 dark:text-gray-200 font-normal">{detalle.length}</strong></span>
                                 <span>Unidades totales: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalUnidades}</strong></span>
+                                <span>Facturadas: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalFacturadas}</strong></span>
+                                {errorFacturacion && <span className="text-red-500" title={errorFacturacion.message}>No se pudo cargar la facturación (¿índice pendiente de desplegar?)</span>}
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-normal text-slate-500 dark:text-gray-400 uppercase tracking-wider">Total Orden:</span>

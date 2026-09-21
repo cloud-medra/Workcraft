@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db, auth } from '../../../../../../../firebaseConfig';
 import {
   ClipboardList,
@@ -11,6 +11,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleDocumento from './DetalleDocu';
+import { useLaboratorioData } from '../../../LaboratorioDataContext';
 
 const VinculacionCodigos = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -23,12 +24,13 @@ const VinculacionCodigos = () => {
   const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
   const { showToast } = useToast();
+
+  const { getAnios, getMeses, getCodigosMaestro } = useLaboratorioData();
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
   const COL_BASE = "laboratorio_documentos";
-  const COL_MAESTRO = "laboratorio_codigos";
   const ESTADOS_PERMITIDOS = ["Proceso Iniciado", "Falta Vinculación", "Diferencia Precios"];
 
   const formatearFechaEmision = (fechaStr) => {
@@ -64,15 +66,14 @@ const VinculacionCodigos = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   const cargarDocumentosEnProceso = useCallback(async () => {
     if (!filtroAnio) {
@@ -82,11 +83,13 @@ const VinculacionCodigos = () => {
 
     setLoading(true);
     try {
-      const mesesSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
+      const mesesIds = await getMeses(COL_BASE, filtroAnio);
 
-      const promesasMeses = mesesSnap.docs.map(async (mesDoc) => {
-        const mesId = mesDoc.id;
-        const docsSnap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"));
+      const promesasMeses = mesesIds.map(async (mesId) => {
+        const docsSnap = await getDocs(query(
+          collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"),
+          where("estado", "in", ESTADOS_PERMITIDOS)
+        ));
 
         return docsSnap.docs
           .map(d => ({ id: d.id, mesId, anio: filtroAnio, ...d.data() }))
@@ -104,7 +107,7 @@ const VinculacionCodigos = () => {
     } finally {
       setLoading(false);
     }
-  }, [filtroAnio, showToast]);
+  }, [filtroAnio, showToast, getMeses]);
 
   useEffect(() => {
     cargarDocumentosEnProceso();
@@ -126,11 +129,10 @@ const VinculacionCodigos = () => {
         setVinculando(true);
         try {
           const estadoAnteriorGeneral = documentoSeleccionado.estado || "Proceso Iniciado";
-          const codigosSnap = await getDocs(collection(db, COL_MAESTRO));
+          const codigosMaestro = await getCodigosMaestro();
 
           const refMap = new Map();
-          codigosSnap.docs.forEach(d => {
-            const itemMaestro = d.data();
+          codigosMaestro.forEach(itemMaestro => {
             if (itemMaestro.referencia) {
               refMap.set(String(itemMaestro.referencia).trim().toLowerCase(), itemMaestro);
             }
