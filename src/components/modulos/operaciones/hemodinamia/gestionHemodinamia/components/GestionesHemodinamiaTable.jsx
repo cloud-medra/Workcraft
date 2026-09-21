@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Copy, History, Pencil, Trash2, Eye, RotateCcw } from 'lucide-react';
 import { construirTextoAdmisionNombre } from '../utils/gestionesImportExport';
+import { CENTRO_HEMODINAMIA } from '../utils/constantesHemodinamia';
 
 const COLUMNAS = [
   { key: 'estado', label: '•', ancho: 32, min: 24, align: 'center' },
@@ -275,7 +276,7 @@ export const GestionesHemodinamiaTable = ({
                     </button>
                   </div>
                 </td>
-                <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.centro}>{i.centro || 'PABELLON'}</td>
+                <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={CENTRO_HEMODINAMIA}>{CENTRO_HEMODINAMIA}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.atributo}>{i.atributo || 'HEMODINAMIA'}</td>
                 <td className={`${celdaBase} font-semibold ${status.textClass}`} title={i.estado}>{i.estado || 'AGENDANDO'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300`}>{formatearFechaCarga(i.fechaCarga)}</td>

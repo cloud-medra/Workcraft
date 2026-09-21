@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Save, X, Info, Loader2, AlertCircle } from 'lucide-react';
 import EmpresaSelect from './EmpresaSelect';
+import { CENTRO_HEMODINAMIA } from '../utils/constantesHemodinamia';
 
 const GestionesHemodinamiaForm = ({
   formData,
@@ -156,7 +157,7 @@ const GestionesHemodinamiaForm = ({
         <div className="flex items-center gap-1">
           <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] uppercase">Centro:</span>
           <span className="font-semibold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
-            {formData.centro || 'PABELLON'}
+            {CENTRO_HEMODINAMIA}
           </span>
         </div>
 

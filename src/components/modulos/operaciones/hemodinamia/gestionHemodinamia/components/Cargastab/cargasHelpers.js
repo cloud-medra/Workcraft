@@ -12,25 +12,57 @@ export const calcularEmpresaNoCoincide = (item, bloqueEmpresa) => {
   return item.empresaVinculada.trim().toUpperCase() !== bloqueEmpresa.trim().toUpperCase();
 };
 
-export const buscarRangoRecargo = (precio, recargosActivos) => {
+// Hemodinamia NO usa la tabla de Recargos Maestros: el recargo es un % fijo y el
+// precio ingresado representa (1 - %) de la venta, por lo que se hace un
+// "gross-up" al 100%: venta = precio / (1 - %). Ej: 50.370 / 0.73 = 69.000.
+export const PORCENTAJE_RECARGO_HEMODINAMIA = 0.27;
+
+export const calcularVentaUnitaria = (precio, porcentajeRecargo = PORCENTAJE_RECARGO_HEMODINAMIA) => {
   const p = Number(precio) || 0;
-  return recargosActivos.find(r => p >= Number(r.desde) && p <= Number(r.hasta)) || null;
+  return Math.round(p / (1 - porcentajeRecargo));
 };
 
-export const calcularVentaUnitaria = (precio, vecesCosto) => {
-  const p = Number(precio) || 0;
-  const v = Number(vecesCosto) || 1;
-  return p * v;
-};
-
-export const calcularCamposFinancieros = (precio, cantidad, recargosActivos) => {
-  const rango = buscarRangoRecargo(precio, recargosActivos);
-  const vecesCosto = rango ? Number(rango.vecesCosto) : 1;
+export const calcularCamposFinancieros = (precio, cantidad, porcentajeRecargo = PORCENTAJE_RECARGO_HEMODINAMIA) => {
   const cantidadNum = Number(cantidad) || 0;
-  const venta = calcularVentaUnitaria(precio, vecesCosto) * cantidadNum;
+  const venta = calcularVentaUnitaria(precio, porcentajeRecargo) * cantidadNum;
   const totalItem = (Number(precio) || 0) * cantidadNum;
 
-  return { vecesCosto, recargoEncontrado: !!rango, venta, totalItem };
+  // vecesCosto (multiplicador equivalente) y recargoEncontrado se conservan para
+  // no romper el shape de los ítems ya guardados ni la tabla.
+  return { vecesCosto: 1 / (1 - porcentajeRecargo), recargoEncontrado: true, venta, totalItem };
+};
+
+// En maestros_codigos el "centro/unidad" de un código es el campo `segmento`
+// (string en MAYÚSCULAS, ver Códigos Maestros). Hemodinamia solo ve HEMODINAMIA.
+export const SEGMENTO_HEMODINAMIA = 'HEMODINAMIA';
+
+export const esCodigoDeHemodinamia = (item) =>
+  (item?.segmento || '').trim().toUpperCase() === SEGMENTO_HEMODINAMIA;
+
+// Mayúsculas y sin tildes, para comparar texto de búsqueda.
+export const normalizarTextoBusqueda = (texto) =>
+  (texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+
+// Busca por referencia, código o descripción (Desc. Auto). Siempre acota a HEMODINAMIA.
+export const buscarCodigosHemodinamia = (items, texto, limite = 8) => {
+  const q = normalizarTextoBusqueda(texto);
+  if (q.length < 2) return [];
+  return (items || [])
+    .filter(esCodigoDeHemodinamia)
+    .filter(item =>
+      normalizarTextoBusqueda(item.referencia).includes(q) ||
+      normalizarTextoBusqueda(item.codigo).includes(q) ||
+      normalizarTextoBusqueda(item.descriptorAuto).includes(q)
+    )
+    .sort((a, b) => {
+      const refA = normalizarTextoBusqueda(a.referencia);
+      const refB = normalizarTextoBusqueda(b.referencia);
+      const empiezaA = refA.startsWith(q) ? 0 : 1;
+      const empiezaB = refB.startsWith(q) ? 0 : 1;
+      if (empiezaA !== empiezaB) return empiezaA - empiezaB;
+      return refA.localeCompare(refB);
+    })
+    .slice(0, limite);
 };
 
 export const ESTADO_CARGA_OPTIONS = ['PENDIENTE', 'CARGADO', 'REVISAR', 'S/COTIZACION'];

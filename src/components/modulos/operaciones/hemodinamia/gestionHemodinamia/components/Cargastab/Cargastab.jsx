@@ -14,10 +14,9 @@ import {
   Trash2,
   Copy
 } from 'lucide-react';
-import { formatearFechaTabla, calcularCamposFinancieros, esClasePad, VALOR_LOTE_VENCIMIENTO_PAD } from './cargasHelpers';
+import { formatearFechaTabla, calcularCamposFinancieros, calcularVentaUnitaria, PORCENTAJE_RECARGO_HEMODINAMIA, SEGMENTO_HEMODINAMIA, esClasePad, VALOR_LOTE_VENCIMIENTO_PAD } from './cargasHelpers';
 import { verificarPeriodosBloque } from './verificacionPeriodoBloque';
 import { construirTextoAdmisionNombre } from '../../utils/gestionesImportExport';
-import { useRecargosActivos } from './useRecargosActivos';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import { CotizacionCard } from './CotizacionCard';
@@ -88,7 +87,6 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   const [draftLote, setDraftLote] = useState(DRAFT_LOTE_VACIO);
   const [errorDraftLote, setErrorDraftLote] = useState({});
 
-  const { recargosActivos, cargandoRecargos } = useRecargosActivos();
   const {
     sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, skipNext
   } = useAutocompleteReferencia(nuevoItem.referencia);
@@ -102,10 +100,8 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     skipNext: skipNextContenido
   } = useAutocompleteReferencia(draftContenido.referencia);
 
-  const rangoActual = buscarRangoRecargoLocal(nuevoItem.precio, recargosActivos);
-  const vecesCostoActual = rangoActual ? Number(rangoActual.vecesCosto) : 1;
   const cantidadActual = Number(nuevoItem.cantidad) || 1;
-  const ventaActual = calcularVentaUnitariaLocal(nuevoItem.precio, vecesCostoActual) * cantidadActual;
+  const ventaActual = calcularVentaUnitaria(nuevoItem.precio) * cantidadActual;
 
   // La referencia principal SIEMPRE factura por la cantidad TOTAL original
   // (venta/precio/recargo se calculan sobre ella, ver construirItemsDesdeFormulario).
@@ -303,7 +299,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   const construirItemsDesdeFormulario = () => {
     const sinCodigo = !nuevoItem.codigo;
     const { vecesCosto, recargoEncontrado, venta, totalItem } = calcularCamposFinancieros(
-      nuevoItem.precio, nuevoItem.cantidad, recargosActivos
+      nuevoItem.precio, nuevoItem.cantidad
     );
 
     const idPadPrincipal = esPad ? crypto.randomUUID() : undefined;
@@ -330,6 +326,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
       detalle: nuevoItem.detalle || 'P',
       descriptorAuto: nuevoItem.descriptorAuto || 'P',
       clase: nuevoItem.clase || 'P',
+      segmento: SEGMENTO_HEMODINAMIA,
       sinCodigo,
       estadoCarga: 'PENDIENTE',
       periodoAnio: periodoAbierto.anio,
@@ -619,11 +616,11 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
                 autoComplete="off"
                 className={`h-7 px-2 text-[10px] border rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none ${errores.referencia ? 'border-red-500 ring-1 ring-red-500/30' : 'border-slate-300 dark:border-gray-600 focus:ring-1 focus:ring-[#2383C2]'
                   }`}
-                placeholder="Buscar referencia..."
+                placeholder="Buscar por referencia o descripción..."
               />
 
               {mostrarSug && (
-                <div className="absolute top-full left-0 mt-1 w-64 max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded shadow-lg z-30">
+                <div className="absolute top-full left-0 mt-1 w-full max-h-48 overflow-y-auto bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded shadow-lg z-30">
                   {buscando ? (
                     <div className="px-2.5 py-2 text-[10px] text-slate-400 flex items-center gap-1.5">
                       <Loader2 size={11} className="animate-spin" /> Buscando...
@@ -644,11 +641,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
                             <span className="text-[8px] px-1 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-400 font-bold">PAD</span>
                           )}
                         </div>
-                        <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
-                          <span className="font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
-                          <span>·</span>
-                          <span className="truncate">{item.empresa}</span>
-                        </div>
+                        <div className="text-[9px] text-slate-500 dark:text-gray-400 truncate">{item.descriptorAuto}</div>
                       </button>
                     ))
                   )}
@@ -1045,19 +1038,9 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
             </span>
             <span className="flex items-center gap-1">
               <span className="font-bold text-gray-500 dark:text-gray-400 text-[9px] uppercase">Recargo:</span>
-              {cargandoRecargos ? (
-                <Loader2 size={10} className="animate-spin text-[#2383C2]" />
-              ) : nuevoItem.precio === '' ? (
-                <span className="text-gray-700 dark:text-gray-200">P</span>
-              ) : rangoActual ? (
-                <span className="font-semibold text-gray-700 dark:text-gray-200">
-                  {vecesCostoActual} <span className="text-[8px] text-gray-400 font-normal">(${Number(rangoActual.desde).toLocaleString('es-CL')} - ${Number(rangoActual.hasta).toLocaleString('es-CL')})</span>
-                </span>
-              ) : (
-                <span className="font-semibold text-purple-600 dark:text-purple-400" title="No hay rango configurado en Recargos Maestros para este precio">
-                  1 (sin rango)
-                </span>
-              )}
+              <span className="font-semibold text-gray-700 dark:text-gray-200">
+                {nuevoItem.precio === '' ? 'P' : `${Math.round(PORCENTAJE_RECARGO_HEMODINAMIA * 100)}%`}
+              </span>
             </span>
             <span className="flex items-center gap-1">
               <span className="font-bold text-gray-500 dark:text-gray-400 text-[9px] uppercase">Venta:</span>
@@ -1090,7 +1073,6 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               bloqueEmpresa={bloqueActivo.empresa}
               gestionId={formData?.gestionId}
               bloqueFecha={bloqueActivo.fecha}
-              recargosActivos={recargosActivos}
               defaultOpen={idx === cotizaciones.length - 1}
               periodoAbierto={periodoAbierto}
               soloLectura={bloqueado}
@@ -1110,15 +1092,5 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     </div>
   );
 });
-
-function buscarRangoRecargoLocal(precio, recargosActivos) {
-  const p = Number(precio) || 0;
-  return recargosActivos.find(r => p >= Number(r.desde) && p <= Number(r.hasta)) || null;
-}
-function calcularVentaUnitariaLocal(precio, vecesCosto) {
-  const p = Number(precio) || 0;
-  const v = Number(vecesCosto) || 1;
-  return p * v;
-}
 
 export default CargasTab;

@@ -14,6 +14,7 @@ import { verificarPeriodosBloque } from './Cargastab/verificacionPeriodoBloque';
 import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { HistorialLogsContenido } from '../GestionesHemodinamiaDrawers';
+import { CENTRO_HEMODINAMIA } from '../utils/constantesHemodinamia';
 
 const MODULO_ACTUAL = 'hemodinamia';
 
@@ -152,7 +153,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
       medico: item?.medico || item?.nombreMedico || '',
       informe: item?.informe || 'PENDIENTE',
       atributo: item?.atributo || '',
-      centro: item?.centro || item?.centroMedico || '',
+      centro: CENTRO_HEMODINAMIA,
       descripcion: item?.descripcion || item?.observacion || '',
       observacion: item?.observacion || item?.notaLibre || item?.notas || '',
       bloques: bloquesEmpresas

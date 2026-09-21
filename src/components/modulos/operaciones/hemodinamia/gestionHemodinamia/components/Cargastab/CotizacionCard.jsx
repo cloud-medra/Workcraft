@@ -76,7 +76,6 @@ export const CotizacionCard = ({
   bloqueEmpresa,
   gestionId,
   bloqueFecha,
-  recargosActivos,
   periodoAbierto,
   onAgregarItem,
   onEliminarItem,
@@ -256,7 +255,7 @@ export const CotizacionCard = ({
     }
 
     const { vecesCosto, recargoEncontrado, venta, totalItem } = calcularCamposFinancieros(
-      borrador.precio, cantidadNum, recargosActivos
+      borrador.precio, cantidadNum
     );
 
     onEditarItem(editandoId, {
@@ -447,7 +446,7 @@ export const CotizacionCard = ({
                     const mostrandoFormularioContenido = agregandoContenidoDePadId === it.id;
 
                     const financierosPreview = (enEdicion && !edicionEsContenidoPad && !edicionEsLoteAdicional)
-                      ? calcularCamposFinancieros(borrador.precio, borrador.cantidad, recargosActivos)
+                      ? calcularCamposFinancieros(borrador.precio, borrador.cantidad)
                       : null;
 
                     if (enEdicion) {

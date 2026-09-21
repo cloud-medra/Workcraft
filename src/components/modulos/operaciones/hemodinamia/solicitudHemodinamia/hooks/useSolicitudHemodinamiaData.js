@@ -17,6 +17,7 @@ import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
+import { CENTRO_HEMODINAMIA } from '../../gestionHemodinamia/utils/constantesHemodinamia';
 
 export const useSolicitudHemodinamiaData = () => {
   const [bloques, setBloques] = useState([]);
@@ -60,7 +61,7 @@ export const useSolicitudHemodinamiaData = () => {
           convenio: data.convenio || 'P',
           prevision: data.prevision || 'P',
           descripcion: data.descripcion || 'P',
-          centro: data.centro || 'PABELLON',
+          centro: CENTRO_HEMODINAMIA,
           atributo: data.atributo || 'HEMODINAMIA',
           estado: data.estado || 'AGENDANDO',
           costo: data.costo || 0,

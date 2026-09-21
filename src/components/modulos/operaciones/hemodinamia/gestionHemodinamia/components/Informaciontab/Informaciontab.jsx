@@ -12,7 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import EmpresaSelect from '../EmpresaSelect';
-import CentroSelect from '../../../../../../ui/CentroSelect';
+import { CENTRO_HEMODINAMIA } from '../../utils/constantesHemodinamia';
 
 const formatearMiles = (valor) => {
   if (valor === null || valor === undefined || valor === '') return '';
@@ -257,12 +257,12 @@ export const InformacionTab = ({
 
             <div className="flex flex-col gap-1">
               <label className="font-semibold text-slate-600 dark:text-gray-300">Centro/Unidad</label>
-              <CentroSelect
-                value={formData.centro}
-                onChange={(centroSeleccionado) =>
-                  handleGeneralChange({ target: { name: 'centro', value: centroSeleccionado.nombre } })
-                }
-                placeholder="Seleccionar centro..."
+              <input
+                type="text"
+                value={CENTRO_HEMODINAMIA}
+                readOnly
+                tabIndex={-1}
+                className="h-6.5 px-2 text-[10px] border border-slate-200 dark:border-gray-700 rounded bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 outline-none cursor-not-allowed"
               />
             </div>
           </div>

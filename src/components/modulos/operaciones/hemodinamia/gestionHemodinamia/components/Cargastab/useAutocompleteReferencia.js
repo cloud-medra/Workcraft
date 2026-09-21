@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
 
-const SEGMENTO_HEMODINAMIA = 'HEMODINAMIA';
+import { esCodigoDeHemodinamia, buscarCodigosHemodinamia } from './cargasHelpers';
+
 
 // Mismo patrón que useAutocompleteReferencia de Implantes, pero acotado al
 // segmento "HEMODINAMIA" de maestros_codigos (campo `segmento`, ya existente
@@ -24,7 +25,7 @@ const conectarListenerGlobal = () => {
       (snap) => {
         cacheCodigosMaestros = snap.docs
           .map(d => ({ id: d.id, ...d.data() }))
-          .filter(item => (item.segmento || '').toUpperCase() === SEGMENTO_HEMODINAMIA);
+          .filter(esCodigoDeHemodinamia);
         hayDatosCache = true;
         notificarSuscriptores();
       },
@@ -73,21 +74,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
       setBuscando(false);
       return;
     }
-    const upper = t.toUpperCase();
-    const coincidencias = cacheCodigosMaestros.filter(item => {
-      const ref = (item.referencia || '').toUpperCase();
-      const cod = (item.codigo || '').toUpperCase();
-      return ref.includes(upper) || cod.includes(upper);
-    });
-    coincidencias.sort((a, b) => {
-      const refA = (a.referencia || '').toUpperCase();
-      const refB = (b.referencia || '').toUpperCase();
-      const empiezaA = refA.startsWith(upper) ? 0 : 1;
-      const empiezaB = refB.startsWith(upper) ? 0 : 1;
-      if (empiezaA !== empiezaB) return empiezaA - empiezaB;
-      return refA.localeCompare(refB);
-    });
-    setSugerencias(coincidencias.slice(0, 8));
+    setSugerencias(buscarCodigosHemodinamia(cacheCodigosMaestros, t));
     setBuscando(false);
   };
 

@@ -16,6 +16,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
+import { CENTRO_HEMODINAMIA } from '../utils/constantesHemodinamia';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
@@ -43,7 +44,7 @@ export const getInitialFormState = () => ({
   prevision: 'P',
   medico: 'P',
   descripcion: 'P',
-  centro: 'PABELLON',
+  centro: CENTRO_HEMODINAMIA,
   atributo: 'HEMODINAMIA',
   estado: 'AGENDANDO',
   costo: 0,
@@ -352,7 +353,7 @@ export const useGestionesHemodinamiaData = () => {
         prevision: formData.prevision === 'Cargando...' ? 'P' : (formData.prevision || 'P'),
         medico: formData.medico === 'Cargando...' ? 'P' : (formData.medico || 'P'),
         descripcion: formData.descripcion === 'Cargando...' ? 'P' : (formData.descripcion || 'P'),
-        centro: formData.centro || 'PABELLON',
+        centro: CENTRO_HEMODINAMIA,
         atributo: formData.atributo || 'HEMODINAMIA',
         estado: formData.estado || 'AGENDANDO',
         costo: Number(formData.costo) || 0,
@@ -468,7 +469,7 @@ export const useGestionesHemodinamiaData = () => {
           medico: paciente.medico || 'P',
           descripcion: paciente.descripcion || 'P',
           observacion: (paciente.observacion || '').toString().trim(),
-          centro: paciente.centro || 'PABELLON',
+          centro: CENTRO_HEMODINAMIA,
           atributo: paciente.atributo || 'HEMODINAMIA',
           estado: registro.estado || 'AGENDADO',
           costo: Number(registro.costo) || 0,
@@ -709,7 +710,7 @@ export const useGestionesHemodinamiaData = () => {
       prevision: i.prevision || 'P',
       medico: i.medico || 'P',
       descripcion: i.descripcion || 'P',
-      centro: i.centro || 'PABELLON',
+      centro: CENTRO_HEMODINAMIA,
       atributo: i.atributo || 'HEMODINAMIA',
       estado: i.estado || 'AGENDANDO',
       costo: i.costo ?? 0,
@@ -782,7 +783,7 @@ export const useGestionesHemodinamiaData = () => {
             prevision: item.prevision || 'P',
             medico: item.medico || 'P',
             descripcion: item.descripcion || 'P',
-            centro: item.centro || 'PABELLON',
+            centro: CENTRO_HEMODINAMIA,
             atributo: item.atributo || 'HEMODINAMIA',
             estado: item.estado || 'AGENDANDO',
             costo: Number(item.costo) || 0,
