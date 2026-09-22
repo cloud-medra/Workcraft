@@ -1,20 +1,39 @@
-import { Download, Loader2, Lock, Unlock } from 'lucide-react';
+import { Download, Loader2, Lock, Unlock, RotateCcw } from 'lucide-react';
 import { useColumnResize } from '../../../../../hooks/useColumnResize';
 import { ManijaRedimension } from '../../../../ui/ManijaRedimension';
 import { useSolicitudesUnificadasData } from '../hooks/useSolicitudesUnificadasData';
-import { ORIGEN_LABEL, ORIGEN_BADGE_STYLE } from '../utils/normalizarFila';
+import { ORIGEN, ORIGEN_LABEL, ORIGEN_BADGE_STYLE } from '../utils/normalizarFila';
 import FiltrosBusquedaOrigen from './FiltrosBusquedaOrigen';
 
+// Mismas columnas, mismo orden y mismos encabezados que las pantallas
+// nativas de Solicitud (SolicitudConsignacion.jsx / SolicitudHemodinamia.jsx
+// / SolicitudImplantes.jsx) — con dos columnas agregadas al principio
+// (selección y Origen) porque acá se combinan las 3 colecciones en una
+// sola tabla, algo que ninguna pantalla nativa necesita por separado.
 const COLUMNAS = [
   { key: 'sel', label: '', ancho: 32, min: 28 },
-  { key: 'origen', label: 'Origen', ancho: 105, min: 90 },
-  { key: 'id', label: 'ID', ancho: 85, min: 60 },
-  { key: 'paciente', label: 'Paciente', ancho: 170, min: 80 },
-  { key: 'medico', label: 'Médico', ancho: 120, min: 70 },
+  { key: 'origen', label: 'Origen', ancho: 100, min: 85 },
+  { key: 'admision', label: 'Admisión', ancho: 90, min: 60 },
+  { key: 'paciente', label: 'Paciente', ancho: 150, min: 80 },
+  { key: 'medico', label: 'Médico', ancho: 110, min: 70 },
   { key: 'fecha', label: 'Fecha', ancho: 90, min: 65 },
-  { key: 'empresa', label: 'Empresa', ancho: 160, min: 80 },
-  { key: 'cantidadItems', label: 'Ítems', ancho: 65, min: 45 },
-  { key: 'costo', label: 'Costo', ancho: 95, min: 60 },
+  { key: 'empresa', label: 'Empresa', ancho: 150, min: 80 },
+  { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
+  { key: 'descripcion', label: 'Descripción', ancho: 170, min: 90 },
+  { key: 'cantidad', label: 'Cantidad', ancho: 75, min: 50 },
+  { key: 'precio', label: 'Precio', ancho: 95, min: 60 },
+  { key: 'atributo', label: 'Atributo', ancho: 110, min: 70 },
+  { key: 'fechaRegistro', label: 'Fecha de Registro', ancho: 115, min: 75 },
+  { key: 'fechaCarga', label: 'Fecha de Carga', ancho: 105, min: 75 },
+  // Consignación tiene N° de Guía; Implantes/Hemodinamia no tienen "guía",
+  // tienen N° de Cotización — se unifican bajo esta misma columna visual
+  // (nombrada como en Consignación, la pantalla de referencia), tomando
+  // el campo que corresponda según el origen de cada fila (ver fila.numGuia
+  // en normalizarFila.js).
+  { key: 'numGuia', label: 'N° Guía', ancho: 95, min: 65 },
+  { key: 'fechaIngreso', label: 'Fecha de Ingreso', ancho: 105, min: 75 },
+  { key: 'lote', label: 'Lote', ancho: 85, min: 50 },
+  { key: 'vencimiento', label: 'Vencimiento', ancho: 100, min: 65 }
 ];
 
 const formatearFechaTabla = (fechaString) => {
@@ -23,8 +42,26 @@ const formatearFechaTabla = (fechaString) => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
+const formatearFechaDeTimestamp = (valor) => {
+  if (!valor) return '-';
+  const date = valor.toDate ? valor.toDate() : new Date(valor);
+  if (isNaN(date.getTime())) return '-';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+const obtenerFechaHoyTexto = () => {
+  const hoy = new Date();
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const yyyy = hoy.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
 const SolicitudesUnificadasTable = () => {
-  const { anchos, handleResize } = useColumnResize(COLUMNAS);
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(COLUMNAS);
   const {
     filas,
     cargando,
@@ -43,11 +80,15 @@ const SolicitudesUnificadasTable = () => {
     handleExportarYMarcarSolicitado
   } = useSolicitudesUnificadasData();
 
+  const fechaIngresoHoy = obtenerFechaHoyTexto();
+  const selectIdsUnicos = [...new Set(filas.map(f => f.selectId))];
+  const todosSeleccionados = selectIdsUnicos.length > 0 && seleccionados.size === selectIdsUnicos.length;
+
   return (
     <div className="flex-grow flex flex-col overflow-hidden">
       <div className="px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/30 text-[10px]">
         <div className="flex items-center gap-3">
-          <span className="text-slate-500 dark:text-gray-400">{filas.length} candidato{filas.length === 1 ? '' : 's'} · {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}</span>
+          <span className="text-slate-500 dark:text-gray-400">{filas.length} fila{filas.length === 1 ? '' : 's'} · {seleccionados.size} seleccionado{seleccionados.size === 1 ? '' : 's'}</span>
           <span className={`flex items-center gap-1 ${periodoImplantes ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
             {periodoImplantes ? <Unlock size={11} /> : <Lock size={11} />}
             Implantes: {periodoImplantes ? `${periodoImplantes.mes} ${periodoImplantes.anio}` : 'sin período abierto'}
@@ -82,24 +123,42 @@ const SolicitudesUnificadasTable = () => {
         />
       </div>
 
-      <div className="flex-grow overflow-auto">
-        <table className="text-left text-[10.5px] border-collapse" style={{ tableLayout: 'fixed', width: '100%' }}>
-          <thead className="bg-slate-50 dark:bg-gray-900/60 sticky top-0 z-10">
+      <div className="flex-grow overflow-auto select-none relative">
+        <div className="sticky top-0 z-20 flex justify-end px-1 py-0.5 bg-slate-100 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700">
+          <button
+            type="button"
+            onClick={restablecerAnchos}
+            title="Restablecer ancho de columnas"
+            className="flex items-center gap-1 text-[9px] font-medium text-gray-400 hover:text-[#2383C2] dark:text-gray-500 dark:hover:text-[#2383C2] transition px-1.5 py-0.5 rounded hover:bg-white dark:hover:bg-gray-800"
+          >
+            <RotateCcw size={10} /> Restablecer columnas
+          </button>
+        </div>
+
+        <table
+          className="text-left text-[10px] border-collapse"
+          style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: anchoTotalTabla }}
+        >
+          <colgroup>
+            {COLUMNAS.map(col => (
+              <col key={col.key} style={{ width: anchos[col.key] }} />
+            ))}
+          </colgroup>
+          <thead className="bg-slate-50 dark:bg-gray-900/60 sticky top-[22px] z-10">
             <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
               {COLUMNAS.map(col => (
                 <th
                   key={col.key}
-                  className="relative px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700"
-                  style={{ width: anchos[col.key] }}
+                  className="relative px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 overflow-hidden"
                 >
                   {col.key === 'sel' ? (
                     <input
                       type="checkbox"
-                      checked={filas.length > 0 && seleccionados.size === filas.length}
+                      checked={todosSeleccionados}
                       onChange={toggleSeleccionarTodos}
                       className="cursor-pointer"
                     />
-                  ) : col.label}
+                  ) : <span className="block truncate">{col.label}</span>}
                   <ManijaRedimension colKey={col.key} anchoActual={anchos[col.key]} anchoMin={col.min} onResize={handleResize} />
                 </th>
               ))}
@@ -119,36 +178,84 @@ const SolicitudesUnificadasTable = () => {
                 </td>
               </tr>
             ) : (
-              filas.map((fila) => (
-                <tr
-                  key={fila.id}
-                  onClick={() => toggleSeleccion(fila.id)}
-                  className={`cursor-pointer transition ${seleccionados.has(fila.id) ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'hover:bg-slate-50 dark:hover:bg-gray-800/60'}`}
-                >
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={seleccionados.has(fila.id)}
-                      onChange={() => toggleSeleccion(fila.id)}
-                      className="cursor-pointer"
-                    />
-                  </td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
-                    <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded border uppercase ${ORIGEN_BADGE_STYLE[fila.origen]}`}>
-                      {ORIGEN_LABEL[fila.origen]}
-                    </span>
-                  </td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-semibold text-[#2383C2] truncate">{fila.gestionId}</td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate">{fila.paciente}</td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.medico}</td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{formatearFechaTabla(fila.fecha)}</td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.empresa}</td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200">{fila.cantidadItems}</td>
-                  <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-medium">
-                    {fila.costo ? `$${Number(fila.costo).toLocaleString('es-CL')}` : '-'}
-                  </td>
-                </tr>
-              ))
+              filas.map((fila) => {
+                const seleccionado = seleccionados.has(fila.selectId);
+                return (
+                  <tr
+                    key={fila.id}
+                    onClick={() => toggleSeleccion(fila.selectId)}
+                    className={`cursor-pointer transition ${
+                      seleccionado
+                        ? 'bg-blue-50/60 dark:bg-blue-950/20'
+                        : fila.esFilaGuia
+                          ? 'bg-slate-50/60 dark:bg-gray-900/30 hover:bg-slate-100/70 dark:hover:bg-gray-900/50'
+                          : 'hover:bg-slate-50 dark:hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={seleccionado}
+                        onChange={() => toggleSeleccion(fila.selectId)}
+                        className="cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                      <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded border uppercase ${ORIGEN_BADGE_STYLE[fila.origen]}`}>
+                        {ORIGEN_LABEL[fila.origen]}
+                      </span>
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-semibold text-[#2383C2] whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.gestionId}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.paciente}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.medico}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {formatearFechaTabla(fila.fecha)}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">
+                      {fila.empresa}
+                    </td>
+                    <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 whitespace-nowrap overflow-hidden text-ellipsis ${fila.esFilaGuia ? 'text-slate-500 dark:text-gray-400 italic' : 'font-mono text-emerald-600 dark:text-emerald-400'}`}>
+                      {fila.codigo}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 truncate" title={fila.descripcion}>
+                      {fila.descripcion}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.cantidad}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                      ${Number(fila.precio || 0).toLocaleString('es-CL')}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.atributo}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {formatearFechaDeTimestamp(fila.fechaRegistro)}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {formatearFechaTabla(fila.fechaCarga)}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.numGuia}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fechaIngresoHoy}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.lote}
+                    </td>
+                    <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">
+                      {fila.origen === ORIGEN.CONSIGNACION ? fila.vencimiento : formatearFechaTabla(fila.vencimiento)}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

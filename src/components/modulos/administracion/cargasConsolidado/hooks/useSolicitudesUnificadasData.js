@@ -129,10 +129,13 @@ export const useSolicitudesUnificadasData = () => {
 
   useEffect(() => { cargarConsignacion(); }, [cargarConsignacion]);
 
+  // flatMap (no map): cada bloque de Implantes/Hemodinamia se expande a una
+  // fila POR ÍTEM, para que la tabla combinada muestre la misma estructura
+  // fila-por-ítem que las pantallas nativas de Solicitud.
   const filasCombinadas = [
-    ...bloquesImplantes.map(normalizarSolicitudImplantes),
-    ...itemsConsignacion.map(normalizarSolicitudConsignacion),
-    ...docsHemodinamia.map(normalizarSolicitudHemodinamia)
+    ...bloquesImplantes.flatMap(normalizarSolicitudImplantes),
+    ...itemsConsignacion.flatMap(normalizarSolicitudConsignacion),
+    ...docsHemodinamia.flatMap(normalizarSolicitudHemodinamia)
   ];
 
   // Búsqueda por admisión/nombre + Origen se aplican sobre el conjunto
@@ -148,12 +151,26 @@ export const useSolicitudesUnificadasData = () => {
     });
   };
 
+  // "Seleccionar todos" cuenta unidades exportables (selectId), no filas
+  // visuales — un bloque de Implantes/Hemodinamia con 3 ítems son 3 filas
+  // pero 1 sola unidad seleccionable (el checkbox de todas esas filas
+  // comparte el mismo selectId, igual que en las pantallas nativas).
+  const selectIdsUnicos = [...new Set(filas.map(f => f.selectId))];
   const toggleSeleccionarTodos = () => {
-    setSeleccionados(prev => (prev.size === filas.length ? new Set() : new Set(filas.map(f => f.id))));
+    setSeleccionados(prev => (prev.size === selectIdsUnicos.length ? new Set() : new Set(selectIdsUnicos)));
+  };
+
+  // Un mismo bloque de Implantes/Hemodinamia puede aparecer en varias filas
+  // (una por ítem) — al exportar, hay que deduplicar por refPath antes de
+  // iterar bloque por bloque, para no repetir 3 veces la escritura de un
+  // bloque de 3 ítems.
+  const dedupePorRefPath = (arr) => {
+    const vistos = new Set();
+    return arr.filter(f => (vistos.has(f.refPath) ? false : (vistos.add(f.refPath), true)));
   };
 
   const handleExportarYMarcarSolicitado = () => {
-    const filasSeleccionadas = filas.filter(f => seleccionados.has(f.id));
+    const filasSeleccionadas = filas.filter(f => seleccionados.has(f.selectId));
     if (filasSeleccionadas.length === 0) {
       showToast('Selecciona al menos un registro para exportar', 'error');
       return;
@@ -167,8 +184,10 @@ export const useSolicitudesUnificadasData = () => {
     // seleccionada, pero se excluyen de las escrituras a Firestore más abajo
     // (mismo criterio que itemsConRef en la pantalla nativa de Consignación).
     const seleccionConsignacionConRef = seleccionConsignacion.filter(f => !f._raw.esFilaGuia);
+    const seleccionImplantesUnica = dedupePorRefPath(seleccionImplantes);
+    const seleccionHemodinamiaUnica = dedupePorRefPath(seleccionHemodinamia);
 
-    if (seleccionImplantes.length > 0 && !periodoImplantes) {
+    if (seleccionImplantesUnica.length > 0 && !periodoImplantes) {
       showToast('No hay un período abierto para Implantes en Control Mensual. Ábrelo antes de exportar.', 'error');
       return;
     }
@@ -177,14 +196,14 @@ export const useSolicitudesUnificadasData = () => {
       return;
     }
 
-    if (seleccionHemodinamia.length > 0 && !periodoHemodinamia) {
+    if (seleccionHemodinamiaUnica.length > 0 && !periodoHemodinamia) {
       showToast('No hay un período abierto para Hemodinamia en Control Mensual. Ábrelo antes de exportar.', 'error');
       return;
     }
 
     confirmAction(
       'Exportar y Marcar como Solicitado',
-      `Se exportarán ${filasSeleccionadas.length} fila(s) (${seleccionImplantes.length} de Implantes, ${seleccionConsignacion.length} de Consignación, ${seleccionHemodinamia.length} de Hemodinamia) a un único Excel. De las de Consignación, ${seleccionConsignacionConRef.length} ítem(s) reales quedarán marcados como SOLICITADO (las filas de desglose de guía son informativas y no tienen documento propio). Implantes y Hemodinamia se marcan completos. Cada uno se copiará a la colección de imputadas de su propio módulo. ¿Continuar?`,
+      `Se exportarán ${filasSeleccionadas.length} fila(s) a un único Excel: ${seleccionImplantesUnica.length} gestión(es) de Implantes, ${seleccionConsignacionConRef.length} ítem(s) reales de Consignación (las filas de desglose de guía son informativas y no tienen documento propio) y ${seleccionHemodinamiaUnica.length} gestión(es) de Hemodinamia quedarán marcados como SOLICITADO. Cada uno se copiará a la colección de imputadas de su propio módulo. ¿Continuar?`,
       async () => {
         setExportando(true);
         try {
@@ -196,93 +215,89 @@ export const useSolicitudesUnificadasData = () => {
           const filasHemodinamiaExcel = [];
           const filasResumen = [];
 
+          // `fila` ya viene a nivel de ítem (ver normalizarSolicitudImplantes/
+          // Hemodinamia/Consignacion en normalizarFila.js) — antes acá se
+          // volvía a iterar `bloque.items` adentro de este forEach, lo que
+          // habría duplicado cada ítem tantas veces como filas seleccionadas
+          // de ese mismo bloque hubiera.
           seleccionImplantes.forEach(fila => {
-            const bloque = fila._raw;
-            const items = bloque.items?.length ? bloque.items : [null];
-            items.forEach(it => {
-              filasImplantesExcel.push({
-                'ID': fila.gestionId,
-                'PACIENTE': fila.paciente,
-                'MEDICO': fila.medico,
-                'FECHA': formatearFechaExcel(fila.fecha),
-                'EMPRESA': fila.empresa,
-                'CODIGO': it?.codigo || '',
-                'DESCRIPCION': it?.descriptorAuto || '',
-                'CANTIDAD': it?.cantidad || '',
-                'PRECIO': it?.precio || '',
-                'LOTE': it?.lote || '',
-                'VENCIMIENTO': it?.vencimiento ? formatearFechaExcel(it.vencimiento) : ''
-              });
-              filasResumen.push({
-                'Origen': 'Implantes',
-                'Ingreso': fechaHoyFormato,
-                'Id': fila.gestionId,
-                'Cód': it?.codigo || '',
-                'Cant': it?.cantidad || '',
-                'Venta': it?.venta || '',
-                'Médico': fila.medico,
-                'Fecha': formatearFechaExcel(fila.fecha),
-                'Descripción': it?.descriptorAuto || ''
-              });
+            filasImplantesExcel.push({
+              'ID': fila.gestionId,
+              'PACIENTE': fila.paciente,
+              'MEDICO': fila.medico,
+              'FECHA': formatearFechaExcel(fila.fecha),
+              'EMPRESA': fila.empresa,
+              'CODIGO': fila.codigo || '',
+              'DESCRIPCION': fila.descripcion || '',
+              'CANTIDAD': fila.cantidad || '',
+              'PRECIO': fila.precio || '',
+              'LOTE': fila.lote || '',
+              'VENCIMIENTO': fila.vencimiento ? formatearFechaExcel(fila.vencimiento) : ''
+            });
+            filasResumen.push({
+              'Origen': 'Implantes',
+              'Ingreso': fechaHoyFormato,
+              'Id': fila.gestionId,
+              'Cód': fila.codigo || '',
+              'Cant': fila.cantidad || '',
+              'Venta': fila.precio || '',
+              'Médico': fila.medico,
+              'Fecha': formatearFechaExcel(fila.fecha),
+              'Descripción': fila.descripcion || ''
             });
           });
 
           seleccionConsignacion.forEach(fila => {
-            const it = fila._raw;
             filasConsignacionExcel.push({
               'ADMISION': fila.gestionId,
               'PACIENTE': fila.paciente,
               'MEDICO': fila.medico,
               'FECHA': formatearFechaExcel(fila.fecha),
               'EMPRESA': fila.empresa,
-              'CODIGO': it.codigo || '',
-              'DESCRIPCION': it.descripcion || '',
-              'CANTIDAD': it.cantidad || '',
-              'PRECIO': it.costo || '',
-              'LOTE': it.lote || '',
-              'VENCIMIENTO': it.vencimiento || ''
+              'CODIGO': fila.codigo || '',
+              'DESCRIPCION': fila.descripcion || '',
+              'CANTIDAD': fila.cantidad || '',
+              'PRECIO': fila.precio || '',
+              'LOTE': fila.lote || '',
+              'VENCIMIENTO': fila.vencimiento || ''
             });
             filasResumen.push({
               'Origen': 'Consignación',
               'Ingreso': fechaHoyFormato,
               'Id': fila.gestionId,
-              'Cód': it.codigo || '',
-              'Cant': it.cantidad || '',
-              'Venta': it.venta || '',
+              'Cód': fila.codigo || '',
+              'Cant': fila.cantidad || '',
+              'Venta': fila.precio || '',
               'Médico': fila.medico,
               'Fecha': formatearFechaExcel(fila.fecha),
-              'Descripción': it.descripcion || ''
+              'Descripción': fila.descripcion || ''
             });
           });
 
           seleccionHemodinamia.forEach(fila => {
-            const bloque = fila._raw;
-            const items = bloque.items?.length ? bloque.items : [null];
-            items.forEach(it => {
-              filasHemodinamiaExcel.push({
-                'ID': fila.gestionId,
-                'PACIENTE': fila.paciente,
-                'MEDICO': fila.medico,
-                'FECHA': formatearFechaExcel(fila.fecha),
-                'EMPRESA': fila.empresa,
-                'CODIGO': it ? (it.codigo || 'P') : '',
-                'DESCRIPCION': it ? (it.descriptorAuto || 'P') : '',
-                'CANTIDAD': it ? (it.cantidad || 0) : '',
-                'PRECIO': it ? (it.precio || 0) : '',
-                'LOTE': it ? (it.lote || 'P') : '',
-                'VENCIMIENTO': it?.vencimiento ? formatearFechaExcel(it.vencimiento) : ''
-              });
-              filasResumen.push({
-                'Origen': 'Hemodinamia',
-                'Ingreso': fechaHoyFormato,
-                'Id': fila.gestionId,
-                'Cód': it ? (it.codigo || 'P') : '',
-                'Cant': it ? (it.cantidad || 0) : '',
-                'Venta': it ? (it.venta || 0) : '',
-                'Médico': fila.medico,
-                'Fecha': formatearFechaExcel(fila.fecha),
-                'Descripción': it ? (it.descriptorAuto || 'P') : ''
-              });
+            filasHemodinamiaExcel.push({
+              'ID': fila.gestionId,
+              'PACIENTE': fila.paciente,
+              'MEDICO': fila.medico,
+              'FECHA': formatearFechaExcel(fila.fecha),
+              'EMPRESA': fila.empresa,
+              'CODIGO': fila.codigo || '',
+              'DESCRIPCION': fila.descripcion || '',
+              'CANTIDAD': fila.cantidad || '',
+              'PRECIO': fila.precio || '',
+              'LOTE': fila.lote || '',
+              'VENCIMIENTO': fila.vencimiento ? formatearFechaExcel(fila.vencimiento) : ''
+            });
+            filasResumen.push({
+              'Origen': 'Hemodinamia',
+              'Ingreso': fechaHoyFormato,
+              'Id': fila.gestionId,
+              'Cód': fila.codigo || '',
+              'Cant': fila.cantidad || '',
+              'Venta': fila.precio || '',
+              'Médico': fila.medico,
+              'Fecha': formatearFechaExcel(fila.fecha),
+              'Descripción': fila.descripcion || ''
             });
           });
 
@@ -319,8 +334,16 @@ export const useSolicitudesUnificadasData = () => {
 
           const logsAEjecutar = [];
 
-          seleccionImplantes.forEach(fila => {
+          seleccionImplantesUnica.forEach(fila => {
             const bloque = fila._raw;
+            // OJO: el doc crudo de implantes_gestiones anida los ítems en
+            // cotizaciones[0].items, no en bloque.items — leer bloque.items
+            // acá (como hacía la versión anterior) siempre daba un arreglo
+            // vacío, así que las gestiones de Implantes exportadas desde
+            // Cargas Consolidado nunca escribían sus ítems en
+            // implantes_imputadas (solo el bloque quedaba marcado
+            // SOLICITADO, sin ningún ítem imputado).
+            const itemsBloque = bloque.cotizaciones?.[0]?.items || [];
             const docRef = doc(db, bloque.refPath);
             agregarOp(b => b.update(docRef, {
               solicitud: 'SOLICITADO',
@@ -328,7 +351,7 @@ export const useSolicitudesUnificadasData = () => {
               solicitadoPor: userData?.nombreCompleto || 'Usuario'
             }));
 
-            (bloque.items || []).forEach(it => {
+            itemsBloque.forEach(it => {
               const periodoAnioItem = it.periodoAnio || periodoImplantes.anio;
               const periodoMesItem = it.periodoMes || periodoImplantes.mes;
               agregarOp(b => b.set(
@@ -341,7 +364,7 @@ export const useSolicitudesUnificadasData = () => {
               gestionId: fila.gestionId,
               empresa: fila.empresa,
               fecha: fila.fecha,
-              cantidadItems: bloque.items?.length || 0,
+              cantidadItems: itemsBloque.length,
               periodoAnio: periodoImplantes.anio,
               periodoMes: periodoImplantes.mes
             }, userData));
@@ -395,7 +418,7 @@ export const useSolicitudesUnificadasData = () => {
             ? `${periodoHemodinamia.mes.charAt(0).toUpperCase()}${periodoHemodinamia.mes.slice(1).toLowerCase()} ${periodoHemodinamia.anio}`
             : '';
 
-          seleccionHemodinamia.forEach(fila => {
+          seleccionHemodinamiaUnica.forEach(fila => {
             const bloque = fila._raw;
             const docRef = doc(db, bloque.refPath);
             agregarOp(b => b.update(docRef, {

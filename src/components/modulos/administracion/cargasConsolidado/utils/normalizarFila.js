@@ -176,51 +176,103 @@ export const normalizarImputadaConsignacion = (doc) => ({
 });
 
 // --- Solicitudes ---
-// Implantes agrupa por BLOQUE (con .items[] adentro); Consignación es un
-// ítem suelto. Se normaliza a nivel de fila-solicitud (1 fila = 1 bloque
-// de implantes con todos sus ítems, o 1 ítem de consignación) porque la
-// acción de exportar necesita esa agrupación nativa para escribir en la
-// colección de imputadas correcta con la forma que cada módulo espera.
+// Cada función devuelve un ARRAY de filas (no un objeto), una por ÍTEM —no
+// por bloque/admisión— para que la tabla combinada muestre exactamente la
+// misma estructura fila-por-ítem que las pantallas nativas de Solicitud de
+// cada módulo (SolicitudConsignacion.jsx / SolicitudHemodinamia.jsx /
+// SolicitudImplantes.jsx: Admisión, Paciente, Médico, Fecha, Empresa,
+// Código, Descripción, Cantidad, Precio, Atributo, Fecha de Registro,
+// Fecha de Carga, N° Guía, Fecha de Ingreso, Lote, Vencimiento). Los
+// llamadores deben usar `.flatMap(...)`, no `.map(...)`.
+//
+// `selectId` (no `id`) es la clave de selección del checkbox: en
+// Implantes/Hemodinamia es el bloque completo (`refPath`), porque ahí se
+// exporta la admisión entera de una vez, no ítem por ítem — mismo criterio
+// que ya usan las pantallas nativas (el checkbox de cada fila-ítem
+// referencia `bloque.refPath`, así que todas las filas de un mismo bloque
+// quedan marcadas/desmarcadas juntas). En Consignación, que sí exporta por
+// ítem, `selectId` es el propio `id` del ítem.
+//
+// "Atributo" y "N° Guía" no significan lo mismo en los 3 orígenes:
+// Consignación tiene guía de despacho real; Implantes/Hemodinamia no
+// tienen "guía", tienen N° de Cotización. Se unifican bajo el mismo
+// nombre de columna (el de Consignación, que es la pantalla de
+// referencia), tomando el campo que corresponda según el origen de la fila.
+// "Atributo" si existe con el mismo nombre de campo (`atributo`) en las 3
+// colecciones de origen, así que no hace falta mapear nada ahí.
 
-export const normalizarSolicitudImplantes = (bloque) => ({
-  origen: ORIGEN.IMPLANTES,
-  id: bloque.refPath,
-  refPath: bloque.refPath,
-  gestionId: bloque.gestionId || 'P',
-  paciente: bloque.nombre || 'P',
-  medico: bloque.medico || 'P',
-  fecha: bloque.fecha || '',
-  empresa: bloque.empresa || 'P',
-  cantidadItems: bloque.items?.length || 0,
-  costo: Number(bloque.costo) || 0,
-  _raw: bloque
-});
+const FILA_ITEM_VACIA = { codigo: '-', descripcion: '-', cantidad: '-', precio: 0, lote: '-', vencimiento: '' };
 
-// `id` usa item.id (no item.refPath): las filas de desglose de guía que
-// arma cargarCandidatosSolicitudConsignacion (esFilaGuia: true) no tienen
-// documento propio en Firestore, así que no tienen refPath — solo id.
-// Usar refPath como id las dejaba todas con el mismo id (undefined),
+export const normalizarSolicitudImplantes = (bloque) => {
+  // OJO: el doc crudo de implantes_gestiones anida los ítems en
+  // `cotizaciones[0].items` (igual que Hemodinamia) — NO en `bloque.items`
+  // directo. Leer `bloque.items` (como hacía la versión anterior) siempre
+  // daba 0 ítems para Implantes en esta pestaña.
+  const items = bloque.cotizaciones?.[0]?.items || [];
+  const numCotizacionBloque = bloque.cotizaciones?.[0]?.numCotizacion || 'P';
+  const filasItems = items.length > 0 ? items : [null];
+
+  return filasItems.map((it, idx) => ({
+    origen: ORIGEN.IMPLANTES,
+    id: `${bloque.refPath}::${it?.id ?? idx}`,
+    selectId: bloque.refPath,
+    refPath: bloque.refPath,
+    gestionId: bloque.gestionId || bloque.agendaId || 'P',
+    paciente: bloque.nombre || 'P',
+    medico: bloque.medico || 'P',
+    fecha: bloque.fecha || '',
+    empresa: bloque.empresa || 'P',
+    codigo: it ? (it.codigo || 'S/C') : FILA_ITEM_VACIA.codigo,
+    descripcion: it ? (it.referencia || it.descriptorAuto || 'P') : FILA_ITEM_VACIA.descripcion,
+    cantidad: it ? (it.cantidad ?? FILA_ITEM_VACIA.cantidad) : FILA_ITEM_VACIA.cantidad,
+    precio: it ? Number(it.precio) || 0 : FILA_ITEM_VACIA.precio,
+    atributo: bloque.atributo || 'P',
+    fechaRegistro: bloque.fechaRegistro || null,
+    fechaCarga: bloque.fecha || '',
+    numGuia: it?.numCotizacion || numCotizacionBloque,
+    lote: it ? (it.lote || 'P') : FILA_ITEM_VACIA.lote,
+    vencimiento: it ? (it.vencimiento || '') : FILA_ITEM_VACIA.vencimiento,
+    esFilaGuia: false,
+    _raw: bloque
+  }));
+};
+
+// `id`/`selectId` usan item.id (no item.refPath): las filas de desglose de
+// guía que arma cargarCandidatosSolicitudConsignacion (esFilaGuia: true) no
+// tienen documento propio en Firestore, así que no tienen refPath — solo
+// id. Usar refPath como id las dejaba todas con el mismo id (undefined),
 // rompiendo la selección por checkbox y las keys de React.
-export const normalizarSolicitudConsignacion = (item) => ({
+export const normalizarSolicitudConsignacion = (item) => [{
   origen: ORIGEN.CONSIGNACION,
   id: item.id,
+  selectId: item.id,
   refPath: item.refPath || null,
   gestionId: item.gestionId || 'P',
   paciente: item.nombre || 'P',
   medico: item.medico || 'P',
   fecha: item.fecha || '',
   empresa: item.empresa || 'P',
-  cantidadItems: 1,
-  costo: Number(item.costo) || 0,
+  codigo: item.codigo || 'S/C',
+  descripcion: item.descripcion || 'P',
+  cantidad: item.cantidad,
+  precio: Number(item.costo) || 0,
+  atributo: item.atributo || 'P',
+  fechaRegistro: item.fechaRegistro || null,
+  fechaCarga: item.fecha || '',
+  numGuia: item.numeroGuia || 0,
+  lote: item.lote,
+  vencimiento: item.vencimiento,
+  esFilaGuia: !!item.esFilaGuia,
   _raw: item
-});
+}];
 
 // Hemodinamia guarda igual que Implantes (bloques con cotizaciones[0].items).
-// `_raw` toma la forma nativa que arma useSolicitudHemodinamiaData (con
-// `items` ya extraídos y valores por defecto), porque el export de este
-// módulo la necesita tal cual para escribir en hemodinamia_imputadas.
+// `_raw` toma la forma nativa que entrega useSolicitudesUnificadasData.js
+// (doc crudo con `cotizaciones` anidado), porque el export de este módulo
+// la necesita tal cual para escribir en hemodinamia_imputadas.
 export const normalizarSolicitudHemodinamia = (doc) => {
   const items = doc.cotizaciones?.[0]?.items || [];
+  const numCotizacionBloque = doc.cotizaciones?.[0]?.numCotizacion || 'P';
   const bloque = {
     id: doc.id,
     refPath: doc.refPath,
@@ -241,22 +293,35 @@ export const normalizarSolicitudHemodinamia = (doc) => {
     costo: doc.costo || 0,
     registradoPor: doc.registradoPor || 'Usuario',
     fechaRegistro: doc.fechaRegistro || null,
-    numCotizacion: doc.cotizaciones?.[0]?.numCotizacion || 'P',
+    numCotizacion: numCotizacionBloque,
     items
   };
-  return {
+
+  const filasItems = items.length > 0 ? items : [null];
+
+  return filasItems.map((it, idx) => ({
     origen: ORIGEN.HEMODINAMIA,
-    id: bloque.refPath,
+    id: `${bloque.refPath}::${it?.id ?? idx}`,
+    selectId: bloque.refPath,
     refPath: bloque.refPath,
     gestionId: bloque.gestionId,
     paciente: bloque.nombre,
     medico: bloque.medico,
     fecha: bloque.fecha === 'P' ? '' : bloque.fecha,
     empresa: bloque.empresa,
-    cantidadItems: items.length,
-    costo: Number(bloque.costo) || 0,
+    codigo: it ? (it.codigo || 'S/C') : FILA_ITEM_VACIA.codigo,
+    descripcion: it ? (it.referencia || it.descriptorAuto || 'P') : FILA_ITEM_VACIA.descripcion,
+    cantidad: it ? (it.cantidad ?? FILA_ITEM_VACIA.cantidad) : FILA_ITEM_VACIA.cantidad,
+    precio: it ? Number(it.precio) || 0 : FILA_ITEM_VACIA.precio,
+    atributo: bloque.atributo || 'P',
+    fechaRegistro: bloque.fechaRegistro || null,
+    fechaCarga: bloque.fecha === 'P' ? '' : bloque.fecha,
+    numGuia: it?.numCotizacion || numCotizacionBloque,
+    lote: it ? (it.lote || 'P') : FILA_ITEM_VACIA.lote,
+    vencimiento: it ? (it.vencimiento || '') : FILA_ITEM_VACIA.vencimiento,
+    esFilaGuia: false,
     _raw: bloque
-  };
+  }));
 };
 
 // --- Orden compartido del Consolidado ---

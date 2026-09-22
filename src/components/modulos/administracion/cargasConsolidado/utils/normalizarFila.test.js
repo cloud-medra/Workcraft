@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { ORIGEN, ordenarPorAdmisionYOC, filtrarPorBusquedaYOrigen } from './normalizarFila';
+import {
+  ORIGEN,
+  ordenarPorAdmisionYOC,
+  filtrarPorBusquedaYOrigen,
+  normalizarSolicitudImplantes,
+  normalizarSolicitudConsignacion,
+  normalizarSolicitudHemodinamia
+} from './normalizarFila';
 
 const fila = (gestionId, codigo, origen = ORIGEN.IMPLANTES) => ({ gestionId, codigo, origen });
 
@@ -129,5 +136,124 @@ describe('filtrarPorBusquedaYOrigen', () => {
 
     const sinCoincidencia = filtrarPorBusquedaYOrigen(filas, { busqueda: '1020', origenesSeleccionados: [ORIGEN.HEMODINAMIA] });
     expect(sinCoincidencia).toHaveLength(0);
+  });
+});
+
+describe('normalizarSolicitudImplantes / Hemodinamia / Consignacion (Solicitudes, nivel ítem)', () => {
+  it('Implantes: expande un bloque con N ítems en N filas, leyendo cotizaciones[0].items (no bloque.items)', () => {
+    const bloque = {
+      refPath: 'implantes_gestiones/2026/.../detalles/abc',
+      gestionId: '500100',
+      nombre: 'Ana Ríos',
+      medico: 'Dr. Soto',
+      fecha: '2026-09-20',
+      empresa: 'EmpresaX',
+      atributo: 'IMPLANTES',
+      fechaRegistro: 'ts',
+      // bloque.items (top-level) NO existe en el doc real — solo debe leer
+      // cotizaciones[0].items. Si el código leyera bloque.items por error,
+      // esto debería dar 1 fila "vacía", no 2.
+      cotizaciones: [{ numCotizacion: 'COT-1', items: [
+        { id: 'it1', codigo: 'COD-A', referencia: 'Ref A', cantidad: 2, precio: 1000, lote: 'L1', vencimiento: '2027-01-01' },
+        { id: 'it2', codigo: 'COD-B', referencia: 'Ref B', cantidad: 1, precio: 500, numCotizacion: 'COT-2' }
+      ] }]
+    };
+
+    const filas = normalizarSolicitudImplantes(bloque);
+
+    expect(filas).toHaveLength(2);
+    expect(filas.every(f => f.origen === ORIGEN.IMPLANTES)).toBe(true);
+    // selectId es el bloque (exportación es por gestión completa, no por ítem).
+    expect(filas.every(f => f.selectId === bloque.refPath)).toBe(true);
+    // ids de fila distintos entre sí, para keys de React.
+    expect(new Set(filas.map(f => f.id)).size).toBe(2);
+
+    expect(filas[0]).toMatchObject({ codigo: 'COD-A', descripcion: 'Ref A', cantidad: 2, precio: 1000, lote: 'L1', numGuia: 'COT-1' });
+    // El segundo ítem trae su propio numCotizacion — debe primar sobre el de la cotización.
+    expect(filas[1]).toMatchObject({ codigo: 'COD-B', numGuia: 'COT-2' });
+    // Atributo viene del bloque (mismo campo/nombre en las 3 colecciones).
+    expect(filas.every(f => f.atributo === 'IMPLANTES')).toBe(true);
+  });
+
+  it('Implantes: bloque sin ítems produce 1 fila con placeholders, no 0 filas', () => {
+    const bloque = { refPath: 'implantes_gestiones/.../vacio', gestionId: '1', cotizaciones: [{ items: [] }] };
+    const filas = normalizarSolicitudImplantes(bloque);
+    expect(filas).toHaveLength(1);
+    expect(filas[0].codigo).toBe('-');
+  });
+
+  it('Hemodinamia: mismo comportamiento que Implantes (bloque con cotizaciones[0].items anidado)', () => {
+    const doc = {
+      id: 'h1',
+      refPath: 'hemodinamia_gestiones/.../detalles/h1',
+      gestionId: '600200',
+      nombre: 'Pedro Gómez',
+      atributo: 'HEMODINAMIA',
+      cotizaciones: [{ numCotizacion: 'COT-9', items: [
+        { id: 'it1', codigo: 'COD-Z', referencia: 'Ref Z', cantidad: 5, precio: 200, lote: 'L9', vencimiento: '2026-12-31' }
+      ] }]
+    };
+
+    const filas = normalizarSolicitudHemodinamia(doc);
+
+    expect(filas).toHaveLength(1);
+    expect(filas[0]).toMatchObject({
+      origen: ORIGEN.HEMODINAMIA,
+      selectId: doc.refPath,
+      codigo: 'COD-Z',
+      descripcion: 'Ref Z',
+      cantidad: 5,
+      precio: 200,
+      numGuia: 'COT-9',
+      atributo: 'HEMODINAMIA'
+    });
+  });
+
+  it('Consignación: sigue siendo 1 ítem = 1 fila, con selectId = id propio (no el bloque)', () => {
+    const item = {
+      id: 'c1',
+      refPath: 'consignacion_registros/.../detalles/c1',
+      gestionId: '700300',
+      nombre: 'Laura Díaz',
+      codigo: 'COD-C',
+      descripcion: 'Desc C',
+      cantidad: 3,
+      costo: 150,
+      atributo: 'PABELLON',
+      numeroGuia: '12345',
+      lote: 'L2',
+      vencimiento: '2026-10-10'
+    };
+
+    const filas = normalizarSolicitudConsignacion(item);
+
+    expect(filas).toHaveLength(1);
+    expect(filas[0]).toMatchObject({
+      origen: ORIGEN.CONSIGNACION,
+      selectId: item.id,
+      id: item.id,
+      codigo: 'COD-C',
+      precio: 150,
+      numGuia: '12345',
+      esFilaGuia: false
+    });
+  });
+
+  it('Consignación: preserva esFilaGuia para las filas de desglose de guía (sin documento propio)', () => {
+    const filaGuia = {
+      id: 'guia-DELIVERY1-0',
+      ref: null,
+      esFilaGuia: true,
+      gestionId: '700300',
+      codigo: 'No lleva OC',
+      cantidad: 4,
+      numeroGuia: 0
+    };
+
+    const filas = normalizarSolicitudConsignacion(filaGuia);
+
+    expect(filas[0].esFilaGuia).toBe(true);
+    expect(filas[0].refPath).toBeNull();
+    expect(filas[0].selectId).toBe('guia-DELIVERY1-0');
   });
 });
