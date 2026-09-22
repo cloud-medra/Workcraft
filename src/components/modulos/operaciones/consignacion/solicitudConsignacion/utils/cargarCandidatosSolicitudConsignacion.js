@@ -1,0 +1,211 @@
+// Lógica de carga de candidatos a "Solicitud" de Consignación, compartida
+// entre la pantalla nativa (SolicitudConsignacion.jsx) y la pestaña
+// "Solicitudes" de Administración → Cargas Consolidado
+// (useSolicitudesUnificadasData.js). Antes vivía solo dentro del hook de la
+// pantalla nativa — Cargas Consolidado hacía su propia consulta simplificada
+// (solo `where('estado','==','CARGADO')`, sin el desglose de guía por
+// delivery) y por eso mostraba menos filas que la pantalla nativa para el
+// mismo período: a cualquier ítem con una guía de despacho vinculada le
+// faltaban sus filas de desglose (productos de la guía).
+import { collectionGroup, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db } from '../../../../../../firebaseConfig';
+
+const NOMBRE_SUBCOL_DETALLES = 'detalles';
+const ESTADO_ORIGEN = 'CARGADO';
+const COL_MAESTROS_CODIGOS = 'maestros_codigos';
+
+const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
+const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
+const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
+
+const trocear = (arr, tamano) => {
+  const bloques = [];
+  for (let i = 0; i < arr.length; i += tamano) {
+    bloques.push(arr.slice(i, i + tamano));
+  }
+  return bloques;
+};
+
+// Caches a nivel de módulo (no por instancia de hook) — así la pantalla
+// nativa y la de Cargas Consolidado comparten el mismo caché de guías y
+// maestros en vez de resolverlos por separado si ambas se usan en la misma
+// sesión.
+const cacheGuiasPorDelivery = new Map();
+const cacheMaestrosPorCodigo = new Map();
+
+const resolverGuiaCacheada = async (deliveryValor, forzar) => {
+  if (!forzar && cacheGuiasPorDelivery.has(deliveryValor)) {
+    return cacheGuiasPorDelivery.get(deliveryValor);
+  }
+  try {
+    const qGuia = query(
+      collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+      where('numeroDocumento', '==', deliveryValor)
+    );
+    const snapGuia = await getDocs(qGuia);
+    if (snapGuia.empty) {
+      cacheGuiasPorDelivery.set(deliveryValor, null);
+      return null;
+    }
+    const numeroGuia = snapGuia.docs[0]?.data()?.numeroGuia || null;
+    const productos = snapGuia.docs.map(d => d.data()).filter(p => !estaExcluido(p.codigo));
+    const resultado = { numeroGuia, productos };
+    cacheGuiasPorDelivery.set(deliveryValor, resultado);
+    return resultado;
+  } catch (err) {
+    console.error(`Error al resolver la guía ${deliveryValor}:`, err);
+    return null;
+  }
+};
+
+const resolverMaestrosCacheados = async (referencias, forzar) => {
+  const unicas = [...new Set(referencias.map(r => (r || '').trim()).filter(Boolean))];
+  const pendientes = forzar ? unicas : unicas.filter(r => !cacheMaestrosPorCodigo.has(r));
+
+  if (pendientes.length > 0) {
+    const bloques = trocear(pendientes, 10);
+    for (const bloque of bloques) {
+      try {
+        const qMaestro = query(collection(db, COL_MAESTROS_CODIGOS), where('referencia', 'in', bloque));
+        const snapMaestro = await getDocs(qMaestro);
+        const encontrados = new Set();
+        snapMaestro.docs.forEach(d => {
+          const data = d.data();
+          if (data.referencia) {
+            cacheMaestrosPorCodigo.set(data.referencia, {
+              descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
+              tipo: data.tipo || '',
+              empresa: data.empresa || ''
+            });
+            encontrados.add(data.referencia);
+          }
+        });
+        bloque.forEach(r => {
+          if (!encontrados.has(r)) cacheMaestrosPorCodigo.set(r, cacheMaestrosPorCodigo.get(r) ?? null);
+        });
+      } catch (err) {
+        console.error('Error al resolver bloque de maestros_codigos:', bloque, err);
+      }
+    }
+  }
+
+  const resultado = {};
+  unicas.forEach(r => { resultado[r] = cacheMaestrosPorCodigo.get(r) ?? null; });
+  return resultado;
+};
+
+// Trae TODOS los ítems de Consignación con estado 'CARGADO' (candidatos a
+// solicitar) más, para cada uno con un delivery vinculado a una guía, las
+// filas de desglose de esa guía (productos, sin costo propio — informativas,
+// no tienen documento propio en Firestore y no se marcan como SOLICITADO).
+export const cargarCandidatosSolicitudConsignacion = async (forzarRelecturaGuias = false) => {
+  const q = query(
+    collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+    where('estado', '==', ESTADO_ORIGEN),
+    orderBy('fechaRegistro', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_registros/'));
+
+  const itemsCargados = docsConsignacion.map((document) => {
+    const data = document.data();
+    const costo = Number(data.costo) || 0;
+    const cantidad = Number(data.cantidad) || 0;
+    const vecesCosto = data.recargoVecesCosto != null ? Number(data.recargoVecesCosto) : 1;
+    const deliveryValor = (data.delivery || '').trim();
+    const tieneVinculo = Boolean(data.deliveryVinculado);
+
+    return {
+      id: document.id,
+      ref: document.ref,
+      refPath: document.ref.path,
+      datosOriginales: data,
+      gestionId: data.gestionId || 'P',
+      nombre: data.nombre || 'P',
+      medico: data.medico || 'P',
+      fecha: data.fecha || '',
+      empresa: data.empresa || 'P',
+      codigo: data.codigo || 'S/C',
+      descripcion: data.descripcion || 'P',
+      cantidad,
+      costo,
+      ventaUnitaria: costo * vecesCosto,
+      costoTotal: costo * cantidad,
+      atributo: data.atributo || 'P',
+      fechaRegistro: data.fechaRegistro || null,
+      delivery: deliveryValor,
+      numeroGuiaVinculada: data.numeroGuiaVinculada || null,
+      lote: tieneVinculo && data.loteGuiaVinculado
+        ? data.loteGuiaVinculado
+        : (deliveryValor ? 'PAD' : 'Sin lote'),
+      vencimiento: tieneVinculo && data.vencimientoGuiaVinculado
+        ? data.vencimientoGuiaVinculado
+        : (deliveryValor ? 'PAD' : 'Sin fecha')
+    };
+  });
+
+  try {
+    const deliveriesUnicos = [...new Set(itemsCargados.map(it => it.delivery).filter(Boolean))];
+
+    const filasGuiaPorDelivery = {};
+    const numeroGuiaPorDelivery = {};
+
+    await Promise.all(deliveriesUnicos.map(async (deliveryValor) => {
+      const guia = await resolverGuiaCacheada(deliveryValor, forzarRelecturaGuias);
+      if (!guia || guia.productos.length === 0) return;
+
+      numeroGuiaPorDelivery[deliveryValor] = guia.numeroGuia;
+
+      const referenciasUnicas = guia.productos.map(p => (p.codigo || '').trim()).filter(Boolean);
+      const vinculosCodigos = await resolverMaestrosCacheados(referenciasUnicas, forzarRelecturaGuias);
+
+      const itemRelacionado = itemsCargados.find(it => it.delivery === deliveryValor) || null;
+
+      filasGuiaPorDelivery[deliveryValor] = guia.productos.map((p, idx) => {
+        const vinculo = vinculosCodigos[(p.codigo || '').trim()];
+        return {
+          id: `guia-${deliveryValor}-${idx}`,
+          ref: null,
+          esFilaGuia: true,
+          gestionId: itemRelacionado?.gestionId || '-',
+          nombre: itemRelacionado?.nombre || '-',
+          medico: itemRelacionado?.medico || '-',
+          fecha: itemRelacionado?.fecha || '',
+          empresa: vinculo?.empresa || '-',
+          codigo: 'No lleva OC',
+          descripcion: vinculo?.descripcion || '-',
+          cantidad: p.cantidad ?? 0,
+          costo: 0,
+          ventaUnitaria: 0,
+          costoTotal: 0,
+          atributo: vinculo?.tipo || '-',
+          fechaRegistro: itemRelacionado?.fechaRegistro || null,
+          lote: p.lote || 'N/A',
+          vencimiento: p.vencimiento || 'N/A',
+          numeroGuia: 0
+        };
+      });
+    }));
+
+    const itemsConNumeroGuia = itemsCargados.map(it => ({
+      ...it,
+      numeroGuia: it.numeroGuiaVinculada || numeroGuiaPorDelivery[it.delivery] || 0
+    }));
+
+    const deliveriesYaInsertados = new Set();
+    const listaFinal = [];
+
+    itemsConNumeroGuia.forEach(it => {
+      listaFinal.push(it);
+      if (it.delivery && !deliveriesYaInsertados.has(it.delivery) && filasGuiaPorDelivery[it.delivery]) {
+        deliveriesYaInsertados.add(it.delivery);
+        listaFinal.push(...filasGuiaPorDelivery[it.delivery]);
+      }
+    });
+
+    return listaFinal;
+  } catch (err) {
+    console.error('Error al construir filas de guías de Delivery:', err);
+    return itemsCargados;
+  }
+};

@@ -3,6 +3,7 @@ import { useColumnResize } from '../../../../../hooks/useColumnResize';
 import { ManijaRedimension } from '../../../../ui/ManijaRedimension';
 import { useSolicitudesUnificadasData } from '../hooks/useSolicitudesUnificadasData';
 import { ORIGEN_LABEL, ORIGEN_BADGE_STYLE } from '../utils/normalizarFila';
+import FiltrosBusquedaOrigen from './FiltrosBusquedaOrigen';
 
 const COLUMNAS = [
   { key: 'sel', label: '', ancho: 32, min: 28 },
@@ -31,6 +32,11 @@ const SolicitudesUnificadasTable = () => {
     seleccionados,
     toggleSeleccion,
     toggleSeleccionarTodos,
+    busqueda,
+    setBusqueda,
+    origenesSeleccionados,
+    toggleOrigen,
+    limpiarOrigenes,
     periodoImplantes,
     periodoConsignacion,
     periodoHemodinamia,
@@ -64,6 +70,16 @@ const SolicitudesUnificadasTable = () => {
           {exportando ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
           Exportar y Marcar Solicitado
         </button>
+      </div>
+
+      <div className="px-3 py-1.5 border-b border-slate-200 dark:border-gray-700">
+        <FiltrosBusquedaOrigen
+          busqueda={busqueda}
+          setBusqueda={setBusqueda}
+          origenesSeleccionados={origenesSeleccionados}
+          toggleOrigen={toggleOrigen}
+          limpiarOrigenes={limpiarOrigenes}
+        />
       </div>
 
       <div className="flex-grow overflow-auto">

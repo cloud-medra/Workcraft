@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ORIGEN, ordenarPorAdmisionYOC } from './normalizarFila';
+import { ORIGEN, ordenarPorAdmisionYOC, filtrarPorBusquedaYOrigen } from './normalizarFila';
 
 const fila = (gestionId, codigo, origen = ORIGEN.IMPLANTES) => ({ gestionId, codigo, origen });
 
@@ -78,5 +78,56 @@ describe('ordenarPorAdmisionYOC', () => {
     ordenarPorAdmisionYOC(filas);
 
     expect(filas).toEqual(copiaOriginal);
+  });
+});
+
+const filaConNombre = (gestionId, campos, origen = ORIGEN.IMPLANTES) => ({ gestionId, origen, ...campos });
+
+describe('filtrarPorBusquedaYOrigen', () => {
+  const filas = [
+    filaConNombre('102030', { nombre: 'Juan Pérez' }, ORIGEN.IMPLANTES),
+    filaConNombre('102040', { paciente: 'María López' }, ORIGEN.CONSIGNACION),
+    filaConNombre('305000', { nombre: 'Pedro Soto' }, ORIGEN.HEMODINAMIA)
+  ];
+
+  it('sin filtros, devuelve todo tal cual (equivalente a "Todas")', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, {});
+    expect(resultado).toHaveLength(3);
+  });
+
+  it('busca por admisión, parcial', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, { busqueda: '1020' });
+    expect(resultado.map(f => f.gestionId)).toEqual(['102030', '102040']);
+  });
+
+  it('busca por nombre (campo `nombre` en Gestión o `paciente` en Solicitudes/Imputadas), parcial y sin distinguir mayúsculas', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, { busqueda: 'lópez' });
+    expect(resultado.map(f => f.gestionId)).toEqual(['102040']);
+
+    const resultado2 = filtrarPorBusquedaYOrigen(filas, { busqueda: 'PEDRO' });
+    expect(resultado2.map(f => f.gestionId)).toEqual(['305000']);
+  });
+
+  it('origen vacío = sin restricción ("Todas")', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, { origenesSeleccionados: [] });
+    expect(resultado).toHaveLength(3);
+  });
+
+  it('un origen individual filtra solo esa colección', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, { origenesSeleccionados: [ORIGEN.CONSIGNACION] });
+    expect(resultado.map(f => f.gestionId)).toEqual(['102040']);
+  });
+
+  it('dos orígenes combinados filtran ambas colecciones', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, { origenesSeleccionados: [ORIGEN.IMPLANTES, ORIGEN.HEMODINAMIA] });
+    expect(resultado.map(f => f.gestionId)).toEqual(['102030', '305000']);
+  });
+
+  it('combina búsqueda y origen a la vez', () => {
+    const resultado = filtrarPorBusquedaYOrigen(filas, { busqueda: '1020', origenesSeleccionados: [ORIGEN.CONSIGNACION] });
+    expect(resultado.map(f => f.gestionId)).toEqual(['102040']);
+
+    const sinCoincidencia = filtrarPorBusquedaYOrigen(filas, { busqueda: '1020', origenesSeleccionados: [ORIGEN.HEMODINAMIA] });
+    expect(sinCoincidencia).toHaveLength(0);
   });
 });

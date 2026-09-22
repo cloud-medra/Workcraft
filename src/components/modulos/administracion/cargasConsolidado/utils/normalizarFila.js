@@ -196,10 +196,15 @@ export const normalizarSolicitudImplantes = (bloque) => ({
   _raw: bloque
 });
 
+// `id` usa item.id (no item.refPath): las filas de desglose de guía que
+// arma cargarCandidatosSolicitudConsignacion (esFilaGuia: true) no tienen
+// documento propio en Firestore, así que no tienen refPath — solo id.
+// Usar refPath como id las dejaba todas con el mismo id (undefined),
+// rompiendo la selección por checkbox y las keys de React.
 export const normalizarSolicitudConsignacion = (item) => ({
   origen: ORIGEN.CONSIGNACION,
-  id: item.refPath,
-  refPath: item.refPath,
+  id: item.id,
+  refPath: item.refPath || null,
   gestionId: item.gestionId || 'P',
   paciente: item.nombre || 'P',
   medico: item.medico || 'P',
@@ -289,3 +294,28 @@ export const ordenarPorAdmisionYOC = (filas) =>
     if (cmpAdmision !== 0) return cmpAdmision;
     return grupoOC(a.codigo) - grupoOC(b.codigo);
   });
+
+// --- Filtros compartidos del Consolidado (Gestión, Solicitudes, Imputadas) ---
+// Lista fija (no se deriva de los datos, a diferencia de un filtro de
+// "estados vistos"): el Consolidado por definición solo junta estas 3
+// colecciones, así que las opciones del selector de Origen no cambian.
+export const ORIGENES_DISPONIBLES = [ORIGEN.IMPLANTES, ORIGEN.CONSIGNACION, ORIGEN.HEMODINAMIA];
+
+// Búsqueda parcial (sin distinguir mayúsculas) por admisión o por
+// nombre/paciente — cada normalizador de arriba usa `nombre` (Gestión) o
+// `paciente` (Solicitudes/Imputadas), así que se revisan ambos campos sin
+// necesidad de unificar el nombre de la propiedad entre los 3.
+// `origenesSeleccionados` vacío = sin restricción ("Todas"), igual que el
+// patrón ya usado en los demás filtros multi-selección de la app
+// (ver filtrosEstados en Consignación/Implantes): no es necesario marcar
+// "Todas" explícitamente, alcanza con no marcar ninguna opción individual.
+export const filtrarPorBusquedaYOrigen = (filas, { busqueda = '', origenesSeleccionados = [] } = {}) => {
+  const texto = busqueda.trim().toLowerCase();
+  return filas.filter(f => {
+    if (origenesSeleccionados.length > 0 && !origenesSeleccionados.includes(f.origen)) return false;
+    if (!texto) return true;
+    const admision = String(f.gestionId ?? '').toLowerCase();
+    const nombre = String(f.nombre ?? f.paciente ?? '').toLowerCase();
+    return admision.includes(texto) || nombre.includes(texto);
+  });
+};

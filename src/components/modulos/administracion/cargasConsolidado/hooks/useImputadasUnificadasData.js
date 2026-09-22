@@ -6,7 +6,7 @@ import {
   construirQueryAnioImputadas,
   calcularMesPorDefecto
 } from './periodoQueryHelpers';
-import { normalizarImputadaImplantes, normalizarImputadaConsignacion, normalizarImputadaHemodinamia, ordenarPorAdmisionYOC } from '../utils/normalizarFila';
+import { normalizarImputadaImplantes, normalizarImputadaConsignacion, normalizarImputadaHemodinamia, ordenarPorAdmisionYOC, filtrarPorBusquedaYOrigen } from '../utils/normalizarFila';
 
 const RAIZ_IMPLANTES = 'implantes_imputadas';
 const RAIZ_CONSIGNACION = 'consignacion_imputadas';
@@ -31,6 +31,13 @@ export const useImputadasUnificadasData = () => {
   const [docsHemodinamia, setDocsHemodinamia] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [pagina, setPagina] = useState(1);
+
+  const [busqueda, setBusqueda] = useState('');
+  const [origenesSeleccionados, setOrigenesSeleccionados] = useState([]);
+  const toggleOrigen = (origen) => setOrigenesSeleccionados(prev =>
+    prev.includes(origen) ? prev.filter(o => o !== origen) : [...prev, origen]
+  );
+  const limpiarOrigenes = () => setOrigenesSeleccionados([]);
 
   const necesitaMesPorDefectoRef = useRef(false);
 
@@ -116,17 +123,24 @@ export const useImputadasUnificadasData = () => {
     necesitaMesPorDefectoRef.current = false;
   }, [anio, mesesDisponibles]);
 
-  useEffect(() => { setPagina(1); }, [mes]);
+  useEffect(() => { setPagina(1); }, [mes, busqueda, origenesSeleccionados]);
 
   const filas = useMemo(() => {
     if (mes === TODOS_LOS_MESES) return filasAnio;
     return filasAnio.filter(f => f.periodoMes === mes);
   }, [filasAnio, mes]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filas.length / PAGE_SIZE));
+  // Igual que en Gestión: búsqueda por admisión/nombre + Origen se aplican
+  // sobre el mes ya filtrado y ANTES de paginar.
+  const filasFiltradas = useMemo(
+    () => filtrarPorBusquedaYOrigen(filas, { busqueda, origenesSeleccionados }),
+    [filas, busqueda, origenesSeleccionados]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / PAGE_SIZE));
   const filasPagina = useMemo(
-    () => filas.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE),
-    [filas, pagina]
+    () => filasFiltradas.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE),
+    [filasFiltradas, pagina]
   );
 
   return {
@@ -136,7 +150,9 @@ export const useImputadasUnificadasData = () => {
     mesesDisponibles,
     cargandoAnios,
     cargando: cargandoDatos,
-    totalFilas: filas.length,
+    busqueda, setBusqueda,
+    origenesSeleccionados, toggleOrigen, limpiarOrigenes,
+    totalFilas: filasFiltradas.length,
     filasPagina,
     pagina, setPagina,
     totalPaginas

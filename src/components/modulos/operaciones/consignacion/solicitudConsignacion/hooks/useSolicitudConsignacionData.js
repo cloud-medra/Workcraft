@@ -1,38 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
-import {
-  collection,
-  collectionGroup,
-  doc,
-  writeBatch,
-  getDocs,
-  query,
-  where,
-  orderBy
-} from 'firebase/firestore';
+import { doc, writeBatch } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
+import { cargarCandidatosSolicitudConsignacion } from '../utils/cargarCandidatosSolicitudConsignacion';
 
-const NOMBRE_SUBCOL_DETALLES = 'detalles';
-const ESTADO_ORIGEN = 'CARGADO';
 const ESTADO_DESTINO = 'SOLICITADO';
-
-const COL_MAESTROS_CODIGOS = 'maestros_codigos';
-
-const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
-const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
-const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
-
-const trocear = (arr, tamano) => {
-  const bloques = [];
-  for (let i = 0; i < arr.length; i += tamano) {
-    bloques.push(arr.slice(i, i + tamano));
-  }
-  return bloques;
-};
 
 const formatearFechaDDMMYYYY = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '';
@@ -58,70 +34,6 @@ const obtenerFechaHoyTexto = () => {
   return `${dd}-${mm}-${yyyy}`;
 };
 
-const cacheGuiasPorDelivery = new Map(); 
-const cacheMaestrosPorCodigo = new Map(); 
-
-const resolverGuiaCacheada = async (deliveryValor, forzar) => {
-  if (!forzar && cacheGuiasPorDelivery.has(deliveryValor)) {
-    return cacheGuiasPorDelivery.get(deliveryValor);
-  }
-  try {
-    const qGuia = query(
-      collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
-      where('numeroDocumento', '==', deliveryValor)
-    );
-    const snapGuia = await getDocs(qGuia);
-    if (snapGuia.empty) {
-      cacheGuiasPorDelivery.set(deliveryValor, null);
-      return null;
-    }
-    const numeroGuia = snapGuia.docs[0]?.data()?.numeroGuia || null;
-    const productos = snapGuia.docs.map(d => d.data()).filter(p => !estaExcluido(p.codigo));
-    const resultado = { numeroGuia, productos };
-    cacheGuiasPorDelivery.set(deliveryValor, resultado);
-    return resultado;
-  } catch (err) {
-    console.error(`Error al resolver la guía ${deliveryValor}:`, err);
-    return null;
-  }
-};
-
-const resolverMaestrosCacheados = async (referencias, forzar) => {
-  const unicas = [...new Set(referencias.map(r => (r || '').trim()).filter(Boolean))];
-  const pendientes = forzar ? unicas : unicas.filter(r => !cacheMaestrosPorCodigo.has(r));
-
-  if (pendientes.length > 0) {
-    const bloques = trocear(pendientes, 10);
-    for (const bloque of bloques) {
-      try {
-        const qMaestro = query(collection(db, COL_MAESTROS_CODIGOS), where('referencia', 'in', bloque));
-        const snapMaestro = await getDocs(qMaestro);
-        const encontrados = new Set();
-        snapMaestro.docs.forEach(d => {
-          const data = d.data();
-          if (data.referencia) {
-            cacheMaestrosPorCodigo.set(data.referencia, {
-              descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-              tipo: data.tipo || '',
-              empresa: data.empresa || ''
-            });
-            encontrados.add(data.referencia);
-          }
-        });
-        bloque.forEach(r => {
-          if (!encontrados.has(r)) cacheMaestrosPorCodigo.set(r, cacheMaestrosPorCodigo.get(r) ?? null);
-        });
-      } catch (err) {
-        console.error('Error al resolver bloque de maestros_codigos:', bloque, err);
-      }
-    }
-  }
-
-  const resultado = {};
-  unicas.forEach(r => { resultado[r] = cacheMaestrosPorCodigo.get(r) ?? null; });
-  return resultado;
-};
-
 export const useSolicitudConsignacionData = () => {
   const [items, setItems] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -135,122 +47,15 @@ export const useSolicitudConsignacionData = () => {
   const cargarDatos = useCallback(async (forzarRelecturaGuias = false) => {
     setCargando(true);
     try {
-      const q = query(
-        collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
-        where('estado', '==', ESTADO_ORIGEN),
-        orderBy('fechaRegistro', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_registros/'));
-
-      const itemsCargados = docsConsignacion.map((document) => {
-        const data = document.data();
-        const costo = Number(data.costo) || 0;
-        const cantidad = Number(data.cantidad) || 0;
-        const vecesCosto = data.recargoVecesCosto != null ? Number(data.recargoVecesCosto) : 1;
-        const deliveryValor = (data.delivery || '').trim();
-        const tieneVinculo = Boolean(data.deliveryVinculado);
-
-        return {
-          id: document.id,
-          ref: document.ref,
-          refPath: document.ref.path,
-          datosOriginales: data,
-          gestionId: data.gestionId || 'P',
-          nombre: data.nombre || 'P',
-          medico: data.medico || 'P',
-          fecha: data.fecha || '',
-          empresa: data.empresa || 'P',
-          codigo: data.codigo || 'S/C',
-          descripcion: data.descripcion || 'P',
-          cantidad,
-          costo,
-          ventaUnitaria: costo * vecesCosto,
-          costoTotal: costo * cantidad,
-          atributo: data.atributo || 'P',
-          fechaRegistro: data.fechaRegistro || null,
-          delivery: deliveryValor,
-          numeroGuiaVinculada: data.numeroGuiaVinculada || null,
-          lote: tieneVinculo && data.loteGuiaVinculado
-            ? data.loteGuiaVinculado
-            : (deliveryValor ? 'PAD' : 'Sin lote'),
-          vencimiento: tieneVinculo && data.vencimientoGuiaVinculado
-            ? data.vencimientoGuiaVinculado
-            : (deliveryValor ? 'PAD' : 'Sin fecha')
-        };
-      });
-
-      try {
-        const deliveriesUnicos = [...new Set(itemsCargados.map(it => it.delivery).filter(Boolean))];
-
-        const filasGuiaPorDelivery = {};
-        const numeroGuiaPorDelivery = {};
-
-        await Promise.all(deliveriesUnicos.map(async (deliveryValor) => {
-          const guia = await resolverGuiaCacheada(deliveryValor, forzarRelecturaGuias);
-          if (!guia || guia.productos.length === 0) return;
-
-          numeroGuiaPorDelivery[deliveryValor] = guia.numeroGuia;
-
-          const referenciasUnicas = guia.productos.map(p => (p.codigo || '').trim()).filter(Boolean);
-          const vinculosCodigos = await resolverMaestrosCacheados(referenciasUnicas, forzarRelecturaGuias);
-
-          const itemRelacionado = itemsCargados.find(it => it.delivery === deliveryValor) || null;
-
-          filasGuiaPorDelivery[deliveryValor] = guia.productos.map((p, idx) => {
-            const vinculo = vinculosCodigos[(p.codigo || '').trim()];
-            return {
-              id: `guia-${deliveryValor}-${idx}`,
-              ref: null,
-              esFilaGuia: true,
-              gestionId: itemRelacionado?.gestionId || '-',
-              nombre: itemRelacionado?.nombre || '-',
-              medico: itemRelacionado?.medico || '-',
-              fecha: itemRelacionado?.fecha || '',
-              empresa: vinculo?.empresa || '-',
-              codigo: 'No lleva OC',
-              descripcion: vinculo?.descripcion || '-',
-              cantidad: p.cantidad ?? 0,
-              costo: 0,
-              ventaUnitaria: 0,
-              costoTotal: 0,
-              atributo: vinculo?.tipo || '-',
-              fechaRegistro: itemRelacionado?.fechaRegistro || null,
-              lote: p.lote || 'N/A',
-              vencimiento: p.vencimiento || 'N/A',
-              numeroGuia: 0
-            };
-          });
-        }));
-
-        const itemsConNumeroGuia = itemsCargados.map(it => ({
-          ...it,
-          numeroGuia: it.numeroGuiaVinculada || numeroGuiaPorDelivery[it.delivery] || 0
-        }));
-
-        const deliveriesYaInsertados = new Set();
-        const listaFinal = [];
-
-        itemsConNumeroGuia.forEach(it => {
-          listaFinal.push(it);
-          if (it.delivery && !deliveriesYaInsertados.has(it.delivery) && filasGuiaPorDelivery[it.delivery]) {
-            deliveriesYaInsertados.add(it.delivery);
-            listaFinal.push(...filasGuiaPorDelivery[it.delivery]);
-          }
-        });
-
-        setItems(listaFinal);
-      } catch (err) {
-        console.error('Error al construir filas de guías de Delivery:', err);
-        setItems(itemsCargados);
-      }
+      const listaFinal = await cargarCandidatosSolicitudConsignacion(forzarRelecturaGuias);
+      setItems(listaFinal);
     } catch (error) {
       console.error('Error al cargar registros CARGADO de Consignación:', error);
       showToast('Error al cargar los registros pendientes de solicitar', 'error');
     } finally {
       setCargando(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     cargarDatos(false);

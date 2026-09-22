@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   collection,
   collectionGroup,
@@ -19,13 +19,13 @@ import { refImputada as refImputadaImplantes, construirPayloadImputada } from '.
 import { registrarLogImplantes } from '../../../operaciones/implantes/gestionImplantes/utils/registrarLogImplantes';
 import { registrarLogConsignacion } from '../../../operaciones/consignacion/utils/registrarLogConsignacion';
 import { registrarLogHemodinamia } from '../../../operaciones/hemodinamia/gestionHemodinamia/utils/registrarLogHemodinamia';
-import { ORIGEN, normalizarSolicitudImplantes, normalizarSolicitudConsignacion, normalizarSolicitudHemodinamia } from '../utils/normalizarFila';
+import { cargarCandidatosSolicitudConsignacion } from '../../../operaciones/consignacion/solicitudConsignacion/utils/cargarCandidatosSolicitudConsignacion';
+import { ORIGEN, normalizarSolicitudImplantes, normalizarSolicitudConsignacion, normalizarSolicitudHemodinamia, filtrarPorBusquedaYOrigen } from '../utils/normalizarFila';
 
 const RANGO_MIN_IMPLANTES = 'implantes_gestiones/0000';
 const RANGO_MAX_IMPLANTES = 'implantes_gestiones/9999';
 const RANGO_MIN_HEMODINAMIA = 'hemodinamia_gestiones/0000';
 const RANGO_MAX_HEMODINAMIA = 'hemodinamia_gestiones/9999';
-const COL_CONSIGNACION = 'consignacion_registros';
 
 const formatearFechaExcel = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '';
@@ -61,6 +61,13 @@ export const useSolicitudesUnificadasData = () => {
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [seleccionados, setSeleccionados] = useState(new Set());
+
+  const [busqueda, setBusqueda] = useState('');
+  const [origenesSeleccionados, setOrigenesSeleccionados] = useState([]);
+  const toggleOrigen = (origen) => setOrigenesSeleccionados(prev =>
+    prev.includes(origen) ? prev.filter(o => o !== origen) : [...prev, origen]
+  );
+  const limpiarOrigenes = () => setOrigenesSeleccionados([]);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -98,29 +105,40 @@ export const useSolicitudesUnificadasData = () => {
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    const q = query(
-      collectionGroup(db, 'detalles'),
-      where('estado', '==', 'CARGADO')
-    );
-    const unsub = onSnapshot(q, (snap) => {
-      const docs = snap.docs
-        .filter(d => d.ref.path.startsWith(`${COL_CONSIGNACION}/`))
-        .map(d => ({ id: d.id, ref: d.ref, refPath: d.ref.path, ...d.data() }));
-      setItemsConsignacion(docs);
+  // Antes esto era un onSnapshot con solo `where('estado','==','CARGADO')`,
+  // sin el desglose de guía por delivery que sí arma la pantalla nativa de
+  // Consignación (SolicitudConsignacion.jsx) — por eso esta pestaña mostraba
+  // menos filas que la nativa para el mismo período: a los ítems con guía
+  // vinculada les faltaban sus filas de desglose de productos. Ahora
+  // reutiliza exactamente la misma función de carga que usa la pantalla
+  // nativa (cargarCandidatosSolicitudConsignacion), así ambas quedan
+  // idénticas en qué traen y cuántas filas muestran. Es una carga puntual
+  // (no en vivo), igual que la pantalla nativa — no hace falta live update
+  // acá tampoco.
+  const cargarConsignacion = useCallback(async () => {
+    setCargando(true);
+    try {
+      const lista = await cargarCandidatosSolicitudConsignacion(false);
+      setItemsConsignacion(lista);
+    } catch (err) {
+      console.error('Error al cargar solicitudes de Consignación:', err);
+    } finally {
       setCargando(false);
-    }, (err) => {
-      console.error('Error al escuchar solicitudes de Consignación:', err);
-      setCargando(false);
-    });
-    return () => unsub();
+    }
   }, []);
 
-  const filas = [
+  useEffect(() => { cargarConsignacion(); }, [cargarConsignacion]);
+
+  const filasCombinadas = [
     ...bloquesImplantes.map(normalizarSolicitudImplantes),
     ...itemsConsignacion.map(normalizarSolicitudConsignacion),
     ...docsHemodinamia.map(normalizarSolicitudHemodinamia)
   ];
+
+  // Búsqueda por admisión/nombre + Origen se aplican sobre el conjunto
+  // COMPLETO ya combinado (sin límite ni recorte previo) — ver comentario
+  // arriba sobre por qué Consignación ahora trae el total real.
+  const filas = filtrarPorBusquedaYOrigen(filasCombinadas, { busqueda, origenesSeleccionados });
 
   const toggleSeleccion = (id) => {
     setSeleccionados(prev => {
@@ -144,12 +162,17 @@ export const useSolicitudesUnificadasData = () => {
     const seleccionImplantes = filasSeleccionadas.filter(f => f.origen === ORIGEN.IMPLANTES);
     const seleccionConsignacion = filasSeleccionadas.filter(f => f.origen === ORIGEN.CONSIGNACION);
     const seleccionHemodinamia = filasSeleccionadas.filter(f => f.origen === ORIGEN.HEMODINAMIA);
+    // Las filas de desglose de guía (esFilaGuia) no tienen documento propio
+    // (_raw.ref === null) — van al Excel igual que cualquier otra fila
+    // seleccionada, pero se excluyen de las escrituras a Firestore más abajo
+    // (mismo criterio que itemsConRef en la pantalla nativa de Consignación).
+    const seleccionConsignacionConRef = seleccionConsignacion.filter(f => !f._raw.esFilaGuia);
 
     if (seleccionImplantes.length > 0 && !periodoImplantes) {
       showToast('No hay un período abierto para Implantes en Control Mensual. Ábrelo antes de exportar.', 'error');
       return;
     }
-    if (seleccionConsignacion.length > 0 && !periodoConsignacion) {
+    if (seleccionConsignacionConRef.length > 0 && !periodoConsignacion) {
       showToast('No hay un período abierto para Consignación en Control Mensual. Ábrelo antes de exportar.', 'error');
       return;
     }
@@ -161,7 +184,7 @@ export const useSolicitudesUnificadasData = () => {
 
     confirmAction(
       'Exportar y Marcar como Solicitado',
-      `Se exportarán ${filasSeleccionadas.length} registro(s) (${seleccionImplantes.length} de Implantes, ${seleccionConsignacion.length} de Consignación, ${seleccionHemodinamia.length} de Hemodinamia) a un único Excel y quedarán marcados como SOLICITADO — cada uno se copiará a la colección de imputadas de su propio módulo. ¿Continuar?`,
+      `Se exportarán ${filasSeleccionadas.length} fila(s) (${seleccionImplantes.length} de Implantes, ${seleccionConsignacion.length} de Consignación, ${seleccionHemodinamia.length} de Hemodinamia) a un único Excel. De las de Consignación, ${seleccionConsignacionConRef.length} ítem(s) reales quedarán marcados como SOLICITADO (las filas de desglose de guía son informativas y no tienen documento propio). Implantes y Hemodinamia se marcan completos. Cada uno se copiará a la colección de imputadas de su propio módulo. ¿Continuar?`,
       async () => {
         setExportando(true);
         try {
@@ -324,7 +347,7 @@ export const useSolicitudesUnificadasData = () => {
             }, userData));
           });
 
-          seleccionConsignacion.forEach(fila => {
+          seleccionConsignacionConRef.forEach(fila => {
             const it = fila._raw;
             agregarOp(b => b.update(it.ref, {
               estado: 'SOLICITADO',
@@ -475,11 +498,14 @@ export const useSolicitudesUnificadasData = () => {
 
   return {
     filas,
+    totalFilas: filas.length,
     cargando,
     exportando,
     seleccionados,
     toggleSeleccion,
     toggleSeleccionarTodos,
+    busqueda, setBusqueda,
+    origenesSeleccionados, toggleOrigen, limpiarOrigenes,
     periodoImplantes,
     periodoConsignacion,
     periodoHemodinamia,

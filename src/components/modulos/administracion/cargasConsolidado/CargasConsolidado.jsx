@@ -15,6 +15,7 @@ import GestionUnificadaTable from './components/GestionUnificadaTable';
 import ImputadasUnificadasTable from './components/ImputadasUnificadasTable';
 import SolicitudesUnificadasTable from './components/SolicitudesUnificadasTable';
 import FiltroAnioMes from './components/FiltroAnioMes';
+import FiltrosBusquedaOrigen from './components/FiltrosBusquedaOrigen';
 import PaginacionSimple from '../../../ui/PaginacionSimple';
 import { useGestionConsolidadaData } from './hooks/useGestionConsolidadaData';
 import { useImputadasUnificadasData } from './hooks/useImputadasUnificadasData';
@@ -239,7 +240,7 @@ const CargasConsolidado = () => {
               )
             ) : (
               <div className="flex-grow flex flex-col overflow-hidden">
-                <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700">
+                <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
                   <FiltroAnioMes
                     anio={gestionData.anio}
                     setAnio={gestionData.setAnio}
@@ -249,6 +250,13 @@ const CargasConsolidado = () => {
                     mesesDisponibles={gestionData.mesesDisponibles}
                     cargandoAnios={gestionData.cargandoAnios}
                     labelCampo="fecha"
+                  />
+                  <FiltrosBusquedaOrigen
+                    busqueda={gestionData.busqueda}
+                    setBusqueda={gestionData.setBusqueda}
+                    origenesSeleccionados={gestionData.origenesSeleccionados}
+                    toggleOrigen={gestionData.toggleOrigen}
+                    limpiarOrigenes={gestionData.limpiarOrigenes}
                   />
                 </div>
                 {!gestionData.anio ? (
@@ -276,7 +284,7 @@ const CargasConsolidado = () => {
 
           {tabActual?.id === 'imputadas' && (
             <div className="flex-grow flex flex-col overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700">
+              <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
                 <FiltroAnioMes
                   anio={imputadasData.anio}
                   setAnio={imputadasData.setAnio}
@@ -286,6 +294,13 @@ const CargasConsolidado = () => {
                   mesesDisponibles={imputadasData.mesesDisponibles}
                   cargandoAnios={imputadasData.cargandoAnios}
                   labelCampo="período"
+                />
+                <FiltrosBusquedaOrigen
+                  busqueda={imputadasData.busqueda}
+                  setBusqueda={imputadasData.setBusqueda}
+                  origenesSeleccionados={imputadasData.origenesSeleccionados}
+                  toggleOrigen={imputadasData.toggleOrigen}
+                  limpiarOrigenes={imputadasData.limpiarOrigenes}
                 />
               </div>
               {!imputadasData.anio ? (

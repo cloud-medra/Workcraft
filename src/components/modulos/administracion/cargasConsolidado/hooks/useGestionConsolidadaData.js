@@ -6,7 +6,7 @@ import {
   construirQueryAnioGestion,
   calcularMesPorDefecto
 } from './periodoQueryHelpers';
-import { normalizarFilaGestionImplantes, normalizarFilaGestionConsignacion, normalizarFilaGestionHemodinamia } from '../utils/normalizarFila';
+import { normalizarFilaGestionImplantes, normalizarFilaGestionConsignacion, normalizarFilaGestionHemodinamia, filtrarPorBusquedaYOrigen } from '../utils/normalizarFila';
 
 const RAIZ_IMPLANTES = 'implantes_gestiones';
 const RAIZ_CONSIGNACION = 'consignacion_registros';
@@ -31,6 +31,13 @@ export const useGestionConsolidadaData = () => {
   const [bloquesHemodinamia, setBloquesHemodinamia] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [pagina, setPagina] = useState(1);
+
+  const [busqueda, setBusqueda] = useState('');
+  const [origenesSeleccionados, setOrigenesSeleccionados] = useState([]);
+  const toggleOrigen = (origen) => setOrigenesSeleccionados(prev =>
+    prev.includes(origen) ? prev.filter(o => o !== origen) : [...prev, origen]
+  );
+  const limpiarOrigenes = () => setOrigenesSeleccionados([]);
 
   // Al elegir un año hay que esperar a que lleguen sus datos para recién
   // ahí saber qué meses tienen registros y poder preseleccionar el mes
@@ -120,17 +127,25 @@ export const useGestionConsolidadaData = () => {
     necesitaMesPorDefectoRef.current = false;
   }, [anio, mesesDisponibles]);
 
-  useEffect(() => { setPagina(1); }, [mes]);
+  useEffect(() => { setPagina(1); }, [mes, busqueda, origenesSeleccionados]);
 
   const filas = useMemo(() => {
     if (mes === TODOS_LOS_MESES) return filasAnio;
     return filasAnio.filter(f => f.fecha?.split('-')[1] === mes);
   }, [filasAnio, mes]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filas.length / PAGE_SIZE));
+  // Búsqueda por admisión/nombre + Origen se aplican sobre el mes ya
+  // filtrado, y ANTES de paginar, para que la paginación siempre corte
+  // sobre el conjunto ya reducido por los filtros (no al revés).
+  const filasFiltradas = useMemo(
+    () => filtrarPorBusquedaYOrigen(filas, { busqueda, origenesSeleccionados }),
+    [filas, busqueda, origenesSeleccionados]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(filasFiltradas.length / PAGE_SIZE));
   const filasPagina = useMemo(
-    () => filas.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE),
-    [filas, pagina]
+    () => filasFiltradas.slice((pagina - 1) * PAGE_SIZE, pagina * PAGE_SIZE),
+    [filasFiltradas, pagina]
   );
 
   return {
@@ -140,7 +155,9 @@ export const useGestionConsolidadaData = () => {
     mesesDisponibles,
     cargandoAnios,
     cargando: cargandoDatos,
-    totalFilas: filas.length,
+    busqueda, setBusqueda,
+    origenesSeleccionados, toggleOrigen, limpiarOrigenes,
+    totalFilas: filasFiltradas.length,
     filasPagina,
     pagina, setPagina,
     totalPaginas
