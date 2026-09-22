@@ -147,6 +147,7 @@ export const MODULES = {
     icon: <Folder size={18} />,
     subItems: [
       { label: 'Reportes Info', path: '/documentos/reportesInfo', icon: <BarChart2 size={14} /> },
+      { label: 'Importar Detalles OC', path: '/documentos/importarDetallesOC', icon: <FileSpreadsheet size={14} /> },
     ]
   },
 

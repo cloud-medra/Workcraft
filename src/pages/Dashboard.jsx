@@ -59,6 +59,7 @@ import UnidadInventario from '../components/modulos/inventario/unidadInventario/
 
 // --- DOCUMENTOS ---
 import ReportesInfo from '../components/modulos/operaciones/documentos/reportesInfo/ReportesInfo';
+import ImportarDetallesOC from '../components/modulos/operaciones/documentos/importarDetallesOC/ImportarDetallesOC';
 
 // --- IMPLANTES ---
 import GestionImplantes from '../components/modulos/operaciones/implantes/gestionImplantes/GestionImplantes';
@@ -270,6 +271,7 @@ const Dashboard = () => {
     '/inventario/unidadInventario': <UnidadInventario />,
 
     '/documentos/reportesInfo': <ReportesInfo />,
+    '/documentos/importarDetallesOC': <ImportarDetallesOC />,
 
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,

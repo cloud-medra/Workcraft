@@ -23,12 +23,14 @@ service cloud.firestore {
     // =================================================================
     match /{path=**}/detalles/{detalleId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+      allow write: if request.auth != null && path.size() > 0 && path[0] != 'documentos_sistema' &&
+        (esAdminODev() || tienePermiso('implantes'));
     }
 
     match /{path=**}/detalles/{detalleId}/logs/{logId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+      allow write: if request.auth != null && path.size() > 0 && path[0] != 'documentos_sistema' &&
+        (esAdminODev() || tienePermiso('implantes'));
     }
 
     // =================================================================
@@ -253,6 +255,37 @@ service cloud.firestore {
     match /documentos_reportesInfo/{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+    }
+
+    // Importar Detalles OC: documentos_sistema/{anio}/meses/{mes}/admisiones/
+    // {admision}/empresas/{proveedorSlug}/detalles/{idFila}, con documentos
+    // "marcadores" (merge:true, {active:"true"}) en cada nivel intermedio.
+    // Excluida explícitamente de la regla genérica de "detalles" de más
+    // arriba (esa es solo para implantes/consignación/hemodinamia) para que
+    // el permiso 'implantes' no habilite escritura acá.
+    match /documentos_sistema/{anio} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+
+      match /meses/{mes} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+
+        match /admisiones/{admision} {
+          allow read: if request.auth != null;
+          allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+
+          match /empresas/{proveedor} {
+            allow read: if request.auth != null;
+            allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+
+            match /detalles/{idFila} {
+              allow read: if request.auth != null;
+              allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+            }
+          }
+        }
+      }
     }
 
     // =================================================================
