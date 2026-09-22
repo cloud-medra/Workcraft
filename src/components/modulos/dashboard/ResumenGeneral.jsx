@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import { LayoutDashboard } from 'lucide-react';
+import { LayoutDashboard, Construction } from 'lucide-react';
 
 import BienvenidaCard from './generales/BienvenidaCard';
 import BrandingCard from './generales/BrandingCard';
 import NuevoModuloCard from './generales/NuevoModuloCard';
-import AgendaCalendar from './generales/AgendaCalendar';
-import AvanceInventario from './generales/AvanceInventario';
+import AgendaCarrusel from './generales/AgendaCarrusel';
+// AvanceInventario.jsx queda fuera de circulación a propósito (sin
+// eliminar el archivo): el widget que va acá todavía no está definido.
+// Mientras tanto se muestra un placeholder "Próximamente" más abajo, con
+// el mismo `flex-grow` que tenía este componente, para no dejar un hueco
+// raro en la columna derecha. Reactivar es solo descomentar este import y
+// el <AvanceInventario /> de más abajo.
+// import AvanceInventario from './generales/AvanceInventario';
 
 const ResumenGeneral = ({ userData }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -57,7 +63,7 @@ const ResumenGeneral = ({ userData }) => {
 
         {/* Columna Derecha */}
         <div className="flex flex-col gap-3 min-h-0">
-          <AgendaCalendar
+          <AgendaCarrusel
             currentDate={currentDate}
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
@@ -67,7 +73,12 @@ const ResumenGeneral = ({ userData }) => {
             handleYearChange={handleYearChange}
           />
 
-          <AvanceInventario />
+          {/* <AvanceInventario /> */}
+          <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-3 flex flex-col items-center justify-center gap-1.5 flex-grow text-center">
+            <Construction size={16} className="text-gray-300 dark:text-gray-600" />
+            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Próximamente</span>
+            <span className="text-[9.5px] text-gray-400 dark:text-gray-600">Widget en definición</span>
+          </div>
         </div>
 
       </div>
