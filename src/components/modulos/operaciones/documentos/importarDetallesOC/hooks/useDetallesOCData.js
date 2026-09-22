@@ -5,7 +5,7 @@
 // acá se pagina del lado de Firestore con cursores (getDocs + limit +
 // startAfter), sin listener en vivo y sin traer nunca más de 50 filas de
 // una vez.
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { collectionGroup, query, where, orderBy, limit, startAfter, documentId, getDocs, getCountFromServer } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
 
@@ -32,8 +32,13 @@ export const useDetallesOCData = () => {
   const [hayMas, setHayMas] = useState(false);
   // Stack de cursores: cursores[i] = el último doc de la página i (1-based),
   // para poder pedir "la página siguiente" a partir de cualquier página ya
-  // visitada sin tener que re-leer desde el principio.
-  const [cursores, setCursores] = useState([]);
+  // visitada sin tener que re-leer desde el principio. Va en un ref (no en
+  // useState) porque nada lo renderiza: si fuera state, cargarPagina tendría
+  // que declararlo como dependencia de su useCallback, y como la propia
+  // cargarPagina lo actualiza, cada llamada recrearía su identidad → recrearía
+  // irAPrimeraPagina → y el useEffect del componente que depende de
+  // irAPrimeraPagina volvería a dispararse sin parar (el loop reportado).
+  const cursoresRef = useRef([]);
 
   const cargarConteoTotal = useCallback(async () => {
     try {
@@ -49,7 +54,7 @@ export const useDetallesOCData = () => {
     setCargando(true);
     try {
       const restricciones = [...construirQueryBase()];
-      const cursor = numeroPagina > 1 ? cursores[numeroPagina - 2] : null;
+      const cursor = numeroPagina > 1 ? cursoresRef.current[numeroPagina - 2] : null;
       if (cursor) restricciones.push(startAfter(cursor));
       restricciones.push(limit(TAMANO_PAGINA_DETALLES_OC));
 
@@ -62,21 +67,19 @@ export const useDetallesOCData = () => {
 
       const ultimoDoc = snap.docs[snap.docs.length - 1] || null;
       if (ultimoDoc) {
-        setCursores(prev => {
-          const nuevo = [...prev];
-          nuevo[numeroPagina - 1] = ultimoDoc;
-          return nuevo;
-        });
+        const nuevo = [...cursoresRef.current];
+        nuevo[numeroPagina - 1] = ultimoDoc;
+        cursoresRef.current = nuevo;
       }
     } catch (err) {
       console.error('Error al cargar registros de Detalles OC:', err);
     } finally {
       setCargando(false);
     }
-  }, [cursores]);
+  }, []);
 
   const irAPrimeraPagina = useCallback(async () => {
-    setCursores([]);
+    cursoresRef.current = [];
     await cargarConteoTotal();
     await cargarPagina(1);
   }, [cargarConteoTotal, cargarPagina]);
