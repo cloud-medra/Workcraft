@@ -20,7 +20,6 @@ import {
   FileCode,
   FileSpreadsheet,
   FilePlus,
-  FileStack,
   FileUp,
   Folder,
   FolderKanban,
@@ -150,10 +149,8 @@ export const MODULES = {
     subItems: [
       { label: 'Reportes Info', path: '/documentos/reportesInfo', icon: <BarChart2 size={14} /> },
       { label: 'Importar Detalles OC', path: '/documentos/importarDetallesOC', icon: <FileSpreadsheet size={14} /> },
-      { label: 'Seguimiento de Facturas', path: '/documentos/seguimientoFacturas', icon: <Receipt size={14} /> },
-      { label: 'Seguimiento de Guías', path: '/documentos/seguimientoGuias', icon: <Truck size={14} /> },
+      { label: 'Seguimiento de Facturas y Guías', path: '/documentos/seguimientoFacturasGuias', icon: <Receipt size={14} /> },
       { label: 'Ingreso de Órdenes', path: '/documentos/ingresoOrdenes', icon: <FileUp size={14} /> },
-      { label: 'Ingreso de Documentos', path: '/documentos/ingresoDocumentos', icon: <FileStack size={14} /> },
     ]
   },
 

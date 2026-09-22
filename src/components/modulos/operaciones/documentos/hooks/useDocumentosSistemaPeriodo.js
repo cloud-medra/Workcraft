@@ -1,0 +1,136 @@
+// Base de datos compartida por las pantallas de "documentos_sistema" que
+// necesitan año (obligatorio) + mes (opcional, en cascada) + un filtro de
+// campo opcional a nivel de servidor — Seguimiento de Facturas/Guías e
+// Ingreso de Órdenes. Año/mes se leen de los mismos documentos "marcador"
+// que ya usa Importar Detalles OC (documentos_sistema/{anio} y
+// .../meses/{mes}, ambos {active:true}); no se duplica ese mismo hook
+// (useDetallesOCData.js) para no arriesgar la lectura de Detalles OC ya
+// probada — acá el requisito es distinto (mes es opcional, no obligatorio).
+//
+// A diferencia de Detalles OC, acá el año solo ya dispara la consulta (el
+// mes es opcional) — así que sin mes elegido el rango cubre el año completo.
+// `filtroServidor` ({campo, operador, valor}) agrega un where(...) del lado
+// del servidor en vez de traer todo el período y descartar casi todo
+// client-side (ej. "Pendiente factura" o "sin número de guía" son una
+// fracción chica del total) — cada combinación de campo/operador nueva
+// puede exigir su propio índice compuesto (campo + __name__, COLLECTION_GROUP).
+import { useCallback, useEffect, useState } from 'react';
+import { collection, collectionGroup, query, where, orderBy, limit, documentId, getDocs } from 'firebase/firestore';
+import { db } from '../../../../../firebaseConfig';
+
+export const COL_BASE = 'documentos_sistema';
+// Tope defensivo: un mes es chico, pero un año completo sin filtro de estado
+// (Ingreso de Órdenes) puede ser bastante más grande — se avisa en vez de
+// truncar en silencio (ver `huboTope`).
+const LIMITE_FILAS_PERIODO = 5000;
+
+export const useDocumentosSistemaPeriodo = (filtroServidor = null) => {
+  const [anio, setAnioState] = useState('');
+  const [mes, setMesState] = useState('');
+
+  const [anios, setAnios] = useState([]);
+  const [cargandoAnios, setCargandoAnios] = useState(true);
+
+  const [meses, setMeses] = useState([]);
+  const [cargandoMeses, setCargandoMeses] = useState(false);
+
+  const [filas, setFilas] = useState([]);
+  const [cargandoFilas, setCargandoFilas] = useState(false);
+  const [huboTope, setHuboTope] = useState(false);
+  const [refrescarKey, setRefrescarKey] = useState(0);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      setCargandoAnios(true);
+      try {
+        const snap = await getDocs(collection(db, COL_BASE));
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{4}$/.test(id)).sort((a, b) => b.localeCompare(a));
+        if (!cancelado) setAnios(lista);
+      } catch (err) {
+        console.error('Error al cargar años de documentos_sistema:', err);
+      } finally {
+        if (!cancelado) setCargandoAnios(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!anio) { setMeses([]); return; }
+    let cancelado = false;
+    (async () => {
+      setCargandoMeses(true);
+      try {
+        const snap = await getDocs(collection(db, COL_BASE, anio, 'meses'));
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => a.localeCompare(b));
+        if (!cancelado) setMeses(lista);
+      } catch (err) {
+        console.error('Error al cargar meses de documentos_sistema:', err);
+      } finally {
+        if (!cancelado) setCargandoMeses(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [anio]);
+
+  // Año es obligatorio; mes es opcional — sin mes, el rango cubre el año
+  // completo (mismo truco de prefijo de documentId() ya usado en el resto
+  // de la app, solo que acotado a un segmento menos de ruta).
+  useEffect(() => {
+    if (!anio) { setFilas([]); setHuboTope(false); return; }
+    let cancelado = false;
+    (async () => {
+      setCargandoFilas(true);
+      try {
+        const min = mes ? `${COL_BASE}/${anio}/meses/${mes}` : `${COL_BASE}/${anio}`;
+        const max = `${min}`;
+        const restricciones = [
+          where(documentId(), '>=', min),
+          where(documentId(), '<', max)
+        ];
+        if (filtroServidor) restricciones.push(where(filtroServidor.campo, filtroServidor.operador, filtroServidor.valor));
+        restricciones.push(orderBy(documentId(), 'desc'));
+        restricciones.push(limit(LIMITE_FILAS_PERIODO));
+
+        const q = query(collectionGroup(db, 'detalles'), ...restricciones);
+        const snap = await getDocs(q);
+        if (cancelado) return;
+        setFilas(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
+        setHuboTope(snap.docs.length === LIMITE_FILAS_PERIODO);
+      } catch (err) {
+        console.error('Error al cargar documentos_sistema del período:', err);
+        if (!cancelado) { setFilas([]); setHuboTope(false); }
+      } finally {
+        if (!cancelado) setCargandoFilas(false);
+      }
+    })();
+    return () => { cancelado = true; };
+    // `filtroServidor` es un objeto — se serializa para la dependencia en vez
+    // de compararlo por referencia, así el llamador no tiene que memoizarlo
+    // (si no se hiciera esto y alguien pasara un objeto literal inline en
+    // cada render, el efecto se dispararía sin parar — mismo tipo de loop
+    // infinito ya corregido una vez en useDetallesOCData.js).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [anio, mes, JSON.stringify(filtroServidor), refrescarKey]);
+
+  const setAnio = useCallback((nuevoAnio) => {
+    setAnioState(nuevoAnio);
+    setMesState('');
+  }, []);
+
+  const setMes = useCallback((nuevoMes) => {
+    setMesState(nuevoMes);
+  }, []);
+
+  const recargarFilas = useCallback(() => {
+    setRefrescarKey(k => k + 1);
+  }, []);
+
+  return {
+    anio, setAnio, anios, cargandoAnios,
+    mes, setMes, meses, cargandoMeses,
+    filas, cargandoFilas, huboTope,
+    recargarFilas
+  };
+};
