@@ -13,7 +13,8 @@ import {
   where,
   documentId,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  limit
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
@@ -116,8 +117,8 @@ export const useGestionesImplantesData = () => {
   // Antes esto escuchaba TODO el collectionGroup "detalles" de la base de
   // datos (incluye, por ejemplo, las guías de despacho de Consignación, que
   // usa una subcolección con el mismo nombre) y recién filtraba en el
-  // cliente por el prefijo 'implantes_gestiones/'. Ahora se acota la
-  // consulta con un rango sobre el ID de documento (__name__).
+  // cliente por el prefijo 'implantes_gestiones/'. Se acota la consulta con
+  // un rango sobre el ID de documento (__name__) para no mezclar módulos.
   //
   // OJO: en un collectionGroup, los límites de documentId() deben ser rutas
   // de documento COMPLETAS (número PAR de segmentos) — 'implantes_gestiones/'
@@ -131,13 +132,25 @@ export const useGestionesImplantesData = () => {
   const RANGO_MIN_GESTIONES = "implantes_gestiones/0000";
   const RANGO_MAX_GESTIONES = "implantes_gestiones/9999";
 
+  // Antes este listener no tenía límite: leía y quedaba escuchando en vivo
+  // el histórico COMPLETO de gestiones (todos los años), así que cualquier
+  // escritura en cualquier gestión antigua de cualquier usuario facturaba una
+  // lectura a esta pantalla, sin límite. Como el segmento año/mes/día del
+  // path ya viene con ceros a la izquierda (zero-padded), ordenar por
+  // documentId() descendente entrega los documentos más recientes primero
+  // (no es exacto al segundo, pero sí a nivel de día — suficiente para
+  // acotar a "los últimos N"), sin necesitar un índice nuevo de Firestore
+  // (el orden por __name__ ya viene soportado siempre). limit() acota la
+  // ventana en vivo a las gestiones más recientes en vez de todo el histórico.
+  const TAMANO_PAGINA = 150;
 
   useEffect(() => {
     const q = query(
       collectionGroup(db, "detalles"),
       where(documentId(), ">=", RANGO_MIN_GESTIONES),
       where(documentId(), "<", RANGO_MAX_GESTIONES),
-      orderBy(documentId())
+      orderBy(documentId(), "desc"),
+      limit(TAMANO_PAGINA)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const mapeados = snapshot.docs.map(document => ({

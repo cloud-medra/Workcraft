@@ -12,7 +12,7 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { PackageSearch, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
+import { PackageSearch, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import Spinner from '../../../../ui/Spinner';
@@ -31,6 +31,7 @@ const COL_BASE = 'consignacion_registros';
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_POR_DEFECTO = 'INGRESADO';
 const TAMANO_PAGINA = 150;
+const TAMANO_PAGINA_TABLA = 50;
 
 // Semilla del filtro de Estado: los únicos estados que Consignación escribe en
 // un registro — INGRESADO (alta en Registro), PENDIENTE/CARGADO/REVISAR
@@ -59,6 +60,7 @@ const CargasConsignacion = () => {
   const [estadosVistos, setEstadosVistos] = useState(() => new Set());
 
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
+  const [paginaActual, setPaginaActual] = useState(1);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -282,6 +284,23 @@ const CargasConsignacion = () => {
     });
   }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy]);
 
+  // Paginación de la tabla (50 filas por página) sobre los registros ya
+  // filtrados. Se reinicia a la página 1 cada vez que cambian los filtros o
+  // la búsqueda. No se reinicia al cargar más registros base (paginación de
+  // Firestore vía "Cargar más"), para no devolver al usuario a la página 1
+  // justo después de pedirlo.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy, filtrosEstados]);
+
+  const totalPaginas = Math.max(1, Math.ceil(registrosFiltrados.length / TAMANO_PAGINA_TABLA));
+  const paginaSegura = Math.min(paginaActual, totalPaginas);
+
+  const registrosPagina = useMemo(() => {
+    const inicio = (paginaSegura - 1) * TAMANO_PAGINA_TABLA;
+    return registrosFiltrados.slice(inicio, inicio + TAMANO_PAGINA_TABLA);
+  }, [registrosFiltrados, paginaSegura]);
+
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
       {cargando && (
@@ -346,11 +365,38 @@ const CargasConsignacion = () => {
           ) : (
             <>
               <CargasConsignacionTable
-                registros={registrosFiltrados}
+                registros={registrosPagina}
+                numeroInicial={(paginaSegura - 1) * TAMANO_PAGINA_TABLA}
                 onAbrirDetalle={handleAbrirDetalle}
                 onEliminar={handleEliminar}
                 onActualizarVinculados={handleActualizarVinculados}
               />
+
+              {registrosFiltrados.length > 0 && (
+                <div className="flex items-center justify-between px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-[10.5px]">
+                  <span className="text-gray-400 dark:text-gray-500 font-medium">
+                    {registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? '' : 's'} · Página {paginaSegura} de {totalPaginas}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                      disabled={paginaSegura <= 1}
+                      className="flex items-center gap-1 px-2 py-1 rounded font-bold text-gray-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft size={12} /> Anterior
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                      disabled={paginaSegura >= totalPaginas}
+                      className="flex items-center gap-1 px-2 py-1 rounded font-bold text-gray-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Siguiente <ChevronRight size={12} />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {hayMas && (
                 <div className="flex justify-center py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40">

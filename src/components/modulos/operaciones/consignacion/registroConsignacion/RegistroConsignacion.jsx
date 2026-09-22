@@ -14,7 +14,7 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { ClipboardList, RefreshCw, ChevronDown, Loader2 } from 'lucide-react';
+import { ClipboardList, RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
@@ -48,6 +48,11 @@ const descomponerFecha = (fechaStr) => {
   return { anio: yyyy, nombreMes, dia: dd };
 };
 
+const obtenerAnioActual = () => String(new Date().getFullYear());
+const obtenerMesActual = () => String(new Date().getMonth() + 1).padStart(2, '0');
+
+const TAMANO_PAGINA_TABLA = 50;
+
 const RegistroConsignacion = () => {
   const [registros, setRegistros] = useState([]);
   const [cargando, setCargando] = useState(false);
@@ -58,12 +63,12 @@ const RegistroConsignacion = () => {
   const [registroEditando, setRegistroEditando] = useState(null);
 
   const [busqueda, setBusqueda] = useState('');
-  const [filtroAnio, setFiltroAnio] = useState('');
-  const [filtroMes, setFiltroMes] = useState('');
+  const [filtroAnio, setFiltroAnio] = useState(obtenerAnioActual);
+  const [filtroMes, setFiltroMes] = useState(obtenerMesActual);
   const [filtroDia, setFiltroDia] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('');
   const [filtroDespachado, setFiltroDespachado] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [paginaActual, setPaginaActual] = useState(1);
 
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -280,6 +285,22 @@ const RegistroConsignacion = () => {
     }
   };
 
+  // Al ingresar/quitar el N° de Guía, "Despachado" se sincroniza solo:
+  // con guía -> RECIBIDO, sin guía -> vuelve a PENDIENTE. Se escriben ambos
+  // campos en un mismo update para que nunca queden desincronizados.
+  const handleActualizarGuia = async (registro, valorGuia) => {
+    const nuevoDespachado = valorGuia && String(valorGuia).trim() ? 'RECIBIDO' : 'PENDIENTE';
+    try {
+      await updateDoc(registro.ref, { guias: valorGuia, despachado: nuevoDespachado });
+      setRegistros((prev) =>
+        prev.map((r) => (r.id === registro.id ? { ...r, guias: valorGuia, despachado: nuevoDespachado } : r))
+      );
+    } catch (error) {
+      console.error('Error al actualizar guía:', error);
+      showToast('Error al actualizar', 'error');
+    }
+  };
+
   const handleActualizarVinculados = async (registro) => {
     if (!registro.gestionId) {
       showToast('Este registro no tiene ID (Admisión) para buscar en Reportes', 'error');
@@ -336,8 +357,8 @@ const RegistroConsignacion = () => {
   };
 
   const opcionesFechas = useMemo(() => {
-    const anios = new Set();
-    const meses = new Set();
+    const anios = new Set([obtenerAnioActual()]);
+    const meses = new Set([obtenerMesActual()]);
     const dias = new Set();
 
     registros.forEach(r => {
@@ -360,7 +381,6 @@ const RegistroConsignacion = () => {
     setFiltroAnio('');
     setFiltroMes('');
     setFiltroDia('');
-    setFiltroTipo('');
     setFiltroDespachado('');
     setFiltroEstado('');
   };
@@ -388,13 +408,34 @@ const RegistroConsignacion = () => {
         return false;
       }
 
-      if (filtroTipo && (r.atributo || '').toUpperCase() !== filtroTipo) return false;
-      if (filtroDespachado && (r.despachado || 'PENDIENTE').toUpperCase() !== filtroDespachado) return false;
+      // "Despachado" se deriva siempre de si hay N° de Guía cargado, así el
+      // filtro nunca queda desincronizado del valor real (ver handleActualizarGuia).
+      if (filtroDespachado) {
+        const estadoGuiaActual = r.guias && String(r.guias).trim() ? 'RECIBIDO' : 'PENDIENTE';
+        if (estadoGuiaActual !== filtroDespachado) return false;
+      }
       if (filtroEstado && (r.estado || 'INGRESADO').toUpperCase() !== filtroEstado) return false;
 
       return true;
     });
-  }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroTipo, filtroDespachado, filtroEstado]);
+  }, [registros, busqueda, filtroAnio, filtroMes, filtroDia, filtroDespachado, filtroEstado]);
+
+  // Paginación de la tabla (50 filas por página) sobre los registros ya
+  // filtrados. Se reinicia a la página 1 cada vez que cambian los filtros o
+  // la búsqueda. No se reinicia al cargar más registros base (paginación de
+  // Firestore vía "Cargar más"), para no devolver al usuario a la página 1
+  // justo después de pedirlo.
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda, filtroAnio, filtroMes, filtroDia, filtroDespachado, filtroEstado]);
+
+  const totalPaginas = Math.max(1, Math.ceil(registrosFiltrados.length / TAMANO_PAGINA_TABLA));
+  const paginaSegura = Math.min(paginaActual, totalPaginas);
+
+  const registrosPagina = useMemo(() => {
+    const inicio = (paginaSegura - 1) * TAMANO_PAGINA_TABLA;
+    return registrosFiltrados.slice(inicio, inicio + TAMANO_PAGINA_TABLA);
+  }, [registrosFiltrados, paginaSegura]);
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -439,8 +480,6 @@ const RegistroConsignacion = () => {
         filtroDia={filtroDia}
         setFiltroDia={setFiltroDia}
         opcionesFechas={opcionesFechas}
-        filtroTipo={filtroTipo}
-        setFiltroTipo={setFiltroTipo}
         filtroDespachado={filtroDespachado}
         setFiltroDespachado={setFiltroDespachado}
         filtroEstado={filtroEstado}
@@ -455,12 +494,40 @@ const RegistroConsignacion = () => {
       ) : (
         <>
           <ConsignacionTable
-            registros={registrosFiltrados}
+            registros={registrosPagina}
+            numeroInicial={(paginaSegura - 1) * TAMANO_PAGINA_TABLA}
             onEliminar={handleEliminar}
             onEditar={handleIniciarEdicion}
             onActualizarCampo={handleActualizarCampo}
+            onActualizarGuia={handleActualizarGuia}
             onActualizarVinculados={handleActualizarVinculados}
           />
+
+          {registrosFiltrados.length > 0 && (
+            <div className="flex items-center justify-between px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-[10.5px]">
+              <span className="text-gray-400 dark:text-gray-500 font-medium">
+                {registrosFiltrados.length} registro{registrosFiltrados.length === 1 ? '' : 's'} · Página {paginaSegura} de {totalPaginas}
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                  disabled={paginaSegura <= 1}
+                  className="flex items-center gap-1 px-2 py-1 rounded font-bold text-gray-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={12} /> Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={paginaSegura >= totalPaginas}
+                  className="flex items-center gap-1 px-2 py-1 rounded font-bold text-gray-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Siguiente <ChevronRight size={12} />
+                </button>
+              </div>
+            </div>
+          )}
 
           {hayMas && (
             <div className="flex justify-center py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40">

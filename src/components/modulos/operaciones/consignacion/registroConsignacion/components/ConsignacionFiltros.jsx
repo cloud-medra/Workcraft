@@ -19,9 +19,6 @@ const ConsignacionFiltros = ({
   setFiltroDia,
   opcionesFechas,
 
-  filtroTipo,
-  setFiltroTipo,
-
   filtroDespachado,
   setFiltroDespachado,
 
@@ -30,7 +27,7 @@ const ConsignacionFiltros = ({
 
   limpiarFiltros
 }) => {
-  const hayFiltrosActivos = filtroAnio || filtroMes || filtroDia || filtroTipo || filtroDespachado || filtroEstado;
+  const hayFiltrosActivos = filtroAnio || filtroMes || filtroDia || filtroDespachado || filtroEstado;
 
   return (
     <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
@@ -80,23 +77,13 @@ const ConsignacionFiltros = ({
         </select>
 
         <select
-          value={filtroTipo}
-          onChange={e => setFiltroTipo(e.target.value)}
-          className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer"
-        >
-          <option value="">Atributo (Todos)</option>
-          <option value="CONSIGNACION">CONSIGNACION</option>
-          <option value="COTIZACION">COTIZACION</option>
-        </select>
-
-        <select
           value={filtroDespachado}
           onChange={e => setFiltroDespachado(e.target.value)}
           className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer"
         >
           <option value="">Despachado (Todos)</option>
           <option value="PENDIENTE">PENDIENTE</option>
-          <option value="DESPACHADO">DESPACHADO</option>
+          <option value="RECIBIDO">RECIBIDO</option>
         </select>
 
         <select
@@ -107,6 +94,7 @@ const ConsignacionFiltros = ({
           <option value="">Estado (Todos)</option>
           <option value="INGRESADO">INGRESADO</option>
           <option value="PENDIENTE">PENDIENTE</option>
+          <option value="REVISAR">REVISAR</option>
           <option value="CARGADO">CARGADO</option>
           <option value="SOLICITADO">SOLICITADO</option>
         </select>

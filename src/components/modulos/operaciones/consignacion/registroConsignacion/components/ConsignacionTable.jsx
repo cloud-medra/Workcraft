@@ -29,10 +29,27 @@ const COLUMNAS = [
 
 const anchosPorDefecto = () => COLUMNAS.reduce((acc, col) => ({ ...acc, [col.key]: col.ancho }), {});
 
-const ESTADO_DESPACHADO_ESTILOS = {
+// Paleta fija por estado de "Guía/Recibido": se calcula siempre a partir de
+// si la columna "Guía" tiene un número cargado, así el badge nunca queda
+// desincronizado del valor real de la guía (ver calcularEstadoGuia).
+const ESTADO_GUIA_ESTILOS = {
   PENDIENTE: 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400',
-  DESPACHADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+  RECIBIDO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
 };
+
+const calcularEstadoGuia = (guias) => (guias && String(guias).trim() ? 'RECIBIDO' : 'PENDIENTE');
+
+// Paleta fija por cada valor posible de la columna "Estado" del registro
+// (ver ESTADOS_SEMILLA en CargasConsignacion.jsx para el ciclo de vida
+// completo: INGRESADO -> ... -> CARGADO -> SOLICITADO).
+const ESTADO_ESTILOS = {
+  INGRESADO: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400',
+  PENDIENTE: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
+  REVISAR: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400',
+  CARGADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
+  SOLICITADO: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400'
+};
+const ESTADO_ESTILO_DEFECTO = 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300';
 
 const formatearFechaTabla = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
@@ -86,14 +103,15 @@ const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) => {
   );
 };
 
-const CeldaTextoEditable = ({ valorInicial, onGuardar, placeholder }) => {
+const CeldaTextoEditable = ({ valorInicial, onGuardar, placeholder, soloNumeros = false }) => {
   const [valor, setValor] = useState(valorInicial || '');
 
   return (
     <input
       type="text"
+      inputMode={soloNumeros ? 'numeric' : 'text'}
       value={valor}
-      onChange={e => setValor(e.target.value)}
+      onChange={e => setValor(soloNumeros ? e.target.value.replace(/\D/g, '') : e.target.value)}
       onBlur={() => {
         if (valor !== (valorInicial || '')) onGuardar(valor);
       }}
@@ -103,7 +121,7 @@ const CeldaTextoEditable = ({ valorInicial, onGuardar, placeholder }) => {
   );
 };
 
-export const ConsignacionTable = ({ registros, onEliminar, onEditar, onActualizarCampo, onActualizarVinculados }) => {
+export const ConsignacionTable = ({ registros, numeroInicial = 0, onEliminar, onEditar, onActualizarCampo, onActualizarGuia, onActualizarVinculados }) => {
   const [anchos, setAnchos] = useState(anchosPorDefecto);
   const [actualizandoId, setActualizandoId] = useState(null);
 
@@ -185,13 +203,14 @@ export const ConsignacionTable = ({ registros, onEliminar, onEditar, onActualiza
             registros.map((r, index) => {
               const estadoKey = (r.estado || 'INGRESADO').toUpperCase();
               const yaCargado = estadoKey === 'CARGADO';
+              const estadoGuiaKey = calcularEstadoGuia(r.guias);
 
               return (
                 <tr
                   key={r.id}
                   className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                 >
-                  <td className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center`}>{index + 1}</td>
+                  <td className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center`}>{numeroInicial + index + 1}</td>
                   <td className={`${celdaBase} font-semibold text-[#2383C2]`} title={r.gestionId}>{r.gestionId || '-'}</td>
                   <td className={`${celdaBase} text-gray-700 dark:text-gray-200 font-medium`} title={r.nombre}>{r.nombre || '-'}</td>
                   <td className={`${celdaBase} text-gray-600 dark:text-gray-300`} title={r.medico}>{r.medico || '-'}</td>
@@ -203,10 +222,7 @@ export const ConsignacionTable = ({ registros, onEliminar, onEditar, onActualiza
                     {r.costo ? `$${Number(r.costo).toLocaleString('es-CL')}` : '-'}
                   </td>
                   <td className={celdaBase}>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${yaCargado
-                      ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
-                      : 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
-                      }`}>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase ${ESTADO_ESTILOS[estadoKey] || ESTADO_ESTILO_DEFECTO}`}>
                       {estadoKey}
                     </span>
                   </td>
@@ -221,18 +237,17 @@ export const ConsignacionTable = ({ registros, onEliminar, onEditar, onActualiza
                     <CeldaTextoEditable
                       valorInicial={r.guias}
                       placeholder="N° Guía"
-                      onGuardar={(valor) => onActualizarCampo(r, 'guias', valor)}
+                      soloNumeros
+                      onGuardar={(valor) => onActualizarGuia(r, valor)}
                     />
                   </td>
                   <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70 overflow-hidden">
-                    <select
-                      value={r.despachado || 'PENDIENTE'}
-                      onChange={(e) => onActualizarCampo(r, 'despachado', e.target.value)}
-                      className={`w-full h-6 px-1 rounded text-[9px] font-bold uppercase outline-none cursor-pointer border-0 ${ESTADO_DESPACHADO_ESTILOS[r.despachado || 'PENDIENTE']}`}
+                    <span
+                      title="Se actualiza automáticamente al ingresar/quitar el N° de Guía"
+                      className={`flex items-center justify-center w-full h-6 px-1 rounded text-[9px] font-bold uppercase ${ESTADO_GUIA_ESTILOS[estadoGuiaKey]}`}
                     >
-                      <option value="PENDIENTE">PENDIENTE</option>
-                      <option value="DESPACHADO">DESPACHADO</option>
-                    </select>
+                      {estadoGuiaKey}
+                    </span>
                   </td>
 
                   <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={r.delivery}>{r.delivery || '-'}</td>

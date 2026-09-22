@@ -12,6 +12,7 @@ import {
   Search,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   RefreshCw,
   Package,
   AlertCircle,
@@ -22,13 +23,20 @@ const NOMBRES_MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
 
-const COL_BASE = 'consignacion_registros';
+// Las guías se guardan en IngresarGuiaDespacho.jsx bajo 'consignacion_guias'
+// (no 'consignacion_registros', que es la colección de otro módulo). Con el
+// prefijo equivocado, el filtro de abajo descartaba TODOS los documentos
+// reales de guías, dejando el listado siempre vacío aunque sí existieran
+// datos guardados.
+const COL_BASE = 'consignacion_guias';
 
 // El collectionGroup 'detalles' es compartido con otros módulos (por
 // ejemplo Implantes), así que hay que filtrar por el prefijo real de la
 // ruta para no mezclar documentos de otra colección.
 const filtrarSoloConsignacion = (docs) =>
   docs.filter((d) => d.ref.path.startsWith(`${COL_BASE}/`));
+
+const TAMANO_PAGINA_TABLA = 50;
 
 const ListadoGuiasConsignacion = () => {
   const { showToast } = useToast();
@@ -48,6 +56,7 @@ const ListadoGuiasConsignacion = () => {
 
   const [busqueda, setBusqueda] = useState('');
   const [guiaExpandidaId, setGuiaExpandidaId] = useState(null);
+  const [paginaActual, setPaginaActual] = useState(1);
 
   // --- Años disponibles (ordenados desc) y meses disponibles para el año actual ---
   const añosDisponibles = useMemo(
@@ -95,23 +104,25 @@ const ListadoGuiasConsignacion = () => {
     }
   };
 
-  // --- 2) Cargar los productos del mes/año seleccionado ---
+  // --- 2) Cargar los productos del año y mes seleccionados. Se requieren
+  // ambos: hasta que el usuario elija los dos, no se consulta nada (ver
+  // efectos más abajo). ---
   const cargarMes = async (añoSel = año, mesSel = mesNumero) => {
     if (!añoSel || !mesSel) return;
     setCargando(true);
     setError('');
     try {
       const mesStr = String(mesSel).padStart(2, '0');
-      const inicioMes = `${añoSel}-${mesStr}-01`;
-      const finMes =
+      const inicio = `${añoSel}-${mesStr}-01`;
+      const fin =
         Number(mesSel) === 12
           ? `${Number(añoSel) + 1}-01-01`
           : `${añoSel}-${String(Number(mesSel) + 1).padStart(2, '0')}-01`;
 
       const q = query(
         collectionGroup(db, 'detalles'),
-        where('fechaEmision', '>=', inicioMes),
-        where('fechaEmision', '<', finMes),
+        where('fechaEmision', '>=', inicio),
+        where('fechaEmision', '<', fin),
         orderBy('fechaEmision', 'desc')
       );
 
@@ -135,64 +146,43 @@ const ListadoGuiasConsignacion = () => {
     }
   };
 
-  // --- Al montar: calcular calendario y elegir año/mes por defecto (los más recientes con datos) ---
+  // --- Al montar: solo calcular el calendario (qué años tienen datos). El
+  // año/mes parten vacíos a propósito — el usuario debe elegir el año
+  // manualmente en vez de que la pantalla arranque mostrando un período por
+  // defecto (actual o "Todos").
   useEffect(() => {
     (async () => {
-      const cal = await cargarCalendario();
-      const años = Object.keys(cal).sort((a, b) => Number(b) - Number(a));
-      if (años.length > 0) {
-        const añoDefault = años[0];
-        const mesesDelAño = [...cal[añoDefault]].sort((a, b) => a - b);
-        const mesDefault = mesesDelAño[mesesDelAño.length - 1];
-        setAño(añoDefault);
-        setMesNumero(mesDefault);
-        cargarMes(añoDefault, mesDefault);
-      }
+      await cargarCalendario();
       setListo(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Si cambia el año seleccionado, asegurar que el mes elegido sea válido para ese año ---
+  // --- La consulta solo se ejecuta cuando año Y mes están seleccionados.
+  // Si el mes elegido deja de ser válido para el año actual (p. ej. al
+  // cambiar de año), se limpia para forzar al usuario a elegir uno nuevo. ---
   useEffect(() => {
-    if (!listo || !año) return;
+    if (!listo || !año) {
+      setProductos([]);
+      return;
+    }
     const meses = calendario[año] ? [...calendario[año]].sort((a, b) => a - b) : [];
-    if (meses.length === 0) return;
-    if (!meses.includes(Number(mesNumero))) {
-      const nuevoMes = meses[meses.length - 1]; // el más reciente disponible de ese año
-      setMesNumero(nuevoMes);
-      return; // el próximo efecto (mesNumero) disparará la carga
+    if (mesNumero && !meses.includes(Number(mesNumero))) {
+      setMesNumero('');
+      return; // este mismo efecto se vuelve a ejecutar con mesNumero=''
+    }
+    if (!mesNumero) {
+      setProductos([]);
+      return;
     }
     cargarMes(año, mesNumero);
     setGuiaExpandidaId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [año, listo]);
-
-  useEffect(() => {
-    if (!listo || !año || !mesNumero) return;
-    cargarMes(año, mesNumero);
-    setGuiaExpandidaId(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mesNumero]);
+  }, [año, mesNumero, listo, calendario]);
 
   const recargarTodo = async () => {
-    const cal = await cargarCalendario();
-    if (año && cal[año] && cal[año].includes(Number(mesNumero))) {
-      cargarMes(año, mesNumero);
-    } else {
-      const años = Object.keys(cal).sort((a, b) => Number(b) - Number(a));
-      if (años.length > 0) {
-        const añoDefault = años[0];
-        const mesesDelAño = [...cal[añoDefault]].sort((a, b) => a - b);
-        const mesDefault = mesesDelAño[mesesDelAño.length - 1];
-        setAño(añoDefault);
-        setMesNumero(mesDefault);
-      } else {
-        setAño('');
-        setMesNumero('');
-        setProductos([]);
-      }
-    }
+    await cargarCalendario();
+    if (año && mesNumero) cargarMes(año, mesNumero);
   };
 
   // --- Agrupar los productos sueltos en guías (por número de documento) ---
@@ -237,6 +227,21 @@ const ListadoGuiasConsignacion = () => {
     });
   }, [guias, busqueda]);
 
+  // --- Paginación de la tabla (50 filas por página) sobre las guías ya
+  // filtradas. Se reinicia a la página 1 cada vez que cambian el año, el
+  // mes o la búsqueda. ---
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [año, mesNumero, busqueda]);
+
+  const totalPaginas = Math.max(1, Math.ceil(guiasFiltradas.length / TAMANO_PAGINA_TABLA));
+  const paginaSegura = Math.min(paginaActual, totalPaginas);
+
+  const guiasPagina = useMemo(() => {
+    const inicio = (paginaSegura - 1) * TAMANO_PAGINA_TABLA;
+    return guiasFiltradas.slice(inicio, inicio + TAMANO_PAGINA_TABLA);
+  }, [guiasFiltradas, paginaSegura]);
+
   const formatearFecha = (fechaISO) => {
     if (!fechaISO) return 'N/A';
     const [y, m, d] = fechaISO.split('-');
@@ -244,6 +249,7 @@ const ListadoGuiasConsignacion = () => {
   };
 
   const sinDatosEnAbsoluto = !cargandoCalendario && listo && añosDisponibles.length === 0;
+  const faltaSeleccionarPeriodo = !cargandoCalendario && listo && añosDisponibles.length > 0 && (!año || !mesNumero);
   const mostrandoOverlay = cargando || (cargandoCalendario && !listo);
 
   return (
@@ -290,11 +296,11 @@ const ListadoGuiasConsignacion = () => {
         <div className="flex items-center gap-2">
           <select
             value={mesNumero}
-            onChange={(e) => setMesNumero(Number(e.target.value))}
-            disabled={mesesDisponibles.length === 0}
+            onChange={(e) => setMesNumero(e.target.value ? Number(e.target.value) : '')}
+            disabled={!año}
             className="h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 disabled:opacity-50"
           >
-            {mesesDisponibles.length === 0 && <option value="">Sin meses</option>}
+            <option value="">{año ? 'Selecciona mes' : 'Elige un año primero'}</option>
             {mesesDisponibles.map((m) => (
               <option key={m} value={m}>{NOMBRES_MESES[m - 1]}</option>
             ))}
@@ -306,7 +312,7 @@ const ListadoGuiasConsignacion = () => {
             disabled={añosDisponibles.length === 0}
             className="h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 disabled:opacity-50"
           >
-            {añosDisponibles.length === 0 && <option value="">Sin años</option>}
+            <option value="">{añosDisponibles.length === 0 ? 'Sin años' : 'Selecciona año'}</option>
             {añosDisponibles.map((a) => (
               <option key={a} value={a}>{a}</option>
             ))}
@@ -331,7 +337,12 @@ const ListadoGuiasConsignacion = () => {
         <div className="flex-grow flex items-center justify-center text-[11px] text-gray-400 dark:text-gray-500">
           Aún no hay ninguna guía de consignación ingresada.
         </div>
+      ) : faltaSeleccionarPeriodo ? (
+        <div className="flex-grow flex items-center justify-center text-[11px] text-gray-400 dark:text-gray-500">
+          Selecciona un año y un mes en los filtros para ver sus guías.
+        </div>
       ) : (
+        <>
         <div className="flex-grow overflow-auto">
           <table className="w-full text-left text-[11px] border-collapse">
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
@@ -355,7 +366,7 @@ const ListadoGuiasConsignacion = () => {
                 </tr>
               )}
 
-              {guiasFiltradas.map((guia, index) => {
+              {guiasPagina.map((guia, index) => {
                 const expandida = guiaExpandidaId === guia.id;
                 return (
                   <React.Fragment key={guia.id}>
@@ -364,7 +375,7 @@ const ListadoGuiasConsignacion = () => {
                       className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer"
                     >
                       <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
-                        {index + 1}
+                        {(paginaSegura - 1) * TAMANO_PAGINA_TABLA + index + 1}
                       </td>
                       <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-400 text-center">
                         {expandida ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
@@ -435,6 +446,33 @@ const ListadoGuiasConsignacion = () => {
             </tbody>
           </table>
         </div>
+
+        {guiasFiltradas.length > 0 && (
+          <div className="flex items-center justify-between px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-800/40 text-[10.5px]">
+            <span className="text-gray-400 dark:text-gray-500 font-medium">
+              {guiasFiltradas.length} guía{guiasFiltradas.length === 1 ? '' : 's'} · Página {paginaSegura} de {totalPaginas}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
+                disabled={paginaSegura <= 1}
+                className="flex items-center gap-1 px-2 py-1 rounded font-bold text-gray-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={12} /> Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
+                disabled={paginaSegura >= totalPaginas}
+                className="flex items-center gap-1 px-2 py-1 rounded font-bold text-gray-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-white dark:hover:bg-gray-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Siguiente <ChevronRight size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

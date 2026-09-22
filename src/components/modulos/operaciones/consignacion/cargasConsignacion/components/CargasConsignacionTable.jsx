@@ -31,7 +31,8 @@ const ESTADO_COLOR = {
   REVISAR: 'bg-amber-500',
   INCOMPLETO: 'bg-red-500',
   'S/COTIZACION': 'bg-slate-400',
-  CARGADO: 'bg-emerald-500'
+  CARGADO: 'bg-emerald-500',
+  SOLICITADO: 'bg-purple-500'
 };
 
 const ESTADO_BADGE = {
@@ -41,7 +42,8 @@ const ESTADO_BADGE = {
   REVISAR: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400',
   INCOMPLETO: 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400',
   'S/COTIZACION': 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300',
-  CARGADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
+  CARGADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400',
+  SOLICITADO: 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400'
 };
 
 const formatearFechaTabla = (fechaString) => {
@@ -100,6 +102,7 @@ const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) => {
 
 export const CargasConsignacionTable = ({
   registros = [],
+  numeroInicial = 0,
   onAbrirDetalle,
   onEliminar,
   onActualizarVinculados
@@ -197,7 +200,7 @@ export const CargasConsignacionTable = ({
                       title={estadoKey}
                     />
                   </td>
-                  <td className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center`}>{index + 1}</td>
+                  <td className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center`}>{numeroInicial + index + 1}</td>
                   <td className={`${celdaBase} font-semibold text-[#2383C2]`} title={r.gestionId}>{r.gestionId || '-'}</td>
                   <td className={`${celdaBase} text-gray-700 dark:text-gray-200 font-medium`} title={r.nombre}>{r.nombre || '-'}</td>
                   <td className={`${celdaBase} text-gray-600 dark:text-gray-300`}>{formatearFechaTabla(r.fecha)}</td>
