@@ -15,7 +15,7 @@ import GestionUnificadaTable from './components/GestionUnificadaTable';
 import ImputadasUnificadasTable from './components/ImputadasUnificadasTable';
 import SolicitudesUnificadasTable from './components/SolicitudesUnificadasTable';
 import FiltroAnioMes from './components/FiltroAnioMes';
-import PaginacionSimple from './components/PaginacionSimple';
+import PaginacionSimple from '../../../ui/PaginacionSimple';
 import { useGestionConsolidadaData } from './hooks/useGestionConsolidadaData';
 import { useImputadasUnificadasData } from './hooks/useImputadasUnificadasData';
 import { ORIGEN } from './utils/normalizarFila';

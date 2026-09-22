@@ -76,6 +76,7 @@ const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) => {
 
 export const GestionesImplantesTable = ({
   implantesFiltrados,
+  numeroInicial = 0,
   handleCopiarTexto,
   abrirHistorialLogs,
   iniciarEdicion,
@@ -253,7 +254,7 @@ export const GestionesImplantesTable = ({
                     <span className={`h-2.5 w-2.5 rounded-full inline-block shrink-0 ${status.colorClass}`} title={status.label} />
                   </div>
                 </td>
-                <td style={getStickyStyle('numero')} className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center ${getStickyClass('numero')}`}>{index + 1}</td>
+                <td style={getStickyStyle('numero')} className={`${celdaBase} text-gray-500 dark:text-gray-400 font-bold text-center ${getStickyClass('numero')}`}>{numeroInicial + index + 1}</td>
                 <td style={getStickyStyle('id')} className={`${celdaBase} font-semibold text-[#2383C2] ${getStickyClass('id')}`} title={idMostrado}>
                   <div className="flex items-center gap-1">
                     <span className="truncate">{idMostrado}</span>

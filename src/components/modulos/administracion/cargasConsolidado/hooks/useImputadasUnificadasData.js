@@ -6,7 +6,7 @@ import {
   construirQueryAnioImputadas,
   calcularMesPorDefecto
 } from './periodoQueryHelpers';
-import { normalizarImputadaImplantes, normalizarImputadaConsignacion, normalizarImputadaHemodinamia } from '../utils/normalizarFila';
+import { normalizarImputadaImplantes, normalizarImputadaConsignacion, normalizarImputadaHemodinamia, ordenarPorAdmisionYOC } from '../utils/normalizarFila';
 
 const RAIZ_IMPLANTES = 'implantes_imputadas';
 const RAIZ_CONSIGNACION = 'consignacion_imputadas';
@@ -89,11 +89,17 @@ export const useImputadasUnificadasData = () => {
     return () => { unsubImplantes(); unsubConsignacion(); unsubHemodinamia(); };
   }, [anio]);
 
-  const filasAnio = useMemo(() => [
+  // Antes esto solo ordenaba por fecha (descendente) — no agrupaba por
+  // admisión en absoluto, así que filas de una misma admisión podían
+  // aparecer separadas y mezcladas con las de otras admisiones distintas
+  // que cayeran en fechas intermedias. Ahora usa el criterio compuesto
+  // compartido del Consolidado: admisión ascendente, y dentro de cada
+  // admisión, código de OC primero y "No lleva OC" al final.
+  const filasAnio = useMemo(() => ordenarPorAdmisionYOC([
     ...docsImplantes.map(normalizarImputadaImplantes),
     ...docsConsignacion.map(normalizarImputadaConsignacion),
     ...docsHemodinamia.map(normalizarImputadaHemodinamia)
-  ].sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '')), [docsImplantes, docsConsignacion, docsHemodinamia]);
+  ]), [docsImplantes, docsConsignacion, docsHemodinamia]);
 
   // Meses disponibles del año elegido, ya ordenados de enero a diciembre
   // (se recorre MESES, que ya está en ese orden) — se derivan de lo ya

@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { obtenerFechaHoyISO } from '../utils/gestionesImportExport';
+
+export const TAMANO_PAGINA_TABLA = 50;
 
 export const useGestionesImplantesFiltros = (implantes) => {
   const [busqueda, setBusqueda] = useState('');
@@ -9,6 +11,7 @@ export const useGestionesImplantesFiltros = (implantes) => {
   const [filtroMes, setFiltroMes] = useState(String(fechaHoy.getMonth() + 1).padStart(2, '0'));
   const [filtroDia, setFiltroDia] = useState('');
   const [filtrosEstados, setFiltrosEstados] = useState([]);
+  const [pagina, setPagina] = useState(1);
 
   // Filtro de rango de fecha, independiente y combinable con año/mes/día y
   // estados: por defecto solo muestra hoy y días anteriores (el caso de uso
@@ -78,6 +81,25 @@ export const useGestionesImplantesFiltros = (implantes) => {
     });
   }, [implantes, busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy, filtrosEstados]);
 
+  // Paginación de la tabla (50 filas por página) sobre `implantesFiltrados`,
+  // que ya viene ordenado (useGestionesImplantesData ordena por
+  // fechaRegistro descendente antes de filtrar) — acá solo se corta en
+  // trozos de 50, sin volver a ordenar. Es 100% client-side: los datos del
+  // mes ya están en memoria (acotados por el listener a los más recientes),
+  // así que no hace falta una consulta nueva a Firestore por cada página.
+  // Se reinicia a la página 1 cada vez que cambia cualquier filtro.
+  useEffect(() => {
+    setPagina(1);
+  }, [busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy, filtrosEstados]);
+
+  const totalPaginas = Math.max(1, Math.ceil(implantesFiltrados.length / TAMANO_PAGINA_TABLA));
+  const paginaSegura = Math.min(pagina, totalPaginas);
+
+  const implantesPagina = useMemo(() => {
+    const inicio = (paginaSegura - 1) * TAMANO_PAGINA_TABLA;
+    return implantesFiltrados.slice(inicio, inicio + TAMANO_PAGINA_TABLA);
+  }, [implantesFiltrados, paginaSegura]);
+
   const limpiarFiltrosFecha = () => {
     const d = new Date();
     setFiltroAnio(d.getFullYear().toString());
@@ -106,6 +128,10 @@ export const useGestionesImplantesFiltros = (implantes) => {
 
   return {
     implantesFiltrados,
+    implantesPagina,
+    pagina: paginaSegura,
+    setPagina,
+    totalPaginas,
     busqueda,
     setBusqueda,
     filtroAnio,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   FileText,
@@ -15,7 +15,8 @@ import {
   Package,
   PackagePlus,
   Layers,
-  Lock
+  Lock,
+  RotateCcw
 } from 'lucide-react';
 import {
   formatearFechaTabla,
@@ -28,8 +29,36 @@ import {
   VALOR_LOTE_VENCIMIENTO_PAD,
   tieneContenidoPad
 } from './cargasHelpers';
+import { ManijaRedimension } from '../../../../../../ui/ManijaRedimension';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { PadContenidoRow, crearFilaContenidoPadVacia, construirItemContenidoPadDesdeFila } from './PadContenidoRow';
+
+// Mismo sistema de columnas redimensionables que usa el CotizacionCard de
+// Hemodinamia (Cargastab/CotizacionCard.jsx) — se agrega la columna "Veces
+// Costo" que sí muestra este módulo (Hemodinamia no la tiene). Sin
+// table-layout: fixed + un ancho mínimo por columna, el navegador podía
+// achicar la columna Fecha lo suficiente como para partir "22-09-2026" en
+// 3 líneas (el '-' es un punto de corte válido para el wrap de texto).
+const COLUMNAS_ITEMS = [
+  { key: 'id', label: 'ID', ancho: 60, min: 40 },
+  { key: 'fecha', label: 'Fecha', ancho: 80, min: 40 },
+  { key: 'codigo', label: 'Código', ancho: 70, min: 40 },
+  { key: 'cantidad', label: 'Cant.', ancho: 50, min: 36, align: 'center' },
+  { key: 'venta', label: 'Venta', ancho: 65, min: 40 },
+  { key: 'referencia', label: 'Referencia', ancho: 150, min: 90 },
+  { key: 'descriptorAuto', label: 'Desc. Auto', ancho: 150, min: 60 },
+  { key: 'clase', label: 'Clase', ancho: 50, min: 32 },
+  { key: 'tipo', label: 'Tipo', ancho: 50, min: 32 },
+  { key: 'precio', label: 'Precio', ancho: 65, min: 40 },
+  { key: 'vecesCosto', label: 'Veces Costo', ancho: 75, min: 55, align: 'center' },
+  { key: 'totalItem', label: 'Total Ítem', ancho: 70, min: 40 },
+  { key: 'lote', label: 'Lote', ancho: 65, min: 40 },
+  { key: 'vencimiento', label: 'Vencimiento', ancho: 85, min: 40 },
+  { key: 'estadoCarga', label: 'Estado Carga', ancho: 100, min: 60 },
+  { key: 'acciones', label: 'Acciones', ancho: 80, min: 65, align: 'center' }
+];
+
+const anchosItemsPorDefecto = () => COLUMNAS_ITEMS.reduce((acc, col) => ({ ...acc, [col.key]: col.ancho }), {});
 
 // El listado de sugerencias vive dentro de la tabla de ítems, que tiene
 // overflow-auto (para poder hacer scroll horizontal/vertical) — eso recorta
@@ -87,6 +116,11 @@ export const CotizacionCard = ({
   soloLectura = false
 }) => {
   const [abierto, setAbierto] = useState(defaultOpen);
+  const [anchos, setAnchos] = useState(anchosItemsPorDefecto);
+  const handleResize = useCallback((colKey, nuevoAncho) => {
+    setAnchos(prev => (prev[colKey] === nuevoAncho ? prev : { ...prev, [colKey]: nuevoAncho }));
+  }, []);
+  const anchoTotalTabla = COLUMNAS_ITEMS.reduce((suma, col) => suma + (anchos[col.key] ?? col.ancho), 0);
   const [editandoId, setEditandoId] = useState(null);
   const [borrador, setBorrador] = useState(BORRADOR_VACIO);
   const [edicionEsPad, setEdicionEsPad] = useState(false);
@@ -410,25 +444,37 @@ export const CotizacionCard = ({
           </div>
 
           <div className="overflow-auto rounded border border-slate-200 dark:border-gray-700">
-            <table className="w-full text-left text-[10px] border-collapse">
+            <div className="flex justify-end px-1 py-0.5 bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => setAnchos(anchosItemsPorDefecto())}
+                title="Restablecer ancho de columnas"
+                className="flex items-center gap-1 text-[9px] font-medium text-gray-400 hover:text-[#2383C2] transition px-1.5 py-0.5 rounded hover:bg-white dark:hover:bg-gray-800"
+              >
+                <RotateCcw size={10} /> Restablecer columnas
+              </button>
+            </div>
+            <table
+              className="text-left text-[10px] border-collapse [&_td:not([colspan])]:whitespace-nowrap [&_td:not([colspan])]:overflow-hidden [&_td:not([colspan])]:text-ellipsis [&_th]:overflow-hidden"
+              style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: anchoTotalTabla }}
+            >
+              <colgroup>
+                {COLUMNAS_ITEMS.map(col => (
+                  <col key={col.key} style={{ width: anchos[col.key] }} />
+                ))}
+              </colgroup>
               <thead className="bg-slate-50 dark:bg-gray-900/60">
                 <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">ID</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Venta</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Desc. Auto</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Clase</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Tipo</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Precio</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Veces Costo</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total Ítem</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Lote</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Vencimiento</th>
-                  <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Estado Carga</th>
-                  <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">Acciones</th>
+                  {COLUMNAS_ITEMS.map((col, idx) => (
+                    <th
+                      key={col.key}
+                      title={col.label}
+                      className={`relative px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700 ${idx < COLUMNAS_ITEMS.length - 1 ? 'border-r' : ''} ${col.align === 'center' ? 'text-center' : ''}`}
+                    >
+                      <span className="block truncate">{col.label}</span>
+                      <ManijaRedimension colKey={col.key} anchoActual={anchos[col.key]} anchoMin={col.min} onResize={handleResize} />
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -480,7 +526,7 @@ export const CotizacionCard = ({
                               type="number"
                               value={borrador.cantidad}
                               onChange={e => setBorrador(prev => ({ ...prev, cantidad: e.target.value }))}
-                              className="w-14 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none text-center"
+                              className="w-full min-w-0 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none text-center"
                             />
                           </td>
 
@@ -533,7 +579,7 @@ export const CotizacionCard = ({
                             )}
                           </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400 truncate max-w-[120px]" title={borrador.descriptorAuto}>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400" title={borrador.descriptorAuto}>
                             {borrador.descriptorAuto || 'P'}
                           </td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">{borrador.clase || 'P'}</td>
@@ -549,7 +595,7 @@ export const CotizacionCard = ({
                                 min="0"
                                 value={borrador.precio}
                                 onChange={e => setBorrador(prev => ({ ...prev, precio: e.target.value }))}
-                                className="w-20 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                                className="w-full min-w-0 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
                               />
                             )}
                           </td>
@@ -575,14 +621,14 @@ export const CotizacionCard = ({
                                 type="text"
                                 value={VALOR_LOTE_VENCIMIENTO_PAD}
                                 disabled
-                                className="w-20 h-6.5 px-1 text-[10px] border border-slate-200 dark:border-gray-700 rounded bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 outline-none"
+                                className="w-full min-w-0 h-6.5 px-1 text-[10px] border border-slate-200 dark:border-gray-700 rounded bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 outline-none"
                               />
                             ) : (
                               <input
                                 type="text"
                                 value={borrador.lote}
                                 onChange={e => setBorrador(prev => ({ ...prev, lote: e.target.value }))}
-                                className="w-20 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                                className="w-full min-w-0 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
                               />
                             )}
                           </td>
@@ -593,14 +639,14 @@ export const CotizacionCard = ({
                                 type="text"
                                 value={VALOR_LOTE_VENCIMIENTO_PAD}
                                 disabled
-                                className="h-6.5 px-1 text-[10px] border border-slate-200 dark:border-gray-700 rounded bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 outline-none"
+                                className="w-full min-w-0 h-6.5 px-1 text-[10px] border border-slate-200 dark:border-gray-700 rounded bg-slate-100 dark:bg-gray-800 text-slate-500 dark:text-gray-400 outline-none"
                               />
                             ) : (
                               <input
                                 type="date"
                                 value={borrador.vencimiento}
                                 onChange={e => setBorrador(prev => ({ ...prev, vencimiento: e.target.value }))}
-                                className="h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
+                                className="w-full min-w-0 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
                               />
                             )}
                           </td>
@@ -671,7 +717,7 @@ export const CotizacionCard = ({
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium">
                             ${Number(it.venta || 0).toLocaleString('es-CL')}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[140px]" title={it.referencia}>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200" title={it.referencia}>
                             <span className="flex items-center gap-1">
                               {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 shrink-0">↳</span>}
                               {esLoteAdicional && <span className="text-sky-400 dark:text-sky-600 shrink-0">↳</span>}
@@ -688,7 +734,7 @@ export const CotizacionCard = ({
                               )}
                             </span>
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[140px]" title={it.descriptorAuto}>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400" title={it.descriptorAuto}>
                             {it.descriptorAuto || 'P'}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
@@ -733,7 +779,7 @@ export const CotizacionCard = ({
                                   value={it.estadoCarga || 'PENDIENTE'}
                                   onChange={(e) => onActualizarEstadoItem(it.id, e.target.value)}
                                   disabled={soloLectura}
-                                  className={`h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${estilo.bg} ${estilo.border} ${estilo.text}`}
+                                  className={`w-full min-w-0 h-6 px-1.5 text-[9px] font-bold rounded border outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${estilo.bg} ${estilo.border} ${estilo.text}`}
                                 >
                                   {ESTADO_CARGA_OPTIONS.map(op => (
                                     <option key={op} value={op}>{op}</option>

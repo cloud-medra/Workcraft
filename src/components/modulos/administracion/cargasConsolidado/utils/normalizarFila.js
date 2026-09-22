@@ -8,6 +8,7 @@
 // puedan seguir operando con la forma nativa de cada uno.
 
 import { CENTRO_HEMODINAMIA } from '../../../operaciones/hemodinamia/gestionHemodinamia/utils/constantesHemodinamia';
+import { CODIGO_SIN_OC } from '../../../operaciones/implantes/gestionImplantes/components/Cargastab/cargasHelpers';
 
 export const ORIGEN = {
   IMPLANTES: 'IMPLANTES',
@@ -252,3 +253,39 @@ export const normalizarSolicitudHemodinamia = (doc) => {
     _raw: bloque
   };
 };
+
+// --- Orden compartido del Consolidado ---
+// Las 3 colecciones ya llegan unificadas al mismo campo `gestionId`
+// (número de admisión) gracias a los normalizadores de arriba, así que el
+// orden se puede aplicar una sola vez sobre el arreglo combinado, sin
+// importar de qué origen venga cada fila.
+//
+// 1° criterio: número de admisión ascendente (las admisiones son
+// numéricas, ej. "102030" — se comparan como número, no como texto, para
+// que "9" no quede después de "10"; un gestionId no numérico como el
+// placeholder "P" se manda al final del todo).
+// 2° criterio, dentro del mismo grupo de admisión: filas con código de OC
+// van primero, filas sin código (CODIGO_SIN_OC = "No lleva OC", el
+// placeholder "P", vacío o nulo) van al final de ese grupo.
+const compararAdmision = (a, b) => {
+  const na = Number(a);
+  const nb = Number(b);
+  const aEsNumero = a !== '' && a != null && !Number.isNaN(na);
+  const bEsNumero = b !== '' && b != null && !Number.isNaN(nb);
+  if (aEsNumero && bEsNumero) return na - nb;
+  if (aEsNumero) return -1;
+  if (bEsNumero) return 1;
+  return String(a ?? '').localeCompare(String(b ?? ''));
+};
+
+const grupoOC = (codigo) => {
+  const c = (codigo ?? '').toString().trim();
+  return (c === '' || c === CODIGO_SIN_OC || c === 'P') ? 1 : 0;
+};
+
+export const ordenarPorAdmisionYOC = (filas) =>
+  [...filas].sort((a, b) => {
+    const cmpAdmision = compararAdmision(a.gestionId, b.gestionId);
+    if (cmpAdmision !== 0) return cmpAdmision;
+    return grupoOC(a.codigo) - grupoOC(b.codigo);
+  });

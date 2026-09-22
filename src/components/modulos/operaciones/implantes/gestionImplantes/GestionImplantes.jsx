@@ -2,8 +2,10 @@ import React, { useState, useRef } from 'react';
 import { Calendar, Search, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X } from 'lucide-react';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
+import PaginacionSimple from '../../../../ui/PaginacionSimple';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './GestionesImplanteDrawers';
 import { useGestionesImplantes } from './hooks/useGestionesImplantes';
+import { TAMANO_PAGINA_TABLA } from './hooks/useGestionesImplantesFiltros';
 import { formatearFecha } from './utils/gestionesImportExport';
 import GestionesImplantesForm from './components/GestionesImplantesForm';
 import { GestionesImplantesTable } from './components/GestionesImplantesTable';
@@ -23,6 +25,10 @@ const GestionesImplantes = () => {
   const {
     implantes,
     implantesFiltrados,
+    implantesPagina,
+    pagina,
+    setPagina,
+    totalPaginas,
     formData,
     setFormData,
     busqueda,
@@ -321,14 +327,23 @@ const GestionesImplantes = () => {
           )}
 
           {hasPermission(PATH_VISTA, "tabla_datos") && (
-            <GestionesImplantesTable
-              implantesFiltrados={implantesFiltrados}
-              handleCopiarTexto={handleCopiarTexto}
-              abrirHistorialLogs={abrirHistorialLogs}
-              iniciarEdicion={iniciarEdicion}
-              handleDelete={handleDelete}
-              onRowDoubleClick={(item) => setRegistroSeleccionado(item)}
-            />
+            <>
+              <GestionesImplantesTable
+                implantesFiltrados={implantesPagina}
+                numeroInicial={(pagina - 1) * TAMANO_PAGINA_TABLA}
+                handleCopiarTexto={handleCopiarTexto}
+                abrirHistorialLogs={abrirHistorialLogs}
+                iniciarEdicion={iniciarEdicion}
+                handleDelete={handleDelete}
+                onRowDoubleClick={(item) => setRegistroSeleccionado(item)}
+              />
+              <PaginacionSimple
+                pagina={pagina}
+                totalPaginas={totalPaginas}
+                totalFilas={implantesFiltrados.length}
+                setPagina={setPagina}
+              />
+            </>
           )}
         </>
       )}
