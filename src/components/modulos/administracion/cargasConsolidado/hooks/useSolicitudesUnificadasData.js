@@ -15,7 +15,7 @@ import { db } from '../../../../../firebaseConfig';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
-import { refImputada as refImputadaImplantes, construirPayloadImputada } from '../../../operaciones/implantes/gestionImplantes/utils/imputadaSync';
+import { refImputada as refImputadaImplantes, descomponerFecha } from '../../../operaciones/implantes/gestionImplantes/utils/imputadaSync';
 import { registrarLogImplantes } from '../../../operaciones/implantes/gestionImplantes/utils/registrarLogImplantes';
 import { registrarLogConsignacion } from '../../../operaciones/consignacion/utils/registrarLogConsignacion';
 import { registrarLogHemodinamia } from '../../../operaciones/hemodinamia/gestionHemodinamia/utils/registrarLogHemodinamia';
@@ -30,6 +30,19 @@ const RANGO_MAX_HEMODINAMIA = 'hemodinamia_gestiones/9999';
 const formatearFechaExcel = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '';
   const [yyyy, mm, dd] = fechaString.split('-');
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+// `fila.fechaRegistro` es un Timestamp de Firestore (no un string
+// "YYYY-MM-DD"), igual que en las 3 pantallas nativas — mismo formateador
+// que ellas usan para su columna "Fecha (de) Registro".
+const formatearFechaDeTimestamp = (valor) => {
+  if (!valor) return '';
+  const date = valor.toDate ? valor.toDate() : new Date(valor);
+  if (isNaN(date.getTime())) return '';
+  const dd = String(date.getDate()).padStart(2, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = date.getFullYear();
   return `${dd}-${mm}-${yyyy}`;
 };
 
@@ -231,6 +244,11 @@ export const useSolicitudesUnificadasData = () => {
               'DESCRIPCION': fila.descripcion || '',
               'CANTIDAD': fila.cantidad || '',
               'PRECIO': fila.precio || '',
+              'ATRIBUTO': fila.atributo || '',
+              'FECHA REGISTRO': formatearFechaDeTimestamp(fila.fechaRegistro),
+              'FECHA CARGA': formatearFechaExcel(fila.fechaCarga),
+              'N° COTIZACION': fila.numGuia || '',
+              'FECHA INGRESO': fechaHoyFormato,
               'LOTE': fila.lote || '',
               'VENCIMIENTO': fila.vencimiento ? formatearFechaExcel(fila.vencimiento) : ''
             });
@@ -258,6 +276,11 @@ export const useSolicitudesUnificadasData = () => {
               'DESCRIPCION': fila.descripcion || '',
               'CANTIDAD': fila.cantidad || '',
               'PRECIO': fila.precio || '',
+              'ATRIBUTO': fila.atributo || '',
+              'FECHA DE REGISTRO': formatearFechaDeTimestamp(fila.fechaRegistro),
+              'FECHA DE CARGA': formatearFechaExcel(fila.fechaCarga),
+              'N GUIA': fila.numGuia || '',
+              'FECHA DE INGRESO': fechaHoyFormato,
               'LOTE': fila.lote || '',
               'VENCIMIENTO': fila.vencimiento || ''
             });
@@ -285,6 +308,11 @@ export const useSolicitudesUnificadasData = () => {
               'DESCRIPCION': fila.descripcion || '',
               'CANTIDAD': fila.cantidad || '',
               'PRECIO': fila.precio || '',
+              'ATRIBUTO': fila.atributo || '',
+              'FECHA REGISTRO': formatearFechaDeTimestamp(fila.fechaRegistro),
+              'FECHA CARGA': formatearFechaExcel(fila.fechaCarga),
+              'N° COTIZACION': fila.numGuia || '',
+              'FECHA INGRESO': fechaHoyFormato,
               'LOTE': fila.lote || '',
               'VENCIMIENTO': fila.vencimiento ? formatearFechaExcel(fila.vencimiento) : ''
             });
@@ -334,6 +362,23 @@ export const useSolicitudesUnificadasData = () => {
 
           const logsAEjecutar = [];
 
+          // Implantes: mismo criterio que su Solicitud nativa
+          // (useSolicitudImplantesData.js) — el ítem SIEMPRE se imputa al
+          // período actualmente abierto (periodoImplantes), nunca al
+          // período que tenía guardado de cuando fue cargado. Antes acá se
+          // usaba `it.periodoAnio || periodoImplantes.anio` (preferir el
+          // período de carga del ítem), lo que hacía que la misma acción
+          // de "Solicitar" imputara en un mes distinto según si se
+          // ejecutaba desde Implantes nativo o desde Cargas Consolidado —
+          // y además dejaba a Implantes inconsistente con Consignación y
+          // Hemodinamia acá mismo, que sí siempre usan el período abierto.
+          // El período de carga original se conserva solo como dato
+          // informativo en periodoAnioCarga/periodoMesCarga (igual que en
+          // la pantalla nativa), sin afectar a qué documento se escribe.
+          const periodoTextoImplantes = periodoImplantes
+            ? `${periodoImplantes.mes.charAt(0).toUpperCase()}${periodoImplantes.mes.slice(1).toLowerCase()} ${periodoImplantes.anio}`
+            : '';
+
           seleccionImplantesUnica.forEach(fila => {
             const bloque = fila._raw;
             // OJO: el doc crudo de implantes_gestiones anida los ítems en
@@ -348,15 +393,65 @@ export const useSolicitudesUnificadasData = () => {
             agregarOp(b => b.update(docRef, {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
-              solicitadoPor: userData?.nombreCompleto || 'Usuario'
+              solicitadoPor: userData?.nombreCompleto || 'Usuario',
+              periodo: periodoTextoImplantes
             }));
 
+            const { anio, mes, dia } = descomponerFecha(bloque.fecha);
+
             itemsBloque.forEach(it => {
-              const periodoAnioItem = it.periodoAnio || periodoImplantes.anio;
-              const periodoMesItem = it.periodoMes || periodoImplantes.mes;
               agregarOp(b => b.set(
-                refImputadaImplantes(periodoAnioItem, periodoMesItem, it.id),
-                construirPayloadImputada(it, bloque, periodoAnioItem, periodoMesItem, userData?.nombreCompleto)
+                refImputadaImplantes(periodoImplantes.anio, periodoImplantes.mes, it.id),
+                {
+                  gestionId: bloque.gestionId,
+                  agendaId: bloque.agendaId,
+                  admision: bloque.admision,
+                  paciente: bloque.nombre,
+                  medico: bloque.medico,
+                  fecha: bloque.fecha,
+                  anio,
+                  mes,
+                  dia,
+                  empresa: bloque.empresa,
+                  informe: bloque.informe,
+                  convenio: bloque.convenio,
+                  prevision: bloque.prevision,
+                  descripcion: bloque.descripcion,
+                  centro: bloque.centro,
+                  atributo: bloque.atributo,
+                  estado: bloque.estado,
+                  costoGestion: bloque.costo,
+
+                  numCotizacion: it.numCotizacion || bloque.numCotizacion,
+                  itemId: it.id,
+                  referencia: it.referencia || 'P',
+                  codigo: it.codigo || 'P',
+                  descriptorAuto: it.descriptorAuto || 'P',
+                  clase: it.clase || 'P',
+                  tipoVinculado: it.tipoVinculado || 'P',
+                  detalle: it.detalle || 'P',
+                  empresaVinculada: it.empresaVinculada || 'P',
+                  precio: Number(it.precio) || 0,
+                  cantidad: Number(it.cantidad) || 0,
+                  vecesCosto: Number(it.vecesCosto) || 1,
+                  recargoEncontrado: !!it.recargoEncontrado,
+                  venta: Number(it.venta) || 0,
+                  total: Number(it.totalItem) || 0,
+                  lote: it.lote || 'P',
+                  vencimiento: it.vencimiento || '',
+                  sinCodigo: !!it.sinCodigo,
+                  estadoCarga: it.estadoCarga || 'PENDIENTE',
+
+                  periodoAnio: periodoImplantes.anio,
+                  periodoMes: periodoImplantes.mes,
+                  periodo: periodoTextoImplantes,
+                  periodoAnioCarga: it.periodoAnio || null,
+                  periodoMesCarga: it.periodoMes || null,
+
+                  registradoPor: userData?.nombreCompleto || 'Usuario',
+                  actualizadoEn: new Date()
+                },
+                { merge: true }
               ));
             });
 
