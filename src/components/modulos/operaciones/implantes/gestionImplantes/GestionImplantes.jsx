@@ -11,6 +11,7 @@ import GestionesImplantesForm from './components/GestionesImplantesForm';
 import { GestionesImplantesTable } from './components/GestionesImplantesTable';
 import GestionesImplantesDetalleView from './components/GestionesImplantesDetalleView';
 import { EstadoFilterDropdown } from './components/EstadoFilterDropdown';
+import { DiaFilterDropdown } from './components/DiaFilterDropdown';
 
 const PATH_VISTA = "/implantes/gestionImplantes";
 
@@ -37,8 +38,10 @@ const GestionesImplantes = () => {
     setFiltroAnio,
     filtroMes,
     setFiltroMes,
-    filtroDia,
-    setFiltroDia,
+    filtrosDias,
+    toggleFiltroDia,
+    limpiarFiltroDias,
+    opcionesDias,
     filtroSoloHastaHoy,
     setFiltroSoloHastaHoy,
     opcionesFechas,
@@ -270,16 +273,12 @@ const GestionesImplantes = () => {
                   ))}
                 </select>
 
-                <select
-                  value={filtroDia}
-                  onChange={e => setFiltroDia(e.target.value)}
-                  className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer"
-                >
-                  <option value="">Día (Todos)</option>
-                  {opcionesFechas.dias.map(dd => (
-                    <option key={dd} value={dd}>{dd}</option>
-                  ))}
-                </select>
+                <DiaFilterDropdown
+                  opcionesDias={opcionesDias}
+                  filtrosDias={filtrosDias}
+                  toggleFiltroDia={toggleFiltroDia}
+                  limpiarFiltroDias={limpiarFiltroDias}
+                />
 
                 <EstadoFilterDropdown
                   opcionesEstados={opcionesEstados}
@@ -313,7 +312,7 @@ const GestionesImplantes = () => {
                   </button>
                 </div>
 
-                {(filtroAnio || filtroMes || filtroDia) && (
+                {(filtroAnio || filtroMes || filtrosDias.length > 0) && (
                   <button
                     onClick={limpiarFiltrosFecha}
                     className="h-7 px-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded font-medium flex items-center gap-1 transition"

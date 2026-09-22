@@ -9,7 +9,7 @@ export const useGestionesImplantesFiltros = (implantes) => {
   const fechaHoy = new Date();
   const [filtroAnio, setFiltroAnio] = useState(fechaHoy.getFullYear().toString());
   const [filtroMes, setFiltroMes] = useState(String(fechaHoy.getMonth() + 1).padStart(2, '0'));
-  const [filtroDia, setFiltroDia] = useState('');
+  const [filtrosDias, setFiltrosDias] = useState([]);
   const [filtrosEstados, setFiltrosEstados] = useState([]);
   const [pagina, setPagina] = useState(1);
 
@@ -19,28 +19,35 @@ export const useGestionesImplantesFiltros = (implantes) => {
   // (incluye fechas futuras).
   const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(true);
 
+  // Años/meses disponibles: se derivan de `implantes` completo (sin acotar
+  // por los demás filtros) — fuera del alcance de este cambio, ver nota en
+  // el resumen entregado al usuario.
   const opcionesFechas = useMemo(() => {
     const aniosSet = new Set();
     const mesesSet = new Set();
-    const diasSet = new Set();
 
     implantes.forEach(item => {
       if (item.fecha && item.fecha.includes('-')) {
-        const [yyyy, mm, dd] = item.fecha.split('-');
+        const [yyyy, mm] = item.fecha.split('-');
         if (yyyy) aniosSet.add(yyyy);
         if (mm) mesesSet.add(mm);
-        if (dd) diasSet.add(dd);
       }
     });
 
     return {
       anios: Array.from(aniosSet).sort((a, b) => b - a),
-      meses: Array.from(mesesSet).sort((a, b) => a - b),
-      dias: Array.from(diasSet).sort((a, b) => a - b)
+      meses: Array.from(mesesSet).sort((a, b) => a - b)
     };
   }, [implantes]);
 
-  const implantesFiltrados = useMemo(() => {
+  // Filtrado en cascada: primero se aplican todos los filtros EXCEPTO
+  // "Día" (búsqueda, año, mes, hasta-hoy, estados). Las opciones del
+  // filtro de Día se calculan sobre este resultado intermedio — así
+  // siempre reflejan los días que efectivamente existen dado el resto de
+  // filtros ya activos, nunca el universo completo sin filtrar (que era
+  // el bug: opcionesFechas.dias se calculaba antes sobre `implantes`
+  // crudo, ignorando año/mes/estado/hasta-hoy).
+  const implantesFiltradosSinDia = useMemo(() => {
     const hoyISO = obtenerFechaHoyISO();
 
     return implantes.filter(i => {
@@ -53,14 +60,12 @@ export const useGestionesImplantesFiltros = (implantes) => {
 
       let coincideAnio = true;
       let coincideMes = true;
-      let coincideDia = true;
 
       if (i.fecha && i.fecha.includes('-')) {
-        const [yyyy, mm, dd] = i.fecha.split('-');
+        const [yyyy, mm] = i.fecha.split('-');
         if (filtroAnio) coincideAnio = yyyy === filtroAnio;
         if (filtroMes) coincideMes = mm === filtroMes;
-        if (filtroDia) coincideDia = dd === filtroDia;
-      } else if (filtroAnio || filtroMes || filtroDia) {
+      } else if (filtroAnio || filtroMes) {
         return false;
       }
 
@@ -77,9 +82,42 @@ export const useGestionesImplantesFiltros = (implantes) => {
         coincideEstado = filtrosEstados.includes(estadoClean);
       }
 
-      return coincideBusqueda && coincideAnio && coincideMes && coincideDia && coincideFechaHastaHoy && coincideEstado;
+      return coincideBusqueda && coincideAnio && coincideMes && coincideFechaHastaHoy && coincideEstado;
     });
-  }, [implantes, busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy, filtrosEstados]);
+  }, [implantes, busqueda, filtroAnio, filtroMes, filtroSoloHastaHoy, filtrosEstados]);
+
+  const opcionesDias = useMemo(() => {
+    const diasSet = new Set();
+    implantesFiltradosSinDia.forEach(item => {
+      if (item.fecha && item.fecha.includes('-')) {
+        const dd = item.fecha.split('-')[2];
+        if (dd) diasSet.add(dd);
+      }
+    });
+    return Array.from(diasSet).sort((a, b) => a - b);
+  }, [implantesFiltradosSinDia]);
+
+  // Si un día que estaba seleccionado deja de existir en `opcionesDias`
+  // (porque el usuario cambió año/mes/estado/hasta-hoy y ese día ya no
+  // tiene registros), se deselecciona automáticamente en vez de quedar
+  // "elegido" pero sin resultados — evita la confusión de un filtro que
+  // parece activo pero no filtra nada visible.
+  useEffect(() => {
+    setFiltrosDias(prev => {
+      const disponibles = new Set(opcionesDias);
+      const siguenValidos = prev.filter(d => disponibles.has(d));
+      return siguenValidos.length === prev.length ? prev : siguenValidos;
+    });
+  }, [opcionesDias]);
+
+  const implantesFiltrados = useMemo(() => {
+    if (filtrosDias.length === 0) return implantesFiltradosSinDia;
+    return implantesFiltradosSinDia.filter(i => {
+      if (!i.fecha || !i.fecha.includes('-')) return false;
+      const dd = i.fecha.split('-')[2];
+      return filtrosDias.includes(dd);
+    });
+  }, [implantesFiltradosSinDia, filtrosDias]);
 
   // Paginación de la tabla (50 filas por página) sobre `implantesFiltrados`,
   // que ya viene ordenado (useGestionesImplantesData ordena por
@@ -90,7 +128,7 @@ export const useGestionesImplantesFiltros = (implantes) => {
   // Se reinicia a la página 1 cada vez que cambia cualquier filtro.
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroAnio, filtroMes, filtroDia, filtroSoloHastaHoy, filtrosEstados]);
+  }, [busqueda, filtroAnio, filtroMes, filtrosDias, filtroSoloHastaHoy, filtrosEstados]);
 
   const totalPaginas = Math.max(1, Math.ceil(implantesFiltrados.length / TAMANO_PAGINA_TABLA));
   const paginaSegura = Math.min(pagina, totalPaginas);
@@ -104,8 +142,18 @@ export const useGestionesImplantesFiltros = (implantes) => {
     const d = new Date();
     setFiltroAnio(d.getFullYear().toString());
     setFiltroMes(String(d.getMonth() + 1).padStart(2, '0'));
-    setFiltroDia('');
+    setFiltrosDias([]);
   };
+
+  const toggleFiltroDia = (dia) => {
+    setFiltrosDias(prev =>
+      prev.includes(dia)
+        ? prev.filter(d => d !== dia)
+        : [...prev, dia]
+    );
+  };
+
+  const limpiarFiltroDias = () => setFiltrosDias([]);
 
   const opcionesEstados = useMemo(() => {
     const estadosSet = new Set();
@@ -138,8 +186,10 @@ export const useGestionesImplantesFiltros = (implantes) => {
     setFiltroAnio,
     filtroMes,
     setFiltroMes,
-    filtroDia,
-    setFiltroDia,
+    filtrosDias,
+    toggleFiltroDia,
+    limpiarFiltroDias,
+    opcionesDias,
     filtroSoloHastaHoy,
     setFiltroSoloHastaHoy,
     opcionesFechas,
