@@ -10,8 +10,12 @@ export const documentosComponentMaps = {
           btn_importar: { label: 'Acción: Importar Excel' },
         },
       },
+      barra_filtros: {
+        label: 'Sección: Filtros (Año/Mes en cascada + búsqueda Admisión/Paciente + búsqueda OC/Factura/Guía)',
+        elements: {},
+      },
       tabla_registros: {
-        label: 'Sección: Tabla de Registros Importados (documentos_sistema, paginada de 50 en 50)',
+        label: 'Sección: Tabla de Registros Importados (documentos_sistema, filtrada por período, paginada de 50 en 50)',
         elements: {},
       },
     },

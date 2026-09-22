@@ -20,13 +20,15 @@ import {
   FileCode,
   FileSpreadsheet,
   FilePlus,
+  FileStack,
+  FileUp,
   Folder,
   FolderKanban,
   GitCompareArrows,
   GitMerge,
   Microscope,
-  Hash,
   Handshake,
+  Receipt,
   HeartPulse,
   Hospital,
   History,
@@ -112,7 +114,7 @@ export const MODULES = {
       { label: 'Convenios', path: '/maestros/conveniosMaestros', icon: <Handshake size={14} /> },
       { label: 'Recargos', path: '/maestros/recargosMaestros', icon: <Percent size={14} /> },
       { label: 'Calculador', path: '/maestros/calculadorMaestros', icon: <Calculator size={14} /> },
-      { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <Hash size={14} /> },
+      { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <ScanBarcode size={14} /> },
       { label: 'Pad', path: '/maestros/padMaestros', icon: <SlidersHorizontal size={14} /> },
       { label: 'Listado', path: '/maestros/listadoMaestros', icon: <ListTree size={14} /> },
     ]
@@ -148,6 +150,10 @@ export const MODULES = {
     subItems: [
       { label: 'Reportes Info', path: '/documentos/reportesInfo', icon: <BarChart2 size={14} /> },
       { label: 'Importar Detalles OC', path: '/documentos/importarDetallesOC', icon: <FileSpreadsheet size={14} /> },
+      { label: 'Seguimiento de Facturas', path: '/documentos/seguimientoFacturas', icon: <Receipt size={14} /> },
+      { label: 'Seguimiento de Guías', path: '/documentos/seguimientoGuias', icon: <Truck size={14} /> },
+      { label: 'Ingreso de Órdenes', path: '/documentos/ingresoOrdenes', icon: <FileUp size={14} /> },
+      { label: 'Ingreso de Documentos', path: '/documentos/ingresoDocumentos', icon: <FileStack size={14} /> },
     ]
   },
 

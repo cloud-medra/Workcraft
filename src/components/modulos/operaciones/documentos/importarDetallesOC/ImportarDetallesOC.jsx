@@ -1,16 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
   FileSpreadsheet, Upload, X, Loader2, AlertTriangle,
-  PlusCircle, RefreshCw, MinusCircle, ChevronLeft, ChevronRight
+  PlusCircle, RefreshCw, MinusCircle, Search, CalendarSearch
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
+import PaginacionSimple from '../../../../ui/PaginacionSimple';
 import { procesarImportacionDetallesOC } from './utils/procesarImportacionDetallesOC';
-import { useDetallesOCData, TAMANO_PAGINA_DETALLES_OC } from './hooks/useDetallesOCData';
+import { useDetallesOCData } from './hooks/useDetallesOCData';
+import { useDetallesOCFiltros, CAMPOS_BUSQUEDA_OC } from './hooks/useDetallesOCFiltros';
 
 const PATH_VISTA = '/documentos/importarDetallesOC';
+
+const NOMBRES_MESES = {
+  '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
+  '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
+  '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
+};
 
 const formatearFechaCelda = (valor) => {
   if (!valor) return '-';
@@ -31,11 +39,22 @@ const ImportarDetallesOC = () => {
   const [resumen, setResumen] = useState(null);
 
   const {
-    filas, cargando, totalFilas, totalPaginas, paginaActual, hayMas,
-    irAPrimeraPagina, irASiguiente, irAAnterior
+    anio, setAnio, anios, cargandoAnios,
+    mes, setMes, meses, cargandoMeses,
+    filas, cargandoFilas, huboTope,
+    recargarFilas
   } = useDetallesOCData();
 
-  useEffect(() => { irAPrimeraPagina(); }, [irAPrimeraPagina]);
+  const {
+    busquedaAdmisionPaciente, setBusquedaAdmisionPaciente,
+    campoBusquedaOC, setCampoBusquedaOC,
+    textoBusquedaOC, setTextoBusquedaOC,
+    filasPagina, totalFilas,
+    pagina, setPagina, totalPaginas
+  } = useDetallesOCFiltros(filas);
+
+  const periodoSeleccionado = Boolean(anio && mes);
+  const cargando = cargandoFilas;
 
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
@@ -54,7 +73,7 @@ const ImportarDetallesOC = () => {
         `Importación completa: ${resultado.nuevas} nueva(s), ${resultado.cambiadas} actualizada(s), ${resultado.sinCambios} sin cambios${resultado.errores.length ? `, ${resultado.errores.length} con error` : ''}`,
         resultado.errores.length ? 'info' : 'success'
       );
-      irAPrimeraPagina();
+      recargarFilas();
     } catch (err) {
       console.error('Error al importar Detalles OC:', err);
       showToast('Error al importar: ' + err.message, 'error');
@@ -62,7 +81,7 @@ const ImportarDetallesOC = () => {
       setProcesando(false);
       setProgreso(null);
     }
-  }, [showToast, irAPrimeraPagina]);
+  }, [showToast, recargarFilas]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -143,91 +162,135 @@ const ImportarDetallesOC = () => {
         </div>
       )}
 
-      {cargando ? (
+      {hasPermission(PATH_VISTA, 'barra_filtros') && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-1.5">
+            <select
+              value={anio}
+              onChange={(e) => setAnio(e.target.value)}
+              disabled={cargandoAnios}
+              className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">{cargandoAnios ? 'Cargando años...' : 'Año'}</option>
+              {anios.map((yyyy) => (
+                <option key={yyyy} value={yyyy}>{yyyy}</option>
+              ))}
+            </select>
+
+            <select
+              value={mes}
+              onChange={(e) => setMes(e.target.value)}
+              disabled={!anio || cargandoMeses}
+              className="h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <option value="">{cargandoMeses ? 'Cargando meses...' : 'Mes'}</option>
+              {meses.map((mm) => (
+                <option key={mm} value={mm}>{NOMBRES_MESES[mm] || mm}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative w-56">
+            <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />
+            <input
+              value={busquedaAdmisionPaciente}
+              onChange={(e) => setBusquedaAdmisionPaciente(e.target.value)}
+              disabled={!periodoSeleccionado}
+              className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2] disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="Buscar por admisión o paciente..."
+            />
+          </div>
+
+          <div className="flex items-center h-7 border border-gray-300 dark:border-gray-600 rounded overflow-hidden">
+            <select
+              value={campoBusquedaOC}
+              onChange={(e) => setCampoBusquedaOC(e.target.value)}
+              disabled={!periodoSeleccionado}
+              className="h-full px-2 border-r border-gray-300 dark:border-gray-600 text-[11px] bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {Object.entries(CAMPOS_BUSQUEDA_OC).map(([clave, { label }]) => (
+                <option key={clave} value={clave}>{label}</option>
+              ))}
+            </select>
+            <input
+              value={textoBusquedaOC}
+              onChange={(e) => setTextoBusquedaOC(e.target.value)}
+              disabled={!periodoSeleccionado}
+              className="h-full w-36 px-2 text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+              placeholder="Buscar valor..."
+            />
+          </div>
+        </div>
+      )}
+
+      {!periodoSeleccionado ? (
+        <div className="flex-grow flex flex-col items-center justify-center gap-2 text-center text-slate-400 dark:text-gray-500 px-6">
+          <CalendarSearch size={26} className="text-slate-300 dark:text-gray-600" />
+          <span className="text-[11px] font-medium">Selecciona un año y mes para ver los registros</span>
+        </div>
+      ) : cargando ? (
         <div className="flex-grow flex items-center justify-center gap-2 text-slate-400 dark:text-gray-500 text-[11px]">
           <Loader2 size={14} className="animate-spin" /> Cargando registros...
         </div>
       ) : (
-        <div className="flex-grow overflow-auto">
-          <table className="w-full text-left text-[11px] border-collapse min-w-[1200px]">
-            <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
-              <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">ID</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Médico</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha Cx</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Proveedor</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Estado</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">N° Guía</th>
-                <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700">N° Factura</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-              {filas.length === 0 ? (
-                <tr>
-                  <td colSpan={13} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                    Aún no hay registros importados.
-                  </td>
+        <>
+          {huboTope && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-3 py-1 text-[10.5px] text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+              <AlertTriangle size={11} /> Este período tiene muchos registros — puede que no se estén mostrando todos.
+            </div>
+          )}
+          <div className="flex-grow overflow-auto">
+            <table className="w-full text-left text-[11px] border-collapse min-w-[1200px]">
+              <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
+                <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">ID</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Médico</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha Cx</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Proveedor</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Estado</th>
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">N° Guía</th>
+                  <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700">N° Factura</th>
                 </tr>
-              ) : (
-                filas.map((item) => (
-                  <tr key={item.refPath} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150">
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-400">{item.id}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-semibold text-[#2383C2]">{item.admision}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={item.paciente}>{item.paciente || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[140px]" title={item.medico}>{item.medico || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 whitespace-nowrap">{formatearFechaCelda(item.fecha_cx)}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={item.proveedor}>{item.proveedor || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[200px]" title={item.descripcion}>{item.descripcion || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center">{item.cantidad ?? '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.oc || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.estado || '-'}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.numero_guia || '-'}</td>
-                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70">{item.numero_factura || '-'}</td>
+              </thead>
+              <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
+                {filasPagina.length === 0 ? (
+                  <tr>
+                    <td colSpan={13} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                      No hay registros para los filtros seleccionados.
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+                ) : (
+                  filasPagina.map((item) => (
+                    <tr key={item.refPath} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150">
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-400">{item.id}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-semibold text-[#2383C2]">{item.admision}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={item.paciente}>{item.paciente || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[140px]" title={item.medico}>{item.medico || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 whitespace-nowrap">{formatearFechaCelda(item.fecha_cx)}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={item.proveedor}>{item.proveedor || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[200px]" title={item.descripcion}>{item.descripcion || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center">{item.cantidad ?? '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.oc || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.estado || '-'}</td>
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.numero_guia || '-'}</td>
+                      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70">{item.numero_factura || '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Paginación por cursor de Firestore (no en memoria): esta colección
-          puede tener miles de documentos y sigue creciendo, así que cada
-          página se pide directo a Firestore con limit()/startAfter() en
-          vez de traer todo y cortar en el cliente (mismo espíritu que
-          PaginacionSimple.jsx, adaptado a un volumen que no cabe entero
-          en memoria). */}
-      <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-t border-slate-200 dark:border-gray-700 bg-slate-100 dark:bg-gray-900 text-[10px]">
-        <span className="text-slate-500 dark:text-gray-400">
-          {totalFilas != null ? `${totalFilas} registro${totalFilas === 1 ? '' : 's'} · ` : ''}
-          página {paginaActual}{totalPaginas ? ` de ${totalPaginas}` : ''} ({TAMANO_PAGINA_DETALLES_OC}/página)
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={irAAnterior}
-            disabled={paginaActual <= 1 || cargando}
-            className="h-6 px-1.5 rounded border border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={irASiguiente}
-            disabled={!hayMas || cargando}
-            className="h-6 px-1.5 rounded border border-slate-200 dark:border-gray-700 text-slate-500 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronRight size={13} />
-          </button>
-        </div>
-      </div>
+          <PaginacionSimple pagina={pagina} totalPaginas={totalPaginas} totalFilas={totalFilas} setPagina={setPagina} />
+        </>
+      )}
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-sans">

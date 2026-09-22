@@ -5,7 +5,8 @@ import { signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import {
   LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
-  Settings, Home, ShieldCheck, Menu, Shield, Moon, Sun
+  Settings, Home, ShieldCheck, Menu, Shield, Moon, Sun,
+  Receipt, Truck, FileUp, FileStack
 } from 'lucide-react';
 
 // Importación unificada de configuración de módulos y vistas
@@ -60,6 +61,7 @@ import UnidadInventario from '../components/modulos/inventario/unidadInventario/
 // --- DOCUMENTOS ---
 import ReportesInfo from '../components/modulos/operaciones/documentos/reportesInfo/ReportesInfo';
 import ImportarDetallesOC from '../components/modulos/operaciones/documentos/importarDetallesOC/ImportarDetallesOC';
+import PlaceholderModulo from '../components/modulos/operaciones/documentos/PlaceholderModulo';
 
 // --- IMPLANTES ---
 import GestionImplantes from '../components/modulos/operaciones/implantes/gestionImplantes/GestionImplantes';
@@ -272,6 +274,10 @@ const Dashboard = () => {
 
     '/documentos/reportesInfo': <ReportesInfo />,
     '/documentos/importarDetallesOC': <ImportarDetallesOC />,
+    '/documentos/seguimientoFacturas': <PlaceholderModulo titulo="Seguimiento de Facturas" descripcion="Seguimiento de qué admisiones/ítems ya tienen factura y cuáles faltan por facturar." Icon={Receipt} />,
+    '/documentos/seguimientoGuias': <PlaceholderModulo titulo="Seguimiento de Guías" descripcion="Qué empresas tienen despacho pendiente (guía) y cuáles ya despacharon." Icon={Truck} />,
+    '/documentos/ingresoOrdenes': <PlaceholderModulo titulo="Ingreso de Órdenes" descripcion="Carga de PDF de órdenes de compra, asociadas a admisión + empresa + fecha." Icon={FileUp} />,
+    '/documentos/ingresoDocumentos': <PlaceholderModulo titulo="Ingreso de Documentos" descripcion="Carga de PDF de informes, asociados a cada admisión." Icon={FileStack} />,
 
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,

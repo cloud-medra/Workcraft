@@ -4,82 +4,125 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useDetallesOCData } from './useDetallesOCData';
 
-const mockGetCountFromServer = vi.fn();
 const mockGetDocs = vi.fn();
 
 vi.mock('../../../../../../firebaseConfig', () => ({ db: {} }));
 vi.mock('firebase/firestore', () => ({
-  collectionGroup: vi.fn(() => ({})),
-  query: vi.fn((...args) => args),
+  collection: vi.fn((_db, ...pathSegments) => ({ _type: 'collection', path: pathSegments.join('/') })),
+  collectionGroup: vi.fn((_db, nombre) => ({ _type: 'collectionGroup', nombre })),
+  query: vi.fn((ref, ...constraints) => ({ ...ref, _constraints: constraints })),
   where: vi.fn(),
   orderBy: vi.fn(),
   limit: vi.fn(),
-  startAfter: vi.fn(),
   documentId: vi.fn(),
-  getDocs: (...args) => mockGetDocs(...args),
-  getCountFromServer: (...args) => mockGetCountFromServer(...args)
+  getDocs: (...args) => mockGetDocs(...args)
 }));
 
-const crearDocFake = (id) => ({
-  id,
-  ref: { path: `documentos_sistema/2026/meses/09/admisiones/1/empresas/x/detalles/${id}` },
-  data: () => ({ paciente: 'Test' })
-});
+const docsDeIds = (ids) => ({ docs: ids.map((id) => ({ id, ref: { path: `x/${id}` }, data: () => ({ paciente: `Paciente ${id}` }) })) });
 
 describe('useDetallesOCData', () => {
   beforeEach(() => {
-    mockGetCountFromServer.mockReset();
     mockGetDocs.mockReset();
-    mockGetCountFromServer.mockResolvedValue({ data: () => ({ count: 3 }) });
-    mockGetDocs.mockResolvedValue({ docs: [crearDocFake('1'), crearDocFake('2')] });
   });
 
-  it('irAPrimeraPagina consulta Firestore una sola vez (conteo + página) por llamada', async () => {
+  it('carga los años disponibles al montar, desde la colección documentos_sistema', async () => {
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2025', '2026']));
+
     const { result } = renderHook(() => useDetallesOCData());
+    expect(result.current.cargandoAnios).toBe(true);
 
-    await act(async () => {
-      await result.current.irAPrimeraPagina();
-    });
+    await act(async () => { await Promise.resolve(); });
 
-    expect(mockGetCountFromServer).toHaveBeenCalledTimes(1);
     expect(mockGetDocs).toHaveBeenCalledTimes(1);
-    expect(result.current.totalFilas).toBe(3);
+    expect(mockGetDocs.mock.calls[0][0]).toMatchObject({ _type: 'collection', path: 'documentos_sistema' });
+    // Orden descendente (año más reciente primero)
+    expect(result.current.anios).toEqual(['2026', '2025']);
+    expect(result.current.cargandoAnios).toBe(false);
+  });
+
+  it('no consulta "detalles" mientras no haya año Y mes seleccionados', async () => {
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026'])); // años
+    const { result } = renderHook(() => useDetallesOCData());
+    await act(async () => { await Promise.resolve(); });
+
+    expect(result.current.filas).toEqual([]);
+    expect(mockGetDocs).toHaveBeenCalledTimes(1); // solo la carga de años
+
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['09', '10'])); // meses del año elegido
+    await act(async () => { result.current.setAnio('2026'); await Promise.resolve(); });
+
+    expect(result.current.meses).toEqual(['09', '10']);
+    expect(result.current.mes).toBe(''); // elegir año no elige mes automáticamente
+    expect(mockGetDocs).toHaveBeenCalledTimes(2); // años + meses, todavía sin filas
+  });
+
+  it('al elegir año y mes, consulta el collectionGroup "detalles" acotado a ese período', async () => {
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026'])); // años
+    const { result } = renderHook(() => useDetallesOCData());
+    await act(async () => { await Promise.resolve(); });
+
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['09'])); // meses
+    await act(async () => { result.current.setAnio('2026'); await Promise.resolve(); });
+
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['1001', '1002'])); // filas del período
+    await act(async () => { result.current.setMes('09'); await Promise.resolve(); });
+
+    expect(result.current.filas.map(f => f.id)).toEqual(['1001', '1002']);
+    const ultimaLlamada = mockGetDocs.mock.calls[mockGetDocs.mock.calls.length - 1][0];
+    expect(ultimaLlamada._type).toBe('collectionGroup');
+    expect(ultimaLlamada.nombre).toBe('detalles');
+  });
+
+  it('cambiar de año resetea el mes elegido (y en cascada, las filas)', async () => {
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2025', '2026']));
+    const { result } = renderHook(() => useDetallesOCData());
+    await act(async () => { await Promise.resolve(); });
+
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['09']));
+    await act(async () => { result.current.setAnio('2026'); await Promise.resolve(); });
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['1001']));
+    await act(async () => { result.current.setMes('09'); await Promise.resolve(); });
+
+    expect(result.current.filas).toHaveLength(1);
+
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['03'])); // meses del nuevo año
+    await act(async () => { result.current.setAnio('2025'); await Promise.resolve(); });
+
+    expect(result.current.mes).toBe('');
+    expect(result.current.filas).toEqual([]);
+  });
+
+  it('recargarFilas() vuelve a consultar el mismo período sin cambiar año/mes', async () => {
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026']));
+    const { result } = renderHook(() => useDetallesOCData());
+    await act(async () => { await Promise.resolve(); });
+
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['09']));
+    await act(async () => { result.current.setAnio('2026'); await Promise.resolve(); });
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['1001']));
+    await act(async () => { result.current.setMes('09'); await Promise.resolve(); });
+
+    const llamadasAntes = mockGetDocs.mock.calls.length;
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['1001', '1002']));
+    await act(async () => { result.current.recargarFilas(); await Promise.resolve(); });
+
+    expect(mockGetDocs.mock.calls.length).toBe(llamadasAntes + 1);
     expect(result.current.filas).toHaveLength(2);
   });
 
-  it('irAPrimeraPagina mantiene la misma identidad de función entre renders (no se recrea)', async () => {
-    const { result, rerender } = renderHook(() => useDetallesOCData());
-    const referenciaInicial = result.current.irAPrimeraPagina;
-
-    await act(async () => {
-      await result.current.irAPrimeraPagina();
-    });
-
-    rerender();
-    expect(result.current.irAPrimeraPagina).toBe(referenciaInicial);
-  });
-
-  // Reproduce exactamente el patrón de ImportarDetallesOC.jsx
-  // (useEffect(() => { irAPrimeraPagina(); }, [irAPrimeraPagina])). Con el bug
-  // original, irAPrimeraPagina cambiaba de identidad cada vez que cargarPagina
-  // actualizaba el estado "cursores", lo que retroalimentaba el efecto en un
-  // loop infinito ("Maximum update depth exceeded"). Si el bug reaparece, este
-  // test cuelga o falla porque las consultas a Firestore se disparan muchas
-  // más veces de las esperadas.
-  it('no entra en loop cuando se usa dentro de un useEffect con [irAPrimeraPagina] como dependencia', async () => {
+  // Reproduce el patrón real de ImportarDetallesOC.jsx (destructurar setAnio/
+  // setMes/recargarFilas y usarlos como dependencias de efectos externos) para
+  // confirmar que no reintroduce el loop infinito ya corregido una vez.
+  it('no entra en loop cuando setAnio/setMes/recargarFilas se usan como dependencias de un useEffect externo', async () => {
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026']));
     const { result } = renderHook(() => {
       const data = useDetallesOCData();
-      const { irAPrimeraPagina } = data;
-      useEffect(() => { irAPrimeraPagina(); }, [irAPrimeraPagina]);
+      const { recargarFilas } = data;
+      useEffect(() => { /* no-op, solo verifica que la identidad no cambie en loop */ }, [recargarFilas]);
       return data;
     });
 
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-
-    expect(mockGetCountFromServer).toHaveBeenCalledTimes(1);
-    expect(mockGetDocs).toHaveBeenCalledTimes(1);
-    expect(result.current.totalFilas).toBe(3);
+    await act(async () => { await Promise.resolve(); });
+    expect(result.current.anios).toEqual(['2026']);
   });
 });

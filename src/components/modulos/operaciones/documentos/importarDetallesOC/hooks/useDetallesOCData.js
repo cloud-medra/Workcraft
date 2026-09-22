@@ -1,103 +1,138 @@
-// Lectura paginada de los registros ya importados (documentos_sistema),
-// 50 por página. A diferencia de la tabla de Gestiones de Implante (que
-// pagina EN MEMORIA sobre un listener ya acotado a ~150 filas), esta
-// colección puede tener miles de documentos y sigue creciendo — así que
-// acá se pagina del lado de Firestore con cursores (getDocs + limit +
-// startAfter), sin listener en vivo y sin traer nunca más de 50 filas de
-// una vez.
-import { useCallback, useRef, useState } from 'react';
-import { collectionGroup, query, where, orderBy, limit, startAfter, documentId, getDocs, getCountFromServer } from 'firebase/firestore';
+// Datos de "Importar Detalles OC": año y mes en cascada (dinámicos, leídos
+// de los documentos "marcador" que ya escribe procesarImportacionDetallesOC.js
+// — documentos_sistema/{anio} y documentos_sistema/{anio}/meses/{mes}, ambos
+// {active:true} — no de una lista fija ni de un escaneo de toda la colección),
+// y las filas de UN período puntual. No se consulta "detalles" hasta que año
+// Y mes están seleccionados: esta colección puede tener miles de documentos y
+// sigue creciendo, así que traer todo (o un año completo) de una sola vez
+// sería una lectura innecesariamente grande. La búsqueda por admisión/
+// paciente/OC/factura/guía y la paginación se resuelven client-side sobre
+// `filas` (ver useDetallesOCFiltros.js) — Firestore no soporta "contiene" ni
+// OR entre campos distintos, y el volumen de UN mes es chico una vez acotado.
+import { useCallback, useEffect, useState } from 'react';
+import { collection, collectionGroup, query, where, orderBy, limit, documentId, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
 
-const RANGO_MIN = 'documentos_sistema/0000';
-const RANGO_MAX = 'documentos_sistema/9999';
-export const TAMANO_PAGINA_DETALLES_OC = 50;
-
-// Mismo truco ya usado para implantes_gestiones: el segmento año/mes del
-// path viene con ceros a la izquierda, así que ordenar por documentId()
-// descendente entrega los documentos más recientes primero, sin necesitar
-// ningún índice compuesto nuevo (el orden por __name__ ya viene soportado
-// siempre).
-const construirQueryBase = () => [
-  where(documentId(), '>=', RANGO_MIN),
-  where(documentId(), '<', RANGO_MAX),
-  orderBy(documentId(), 'desc')
-];
+export const COL_BASE = 'documentos_sistema';
+// Tope defensivo por período: un mes normal de esta colección debería estar
+// muy por debajo de esto. Si se alcanza, se avisa en la UI (`huboTope`) en
+// vez de truncar en silencio.
+const LIMITE_FILAS_PERIODO = 3000;
 
 export const useDetallesOCData = () => {
+  const [anio, setAnioState] = useState('');
+  const [mes, setMesState] = useState('');
+
+  const [anios, setAnios] = useState([]);
+  const [cargandoAnios, setCargandoAnios] = useState(true);
+
+  const [meses, setMeses] = useState([]);
+  const [cargandoMeses, setCargandoMeses] = useState(false);
+
   const [filas, setFilas] = useState([]);
-  const [cargando, setCargando] = useState(false);
-  const [totalFilas, setTotalFilas] = useState(null);
-  const [paginaActual, setPaginaActual] = useState(1);
-  const [hayMas, setHayMas] = useState(false);
-  // Stack de cursores: cursores[i] = el último doc de la página i (1-based),
-  // para poder pedir "la página siguiente" a partir de cualquier página ya
-  // visitada sin tener que re-leer desde el principio. Va en un ref (no en
-  // useState) porque nada lo renderiza: si fuera state, cargarPagina tendría
-  // que declararlo como dependencia de su useCallback, y como la propia
-  // cargarPagina lo actualiza, cada llamada recrearía su identidad → recrearía
-  // irAPrimeraPagina → y el useEffect del componente que depende de
-  // irAPrimeraPagina volvería a dispararse sin parar (el loop reportado).
-  const cursoresRef = useRef([]);
+  const [cargandoFilas, setCargandoFilas] = useState(false);
+  const [huboTope, setHuboTope] = useState(false);
+  const [refrescarKey, setRefrescarKey] = useState(0);
 
-  const cargarConteoTotal = useCallback(async () => {
-    try {
-      const q = query(collectionGroup(db, 'detalles'), ...construirQueryBase());
-      const snap = await getCountFromServer(q);
-      setTotalFilas(snap.data().count);
-    } catch (err) {
-      console.error('Error al contar registros de Detalles OC:', err);
-    }
-  }, []);
-
-  const cargarPagina = useCallback(async (numeroPagina) => {
-    setCargando(true);
-    try {
-      const restricciones = [...construirQueryBase()];
-      const cursor = numeroPagina > 1 ? cursoresRef.current[numeroPagina - 2] : null;
-      if (cursor) restricciones.push(startAfter(cursor));
-      restricciones.push(limit(TAMANO_PAGINA_DETALLES_OC));
-
-      const q = query(collectionGroup(db, 'detalles'), ...restricciones);
-      const snap = await getDocs(q);
-
-      setFilas(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
-      setHayMas(snap.docs.length === TAMANO_PAGINA_DETALLES_OC);
-      setPaginaActual(numeroPagina);
-
-      const ultimoDoc = snap.docs[snap.docs.length - 1] || null;
-      if (ultimoDoc) {
-        const nuevo = [...cursoresRef.current];
-        nuevo[numeroPagina - 1] = ultimoDoc;
-        cursoresRef.current = nuevo;
+  // Años disponibles: una sola lectura de los docs "marcador" de nivel año
+  // (unos pocos documentos, no la colección completa) — mismo patrón que
+  // aniosDisponiblesPorMarcador() en Cargas Consolidado
+  // (administracion/cargasConsolidado/hooks/periodoQueryHelpers.js).
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      setCargandoAnios(true);
+      try {
+        const snap = await getDocs(collection(db, COL_BASE));
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{4}$/.test(id)).sort((a, b) => b.localeCompare(a));
+        if (!cancelado) setAnios(lista);
+      } catch (err) {
+        console.error('Error al cargar años de Detalles OC:', err);
+      } finally {
+        if (!cancelado) setCargandoAnios(false);
       }
-    } catch (err) {
-      console.error('Error al cargar registros de Detalles OC:', err);
-    } finally {
-      setCargando(false);
-    }
+    })();
+    return () => { cancelado = true; };
   }, []);
 
-  const irAPrimeraPagina = useCallback(async () => {
-    cursoresRef.current = [];
-    await cargarConteoTotal();
-    await cargarPagina(1);
-  }, [cargarConteoTotal, cargarPagina]);
+  // Meses disponibles del año elegido: mismo criterio (docs marcador de
+  // nivel mes bajo ese año), se recargan cada vez que cambia `anio`.
+  useEffect(() => {
+    if (!anio) { setMeses([]); return; }
+    let cancelado = false;
+    (async () => {
+      setCargandoMeses(true);
+      try {
+        const snap = await getDocs(collection(db, COL_BASE, anio, 'meses'));
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => a.localeCompare(b));
+        if (!cancelado) setMeses(lista);
+      } catch (err) {
+        console.error('Error al cargar meses de Detalles OC:', err);
+      } finally {
+        if (!cancelado) setCargandoMeses(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [anio]);
 
-  const irASiguiente = () => { if (hayMas) cargarPagina(paginaActual + 1); };
-  const irAAnterior = () => { if (paginaActual > 1) cargarPagina(paginaActual - 1); };
+  // Filas del período: solo se dispara con año Y mes seleccionados. El
+  // rango de documentId() acota el collectionGroup "detalles" al prefijo
+  // exacto del mes elegido (documentos_sistema/{anio}/meses/{mes}...), mismo
+  // truco ya usado en el resto de la app para collectionGroup compartidos
+  // (ver useGestionesImplantesData.js). El shape de la query (rango + orderBy
+  // sobre __name__, COLLECTION_GROUP) es idéntico al de antes de agregar el
+  // filtro de período — el índice ya desplegado para "detalles" lo sigue
+  // cubriendo sin necesitar uno nuevo.
+  useEffect(() => {
+    if (!anio || !mes) { setFilas([]); setHuboTope(false); return; }
+    let cancelado = false;
+    (async () => {
+      setCargandoFilas(true);
+      try {
+        const min = `${COL_BASE}/${anio}/meses/${mes}`;
+        const max = `${min}`;
+        const q = query(
+          collectionGroup(db, 'detalles'),
+          where(documentId(), '>=', min),
+          where(documentId(), '<', max),
+          orderBy(documentId(), 'desc'),
+          limit(LIMITE_FILAS_PERIODO)
+        );
+        const snap = await getDocs(q);
+        if (cancelado) return;
+        setFilas(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
+        setHuboTope(snap.docs.length === LIMITE_FILAS_PERIODO);
+      } catch (err) {
+        console.error('Error al cargar Detalles OC del período:', err);
+        if (!cancelado) { setFilas([]); setHuboTope(false); }
+      } finally {
+        if (!cancelado) setCargandoFilas(false);
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [anio, mes, refrescarKey]);
 
-  const totalPaginas = totalFilas != null ? Math.max(1, Math.ceil(totalFilas / TAMANO_PAGINA_DETALLES_OC)) : null;
+  // Cambiar de año resetea el mes elegido (y, en cascada, las filas —
+  // vía el efecto de arriba, que exige año Y mes).
+  const setAnio = useCallback((nuevoAnio) => {
+    setAnioState(nuevoAnio);
+    setMesState('');
+  }, []);
+
+  const setMes = useCallback((nuevoMes) => {
+    setMesState(nuevoMes);
+  }, []);
+
+  // Fuerza releer el período actual (ej. después de importar un Excel que
+  // pudo haber modificado filas del mes que se está viendo).
+  const recargarFilas = useCallback(() => {
+    setRefrescarKey(k => k + 1);
+  }, []);
 
   return {
-    filas,
-    cargando,
-    totalFilas,
-    totalPaginas,
-    paginaActual,
-    hayMas,
-    irAPrimeraPagina,
-    irASiguiente,
-    irAAnterior
+    anio, setAnio, anios, cargandoAnios,
+    mes, setMes, meses, cargandoMeses,
+    filas, cargandoFilas, huboTope,
+    recargarFilas
   };
 };
