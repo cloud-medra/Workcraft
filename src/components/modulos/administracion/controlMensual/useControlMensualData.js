@@ -1,10 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  collection, doc, getDocs, setDoc, query, where, onSnapshot, arrayUnion, serverTimestamp, writeBatch 
+  collection, doc, getDocs, query, where, onSnapshot, arrayUnion, serverTimestamp, writeBatch 
 } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../../../../firebaseConfig';
 import { MODULOS, MESES, COLECCIONES } from './constants';
 import { calcularTotalMesDesdeDocumentos, guardarSnapshotMensual, invalidarSnapshotMensual } from './snapshotMensual';
+
+// Códigos (del SDK cliente) de los HttpsError que lanza a propósito la Cloud
+// Function cerrarPeriodoImputacion; cualquier otro error muestra el genérico.
+const CODIGOS_ERROR_CIERRE = [
+  'functions/unauthenticated',
+  'functions/invalid-argument',
+  'functions/permission-denied',
+  'functions/failed-precondition'
+];
+export const MENSAJE_ERROR_CIERRE_GENERICO = 'No se pudo cerrar el mes. Revisa tu conexión e intenta nuevamente.';
 
 export const useControlMensualData = (anioSeleccionado, userData, showToast, confirmAction) => {
   const [estadosModulos, setEstadosModulos] = useState({});
@@ -121,7 +132,10 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
                   estado: 'CERRADO',
                   fechaCierre: serverTimestamp(),
                   usuarioCierre: usuario,
-                  cierreAutomatico: true
+                  cierreAutomatico: true,
+                  // firestore.rules solo permite este cierre desde el cliente
+                  // si el período indicado queda ABIERTO en este mismo batch.
+                  cerradoPorApertura: docId
                 });
               }
             });
@@ -162,42 +176,15 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     );
   };
 
+  // Cierre de período: los botones solo ABREN el modal de confirmación en
+  // varios pasos (ModalCierreMes); el cierre real lo hace ejecutarCierre,
+  // recién cuando el usuario escribió y confirmó el año/mes. La escritura
+  // de cierres_periodos pasa por la Cloud Function cerrarPeriodoImputacion,
+  // que vuelve a validar el año/mes en el servidor.
+  const [solicitudCierre, setSolicitudCierre] = useState(null);
+
   const handleCerrarMes = (mesId, modId) => {
-    const modObj = MODULOS.find(m => m.id === modId);
-
-    confirmAction(
-      "Cerrar Período de Imputación",
-      `Al cerrar ${mesId.toUpperCase()} ${anioSeleccionado} para el módulo de [${modObj?.nombre}], no se podrán ingresar ni modificar documentos en él. ¿Continuar?`,
-      async () => {
-        setProcesandoAccion(true);
-        try {
-          const usuario = obtenerUsuarioLog();
-          const docId = `${anioSeleccionado}_${mesId}_${modId}`;
-          const docRef = doc(db, COLECCIONES.CIERRES, docId);
-          
-          await setDoc(docRef, {
-            anio: anioSeleccionado,
-            mes: mesId,
-            modulo: modId,
-            estado: 'CERRADO',
-            fechaCierre: serverTimestamp(),
-            usuarioCierre: usuario
-          }, { merge: true });
-
-          // Snapshot único del total del mes cerrado, para no tener que recalcularlo
-          // sumando documentos crudos cada vez que se necesite como "mes anterior".
-          const totalMes = await calcularTotalMesDesdeDocumentos(modId, anioSeleccionado, mesId);
-          await guardarSnapshotMensual(modId, anioSeleccionado, mesId, totalMes, 'cierre');
-
-          showToast(`Mes de ${mesId} cerrado para ${modObj?.nombre}`, 'info');
-        } catch (error) {
-          console.error("Error al cerrar mes:", error);
-          showToast("Error al cerrar el período", "error");
-        } finally {
-          setProcesandoAccion(false);
-        }
-      }
-    );
+    setSolicitudCierre({ mesId, modulos: [modId] });
   };
 
   const handleCerrarTodos = (mesId) => {
@@ -211,46 +198,52 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
       return;
     }
 
-    confirmAction(
-      "Cierre Masivo de Período",
-      `¿Deseas cerrar TODOS los módulos para el mes de ${mesId.toUpperCase()} ${anioSeleccionado}? Quedarán bloqueados para nuevas imputaciones.`,
-      async () => {
-        setProcesandoAccion(true);
-        try {
-          const usuario = obtenerUsuarioLog();
-          const batch = writeBatch(db);
+    setSolicitudCierre({ mesId, modulos: modulosAbiertos.map(m => m.id) });
+  };
 
-          for (const mod of modulosAbiertos) {
-            const docId = `${anioSeleccionado}_${mesId}_${mod.id}`;
-            const docRef = doc(db, COLECCIONES.CIERRES, docId);
+  const cancelarCierre = () => {
+    if (!procesandoAccion) setSolicitudCierre(null);
+  };
 
-            batch.set(docRef, {
-              anio: anioSeleccionado,
-              mes: mesId,
-              modulo: mod.id,
-              estado: 'CERRADO',
-              fechaCierre: serverTimestamp(),
-              usuarioCierre: usuario
-            }, { merge: true });
-          }
+  // Devuelve { ok, mensaje } para que el modal muestre el resultado; nunca
+  // lanza. Si el servidor rechaza el cierre, el período queda sin cambios.
+  const ejecutarCierre = async ({ anioIngresado, mesIngresado }) => {
+    if (!solicitudCierre) return { ok: false, mensaje: 'No hay un período seleccionado para cerrar.' };
+    const { mesId, modulos } = solicitudCierre;
+    const nombreMes = MESES.find(m => m.id === mesId)?.nombre || mesId;
 
-          await batch.commit();
+    setProcesandoAccion(true);
+    try {
+      const cerrarPeriodo = httpsCallable(functions, 'cerrarPeriodoImputacion');
+      await cerrarPeriodo({ anio: anioSeleccionado, mes: mesId, modulos, anioIngresado, mesIngresado });
+    } catch (error) {
+      console.error("Error al cerrar mes:", error);
+      setProcesandoAccion(false);
+      // Solo los HttpsError que lanza cerrarPeriodoImputacion traen un mensaje
+      // pensado para el usuario; red, timeout o errores internos no.
+      const mensaje = CODIGOS_ERROR_CIERRE.includes(error?.code) && error?.message
+        ? error.message
+        : MENSAJE_ERROR_CIERRE_GENERICO;
+      return { ok: false, mensaje };
+    }
 
-          // Snapshot único por módulo cerrado, mismo motivo que en el cierre individual.
-          await Promise.all(modulosAbiertos.map(async (mod) => {
-            const totalMes = await calcularTotalMesDesdeDocumentos(mod.id, anioSeleccionado, mesId);
-            await guardarSnapshotMensual(mod.id, anioSeleccionado, mesId, totalMes, 'cierre');
-          }));
+    // Snapshot único del total del mes cerrado, para no tener que recalcularlo
+    // sumando documentos crudos cada vez que se necesite como "mes anterior".
+    // El período ya quedó cerrado: si esto falla, no se informa el cierre
+    // como fallido — el snapshot se calcula de forma lazy al consultarlo.
+    try {
+      await Promise.all(modulos.map(async (modId) => {
+        const totalMes = await calcularTotalMesDesdeDocumentos(modId, anioSeleccionado, mesId);
+        await guardarSnapshotMensual(modId, anioSeleccionado, mesId, totalMes, 'cierre');
+      }));
+    } catch (error) {
+      console.error("Error al guardar el snapshot del mes cerrado:", error);
+      showToast(`El mes se cerró, pero no se pudo guardar el resumen del mes; se calculará al consultarlo.`, 'warning');
+    } finally {
+      setProcesandoAccion(false);
+    }
 
-          showToast(`Todos los módulos cerrados para el mes de ${mesId}`, 'info');
-        } catch (error) {
-          console.error("Error al cerrar todos los módulos:", error);
-          showToast("Error al realizar el cierre masivo", "error");
-        } finally {
-          setProcesandoAccion(false);
-        }
-      }
-    );
+    return { ok: true, mensaje: `Mes ${nombreMes} ${anioSeleccionado} cerrado correctamente.` };
   };
 
   const ejecutarReapertura = async (modalReapertura, motivoReapertura, onSuccess) => {
@@ -315,6 +308,9 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     handleAbrirMes,
     handleCerrarMes,
     handleCerrarTodos,
+    solicitudCierre,
+    cancelarCierre,
+    ejecutarCierre,
     ejecutarReapertura
   };
 };

@@ -32,7 +32,6 @@ import {
   Hospital,
   History,
   LayoutDashboard,
-  ListTree,
   Percent,
   PackageCheck,
   PackagePlus,
@@ -57,6 +56,7 @@ import {
   ArrowUpDown,
   Sliders,
   SlidersHorizontal,
+  BadgeDollarSign,
   HelpCircle,
   Home,
   FileText
@@ -115,7 +115,7 @@ export const MODULES = {
       { label: 'Calculador', path: '/maestros/calculadorMaestros', icon: <Calculator size={14} /> },
       { label: 'Codigos', path: '/maestros/codigosMaestros', icon: <ScanBarcode size={14} /> },
       { label: 'Pad', path: '/maestros/padMaestros', icon: <SlidersHorizontal size={14} /> },
-      { label: 'Listado', path: '/maestros/listadoMaestros', icon: <ListTree size={14} /> },
+      { label: 'Actualización Precios', path: '/maestros/actualizacionPreciosMaestros', icon: <BadgeDollarSign size={14} /> },
     ]
   },
   consignacion: {

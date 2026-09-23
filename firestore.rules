@@ -114,11 +114,37 @@ service cloud.firestore {
     // implantes, consignación, etc. — según CierreMes.jsx)
     // =================================================================
 
+    // El cierre de un período (estado 'CERRADO') lo hace la Cloud Function
+    // cerrarPeriodoImputacion, que valida en el servidor el año/mes escritos
+    // por el usuario (el Admin SDK no pasa por estas reglas). El cliente solo
+    // puede dejar un período en CERRADO en el cierre automático de la
+    // apertura: en el mismo batch en que abre otro período del mismo módulo,
+    // indicado en `cerradoPorApertura`.
+    function esCierreAutomaticoPorApertura(cierreId) {
+      let despues = request.resource.data;
+      let abierto = getAfter(/databases/$(database)/documents/cierres_periodos/$(despues.cerradoPorApertura));
+      return resource.data.estado in ['ABIERTO', 'REABIERTO'] &&
+        despues.get('cierreAutomatico', false) == true &&
+        despues.cerradoPorApertura is string &&
+        despues.cerradoPorApertura != cierreId &&
+        abierto != null &&
+        abierto.data.estado == 'ABIERTO' &&
+        abierto.data.modulo == resource.data.modulo &&
+        // fechaApertura = serverTimestamp() de esta misma escritura: prueba
+        // que se abrió en este batch y no que ya estuviera abierto antes.
+        abierto.data.get('fechaApertura', null) == request.time;
+    }
+
     match /cierres_periodos/{cierreId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null &&
-        (esAdminODev() || tienePermiso(request.resource.data.modulo));
-      allow update, delete: if request.auth != null &&
+        (esAdminODev() || tienePermiso(request.resource.data.modulo)) &&
+        request.resource.data.get('estado', '') != 'CERRADO';
+      allow update: if request.auth != null &&
+        (esAdminODev() || tienePermiso(resource.data.modulo)) &&
+        request.resource.data.modulo == resource.data.modulo &&
+        (request.resource.data.get('estado', '') != 'CERRADO' || esCierreAutomaticoPorApertura(cierreId));
+      allow delete: if request.auth != null &&
         (esAdminODev() || tienePermiso(resource.data.modulo));
     }
 
@@ -187,6 +213,14 @@ service cloud.firestore {
     match /maestros_codigos/{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+    }
+
+    // Registro de auditoría de cada importación masiva de precios
+    // (Maestros → Actualización Precios). Inmutable una vez creado.
+    match /maestros_codigos_importaciones_precios/{importacionId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+      allow update, delete: if false;
     }
 
     match /maestros_pad/{document=**} {

@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children }) => {
   // 1. Mientras Firebase está verificando la sesión, mostramos el spinner
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+      <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-900">
         <Spinner size="lg" />
       </div>
     );

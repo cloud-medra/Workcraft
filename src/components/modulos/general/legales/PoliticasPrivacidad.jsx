@@ -3,18 +3,18 @@ import React, { useState } from 'react';
 const Section = ({ number, title, children }) => {
   const [open, setOpen] = useState(true);
   return (
-    <section className="border-b border-gray-100 pb-4">
+    <section className="border-b border-gray-100 pb-4 dark:border-gray-700">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between text-left py-1 group"
       >
-        <h2 className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">
+        <h2 className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors dark:text-gray-200 dark:group-hover:text-blue-400">
           {number}. {title}
         </h2>
         <span className="text-gray-400 text-xs ml-2">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-2 pl-3 border-l-2 border-blue-100">
+        <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-2 pl-3 border-l-2 border-blue-100 dark:text-gray-300 dark:border-blue-900">
           {children}
         </div>
       )}
@@ -24,19 +24,19 @@ const Section = ({ number, title, children }) => {
 
 const PoliticasPrivacidad = () => {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto dark:bg-gray-800 dark:border-gray-700">
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-1 h-6 bg-blue-500 rounded-full" />
-          <h1 className="text-xl font-bold text-gray-800">Política de Privacidad</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Política de Privacidad</h1>
         </div>
         <div className="flex items-center gap-4 ml-3 mt-1">
           <p className="text-xs text-gray-400">Cloud – Medra</p>
-          <span className="text-gray-200">|</span>
+          <span className="text-gray-200 dark:text-gray-600">|</span>
           <p className="text-xs text-gray-400">Última actualización: Junio 2026</p>
         </div>
-        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-          <p className="text-xs text-blue-700 leading-relaxed">
+        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100 dark:bg-blue-950/30 dark:border-blue-900">
+          <p className="text-xs text-blue-700 leading-relaxed dark:text-blue-300">
             <strong>Nota importante:</strong> Cloud – Medra es una herramienta interna de gestión administrativa 
             que <strong>no almacena datos sensibles de salud</strong> ni información de identificación completa 
             de pacientes. El sistema opera con datos mínimos y acceso controlado, conforme a la 
@@ -74,7 +74,7 @@ const PoliticasPrivacidad = () => {
             datos clínicos o diagnósticos médicos, domicilio, teléfono ni correo electrónico de pacientes, 
             ni ningún otro dato sensible definido en la Ley N° 19.628.
           </p>
-          <p className="text-gray-500 italic">
+          <p className="text-gray-500 italic dark:text-gray-400">
             El uso de un nombre de pila y dos apellidos sin RUT no permite identificar de forma 
             unívoca a una persona natural, lo que reduce significativamente el riesgo de tratamiento 
             indebido de datos personales.
@@ -163,7 +163,7 @@ const PoliticasPrivacidad = () => {
 
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+      <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between dark:border-gray-700">
         <p className="text-xs text-gray-400">
           Marco legal: Ley N° 19.628 – Protección de la Vida Privada (Chile)
         </p>

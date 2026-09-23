@@ -341,6 +341,29 @@ export const maestrosComponentMaps = {
     },
   },
 
+  '/maestros/actualizacionPreciosMaestros': {
+    label: 'Actualización de Precios por Importación (ActualizacionPreciosMaestros.jsx)',
+    sections: {
+      navegacion: {
+        label: 'Sección: Acceso a la Vista',
+        elements: {
+          ver_actualizacion_precios: { label: 'Permiso: Ver / Acceder a Actualización de Precios' },
+        },
+      },
+      acciones: {
+        label: 'Sección: Formato e Importación',
+        elements: {
+          btn_descargar_formato: { label: 'Acción: Descargar Formato Excel' },
+          btn_importar_archivo: { label: 'Acción: Importar Archivo y Actualizar Precios' },
+        },
+      },
+      historial: {
+        label: 'Sección: Historial de Importaciones',
+        elements: {},
+      },
+    },
+  },
+
   // Orquestador de pestañas de Códigos Maestros. Cada pestaña vive en su
   // propio archivo con su propio PATH_VISTA (formato
   // "/maestros/codigosMaestros/<proceso>") y se declara en `procesos` en
@@ -387,7 +410,4 @@ export const maestrosComponentMaps = {
       },
     },
   },
-
-  // '/maestros/listadoMaestros': vista placeholder "en desarrollo", no usa
-  // hasPermission todavía — sin entrada por ahora.
 };

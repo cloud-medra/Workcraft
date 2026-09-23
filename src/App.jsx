@@ -7,29 +7,32 @@ import TestPage from './pages/TestPage';
 import { ToastProvider } from './context/ToastContext';
 import { ModalProvider } from './context/ModalContext';
 import { UserProvider } from './context/UserContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 function App() {
   return (
     <UserProvider>
-      <ToastProvider>
-        <ModalProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<LoginForm />} />
-              <Route path="/cambiar-password" element={<CambiarPassword />} />
-              <Route path="/test-spinner" element={<TestPage />} />
-              <Route
-                path="/dashboard/*"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </Router>
-        </ModalProvider>
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <ModalProvider>
+            <Router>
+              <Routes>
+                <Route path="/" element={<LoginForm />} />
+                <Route path="/cambiar-password" element={<CambiarPassword />} />
+                <Route path="/test-spinner" element={<TestPage />} />
+                <Route
+                  path="/dashboard/*"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </Router>
+          </ModalProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </UserProvider>
   );
 }

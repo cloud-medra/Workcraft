@@ -4,10 +4,23 @@
 <head>
   <meta charset="UTF-8" />
 
-  <link rel="icon" type="image/svg+xml" href="/src/assets/l-md/favicon-16x16.png" />
+  <link rel="icon" type="image/svg+xml" href="/src/assets/l-Medra/favicon-16x16.png" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Workspace</title>
+  <script>
+    // Aplica el tema guardado antes de que cargue React, para evitar el
+    // parpadeo en claro. Misma clave y lógica que src/context/ThemeContext.jsx.
+    (function () {
+      try {
+        var tema = localStorage.getItem('medra.tema');
+        var oscuro = tema === 'oscuro' ||
+          (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (oscuro) document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = oscuro ? 'dark' : 'light';
+      } catch (e) { /* sin localStorage: queda el tema claro */ }
+    })();
+  </script>
 </head>
 
 <body>

@@ -30,7 +30,8 @@ const ACCION_LABELS = {
   EDICION: 'Edición',
   ACTUALIZACION_REGISTRO: 'Modificación y Precios',
   ELIMINACION: 'Eliminación',
-  ASIGNACION_CODIGO: 'Asignación de Código Definitivo'
+  ASIGNACION_CODIGO: 'Asignación de Código Definitivo',
+  ACTUALIZACION_PRECIO_IMPORTACION: 'Precio por Importación'
 };
 
 const formatearPrecioLog = (valor) =>
@@ -99,7 +100,7 @@ export const LogDrawer = ({
                       ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
                       : log.accion === 'ASIGNACION_CODIGO'
                       ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
-                      : log.accion === 'EDICION' || log.accion === 'ACTUALIZACION_REGISTRO'
+                      : log.accion === 'EDICION' || log.accion === 'ACTUALIZACION_REGISTRO' || log.accion === 'ACTUALIZACION_PRECIO_IMPORTACION'
                       ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                       : 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400'
                   }`}
@@ -191,6 +192,18 @@ export const LogDrawer = ({
                       <li><strong>Observación:</strong> {log.detalles.observacion || 'Vacío'}</li>
                     )}
                   </ul>
+                )}
+
+                {/* Actualización masiva desde Maestros → Actualización Precios */}
+                {log.accion === 'ACTUALIZACION_PRECIO_IMPORTACION' && (
+                  <div className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
+                    <p className="text-gray-700 dark:text-gray-300">
+                      Anterior: <span className="font-semibold">${formatearPrecioLog(log.detalles?.precioNetoAnterior)}</span> → Nuevo: <span className="font-bold text-emerald-600">${formatearPrecioLog(log.detalles?.precioNetoNuevo)}</span>
+                    </p>
+                    <p className="text-gray-500 dark:text-gray-400 mt-0.5">
+                      Archivo: {log.detalles?.archivo || 'N/A'} · Importación: <span className="font-mono">{log.importacionId || 'N/A'}</span>
+                    </p>
+                  </div>
                 )}
 
                 {log.accion === 'ELIMINACION' && (

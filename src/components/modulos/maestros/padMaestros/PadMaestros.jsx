@@ -3,13 +3,13 @@ import {
   collection,
   query,
   getDocs,
+  getCountFromServer,
   doc,
   setDoc,
   deleteDoc,
   addDoc,
   serverTimestamp,
-  orderBy,
-  where
+  orderBy
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
 import { useToast } from '../../../../context/ToastContext';
@@ -33,6 +33,15 @@ import {
 const COL_CATALOGO_MAESTROS = "maestros_codigos"; 
 const COL_PADS = "maestros_pad";
 const PATH_VISTA = "/maestros/padMaestros";
+const MIN_CARACTERES_BUSQUEDA = 2;
+const DEBOUNCE_BUSQUEDA_MS = 300;
+const MAX_RESULTADOS_COMPONENTES = 50;
+
+// Mayúsculas, sin tildes y sin espacios sobrantes: los datos de maestros_codigos
+// vienen de formularios, importaciones CSV y registros antiguos, y no siempre
+// están normalizados (p. ej. clase "INSUMO", " insumos" o vacía).
+const normalizarTexto = (valor) =>
+  String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 
 const PadMaestros = () => {
   const { showToast } = useToast();
@@ -74,6 +83,8 @@ const PadMaestros = () => {
   const [selectedComponentId, setSelectedComponentId] = useState('');
   const [cantidadInput, setCantidadInput] = useState(1);
   const [busquedaComponente, setBusquedaComponente] = useState('');
+  const [terminoComponente, setTerminoComponente] = useState('');
+  const [errorComponentes, setErrorComponentes] = useState(false);
   const [mostrarSugerenciasComponente, setMostrarSugerenciasComponente] = useState(false);
   const [itemsPad, setItemsPad] = useState([]);
 
@@ -85,7 +96,10 @@ const PadMaestros = () => {
 
       const padsPromesas = snap.docs.map(async (docSnap) => {
         const data = docSnap.data();
-        const subSnap = await getDocs(collection(db, COL_PADS, docSnap.id, "items_pad"));
+        // Solo se necesita la cantidad de ítems: un conteo en el servidor evita
+        // descargar la subcolección completa de cada PAD al abrir la pantalla.
+        const conteo = await getCountFromServer(collection(db, COL_PADS, docSnap.id, "items_pad"));
+        const itemsCount = conteo.data().count;
 
         // Normalizamos la referencia buscando en los distintos nombres posibles del documento
         const textoDescripcion = data.referencia || data.descriptorEmpresa || data.descripcion || data.descriptorAuto || 'SIN DESCRIPCIÓN';
@@ -94,8 +108,8 @@ const PadMaestros = () => {
           id: docSnap.id,
           ...data,
           referencia: textoDescripcion, // Asegura que 'referencia' siempre tenga un valor legible
-          itemsCount: subSnap.size,
-          tieneComposicion: subSnap.size > 0
+          itemsCount,
+          tieneComposicion: itemsCount > 0
         };
       });
 
@@ -109,52 +123,45 @@ const PadMaestros = () => {
     }
   };
 
-  // 2. CARGAR INSUMOS / IMPLANTES
-  const cargarComponentes = async () => {
+  // 2. CARGAR CATÁLOGO maestros_codigos (una sola lectura)
+  // Se separa en memoria: clase "PAD" → autocompletado del nuevo registro;
+  // todo lo demás → componentes que se pueden añadir al PAD. Antes se usaba
+  // where("clase", "in", ["INSUMOS", "IMPLANTE", "IMPLANTES"]), que es una
+  // igualdad exacta en Firestore y dejaba fuera, sin ningún error, los códigos
+  // con clase vacía, en minúsculas, con espacios o escrita distinto.
+  const cargarCatalogoMaestros = async () => {
     setCargandoComponentes(true);
+    setErrorComponentes(false);
     try {
-      const q = query(
-        collection(db, COL_CATALOGO_MAESTROS),
-        where("clase", "in", ["INSUMOS", "IMPLANTE", "IMPLANTES"])
-      );
-      const snap = await getDocs(q);
-      const componentes = snap.docs.map(docSnap => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }));
+      const snap = await getDocs(collection(db, COL_CATALOGO_MAESTROS));
+      const codigosPad = [];
+      const componentes = [];
+      snap.docs.forEach(docSnap => {
+        const item = { id: docSnap.id, ...docSnap.data() };
+        if (normalizarTexto(item.clase) === 'PAD') codigosPad.push(item);
+        else componentes.push(item);
+      });
+      setListaCodigosPad(codigosPad);
       setListaInsumosImplantes(componentes);
     } catch (error) {
-      console.error("Error al cargar Insumos/Implantes:", error);
+      console.error("Error al cargar catálogo maestros_codigos:", error);
+      setErrorComponentes(true);
       showToast("Error al obtener catálogo de componentes", "error");
     } finally {
       setCargandoComponentes(false);
     }
   };
 
-  // 2b. CARGAR CÓDIGOS DE CLASE "PAD" DESDE maestros_codigos (para autocompletar el formulario nuevo)
-  const cargarCodigosPad = async () => {
-    try {
-      const q = query(
-        collection(db, COL_CATALOGO_MAESTROS),
-        where("clase", "==", "PAD")
-      );
-      const snap = await getDocs(q);
-      const codigos = snap.docs.map(docSnap => ({
-        id: docSnap.id,
-        ...docSnap.data()
-      }));
-      setListaCodigosPad(codigos);
-    } catch (error) {
-      console.error("Error al cargar códigos PAD desde maestros_codigos:", error);
-      showToast("Error al obtener catálogo de códigos PAD", "error");
-    }
-  };
-
   useEffect(() => {
     cargarPads();
-    cargarComponentes();
-    cargarCodigosPad();
+    cargarCatalogoMaestros();
   }, []);
+
+  // Debounce del buscador de componentes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => setTerminoComponente(busquedaComponente.trim()), DEBOUNCE_BUSQUEDA_MS);
+    return () => clearTimeout(timeoutId);
+  }, [busquedaComponente]);
 
   const handleSelectPadExistente = async (pad) => {
     setModo('VER_EXISTENTES');
@@ -219,17 +226,27 @@ const PadMaestros = () => {
     });
   }, [listaPads, busquedaPad]);
 
+  // Coincidencia parcial por código, referencia o descripción (OR), sin
+  // distinguir mayúsculas ni tildes. Las coincidencias que empiezan por la
+  // referencia o el código van primero.
   const componentesFiltrados = useMemo(() => {
-    const term = busquedaComponente.trim().toLowerCase();
-    if (!term) return listaInsumosImplantes;
-    return listaInsumosImplantes.filter(item => {
-      const cod = (item.codigo || '').toLowerCase();
-      const ref = (item.referencia || '').toLowerCase();
-      const descEmp = (item.descriptorEmpresa || '').toLowerCase();
-      const descAuto = (item.descriptorAuto || '').toLowerCase();
-      return cod.includes(term) || ref.includes(term) || descEmp.includes(term) || descAuto.includes(term);
+    const term = normalizarTexto(terminoComponente);
+    if (term.length < MIN_CARACTERES_BUSQUEDA) return [];
+    const coincidencias = [];
+    listaInsumosImplantes.forEach(item => {
+      const cod = normalizarTexto(item.codigo);
+      const ref = normalizarTexto(item.referencia);
+      const campos = [cod, ref, normalizarTexto(item.descriptorEmpresa), normalizarTexto(item.descriptorAuto), normalizarTexto(item.descripcion)];
+      if (!campos.some(c => c.includes(term))) return;
+      const prioridad = ref.startsWith(term) || cod.startsWith(term) ? 0 : 1;
+      coincidencias.push({ item, prioridad });
     });
-  }, [listaInsumosImplantes, busquedaComponente]);
+    coincidencias.sort((a, b) => a.prioridad - b.prioridad);
+    return coincidencias.map(c => c.item);
+  }, [listaInsumosImplantes, terminoComponente]);
+
+  const terminoCorto = busquedaComponente.trim().length < MIN_CARACTERES_BUSQUEDA;
+  const buscandoComponente = !terminoCorto && (cargandoComponentes || busquedaComponente.trim() !== terminoComponente);
 
   // Sugerencias del autocompletado de "Referencia / Descripción del PAD"
   // Filtra por clase === "PAD" en maestros_codigos; si el input está vacío, muestra el listado completo
@@ -449,7 +466,7 @@ const PadMaestros = () => {
           )}
 
           <button
-            onClick={() => { cargarPads(); cargarComponentes(); cargarCodigosPad(); }}
+            onClick={() => { cargarPads(); cargarCatalogoMaestros(); }}
             className="flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-slate-700 dark:text-gray-200 rounded text-[9.5px] font-semibold transition cursor-pointer border border-slate-200 dark:border-gray-600"
           >
             <RefreshCw size={11} className={(cargandoPads || cargandoComponentes) ? "animate-spin" : ""} />
@@ -484,9 +501,9 @@ const PadMaestros = () => {
 
           <div className="flex-grow overflow-auto divide-y divide-slate-100 dark:divide-gray-700/60">
             {cargandoPads ? (
-              <div className="p-4 flex flex-col items-center justify-center text-slate-400 gap-1.5">
-                <Spinner size="xs" color="#2383C2" />
-                <span>Cargando PADs...</span>
+              <div className="h-full min-h-32 p-4 flex flex-col items-center justify-center text-slate-400 gap-1.5">
+                <Spinner size="sm" color="#2383C2" />
+                <span>Cargando PADs…</span>
               </div>
             ) : padsFiltrados.length === 0 ? (
               <div className="p-4 text-center text-slate-400">
@@ -618,8 +635,12 @@ const PadMaestros = () => {
                   >
                     <option value="RODILLA">Rodilla</option>
                     <option value="CADERA">Cadera</option>
+                    <option value="HOMBRO">Hombro</option>
                     <option value="BARIATRICA">Bariátrica</option>
                     <option value="COLUMNA">Columna</option>
+                    <option value="BRAZO">Brazo</option>
+                    <option value="MANO">Mano</option>
+                    <option value="PIE">Pie</option>
                     <option value="TRAUMATOLOGIA">Traumatología</option>
                     <option value="OTRO">Otro / General</option>
                   </select>
@@ -730,18 +751,35 @@ const PadMaestros = () => {
                     onFocus={() => setMostrarSugerenciasComponente(true)}
                     onBlur={() => setTimeout(() => setMostrarSugerenciasComponente(false), 150)}
                     autoComplete="off"
-                    placeholder="Buscar por código o referencia..."
-                    className="w-full h-6 pl-7 pr-1.5 bg-slate-50 dark:bg-gray-900 border border-slate-300 dark:border-gray-600 rounded text-[9.5px] text-slate-800 dark:text-gray-100 outline-none focus:border-[#2383C2]"
+                    placeholder="Buscar por código, referencia o descripción..."
+                    className="w-full h-6 pl-7 pr-6 bg-slate-50 dark:bg-gray-900 border border-slate-300 dark:border-gray-600 rounded text-[9.5px] text-slate-800 dark:text-gray-100 outline-none focus:border-[#2383C2]"
                   />
+                  {buscandoComponente && (
+                    <span className="absolute right-1.5 top-1">
+                      <Spinner size="xs" color="#2383C2" />
+                    </span>
+                  )}
 
                   {mostrarSugerenciasComponente && (
                     <div className="absolute z-20 top-full left-0 right-0 mt-0.5 max-h-40 overflow-auto bg-white dark:bg-gray-800 border border-slate-300 dark:border-gray-600 rounded shadow-lg">
-                      {componentesFiltrados.length === 0 ? (
+                      {errorComponentes ? (
+                        <div role="alert" className="px-2 py-1.5 text-[9px] text-red-600 dark:text-red-400">
+                          No se pudo cargar el catálogo de componentes. Pulse "Sincronizar" para reintentar.
+                        </div>
+                      ) : terminoCorto ? (
                         <div className="px-2 py-1.5 text-[9px] text-slate-400">
-                          Sin coincidencias en el catálogo
+                          Escriba al menos {MIN_CARACTERES_BUSQUEDA} caracteres para buscar.
+                        </div>
+                      ) : buscandoComponente ? (
+                        <div className="px-2 py-1.5 text-[9px] text-slate-400">
+                          Buscando…
+                        </div>
+                      ) : componentesFiltrados.length === 0 ? (
+                        <div className="px-2 py-1.5 text-[9px] text-slate-400">
+                          No se encontraron componentes para «{terminoComponente}»
                         </div>
                       ) : (
-                        componentesFiltrados.map(comp => (
+                        componentesFiltrados.slice(0, MAX_RESULTADOS_COMPONENTES).map(comp => (
                           <div
                             key={comp.id}
                             onMouseDown={() => {
@@ -756,14 +794,22 @@ const PadMaestros = () => {
                                 {comp.codigo || 'S/C'}
                               </span>
                               <span className="text-[8px] text-slate-400">
-                                {comp.clase || ''} · ${Number(comp.precioNeto || 0).toLocaleString('es-ES')}
+                                {comp.clase || 'SIN CLASE'} · ${Number(comp.precioNeto || 0).toLocaleString('es-ES')}
                               </span>
                             </div>
                             <div className="text-[9px] font-semibold text-slate-800 dark:text-gray-200 leading-tight">
-                              {comp.referencia || comp.descriptorAuto || 'N/A'} / {comp.descriptorEmpresa || 'N/A'}
+                              <span className="text-slate-400 font-normal">Ref:</span> {comp.referencia || 'N/A'}
+                            </div>
+                            <div className="text-[9px] text-slate-600 dark:text-gray-400 leading-tight">
+                              <span className="text-slate-400">Desc:</span> {comp.descriptorEmpresa || comp.descriptorAuto || comp.descripcion || 'N/A'}
                             </div>
                           </div>
                         ))
+                      )}
+                      {!errorComponentes && !terminoCorto && !buscandoComponente && componentesFiltrados.length > MAX_RESULTADOS_COMPONENTES && (
+                        <div className="px-2 py-1 text-[8.5px] text-slate-400 bg-slate-50 dark:bg-gray-900/60">
+                          Mostrando {MAX_RESULTADOS_COMPONENTES} de {componentesFiltrados.length} resultados. Afine la búsqueda para ver más.
+                        </div>
                       )}
                     </div>
                   )}

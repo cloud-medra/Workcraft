@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth, db } from '../firebaseConfig';
+import { auth } from '../firebaseConfig';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useUser } from '../context/UserContext';
+import { useTheme } from '../context/ThemeContext';
+import { obtenerNombreMostrar } from '../utils/nombreMostrar';
 import {
   LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
   Settings, Home, ShieldCheck, Menu, Shield, Moon, Sun
@@ -44,7 +46,7 @@ import RecargosMaestros from '../components/modulos/maestros/recargosMaestros/Re
 import CalculadorMaestros from '../components/modulos/maestros/calculadorMaestros/CalculadorMaestros';
 import CodigosMaestros from '../components/modulos/maestros/codigosMaestros/CodigosMaestros';
 import PadMaestros from '../components/modulos/maestros/padMaestros/PadMaestros';
-import ListadoMaestros from '../components/modulos/maestros/listadoMaestros/ListadoMaestros';
+import ActualizacionPreciosMaestros from '../components/modulos/maestros/actualizacionPreciosMaestros/ActualizacionPreciosMaestros';
 
 
 
@@ -91,6 +93,7 @@ import TerminosServicio from '../components/modulos/general/legales/TerminosServ
 import DatosUsuarios from '../components/modulos/general/settings/datosUsuarios/DatosUsuarios';
 import CambiarPasswordAjustes from '../components/modulos/general/settings/cambiarPassword/CambiarPasswordAjustes';
 import AjusteTema from '../components/modulos/general/settings/ajusteTema/AjusteTema';
+import ConfigPrivacidad from '../components/modulos/general/settings/configPrivacidad/ConfigPrivacidad';
 import ModulosVisibles from '../components/modulos/general/settings/modulosVisibles/ModulosVisibles';
 import OrdenModulos from '../components/modulos/general/settings/ordenModulos/OrdenModulos';
 
@@ -102,7 +105,6 @@ const Dashboard = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeModule, setActiveModule] = useState(null);
   const [activeView, setActiveView] = useState('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isAjustesMode, setIsAjustesMode] = useState(false);
   // Id del usuario cuya creación (wizard de 3 pasos) se quiere retomar desde
   // ListadoUsuario.jsx -> "Continuar creación". Se limpia una vez consumido
@@ -111,36 +113,12 @@ const Dashboard = () => {
 
   const menuRef = useRef(null);
 
-  const [userData, setUserData] = useState({
-    nombreCompleto: 'Usuario',
-    nombreUsuario: '',
-    email: '',
-    rol: '',
-    permisos: {},
-    ordenModulos: [],
-    ordenSubItems: {}
-  });
-
-  const applyDarkMode = (enabled) => {
-    if (enabled) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
-
-  const toggleModoPantalla = async () => {
-    const newDark = !isDarkMode;
-    const nuevoModo = newDark ? 'oscuro' : 'claro';
-    setIsDarkMode(newDark);
-    applyDarkMode(newDark);
-    try {
-      const userRef = doc(db, "usuarios", auth.currentUser.uid);
-      await updateDoc(userRef, { modoPantalla: nuevoModo });
-    } catch (error) {
-      console.error("Error al guardar preferencia:", error);
-    }
-  };
+  // userData viene de UserContext (única copia en la app): así los cambios
+  // hechos desde Ajustes (datos personales, tema, nombre a mostrar) se ven al
+  // instante en el header y los saludos. ProtectedRoute garantiza que exista.
+  const { userData, setUserData } = useUser();
+  const { oscuro, alternarOscuro } = useTheme();
+  const nombreSaludo = obtenerNombreMostrar(userData, { mayusculas: true });
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -151,27 +129,6 @@ const Dashboard = () => {
     if (isMenuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isMenuOpen]);
-
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (auth.currentUser) {
-        try {
-          const docRef = doc(db, "usuarios", auth.currentUser.uid);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            setUserData(data);
-            const esModoOscuro = data.modoPantalla === 'oscuro';
-            setIsDarkMode(esModoOscuro);
-            applyDarkMode(esModoOscuro);
-          }
-        } catch (error) {
-          console.error("Error al cargar datos:", error);
-        }
-      }
-    };
-    fetchUserData();
-  }, []);
 
   const abrirAjustesGenerales = () => {
     setIsAjustesMode(true);
@@ -256,7 +213,7 @@ const Dashboard = () => {
     '/maestros/calculadorMaestros': <CalculadorMaestros />,
     '/maestros/codigosMaestros': <CodigosMaestros />,
     '/maestros/padMaestros': <PadMaestros />,
-    '/maestros/listadoMaestros': <ListadoMaestros />,
+    '/maestros/actualizacionPreciosMaestros': <ActualizacionPreciosMaestros />,
     '/consignacion/ingresarGuiaDespacho': <IngresarGuiaDespacho />,
     '/consignacion/listadoguiasconsignacion': <Listadoguiasconsignacion />,
     '/consignacion/registroConsignacion': <RegistroConsignacion />,
@@ -288,7 +245,8 @@ const Dashboard = () => {
 
     '/settings/datosUsuarios': <DatosUsuarios userData={userData} />,
     '/settings/cambiarPasswordAjustes': <CambiarPasswordAjustes userData={userData} />,
-    '/settings/ajusteTema': <AjusteTema userData={userData} />,
+    '/settings/ajusteTema': <AjusteTema />,
+    '/ajustes/configPrivacidad': <ConfigPrivacidad />,
     '/settings/modulosVisibles': <ModulosVisibles userData={userData} />,
     '/settings/ordenModulos': ( <OrdenModulos userData={userData} onOrderSaved={(cambios) => setUserData(prev => ({ ...prev, ...cambios }))} /> ),
     
@@ -531,7 +489,7 @@ const Dashboard = () => {
 
             <h2 className="text-sm font-bold text-gray-700 dark:text-gray-100 flex items-center gap-2 flex-shrink-0">
               <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              ¡Bienvenido {userData.nombreCompleto?.toUpperCase()}!
+              ¡Bienvenido {nombreSaludo}!
             </h2>
 
             <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600 flex-shrink-0"></div>
@@ -606,15 +564,15 @@ const Dashboard = () => {
                 </button>
 
                 <button
-                  onClick={toggleModoPantalla}
+                  onClick={alternarOscuro}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
-                  {isDarkMode ? (
+                  {oscuro ? (
                     <Sun size={16} className="text-amber-400" />
                   ) : (
                     <Moon size={16} className="text-indigo-500 dark:text-indigo-400" />
                   )}
-                  {isDarkMode ? 'Modo Claro' : 'Modo Oscuro'}
+                  {oscuro ? 'Modo Claro' : 'Modo Oscuro'}
                 </button>
 
                 <button

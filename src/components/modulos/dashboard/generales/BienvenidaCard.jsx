@@ -1,9 +1,8 @@
 import React from 'react';
+import { obtenerNombreMostrar } from '../../../../utils/nombreMostrar';
 
 const BienvenidaCard = ({ userData }) => {
-  const nombreMostrar = userData?.nombreCompleto
-    ? userData.nombreCompleto.toUpperCase()
-    : 'CARGANDO...';
+  const nombreMostrar = obtenerNombreMostrar(userData, { mayusculas: true }) || 'CARGANDO...';
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700/60 rounded-lg p-4">

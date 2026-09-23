@@ -200,6 +200,16 @@ export const normalizarImputadaConsignacion = (doc) => ({
 // referencia), tomando el campo que corresponda según el origen de la fila.
 // "Atributo" si existe con el mismo nombre de campo (`atributo`) en las 3
 // colecciones de origen, así que no hace falta mapear nada ahí.
+//
+// Campos `*Export` (+ area/prevision): lo que va al EXCEL, que NO es lo
+// mismo que lo que se muestra en pantalla. En Implantes/Hemodinamia la
+// tabla nativa muestra `referencia` bajo el título "Descripción", pero su
+// Excel nativo (useSolicitudImplantesData/useSolicitudHemodinamiaData)
+// exporta `descriptorAuto` como DESCRIPCION y `tipoVinculado` (del ítem)
+// como ATRIBUTO. Antes el export del Consolidado reutilizaba `descripcion`
+// (el valor de pantalla = referencia), por eso salía la Referencia en la
+// columna DESCRIPCION. Consignación no tiene esa diferencia: su
+// `descripcion` ya es la real en ambos lados.
 
 const FILA_ITEM_VACIA = { codigo: '-', descripcion: '-', cantidad: '-', precio: 0, lote: '-', vencimiento: '' };
 
@@ -232,6 +242,12 @@ export const normalizarSolicitudImplantes = (bloque) => {
     numGuia: it?.numCotizacion || numCotizacionBloque,
     lote: it ? (it.lote || 'P') : FILA_ITEM_VACIA.lote,
     vencimiento: it ? (it.vencimiento || '') : FILA_ITEM_VACIA.vencimiento,
+    descripcionExport: it ? (it.descriptorAuto || 'P') : '',
+    atributoExport: it ? (it.tipoVinculado || 'P') : '',
+    ventaExport: it ? (it.venta || 0) : '',
+    estadoExport: it ? (it.estadoCarga || 'PENDIENTE') : '',
+    area: bloque.centro || 'PABELLON',
+    prevision: bloque.prevision || 'P',
     esFilaGuia: false,
     _raw: bloque
   }));
@@ -262,6 +278,12 @@ export const normalizarSolicitudConsignacion = (item) => [{
   numGuia: item.numeroGuia || 0,
   lote: item.lote,
   vencimiento: item.vencimiento,
+  descripcionExport: item.descripcion || 'P',
+  atributoExport: item.atributo || 'P',
+  ventaExport: item.ventaUnitaria,
+  estadoExport: item.esFilaGuia ? '-' : 'CARGADO',
+  area: 'PABELLON',
+  prevision: item.esFilaGuia ? '-' : (item.datosOriginales?.prevision || 'P'),
   esFilaGuia: !!item.esFilaGuia,
   _raw: item
 }];
@@ -319,6 +341,12 @@ export const normalizarSolicitudHemodinamia = (doc) => {
     numGuia: it?.numCotizacion || numCotizacionBloque,
     lote: it ? (it.lote || 'P') : FILA_ITEM_VACIA.lote,
     vencimiento: it ? (it.vencimiento || '') : FILA_ITEM_VACIA.vencimiento,
+    descripcionExport: it ? (it.descriptorAuto || 'P') : '',
+    atributoExport: it ? (it.tipoVinculado || 'P') : '',
+    ventaExport: it ? (it.venta || 0) : '',
+    estadoExport: it ? (it.estadoCarga || 'PENDIENTE') : '',
+    area: bloque.centro,
+    prevision: bloque.prevision,
     esFilaGuia: false,
     _raw: bloque
   }));

@@ -8,6 +8,7 @@ import { MODULOS, MESES, GRUPOS } from './constants';
 import PanelAperturaPeriodo from './PanelAperturaPeriodo';
 import { useControlMensualData } from './useControlMensualData';
 import { ModalReapertura, ModalHistorial } from './ModalesControlMensual';
+import ModalCierreMes from './ModalCierreMes';
 
 const ControlMensual = () => {
   const anioActualNum = new Date().getFullYear();
@@ -35,6 +36,9 @@ const ControlMensual = () => {
     handleAbrirMes,
     handleCerrarMes,
     handleCerrarTodos,
+    solicitudCierre,
+    cancelarCierre,
+    ejecutarCierre,
     ejecutarReapertura
   } = useControlMensualData(anioSeleccionado, userData, showToast, confirmAction);
 
@@ -404,6 +408,16 @@ const ControlMensual = () => {
         modalHistorial={modalHistorial}
         setModalHistorial={setModalHistorial}
       />
+
+      {solicitudCierre && (
+        <ModalCierreMes
+          key={`${anioSeleccionado}_${solicitudCierre.mesId}_${solicitudCierre.modulos.join('-')}`}
+          solicitud={solicitudCierre}
+          anio={anioSeleccionado}
+          onCancelar={cancelarCierre}
+          onConfirmar={ejecutarCierre}
+        />
+      )}
 
     </div>
   );

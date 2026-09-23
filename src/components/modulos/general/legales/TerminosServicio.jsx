@@ -3,12 +3,12 @@ import React, { useState } from 'react';
 const Section = ({ number, title, children, highlight }) => {
   const [open, setOpen] = useState(true);
   return (
-    <section className="border-b border-gray-100 pb-4">
+    <section className="border-b border-gray-100 pb-4 dark:border-gray-700">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between text-left py-1 group"
       >
-        <h2 className="text-sm font-bold text-gray-700 group-hover:text-indigo-600 transition-colors">
+        <h2 className="text-sm font-bold text-gray-700 group-hover:text-indigo-600 transition-colors dark:text-gray-200">
           {number}. {title}
           {highlight && (
             <span className="ml-2 text-xs font-normal text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
@@ -19,7 +19,7 @@ const Section = ({ number, title, children, highlight }) => {
         <span className="text-gray-400 text-xs ml-2">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-2 pl-3 border-l-2 border-indigo-100">
+        <div className="mt-2 text-xs text-gray-600 leading-relaxed space-y-2 pl-3 border-l-2 border-indigo-100 dark:text-gray-300">
           {children}
         </div>
       )}
@@ -29,15 +29,15 @@ const Section = ({ number, title, children, highlight }) => {
 
 const TerminosServicio = () => {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
+    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 max-w-4xl mx-auto dark:bg-gray-800 dark:border-gray-700">
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1">
           <div className="w-1 h-6 bg-indigo-500 rounded-full" />
-          <h1 className="text-xl font-bold text-gray-800">Términos del Servicio</h1>
+          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Términos del Servicio</h1>
         </div>
         <div className="flex items-center gap-4 ml-3 mt-1">
           <p className="text-xs text-gray-400">Cloud – Medra</p>
-          <span className="text-gray-200">|</span>
+          <span className="text-gray-200 dark:text-gray-600">|</span>
           <p className="text-xs text-gray-400">Última actualización: Junio 2026</p>
         </div>
         <div className="mt-3 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
@@ -130,7 +130,7 @@ const TerminosServicio = () => {
             y se compromete a no ingresar voluntariamente información adicional que permita 
             la identificación inequívoca de una persona natural.
           </p>
-          <p className="text-gray-500 italic">
+          <p className="text-gray-500 italic dark:text-gray-400">
             El administrador del sistema es el responsable del tratamiento de estos datos 
             conforme a la Política de Privacidad vigente.
           </p>
@@ -220,7 +220,7 @@ const TerminosServicio = () => {
 
       </div>
 
-      <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between">
+      <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between dark:border-gray-700">
         <p className="text-xs text-gray-400">
           Marco legal: Ley N° 19.628 · República de Chile
         </p>

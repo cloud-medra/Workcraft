@@ -94,18 +94,30 @@ const resolverMaestrosCacheados = async (referencias, forzar) => {
   return resultado;
 };
 
+// Consulta de candidatos (ítems con estado 'CARGADO'). Exportada aparte
+// para que Cargas Consolidado pueda escucharla en vivo con onSnapshot
+// (igual que Implantes/Hemodinamia allí), mientras la pantalla nativa
+// sigue usando la lectura puntual de cargarCandidatosSolicitudConsignacion.
+export const consultaCandidatosSolicitudConsignacion = () => query(
+  collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
+  where('estado', '==', ESTADO_ORIGEN),
+  orderBy('fechaRegistro', 'desc')
+);
+
 // Trae TODOS los ítems de Consignación con estado 'CARGADO' (candidatos a
 // solicitar) más, para cada uno con un delivery vinculado a una guía, las
 // filas de desglose de esa guía (productos, sin costo propio — informativas,
 // no tienen documento propio en Firestore y no se marcan como SOLICITADO).
 export const cargarCandidatosSolicitudConsignacion = async (forzarRelecturaGuias = false) => {
-  const q = query(
-    collectionGroup(db, NOMBRE_SUBCOL_DETALLES),
-    where('estado', '==', ESTADO_ORIGEN),
-    orderBy('fechaRegistro', 'desc')
-  );
-  const snapshot = await getDocs(q);
-  const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_registros/'));
+  const snapshot = await getDocs(consultaCandidatosSolicitudConsignacion());
+  return construirCandidatosSolicitudConsignacion(snapshot.docs, forzarRelecturaGuias);
+};
+
+// Arma las filas (ítems + desglose de guía) a partir de los docs que
+// devolvió consultaCandidatosSolicitudConsignacion, vengan de getDocs o de
+// un snapshot en vivo.
+export const construirCandidatosSolicitudConsignacion = async (docs, forzarRelecturaGuias = false) => {
+  const docsConsignacion = docs.filter(d => d.ref.path.startsWith('consignacion_registros/'));
 
   const itemsCargados = docsConsignacion.map((document) => {
     const data = document.data();

@@ -7,7 +7,7 @@ import { listenForSessionRequests, syncSessionFromOtherTabs } from './services/s
 const root = createRoot(document.getElementById('root'))
 
 root.render(
-  <div className="flex h-screen w-full items-center justify-center bg-gray-50">
+  <div className="flex h-screen w-full items-center justify-center bg-gray-50 dark:bg-gray-900">
     <Spinner size="lg" />
   </div>,
 )
