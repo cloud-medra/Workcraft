@@ -14,14 +14,14 @@ import {
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import { db } from '../../../../../firebaseConfig';
-import { FileText, Trash2, Search, Upload, X, Eye } from 'lucide-react';
+import { FileText, Search, Upload, X } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 import DetalleDocModal from '../vizualizador/XmlDetallesDoc';
-import { getEstadoProcesoClase } from '../../shared/estadosProceso';
+import TablaXmlDocumentos from '../../shared/TablaXmlDocumentos';
 
 const XmlDocLaboratorio = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -301,87 +301,16 @@ const XmlDocLaboratorio = () => {
 
       {hasPermission(PATH_VISTA, "tabla_documentos") && (
         <div className="flex-grow overflow-auto">
-          <table className="w-full text-left text-[11px] border-collapse table-fixed">
-            <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
-              <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-8 text-center">#</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Folio</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Emisión</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%]">Ref.</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[30%]">Razón Social</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%] text-center">Estado</th>
-                <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[10%] text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-              {documentosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-6 text-slate-400 dark:text-gray-500">
-                    {!filtroAnio || !filtroMes
-                      ? "Selecciona un año y un mes para visualizar los documentos."
-                      : "No se encontraron documentos registrados para este periodo."}
-                  </td>
-                </tr>
-              ) : (
-                documentosFiltrados.map((docItem, index) => {
-                  const estadoActual = docItem.estado || "Iniciar Ingreso";
-                  return (
-                    <tr
-                      key={docItem.id}
-                      className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
-                    >
-                      <td className="py-1 px-2 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
-                        {index + 1}
-                      </td>
-                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-medium text-slate-800 dark:text-gray-100 truncate">
-                        {docItem.folio}
-                      </td>
-                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                        {docItem.fchEmis}
-                      </td>
-                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                        {docItem.folioRef}
-                      </td>
-                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
-                        {docItem.rznSoc}
-                      </td>
-                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-medium text-right whitespace-nowrap">
-                        ${parseInt(docItem.total || 0, 10).toLocaleString('es-CL')}
-                      </td>
-                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(estadoActual)}`}>
-                          {estadoActual}
-                        </span>
-                      </td>
-                      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
-                        <div className="flex justify-center gap-2">
-                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
-                            <button
-                              onClick={() => setDocumentoSeleccionado({ ...docItem, anio: filtroAnio, mes: filtroMes })}
-                              className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition"
-                              title="Ver Detalle"
-                            >
-                              <Eye size={13} />
-                            </button>
-                          )}
-                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
-                            <button
-                              onClick={() => handleDelete(docItem.id)}
-                              className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition"
-                              title="Eliminar"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <TablaXmlDocumentos
+            documentos={documentosFiltrados}
+            mensajeVacio={!filtroAnio || !filtroMes
+              ? "Selecciona un año y un mes para visualizar los documentos."
+              : "No se encontraron documentos registrados para este periodo."}
+            puedeVer={hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver")}
+            puedeEliminar={hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar")}
+            onVer={(docItem) => setDocumentoSeleccionado({ ...docItem, anio: filtroAnio, mes: filtroMes })}
+            onEliminar={handleDelete}
+          />
         </div>
       )}
 

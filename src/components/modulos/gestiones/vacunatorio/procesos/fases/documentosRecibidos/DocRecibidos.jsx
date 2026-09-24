@@ -9,6 +9,7 @@ import DetalleFacturaModal from '../../../vizualizador/XmlDetallesDoc';
 import EditorDocumentos from './EditorDocumentos';
 import HistorialDocumentos from './HistorialDocumentos'; 
 import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
+import CeldasDatosIngreso from '../../../../shared/CeldasDatosIngreso';
 
 const DocumentosRecibidos = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -215,18 +216,7 @@ const DocumentosRecibidos = () => {
                         {docItem.estado || "Iniciar Ingreso"}
                       </span>
                     </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={docItem.numeroOrden}>
-                      {docItem.numeroOrden || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={docItem.numeroActa || docItem.acta || docItem.numActa}>
-                      {docItem.numeroActa || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 truncate" title={docItem.numeroSalida || docItem.salida || docItem.numSalida}>
-                      {docItem.numeroSalida || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center text-slate-700 dark:text-gray-300 capitalize truncate">
-                      {docItem.mesImputado || docItem.mesImputacion || '-'}
-                    </td>
+                    <CeldasDatosIngreso documento={docItem} />
                     <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                       <div className="flex justify-center gap-1.5">
                         {hasPermission(PATH_VISTA, "tabla_documentos", "btn_log") && (
