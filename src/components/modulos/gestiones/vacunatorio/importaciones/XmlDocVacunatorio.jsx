@@ -21,6 +21,7 @@ import { useUser } from '../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 import DetalleFacturaModal from '../vizualizador/XmlDetallesDoc';
+import EstadoProcesoBadge from '../../shared/EstadoProcesoBadge';
 
 const XmlFacturasVacunatorio = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -346,9 +347,7 @@ const XmlFacturasVacunatorio = () => {
                       ${parseInt(docItem.total || 0, 10).toLocaleString('es-CL')}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-                        {docItem.estado || "Iniciar Ingreso"}
-                      </span>
+                      <EstadoProcesoBadge estado={docItem.estado} fallback="Iniciar Ingreso" />
                     </td>
                     <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
                       <div className="flex justify-center gap-2">

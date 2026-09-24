@@ -1,5 +1,6 @@
 import React from 'react';
 import { History, X } from 'lucide-react';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const HistorialDocumentos = ({
   showLogModal,
@@ -193,7 +194,7 @@ const HistorialDocumentos = ({
 
                   {log.estadoAnterior && log.nuevoEstado && (
                     <div className="font-medium text-slate-700 dark:text-slate-200 pt-1 border-t border-slate-100 dark:border-gray-700">
-                      Estado: <span className="text-amber-600 dark:text-amber-400">{log.estadoAnterior}</span> ➔ <span className="text-emerald-600 dark:text-emerald-400">{log.nuevoEstado}</span>
+                      Estado: <EstadoProcesoBadge estado={log.estadoAnterior} size="xs" /> ➔ <EstadoProcesoBadge estado={log.nuevoEstado} size="xs" />
                     </div>
                   )}
 

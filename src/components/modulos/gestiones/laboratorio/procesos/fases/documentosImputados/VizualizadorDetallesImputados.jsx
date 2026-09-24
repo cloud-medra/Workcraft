@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, FileText, Package, User, Building2, Briefcase } from 'lucide-react';
+import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
 
 const VizualizadorDetallesImputados = ({ documento, onClose }) => {
   if (!documento) return null;
@@ -56,15 +57,6 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
     return soloFecha;
   };
 
-  const getEstadoBadgeClass = (estado) => {
-    switch (estado?.toLowerCase()) {
-      case 'finalizado':
-      case 'completado':
-        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-      default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-    }
-  };
 
   const fechaIniciadaValor = documento.procesoIniciado?.fechaHora || documento.procesoIniciado || documento.fechaHora;
 
@@ -82,7 +74,7 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
                 <h2 className="text-sm font-bold text-slate-800 dark:text-gray-100 uppercase tracking-wide">
                   Documento Folio: {documento.folio || '-'}
                 </h2>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(documento.estado)}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(documento.estado)}`}>
                   {documento.estado || 'Proceso'}
                 </span>
               </div>

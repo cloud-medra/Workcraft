@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     collection,
     doc,
     query,
     orderBy,
-    limit,
-    startAfter,
     documentId,
     where,
     getDocs,
-    writeBatch
+    writeBatch,
+    updateDoc,
+    serverTimestamp
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
-import { db } from '../../../../../firebaseConfig';
+import { db, auth } from '../../../../../firebaseConfig';
 import {
     ClipboardList,
     Search,
@@ -26,14 +26,52 @@ import {
     Activity,
     Stethoscope,
     Building2,
-    ChevronDown,
-    Loader2
+    Loader2,
+    Tag
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
+import PaginacionSimple from '../../../../ui/PaginacionSimple';
+import MultiSelectFiltro from '../../../../ui/MultiSelectFiltro';
+import { ThRedimensionable, ColgroupRedimensionable } from '../../../../ui/ThRedimensionable';
+import { useColumnResize } from '../../../../../hooks/useColumnResize';
+import { useDebouncedValue } from '../../../../../hooks/useDebouncedValue';
+import { incluyeTexto } from '../../../../../utils/normalizarTexto';
 
-const TAMANO_PAGINA = 150;
+// Estado de revisión de cada registro. Se guarda en el mismo documento del
+// registro (campo `revisado`); si no existe se considera "Pendiente", así que
+// los registros ya importados no necesitan migración. Reimportar no lo pisa:
+// la importación omite los IDs que ya existen.
+const REVISADO = {
+    REVISADO: 'Revisado',
+    PENDIENTE: 'Pendiente',
+    NO_APLICA: 'No aplica'
+};
+const OPCIONES_REVISADO = [REVISADO.REVISADO, REVISADO.PENDIENTE, REVISADO.NO_APLICA];
+const CLASE_REVISADO = {
+    [REVISADO.REVISADO]: 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+    [REVISADO.PENDIENTE]: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+    [REVISADO.NO_APLICA]: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600'
+};
+const getRevisado = (r) => (OPCIONES_REVISADO.includes(r.revisado) ? r.revisado : REVISADO.PENDIENTE);
+
+const SIN_ARANCEL = '(Sin arancel)';
+const getArancel = (r) => String(r["Arancel"] ?? '').trim() || SIN_ARANCEL;
+
+const COLUMNAS = [
+    { key: 'fecha', ancho: 90, min: 70 },
+    { key: 'admision', ancho: 90, min: 60 },
+    { key: 'paciente', ancho: 180, min: 80 },
+    { key: 'edad', ancho: 55, min: 40 },
+    { key: 'codArt', ancho: 90, min: 60 },
+    { key: 'descripcion', ancho: 220, min: 90 },
+    { key: 'arancel', ancho: 200, min: 90 },
+    { key: 'prevision', ancho: 150, min: 80 },
+    { key: 'cirujano', ancho: 170, min: 80 },
+    { key: 'cantidad', ancho: 60, min: 45 },
+    { key: 'revisado', ancho: 115, min: 95 },
+];
 
 const ReportesInfo = () => {
     const [reportes, setReportes] = useState([]);
@@ -45,9 +83,13 @@ const ReportesInfo = () => {
     const [filtroMes, setFiltroMes] = useState('');
     const [cargando, setCargando] = useState(false);
     const [cargandoLista, setCargandoLista] = useState(false);
-    const [cargandoMas, setCargandoMas] = useState(false);
-    const [ultimoDoc, setUltimoDoc] = useState(null);
-    const [hayMas, setHayMas] = useState(false);
+    const [filtroRevisado, setFiltroRevisado] = useState('');
+    const [filtroAranceles, setFiltroAranceles] = useState([]);
+    const [pagina, setPagina] = useState(1);
+    const [tamanoPagina, setTamanoPagina] = useState(25);
+
+    const busquedaDebounced = useDebouncedValue(busqueda);
+    const { anchos, handleResize, anchoTotalTabla } = useColumnResize(COLUMNAS);
 
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
@@ -92,31 +134,25 @@ const ReportesInfo = () => {
         cargarMeses();
     }, [filtroAnio]);
 
-    // Antes esto era un onSnapshot SIN limit(): traía y mantenía en vivo TODO
-    // el mes completo de registros (potencialmente miles de filas cargadas
-    // por Excel) apenas se elegía año/mes. Ahora se pagina con getDocs +
-    // limit()/startAfter(), igual que CargasConsignacion.jsx, trayendo solo
-    // TAMANO_PAGINA registros por vez y permitiendo pedir más bajo demanda.
+    // Se trae el mes completo con un getDocs (sin listener en vivo): los
+    // filtros (Revisado, Arancel, búsqueda) y la lista de aranceles deben
+    // considerar TODOS los registros del mes antes de paginar, y la
+    // paginación se hace en memoria.
     const cargarPrimeraPagina = useCallback(async (anioOverride, mesOverride) => {
         const anio = anioOverride ?? filtroAnio;
         const mes = mesOverride ?? filtroMes;
 
         if (!anio || !mes) {
             setReportes([]);
-            setUltimoDoc(null);
-            setHayMas(false);
             return;
         }
 
         setCargandoLista(true);
         try {
             const path = `${COL_BASE}/${anio}/meses/${mes}/registros`;
-            const q = query(collection(db, path), orderBy("Fecha", "desc"), limit(TAMANO_PAGINA));
-            const snap = await getDocs(q);
-
+            const snap = await getDocs(query(collection(db, path), orderBy("Fecha", "desc")));
             setReportes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
-            setHayMas(snap.docs.length === TAMANO_PAGINA);
+            setPagina(1);
         } catch (err) {
             console.error("Error al cargar reportes:", err);
             showToast("Error al cargar los reportes", "error");
@@ -124,30 +160,6 @@ const ReportesInfo = () => {
             setCargandoLista(false);
         }
     }, [filtroAnio, filtroMes, showToast]);
-
-    const cargarMasReportes = async () => {
-        if (!ultimoDoc || cargandoMas || !filtroAnio || !filtroMes) return;
-        setCargandoMas(true);
-        try {
-            const path = `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/registros`;
-            const q = query(
-                collection(db, path),
-                orderBy("Fecha", "desc"),
-                startAfter(ultimoDoc),
-                limit(TAMANO_PAGINA)
-            );
-            const snap = await getDocs(q);
-
-            setReportes(prev => [...prev, ...snap.docs.map(d => ({ id: d.id, ...d.data() }))]);
-            setUltimoDoc(snap.docs[snap.docs.length - 1] || null);
-            setHayMas(snap.docs.length === TAMANO_PAGINA);
-        } catch (err) {
-            console.error("Error al cargar más reportes:", err);
-            showToast("Error al cargar más reportes", "error");
-        } finally {
-            setCargandoMas(false);
-        }
-    };
 
     useEffect(() => {
         cargarPrimeraPagina();
@@ -303,16 +315,63 @@ const ReportesInfo = () => {
         accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
     });
 
-    const reportesFiltrados = reportes.filter(r => {
-        const queryStr = busqueda.toLowerCase();
-        return (
-            String(r["Admisión"] || '').toLowerCase().includes(queryStr) ||
-            String(r["Paciente"] || '').toLowerCase().includes(queryStr) ||
-            String(r["Descripción"] || '').toLowerCase().includes(queryStr) ||
-            String(r["1° Cirujano"] || '').toLowerCase().includes(queryStr) ||
-            String(r["Cod.Artículo"] || '').toLowerCase().includes(queryStr)
-        );
-    });
+    const opcionesArancel = useMemo(
+        () => [...new Set(reportes.map(getArancel))].sort((a, b) => a.localeCompare(b, 'es')),
+        [reportes]
+    );
+
+    const reportesFiltrados = useMemo(() => {
+        const aranceles = new Set(filtroAranceles);
+        return reportes.filter(r => {
+            if (filtroRevisado && getRevisado(r) !== filtroRevisado) return false;
+            if (aranceles.size > 0 && !aranceles.has(getArancel(r))) return false;
+            return (
+                incluyeTexto(r["Admisión"], busquedaDebounced) ||
+                incluyeTexto(r["Paciente"], busquedaDebounced) ||
+                incluyeTexto(r["Descripción"], busquedaDebounced) ||
+                incluyeTexto(r["1° Cirujano"], busquedaDebounced) ||
+                incluyeTexto(r["Cod.Artículo"], busquedaDebounced) ||
+                incluyeTexto(r["Arancel"], busquedaDebounced)
+            );
+        });
+    }, [reportes, filtroRevisado, filtroAranceles, busquedaDebounced]);
+
+    const conteoRevisado = useMemo(() => reportes.reduce((acc, r) => {
+        const estado = getRevisado(r);
+        acc[estado] = (acc[estado] || 0) + 1;
+        return acc;
+    }, {}), [reportes]);
+
+    // Los filtros se aplican antes de paginar; cualquier cambio de filtro
+    // vuelve a la página 1.
+    const totalFilas = reportesFiltrados.length;
+    const totalPaginas = Math.max(1, Math.ceil(totalFilas / tamanoPagina));
+    const paginaActual = Math.min(pagina, totalPaginas);
+    const reportesPagina = reportesFiltrados.slice((paginaActual - 1) * tamanoPagina, paginaActual * tamanoPagina);
+
+    const conResetPagina = (setter) => (valor) => { setter(valor); setPagina(1); };
+
+    const cambiarRevisado = async (registro, nuevoEstado) => {
+        const anterior = registro.revisado;
+        setReportes(prev => prev.map(r => r.id === registro.id ? { ...r, revisado: nuevoEstado } : r));
+        try {
+            await updateDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "registros", registro.id), {
+                revisado: nuevoEstado,
+                revisadoPor: auth.currentUser?.email || '',
+                revisadoFecha: serverTimestamp()
+            });
+        } catch (err) {
+            console.error("Error al guardar estado de revisión:", err);
+            setReportes(prev => prev.map(r => r.id === registro.id ? { ...r, revisado: anterior } : r));
+            showToast("No se pudo guardar el estado de revisión", "error");
+        }
+    };
+
+    const th = (i, label, extra = '') => (
+        <ThRedimensionable col={COLUMNAS[i]} anchos={anchos} onResize={handleResize} className={`px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 ${extra}`}>
+            {label}
+        </ThRedimensionable>
+    );
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden p-0 relative font-sans">
@@ -345,12 +404,12 @@ const ReportesInfo = () => {
 
             {/* Filtros */}
             <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center border-b border-slate-200 dark:border-gray-700">
-                <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]">
+                <select value={filtroAnio} onChange={(e) => conResetPagina(setFiltroAnio)(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]">
                     <option value="">Año</option>
                     {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
 
-                <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none capitalize focus:border-[#2383C2]">
+                <select value={filtroMes} onChange={(e) => conResetPagina(setFiltroMes)(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none capitalize focus:border-[#2383C2]">
                     <option value="">Mes</option>
                     {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
                 </select>
@@ -359,11 +418,29 @@ const ReportesInfo = () => {
                     <Search className="absolute left-2 top-1.5 text-slate-400 dark:text-gray-500" size={12} />
                     <input
                         value={busqueda}
-                        onChange={e => setBusqueda(e.target.value)}
+                        onChange={e => conResetPagina(setBusqueda)(e.target.value)}
                         className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]"
-                        placeholder="Buscar por Admisión, Paciente, Descripción, Cirujano..."
+                        placeholder="Buscar por Admisión, Paciente, Descripción, Cirujano, Arancel..."
                     />
                 </div>
+
+                <select
+                    value={filtroRevisado}
+                    onChange={(e) => conResetPagina(setFiltroRevisado)(e.target.value)}
+                    className={`h-6 border rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2] ${filtroRevisado ? 'border-[#2383C2] text-[#2383C2] bg-blue-50 dark:bg-blue-950/30 font-semibold' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100'}`}
+                >
+                    <option value="">Revisado (Todos)</option>
+                    {OPCIONES_REVISADO.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+
+                <MultiSelectFiltro
+                    opciones={opcionesArancel}
+                    seleccionados={filtroAranceles}
+                    onChange={conResetPagina(setFiltroAranceles)}
+                    etiqueta="Aranceles"
+                    icono={<Tag size={12} className="shrink-0" />}
+                    anchoMenu="w-80"
+                />
             </div>
 
             {/* Tabla Principal */}
@@ -373,87 +450,114 @@ const ReportesInfo = () => {
                 </div>
             ) : (
             <div className="flex-grow overflow-auto">
-                <table className="w-full text-left text-[11px] border-collapse min-w-[1000px]">
+                <table
+                    className="text-left text-[11px] border-collapse"
+                    style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
+                >
+                    <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
                     <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Edad</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Cod.Art.</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Previsión / Isapre</th>
-                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Cirujano</th>
-                            <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">Cant.</th>
+                            {th(0, 'Fecha')}
+                            {th(1, 'Admisión')}
+                            {th(2, 'Paciente')}
+                            {th(3, 'Edad', 'text-center')}
+                            {th(4, 'Cod.Art.')}
+                            {th(5, 'Descripción')}
+                            {th(6, 'Arancel')}
+                            {th(7, 'Previsión / Isapre')}
+                            {th(8, 'Cirujano')}
+                            {th(9, 'Cant.', 'text-center')}
+                            {th(10, 'Revisado', 'text-center')}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                        {reportesFiltrados.length === 0 ? (
+                        {reportesPagina.length === 0 ? (
                             <tr>
-                                <td colSpan={9} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                                    No hay registros disponibles para el período o búsqueda seleccionada.
+                                <td colSpan={COLUMNAS.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                                    No hay registros disponibles para el período o filtros seleccionados.
                                 </td>
                             </tr>
                         ) : (
-                            reportesFiltrados.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-[#2383C2]"
-                                >
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 whitespace-nowrap text-slate-600 dark:text-gray-400">
-                                        {item["Fecha"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-200 font-normal">
-                                        {item["Admisión"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal truncate max-w-[180px]" title={item["Paciente"]}>
-                                        {item["Paciente"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 text-center">
-                                        {item["Edad"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400">
-                                        {item["Cod.Artículo"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate max-w-[220px]" title={item["Descripción"]}>
-                                        {item["Descripción"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate max-w-[150px]" title={`${item["Previsión"] || ''} - ${item["Isapre"] || ''}`}>
-                                        {item["Previsión"]} {item["Isapre"] ? `(${item["Isapre"]})` : ''}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate max-w-[180px]" title={item["1° Cirujano"]}>
-                                        {item["1° Cirujano"]}
-                                    </td>
-                                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 text-center font-normal">
-                                        {item["Cant.Art."]}
-                                    </td>
-                                </tr>
-                            ))
+                            reportesPagina.map((item) => {
+                                const revisado = getRevisado(item);
+                                return (
+                                    <tr
+                                        key={item.id}
+                                        className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-[#2383C2]"
+                                    >
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate text-slate-600 dark:text-gray-400">
+                                            {item["Fecha"]}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-200 font-normal truncate">
+                                            {item["Admisión"]}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal truncate" title={item["Paciente"]}>
+                                            {item["Paciente"]}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 text-center truncate">
+                                            {item["Edad"]}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                                            {item["Cod.Artículo"]}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["Descripción"]}>
+                                            {item["Descripción"]}
+                                        </td>
+                                        <td
+                                            className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate"
+                                            title={[item["Cód.Arancel"], item["Arancel"]].filter(Boolean).join(' — ')}
+                                        >
+                                            {item["Arancel"] || <span className="text-slate-400 dark:text-gray-500">-</span>}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate" title={`${item["Previsión"] || ''} - ${item["Isapre"] || ''}`}>
+                                            {item["Previsión"]} {item["Isapre"] ? `(${item["Isapre"]})` : ''}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["1° Cirujano"]}>
+                                            {item["1° Cirujano"]}
+                                        </td>
+                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 text-center font-normal">
+                                            {item["Cant.Art."]}
+                                        </td>
+                                        <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+                                            <select
+                                                value={revisado}
+                                                onChange={(e) => cambiarRevisado(item, e.target.value)}
+                                                title={item.revisadoPor ? `Última modificación: ${item.revisadoPor}` : undefined}
+                                                className={`w-full h-5 px-1 rounded-full border text-[10px] font-semibold outline-none cursor-pointer focus:ring-1 focus:ring-[#2383C2] ${CLASE_REVISADO[revisado]}`}
+                                            >
+                                                {OPCIONES_REVISADO.map(o => <option key={o} value={o}>{o}</option>)}
+                                            </select>
+                                        </td>
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
-
-                {hayMas && (
-                    <div className="flex justify-center py-2 border-t border-slate-200 dark:border-gray-700 bg-slate-50/40 dark:bg-gray-800/40">
-                        <button
-                            type="button"
-                            onClick={cargarMasReportes}
-                            disabled={cargandoMas}
-                            className="flex items-center gap-1.5 text-[10.5px] font-normal text-[#2383C2] hover:underline disabled:opacity-50"
-                        >
-                            {cargandoMas ? <Loader2 size={12} className="animate-spin" /> : <ChevronDown size={12} />}
-                            Cargar más registros
-                        </button>
-                    </div>
-                )}
             </div>
             )}
+
+            <PaginacionSimple
+                pagina={paginaActual}
+                totalPaginas={totalPaginas}
+                totalFilas={totalFilas}
+                setPagina={setPagina}
+                tamanoPagina={tamanoPagina}
+                setTamanoPagina={setTamanoPagina}
+            />
 
             {/* Totalizador Footer */}
             <div className="bg-slate-100 dark:bg-gray-900 border-t border-slate-200 dark:border-gray-700 p-2 flex items-center justify-between">
                 <div className="text-[10px] text-slate-500 dark:text-gray-400">
-                    Registros cargados en pantalla: <strong className="text-slate-800 dark:text-gray-200 font-normal">{reportesFiltrados.length}</strong>
-                    {hayMas && <span className="text-slate-400 dark:text-gray-500"> (hay más — usa "Cargar más registros")</span>}
+                    Registros del mes: <strong className="text-slate-800 dark:text-gray-200 font-normal">{reportes.length}</strong>
+                    {totalFilas !== reportes.length && <> · Filtrados: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalFilas}</strong></>}
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px]">
+                    {OPCIONES_REVISADO.map(o => (
+                        <span key={o} className={`px-1.5 py-0.5 rounded-full border ${CLASE_REVISADO[o]}`}>
+                            {o}: {conteoRevisado[o] || 0}
+                        </span>
+                    ))}
                 </div>
             </div>
 

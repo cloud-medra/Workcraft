@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
 import { FileText, Trash2, Search, Eye, Settings, History } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 
-import VizualizadorDetallesImputados from './VizualizadorDetallesImputados';
-import EdicionComponent from './EdicionComponent';
+import DetalleDocumentoModal from '../../../vizualizador/XmlDetallesDoc';
+import EditorDocumentos from '../documentosRecibidos/EditorDocumentos';
 import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
-import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
 
-const DocumentosEditor = () => {
+const DocumentosImputados = () => {
   const [documentos, setDocumentos] = useState([]);
   const [aniosDisponibles, setAniosDisponibles] = useState([]);
   const [mesesDisponibles, setMesesDisponibles] = useState([]);
@@ -32,8 +31,8 @@ const DocumentosEditor = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/archivosControlVacunatorio";
-  const COL_BASE = "vacunatorio_documentos";
+  const PATH_VISTA = "/laboratorio/archivosControl";
+  const COL_BASE = "laboratorio_imputadas";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '-';
@@ -47,6 +46,37 @@ const DocumentosEditor = () => {
     return fechaStr;
   };
 
+  const getEstadoBadgeClass = (estado) => {
+    switch (estado?.toLowerCase()) {
+      case 'iniciar ingreso':
+        return 'bg-slate-100 text-slate-800 dark:bg-slate-800/60 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+      case 'proceso iniciado':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800/50';
+      case 'procesar oc':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50';
+      case 'falta vinculación':
+      case 'falta vinculacion':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800/50';
+      case 'diferencia precios':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50';
+      case 'listo para ingreso':
+        return 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800/50';
+      case 'diferencia reportada':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800/50';
+      case 'rechazada':
+      case 'rechazado':
+        return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800/50';
+      case 'solicitud enviada':
+        return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/50';
+      case 'finalizado':
+      case 'completado':
+      case 'aprobado':
+      case 'ingresado':
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700';
+    }
+  };
 
   useEffect(() => {
     const cargarAnios = async () => {
@@ -87,18 +117,6 @@ const DocumentosEditor = () => {
       await deleteDoc(doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", id));
       showToast("Documento eliminado", "info");
     });
-  };
-
-  const handleGuardarEdicion = async (formData) => {
-    try {
-      const { id, ...dataToUpdate } = formData;
-      const ref = doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", formData.id);
-      await updateDoc(ref, dataToUpdate);
-      showToast("Documento actualizado correctamente", "success");
-    } catch (error) {
-      console.error("Error al actualizar documento:", error);
-      showToast("Error al guardar los cambios", "error");
-    }
   };
 
   const abrirHistorialLogs = async (documento) => {
@@ -224,7 +242,7 @@ const DocumentosEditor = () => {
                       ${Math.round(Number(docItem.total) || 0).toLocaleString('es-CL')}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(docItem.estado)}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(docItem.estado)}`}>
                         {docItem.estado || "Iniciar Ingreso"}
                       </span>
                     </td>
@@ -289,19 +307,18 @@ const DocumentosEditor = () => {
       )}
 
       {documentoSeleccionado && (
-        <VizualizadorDetallesImputados
+        <DetalleDocumentoModal
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />
       )}
 
       {documentoParaConfigurar && (
-        <EdicionComponent
+        <EditorDocumentos
           documento={documentoParaConfigurar}
           filtroAnio={filtroAnio}
           filtroMes={filtroMes}
           onClose={() => setDocumentoParaConfigurar(null)}
-          onGuardar={handleGuardarEdicion}
         />
       )}
 
@@ -316,4 +333,4 @@ const DocumentosEditor = () => {
   );
 };
 
-export default DocumentosEditor;
+export default DocumentosImputados;

@@ -21,6 +21,7 @@ import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleVinculacionOC from './DetalleVinculacionOC';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const VinculacionOrden = () => {
     const [documentos, setDocumentos] = useState([]);
@@ -209,23 +210,7 @@ const VinculacionOrden = () => {
             mesStr.includes(busquedaLower);
     });
 
-    const renderBadgeEstadoGeneral = (estado) => {
-        const estilos = {
-            "Procesar OC": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50",
-            "Solicitud Enviada": "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50",
-            "Listo para Ingreso": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200 dark:border-blue-800/50",
-            "Diferencia Reportada": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50",
-            "Rechazada": "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border-red-200 dark:border-red-800/50",
-        };
-
-        const clase = estilos[estado] || "bg-gray-100 text-gray-800 border-gray-200";
-
-        return (
-            <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border ${clase}`}>
-                {estado || 'Sin Estado'}
-            </span>
-        );
-    };
+    const renderBadgeEstadoGeneral = (estado) => <EstadoProcesoBadge estado={estado} fallback="Sin Estado" />;
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">

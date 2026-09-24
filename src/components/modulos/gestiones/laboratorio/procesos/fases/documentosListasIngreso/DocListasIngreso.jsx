@@ -15,6 +15,7 @@ import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleListasIngreso from './DetalleListasIngreso';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const DocListasIngreso = () => {
     const [documentos, setDocumentos] = useState([]);
@@ -140,13 +141,7 @@ const DocListasIngreso = () => {
         return documentosFiltrados.reduce((acc, f) => acc + (Math.round(Number(f.total) || 0)), 0);
     }, [documentosFiltrados]);
 
-    const renderBadgeEstadoGeneral = (estado) => {
-        return (
-            <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold border bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50">
-                {estado || 'Listo para Ingreso'}
-            </span>
-        );
-    };
+    const renderBadgeEstadoGeneral = (estado) => <EstadoProcesoBadge estado={estado} fallback="Listo para Ingreso" />;
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">

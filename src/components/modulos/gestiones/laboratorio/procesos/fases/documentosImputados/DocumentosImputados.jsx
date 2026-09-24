@@ -10,6 +10,7 @@ import VizualizadorDetallesImputados from './VizualizadorDetallesImputados';
 import EditarDocumentoImputado from './EditarDocumentoImputado';
 import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
+import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
 
 const DocumentosImputados = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -49,37 +50,6 @@ const DocumentosImputados = () => {
     return fechaStr;
   };
 
-  const getEstadoBadgeClass = (estado) => {
-    switch (estado?.toLowerCase()) {
-      case 'iniciar ingreso':
-        return 'bg-slate-100 text-slate-800 dark:bg-slate-800/60 dark:text-slate-300 border-slate-200 dark:border-slate-700';
-      case 'proceso iniciado':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800/50';
-      case 'procesar oc':
-        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/50';
-      case 'falta vinculación':
-      case 'falta vinculacion':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800/50';
-      case 'diferencia precios':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800/50';
-      case 'listo para ingreso':
-        return 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-200 dark:border-teal-800/50';
-      case 'diferencia reportada':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800/50';
-      case 'rechazada':
-      case 'rechazado':
-        return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800/50';
-      case 'solicitud enviada':
-        return 'bg-cyan-100 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/50';
-      case 'finalizado':
-      case 'completado':
-      case 'aprobado':
-      case 'ingresado':
-        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/50';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700';
-    }
-  };
 
   useEffect(() => {
     const cargarAnios = async () => {
@@ -243,7 +213,7 @@ const DocumentosImputados = () => {
                       ${Math.round(Number(docItem.total) || 0).toLocaleString('es-CL')}
                     </td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(docItem.estado)}`}>
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(docItem.estado)}`}>
                         {docItem.estado || "Iniciar Ingreso"}
                       </span>
                     </td>

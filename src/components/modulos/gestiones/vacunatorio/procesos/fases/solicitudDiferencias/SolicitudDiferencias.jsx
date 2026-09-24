@@ -16,6 +16,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleSolicitudDif from './DetalleSolicitudDif';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const SolicitudDiferencias = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -265,28 +266,7 @@ const SolicitudDiferencias = () => {
     );
   };
 
-  const renderBadgeEstadoGeneral = (estado) => {
-    const estadoNormalizado = (estado || '').toLowerCase();
-    if (estadoNormalizado.includes('vinculación parcial') || estadoNormalizado.includes('vinculacion parcial')) {
-      return (
-        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border border-sky-300 dark:border-sky-800">
-          {estado}
-        </span>
-      );
-    }
-    if (estadoNormalizado.includes('solicitud enviada')) {
-      return (
-        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">
-          {estado}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-        {estado || 'Diferencia Reportada'}
-      </span>
-    );
-  };
+  const renderBadgeEstadoGeneral = (estado) => <EstadoProcesoBadge estado={estado} fallback="Diferencia Reportada" />;
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">

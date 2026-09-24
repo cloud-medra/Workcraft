@@ -11,11 +11,14 @@ import {
   Activity,
   CalendarDays,
   FileCheck,
+  AlertTriangle,
   X
 } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import { doc, updateDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../../../firebaseConfig';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
+import { usePeriodoAbierto, obtenerPeriodoAbierto, formatearPeriodo } from '../../../../shared/periodoImputacion';
 
 const DetalleListasIngreso = ({
   documento,
@@ -25,6 +28,7 @@ const DetalleListasIngreso = ({
   onActualizarDocumento
 }) => {
   const { showToast } = useToast();
+  const { periodo: periodoAbierto, cargando: cargandoPeriodo } = usePeriodoAbierto('vacunatorio');
 
   const obtenerFechaActual = () => {
     const hoy = new Date();
@@ -85,13 +89,21 @@ const DetalleListasIngreso = ({
       return;
     }
 
-    if (!documento.mesImputado || !documento.anioImputado) {
-      showToast('Este documento no tiene un período de imputación asignado. Debe iniciar el proceso primero.', 'error');
-      return;
-    }
-
     try {
       setGuardando(true);
+
+      // El período se asigna recién aquí. Se relee en el momento (no se usa
+      // el del listener) para no imputar en un período que se cerró mientras
+      // el panel estaba abierto.
+      const periodo = await obtenerPeriodoAbierto('vacunatorio');
+      if (!periodo) {
+        showToast('No hay un período de imputación abierto para Vacunatorio. No se puede finalizar.', 'error');
+        return;
+      }
+      if (periodoAbierto && (periodo.mes !== periodoAbierto.mes || periodo.anio !== periodoAbierto.anio)) {
+        showToast(`El período abierto cambió a ${formatearPeriodo(periodo)}. Revisa y vuelve a finalizar.`, 'warning');
+        return;
+      }
 
       const datosActa = {
         numeroOrden,
@@ -99,7 +111,9 @@ const DetalleListasIngreso = ({
         numeroSalida,
         fechaActa,
         fechaSalida,
-        estado: 'Finalizado' 
+        estado: 'Finalizado',
+        mesImputado: periodo.mes,
+        anioImputado: periodo.anio
       };
 
       const refDocumento = doc(
@@ -111,15 +125,15 @@ const DetalleListasIngreso = ({
 
       const refImputada = doc(
         db, 'vacunatorio_imputadas',
-        documento.anioImputado, 'meses', documento.mesImputado, 'documentos', documento.id
+        periodo.anio, 'meses', periodo.mes, 'documentos', documento.id
       );
 
-      const refAnio = doc(db, 'vacunatorio_imputadas', documento.anioImputado);
-      const refMes = doc(db, 'vacunatorio_imputadas', documento.anioImputado, 'meses', documento.mesImputado);
+      const refAnio = doc(db, 'vacunatorio_imputadas', periodo.anio);
+      const refMes = doc(db, 'vacunatorio_imputadas', periodo.anio, 'meses', periodo.mes);
 
       await Promise.all([
-        setDoc(refAnio, { anio: documento.anioImputado, activo: true }, { merge: true }),
-        setDoc(refMes, { mes: documento.mesImputado, anio: documento.anioImputado, activo: true }, { merge: true }),
+        setDoc(refAnio, { anio: periodo.anio, activo: true }, { merge: true }),
+        setDoc(refMes, { mes: periodo.mes, anio: periodo.anio, activo: true }, { merge: true }),
       ]);
 
       await setDoc(refImputada, {
@@ -141,7 +155,7 @@ const DetalleListasIngreso = ({
         const logsRef = collection(refDocumento, "logs");
         await addDoc(logsRef, {
           accion: "ACTA INGRESADA",
-          detalle: `Proceso finalizado e imputado a ${documento.mesImputado} ${documento.anioImputado}. Folio ${documento.folio || documento.id}. Orden: ${numeroOrden || 'N/A'} Acta: ${numeroActa || 'N/A'} Salida: ${numeroSalida || 'N/A'}`,
+          detalle: `Proceso finalizado e imputado a ${periodo.mes} ${periodo.anio}. Folio ${documento.folio || documento.id}. Orden: ${numeroOrden || 'N/A'} Acta: ${numeroActa || 'N/A'} Salida: ${numeroSalida || 'N/A'}`,
           resumen: { numeroOrden: numeroOrden || '-', numeroActa: numeroActa || '-', numeroSalida: numeroSalida || '-', fechaActa: fechaActa || '-', fechaSalida: fechaSalida || '-' },
           fechaHora: new Date().toLocaleString('es-CL'),
           timestamp: serverTimestamp(),
@@ -151,7 +165,7 @@ const DetalleListasIngreso = ({
         console.error("Error al escribir log de recepción:", logError);
       }
 
-      showToast('Proceso finalizado e imputado correctamente', 'success');
+      showToast(`Proceso finalizado e imputado en el período actual: ${formatearPeriodo(periodo)}`, 'success');
 
       if (onActualizarDocumento) {
         onActualizarDocumento({ ...documento, ...datosActa });
@@ -241,9 +255,7 @@ const DetalleListasIngreso = ({
             {renderBadgeEstadoGeneral ? (
               renderBadgeEstadoGeneral(documento.estado)
             ) : (
-              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300">
-                {documento.estado || 'Registrado'}
-              </span>
+              <EstadoProcesoBadge estado={documento.estado} fallback="Registrado" />
             )}
           </div>
         </div>
@@ -420,6 +432,21 @@ const DetalleListasIngreso = ({
               </div>
             </div>
 
+            {cargandoPeriodo ? null : periodoAbierto ? (
+              <div className="p-2.5 rounded border border-blue-200 dark:border-blue-800/50 bg-blue-50/60 dark:bg-blue-950/30 text-[11px] text-slate-700 dark:text-gray-200 flex items-start gap-2">
+                <CalendarDays size={14} className="shrink-0 mt-0.5 text-[#2383C2]" />
+                <p>
+                  Al finalizar, el documento quedará imputado en el período actual:{' '}
+                  <strong className="text-[#2383C2] dark:text-[#369BCE]">{formatearPeriodo(periodoAbierto)}</strong>.
+                </p>
+              </div>
+            ) : (
+              <div className="p-2.5 rounded border border-rose-200 dark:border-rose-800/50 bg-rose-50 dark:bg-rose-950/30 text-[11px] text-rose-700 dark:text-rose-300 flex items-start gap-2">
+                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                <p>No hay un período de imputación abierto para Vacunatorio. No se puede finalizar hasta que se abra uno.</p>
+              </div>
+            )}
+
             <div className="pt-3 border-t border-slate-200 dark:border-gray-700 flex justify-end gap-2">
               <button
                 type="button"
@@ -432,8 +459,8 @@ const DetalleListasIngreso = ({
               <button
                 type="button"
                 onClick={handleFinalizarActa}
-                disabled={guardando}
-                className="px-3 py-1.5 rounded bg-[#2383C2] hover:bg-[#1b6b9f] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+                disabled={guardando || cargandoPeriodo || !periodoAbierto}
+                className="px-3 py-1.5 rounded bg-[#2383C2] hover:bg-[#1b6b9f] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {guardando ? 'Guardando...' : 'Finalizar'}
               </button>

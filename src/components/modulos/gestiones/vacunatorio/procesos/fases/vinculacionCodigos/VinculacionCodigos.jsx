@@ -11,6 +11,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleDocumento from './DetalleDocu';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const VinculacionCodigos = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -265,34 +266,7 @@ const VinculacionCodigos = () => {
     f.folioRef?.includes(busqueda)
   );
 
-  const renderBadgeEstadoGeneral = (estado) => {
-    switch (estado) {
-      case 'Procesar OC':
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50">
-            Procesar OC
-          </span>
-        );
-      case 'Falta Vinculación':
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50">
-            Falta Vinculación
-          </span>
-        );
-      case 'Diferencia Precios':
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-            Diferencia Precios
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50">
-            {estado || 'Proceso Iniciado'}
-          </span>
-        );
-    }
-  };
+  const renderBadgeEstadoGeneral = (estado) => <EstadoProcesoBadge estado={estado} fallback="Proceso Iniciado" />;
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">

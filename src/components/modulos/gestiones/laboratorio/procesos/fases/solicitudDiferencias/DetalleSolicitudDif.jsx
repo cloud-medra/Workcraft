@@ -15,6 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const DetalleSolicitudDif = ({
   documento,
@@ -182,9 +183,7 @@ const DetalleSolicitudDif = ({
             {renderBadgeEstadoGeneral ? (
               renderBadgeEstadoGeneral(documento.estado)
             ) : (
-              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
-                {documento.estado || 'Diferencia Reportada'}
-              </span>
+              <EstadoProcesoBadge estado={documento.estado} fallback="Diferencia Reportada" />
             )}
           </div>
         </div>

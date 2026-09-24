@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, FileText, Package, User, Building2, Briefcase, Save } from 'lucide-react';
+import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
 
 const EditarDocumentoImputado = ({ documento, onClose, onGuardar }) => {
   if (!documento) return null;
@@ -52,15 +53,6 @@ const EditarDocumentoImputado = ({ documento, onClose, onGuardar }) => {
     onClose();
   };
 
-  const getEstadoBadgeClass = (estado) => {
-    switch (estado?.toLowerCase()) {
-      case 'finalizado':
-      case 'completado':
-        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800';
-      default:
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800';
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in font-sans">
@@ -76,7 +68,7 @@ const EditarDocumentoImputado = ({ documento, onClose, onGuardar }) => {
                 <h2 className="text-sm font-bold text-slate-800 dark:text-gray-100 uppercase tracking-wide">
                   Editando Documento Folio: {formData.folio || '-'}
                 </h2>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoBadgeClass(formData.estado)}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(formData.estado)}`}>
                   {formData.estado || 'Proceso'}
                 </span>
               </div>

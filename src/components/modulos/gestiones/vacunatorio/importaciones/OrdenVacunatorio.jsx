@@ -15,7 +15,6 @@ import {
     Search, 
     Upload, 
     X, 
-    Eye, 
     ArrowLeft, 
     FileSpreadsheet,
     Calendar,
@@ -27,6 +26,10 @@ import {
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
+import { incluyeTexto } from '../../../../../utils/normalizarTexto';
+import { useFacturacionOrden } from '../../shared/useFacturacionOrden';
+import TablaOrdenes from '../../shared/TablaOrdenes';
+import DetalleOrdenTabla from '../../shared/DetalleOrdenTabla';
 
 const OrdenVacunatorio = () => {
     const [ordenes, setOrdenes] = useState([]);
@@ -45,6 +48,7 @@ const OrdenVacunatorio = () => {
 
     const PATH_VISTA = "/vacunatorio/ordenVacunatorio";
     const COL_BASE = "vacunatorio_ordenes";
+    const { porCodigo: facturacion, error: errorFacturacion } = useFacturacionOrden(ordenSeleccionada?.id, "vacunatorio_documentos");
 
     const getMesNombre = (index) => ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][index];
 
@@ -166,13 +170,11 @@ const OrdenVacunatorio = () => {
         accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
     });
 
-    const totalDetalle = detalle.reduce((acc, item) => {
-        const cant = parseFloat(item["Cant."]) || 0;
-        const pu = parseFloat(item["P.Unitario"]) || 0;
-        return acc + (cant * pu);
-    }, 0);
-
-    const totalUnidades = detalle.reduce((acc, item) => acc + (parseFloat(item["Cant."]) || 0), 0);
+    const ordenesFiltradas = ordenes.filter(o =>
+        incluyeTexto(o["Nro.Orden"], busqueda) ||
+        incluyeTexto(o["Proveedor"], busqueda) ||
+        incluyeTexto(o["Rut proveedor"], busqueda)
+    );
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden p-0 relative font-sans">
@@ -290,109 +292,16 @@ const OrdenVacunatorio = () => {
                 </div>
             )}
 
-            <div className="flex-grow overflow-auto">
+            <div className={`flex-grow min-h-0 ${ordenSeleccionada ? 'flex flex-col' : 'overflow-auto'}`}>
                 {!ordenSeleccionada ? (
-                    <table className="w-full text-left text-[11px] border-collapse table-fixed">
-                        <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
-                            <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%]">Nro.Orden</th>
-                                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">F.Orden</th>
-                                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[16%]">Rut Proveedor</th>
-                                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[38%]">Proveedor</th>
-                                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[6%] text-center">Items</th>
-                                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[14%] text-right">Total</th>
-                                <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[6%] text-center">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
-                            {ordenes.filter(o =>
-                                o["Nro.Orden"]?.includes(busqueda) ||
-                                o["Proveedor"]?.toLowerCase().includes(busqueda.toLowerCase()) ||
-                                o["Rut proveedor"]?.toLowerCase().includes(busqueda.toLowerCase())
-                            ).map((o) => (
-                                <tr 
-                                    key={o.id} 
-                                    onDoubleClick={() => setOrdenSeleccionada(o)} 
-                                    className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 cursor-pointer group border-l-2 border-l-transparent hover:border-l-[#2383C2]"
-                                >
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-700 dark:text-gray-200 truncate">{o["Nro.Orden"]}</td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">{o["F.Orden"]}</td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">{o["Rut proveedor"]}</td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={o["Proveedor"]}>{o["Proveedor"]}</td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 text-center font-normal">{o.totalItems}</td>
-                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">${o.totalOrden?.toLocaleString('es-CL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
-                                        <button onClick={() => setOrdenSeleccionada(o)} className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700">
-                                            <Eye size={13} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <TablaOrdenes ordenes={ordenesFiltradas} onSeleccionar={setOrdenSeleccionada} />
                 ) : (
-                    <div className="flex flex-col h-full justify-between">
-                        <table className="w-full text-left text-[11px] border-collapse table-fixed">
-                            <thead className="bg-slate-100/90 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
-                                <tr className="text-slate-500 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider border-b border-slate-200 dark:border-gray-700">
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[15%]">Código</th>
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[50%]">Descripción del Artículo</th>
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[10%] text-center">Cant.</th>
-                                    <th className="px-3 py-1.5 border-r border-slate-200 dark:border-gray-700/80 w-[12%] text-right">Precio Unit.</th>
-                                    <th className="px-3 py-1.5 w-[13%] text-right">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/40 bg-white dark:bg-gray-800">
-                                {detalle.map((item, i) => {
-                                    const cantidad = parseFloat(item["Cant."]) || 0;
-                                    const precioUnidad = parseFloat(item["P.Unitario"]) || 0;
-                                    const totalLinea = cantidad * precioUnidad;
-
-                                    return (
-                                        <tr 
-                                            key={i} 
-                                            className="hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition-all duration-150 group border-l-2 border-l-transparent hover:border-l-[#2383C2]"
-                                        >
-                                            <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-[10px] text-slate-600 dark:text-gray-300">
-                                                <span className="font-normal text-slate-700 dark:text-gray-200">
-                                                    {item["Cod.Artículo"] || "N/A"}
-                                                </span>
-                                            </td>
-
-                                            <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-800 dark:text-gray-200 font-normal truncate" title={item["Artículo"]}>
-                                                {item["Artículo"] || "Sin Descripción"}
-                                            </td>
-
-                                            <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-700 dark:text-gray-300 text-center font-normal">
-                                                {cantidad}
-                                            </td>
-
-                                            <td className="px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-slate-600 dark:text-gray-300 text-right whitespace-nowrap text-[10px]">
-                                                ${precioUnidad.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
-                                            </td>
-
-                                            <td className="px-3 py-1 text-slate-900 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                                                ${totalLinea.toLocaleString('es-CL', { minimumFractionDigits: 0 })}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-
-                        <div className="bg-slate-100 dark:bg-gray-900 border-t border-slate-200 dark:border-gray-700 p-2.5 flex items-center justify-between sticky bottom-0">
-                            <div className="flex items-center gap-4 text-[10px] text-slate-500 dark:text-gray-400">
-                                <span>Líneas: <strong className="text-slate-800 dark:text-gray-200 font-normal">{detalle.length}</strong></span>
-                                <span>Unidades totales: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalUnidades}</strong></span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-normal text-slate-500 dark:text-gray-400 uppercase tracking-wider">Total Orden:</span>
-                                <span className="text-[13px] font-normal text-[#2383C2] dark:text-[#369BCE] px-2 py-0.5 rounded bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700">
-                                    ${(ordenSeleccionada.totalOrden || totalDetalle).toLocaleString('es-CL', { minimumFractionDigits: 0 })}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                    <DetalleOrdenTabla
+                        detalle={detalle}
+                        facturacion={facturacion}
+                        errorFacturacion={errorFacturacion}
+                        totalOrden={ordenSeleccionada.totalOrden}
+                    />
                 )}
             </div>
 

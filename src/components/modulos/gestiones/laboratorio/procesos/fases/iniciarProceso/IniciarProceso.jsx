@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../../../firebaseConfig';
-import { FileText, Search, PlayCircle, CheckSquare, Square, X, Play, AlertTriangle } from 'lucide-react';
+import { FileText, Search, PlayCircle, CheckSquare, Square, X, Play } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const IniciarProceso = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -20,8 +21,6 @@ const IniciarProceso = () => {
   const [showModalIniciar, setShowModalIniciar] = useState(false);
   const [procesando, setProcesando] = useState(false);
 
-  const MODULO_ID = 'laboratorio';
-  const [periodoAbierto, setPeriodoAbierto] = useState({ mes: '', anio: '', estado: '', cargando: true });
 
   const { showToast } = useToast();
 
@@ -32,7 +31,6 @@ const IniciarProceso = () => {
 
   const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
   const COL_BASE = "laboratorio_documentos";
-  const COL_CIERRES = "cierres_periodos";
 
   const formatearFechaEmision = (fechaStr) => {
     if (!fechaStr) return '';
@@ -45,41 +43,6 @@ const IniciarProceso = () => {
     }
     return fechaStr;
   };
-
-  const formatearPeriodo = (mes, anio) => {
-    if (!mes || !anio) return 'No especificado';
-    const mesNom = mes.charAt(0).toUpperCase() + mes.slice(1);
-    return `${mesNom} ${anio}`;
-  };
-
-  useEffect(() => {
-    const q = query(
-      collection(db, COL_CIERRES),
-      where("modulo", "==", MODULO_ID),
-      where("estado", "in", ["ABIERTO", "REABIERTO"])
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
-        setPeriodoAbierto({ mes: '', anio: '', estado: '', cargando: false });
-        return;
-      }
-
-      const data = snapshot.docs[0].data();
-      setPeriodoAbierto({
-        mes: data.mes || '',
-        anio: data.anio || '',
-        estado: data.estado || '',
-        cargando: false
-      });
-    }, (error) => {
-      console.error("Error al obtener el período abierto:", error);
-      showToast("Error al verificar el período de imputación abierto", "error");
-      setPeriodoAbierto({ mes: '', anio: '', estado: '', cargando: false });
-    });
-
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     const cargarAnios = async () => {
@@ -157,24 +120,14 @@ const IniciarProceso = () => {
     }
   };
 
-  const hayPeriodoActivo = !!(periodoAbierto.mes && periodoAbierto.anio);
-
   const handleAbrirModalIniciar = () => {
     if (seleccionadas.length === 0) return;
 
-    if (!hayPeriodoActivo) {
-      showToast("No hay ningún período de imputación abierto para Laboratorio actualmente", "error");
-      return;
-    }
 
     setShowModalIniciar(true);
   };
 
   const handleConfirmarInicioProceso = async () => {
-    if (!hayPeriodoActivo) {
-      showToast("No hay ningún período de imputación abierto para Laboratorio actualmente", "error");
-      return;
-    }
 
     setProcesando(true);
     try {
@@ -194,16 +147,10 @@ const IniciarProceso = () => {
 
         await updateDoc(docRef, {
           estado: "Proceso Iniciado",
-          mesImputado: periodoAbierto.mes,
-          anioImputado: periodoAbierto.anio,
           procesoIniciado: {
             fechaHora: fechaHoraString,
             timestamp: serverTimestamp(),
-            usuario: usuarioInfo,
-            periodoImputado: {
-              mes: periodoAbierto.mes,
-              anio: periodoAbierto.anio
-            }
+            usuario: usuarioInfo
           }
         });
 
@@ -211,7 +158,7 @@ const IniciarProceso = () => {
           const logsRef = collection(docRef, "logs");
           await addDoc(logsRef, {
             accion: "INICIO_PROCESO",
-            detalle: `El proceso ha iniciado para el folio ${docu.folio || docu.id}, imputado en ${formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}`,
+            detalle: `El proceso ha iniciado para el folio ${docu.folio || docu.id}`,
             estadoAnterior: docu.estado || "Iniciar Ingreso",
             nuevoEstado: "Proceso Iniciado",
             fechaHora: fechaHoraString,
@@ -231,7 +178,7 @@ const IniciarProceso = () => {
       setShowModalIniciar(false);
 
       showToast(
-        `${seleccionadas.length} documento(s) pasaron a 'Proceso Iniciado' con imputación en ${formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}`,
+        `${seleccionadas.length} documento(s) pasaron a 'Proceso Iniciado'`,
         "success"
       );
     } catch (error) {
@@ -249,8 +196,6 @@ const IniciarProceso = () => {
   );
 
   const todasSeleccionadas = documentosFiltrados.length > 0 && seleccionadas.length === documentosFiltrados.length;
-
-  const esPeriodoDiferente = !!filtroAnio && !!periodoAbierto.anio && filtroAnio !== periodoAbierto.anio;
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-xs overflow-hidden p-0 relative font-sans">
@@ -292,25 +237,18 @@ const IniciarProceso = () => {
           )}
         </div>
 
-        {hayPeriodoActivo || seleccionadas.length === 0 ? (
-          <button
-            onClick={handleAbrirModalIniciar}
-            disabled={seleccionadas.length === 0}
-            className={`h-6 px-2.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors ${
-              seleccionadas.length > 0
-                ? 'bg-[#2383C2] text-white hover:bg-blue-600 shadow-xs cursor-pointer'
-                : 'bg-slate-200 dark:bg-gray-700 text-slate-400 dark:text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            <PlayCircle size={13} />
-            <span>Iniciar Proceso ({seleccionadas.length})</span>
-          </button>
-        ) : (
-          <span className="h-6 px-2.5 flex items-center gap-1.5 text-[10px] font-semibold text-rose-600 dark:text-rose-400 animate-fade-in">
-            <AlertTriangle size={12} />
-            No hay período de imputación abierto para Laboratorio
-          </span>
-        )}
+        <button
+          onClick={handleAbrirModalIniciar}
+          disabled={seleccionadas.length === 0}
+          className={`h-6 px-2.5 rounded text-[11px] font-medium flex items-center gap-1 transition-colors ${
+            seleccionadas.length > 0
+              ? 'bg-[#2383C2] text-white hover:bg-blue-600 shadow-xs cursor-pointer'
+              : 'bg-slate-200 dark:bg-gray-700 text-slate-400 dark:text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <PlayCircle size={13} />
+          <span>Iniciar Proceso ({seleccionadas.length})</span>
+        </button>
       </div>
 
       {hasPermission(PATH_VISTA, "tabla_documentos") && (
@@ -392,9 +330,7 @@ const IniciarProceso = () => {
                           ${parseInt(docu.total || 0).toLocaleString('es-CL')}
                         </td>
                         <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50">
-                            {docu.estado}
-                          </span>
+                          <EstadoProcesoBadge estado={docu.estado} />
                         </td>
                       </tr>
                     );
@@ -433,23 +369,6 @@ const IniciarProceso = () => {
                 ¿Desea iniciar el proceso para <span className="font-bold text-[#2383C2]">{seleccionadas.length} documento(s)</span> seleccionado(s)?
               </p>
 
-              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-800/50 space-y-1">
-                <p className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-semibold">
-                  Mes / Período de Imputación Abierto:
-                </p>
-                <p className="text-[13px] font-bold text-slate-800 dark:text-gray-100 capitalize">
-                  {formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}
-                </p>
-              </div>
-
-              {esPeriodoDiferente && (
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/40 rounded border border-amber-200 dark:border-amber-800/50 flex items-start gap-2 text-amber-800 dark:text-amber-300">
-                  <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                  <p className="text-[10px]">
-                    <strong>Atención:</strong> Estás visualizando documentos del año <strong>{filtroAnio}</strong>, pero la imputación quedará registrada en el período abierto actual (<strong>{formatearPeriodo(periodoAbierto.mes, periodoAbierto.anio)}</strong>).
-                  </p>
-                </div>
-              )}
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-gray-700">

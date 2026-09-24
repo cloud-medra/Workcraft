@@ -4,14 +4,34 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 // tablas cuya consulta a Firestore ya viene acotada (por año/mes, por un
 // límite, etc.), de modo que el volumen a paginar es chico y no vale la
 // pena armar cursores de Firestore para cambiar de página.
-const PaginacionSimple = ({ pagina, totalPaginas, totalFilas, setPagina }) => {
+//
+// Si se pasan `tamanoPagina` + `setTamanoPagina` se muestra además un selector
+// de filas por página (opcional: las pantallas existentes no cambian).
+const PaginacionSimple = ({
+  pagina, totalPaginas, totalFilas, setPagina,
+  tamanoPagina, setTamanoPagina, opcionesTamano = [10, 25, 50, 100]
+}) => {
   if (totalFilas === 0) return null;
 
   return (
     <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-t border-slate-200 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/30 text-[10px]">
-      <span className="text-slate-500 dark:text-gray-400">
-        {totalFilas} registro{totalFilas === 1 ? '' : 's'} · página {pagina} de {totalPaginas}
-      </span>
+      <div className="flex items-center gap-3">
+        <span className="text-slate-500 dark:text-gray-400">
+          {totalFilas} registro{totalFilas === 1 ? '' : 's'} · página {pagina} de {totalPaginas}
+        </span>
+        {setTamanoPagina && (
+          <label className="flex items-center gap-1 text-slate-500 dark:text-gray-400">
+            Filas por página:
+            <select
+              value={tamanoPagina}
+              onChange={e => { setTamanoPagina(Number(e.target.value)); setPagina(1); }}
+              className="h-6 border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 rounded px-1 outline-none focus:border-[#2383C2]"
+            >
+              {opcionesTamano.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
       <div className="flex items-center gap-1">
         <button
           type="button"

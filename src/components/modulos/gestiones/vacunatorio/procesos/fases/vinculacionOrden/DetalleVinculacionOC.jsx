@@ -12,6 +12,7 @@ import {
     CalendarDays
 } from 'lucide-react';
 import DrawerSeleccionOC from './DrawerSeleccionOC';
+import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const DetalleVinculacionOC = ({
     documento,
@@ -278,7 +279,7 @@ const DetalleVinculacionOC = ({
                         <Activity size={11} className="text-[#2383C2]" /> Estado
                     </span>
                     <div className="mt-0.5">
-                        {renderBadgeEstadoGeneral ? renderBadgeEstadoGeneral(documento.estado) : (documento.estado || '-')}
+                        {renderBadgeEstadoGeneral ? renderBadgeEstadoGeneral(documento.estado) : <EstadoProcesoBadge estado={documento.estado} fallback="-" />}
                     </div>
                 </div>
 
