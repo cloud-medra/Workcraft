@@ -25,6 +25,7 @@
 // apuntando a una cuenta de servicio). Con FIRESTORE_EMULATOR_HOST definido
 // corre contra el emulador.
 
+/* global require, process, __dirname */
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { initializeApp } = require('firebase-admin/app');
