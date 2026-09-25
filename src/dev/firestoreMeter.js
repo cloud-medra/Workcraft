@@ -13,7 +13,8 @@
 //
 // Uso:
 //   - Panel flotante abajo a la derecha (se puede minimizar).
-//   - Consola: __FS_METER__.report()  |  __FS_METER__.reset()
+//   - Consola: __FS_METER__.report()  |  __FS_METER__.reset()  |  await __FS_METER__.tamanos()
+//     await __FS_METER__.compararTotales(2026)  (count/sum del servidor vs. cliente)
 //   - Desactivar: VITE_FIRESTORE_METER=off en .env.local y reiniciar `npm run dev`.
 //
 // Estimación de facturación (aproximada, igual que la documentación de Firestore):
@@ -301,6 +302,46 @@ const api = {
       )))
     ]);
     console.table(filas);
+    return filas;
+  },
+  // Verificación previa al cambio de ControlMensual a getAggregateFromServer:
+  // compara, por módulo y mes, count()/sum('total') del servidor contra el
+  // conteo/suma en el cliente con Number(total) (lo que hace hoy la
+  // pantalla), y cuenta los documentos cuyo `total` no es numérico (sum()
+  // los ignora). Lee todas las imputadas del año (≈ tamaño de la colección).
+  // Uso: await __FS_METER__.compararTotales(2026)
+  async compararTotales(anio = new Date().getFullYear(), modulos = ['laboratorio', 'implantes', 'consignacion', 'vacunatorio', 'hemodinamia']) {
+    const { db } = await import('../firebaseConfig.js');
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const filas = [];
+    for (const modulo of modulos) {
+      for (const mes of meses) {
+        const ref = fs.collection(db, `${modulo}_imputadas`, String(anio), 'meses', mes, 'documentos');
+        const snap = await fs.getDocs(ref);
+        if (snap.empty) continue;
+        let sumaCliente = 0;
+        let noNumericos = 0;
+        let comoString = 0;
+        snap.docs.forEach((d) => {
+          const t = d.data().total;
+          sumaCliente += Number(t || 0);
+          if (typeof t !== 'number') noNumericos += 1;
+          if (typeof t === 'string') comoString += 1;
+        });
+        const agg = (await fs.getAggregateFromServer(ref, { cantidad: fs.count(), suma: fs.sum('total') })).data();
+        filas.push({
+          modulo, mes,
+          cantidadCliente: snap.size, cantidadServidor: agg.cantidad,
+          sumaCliente, sumaServidor: agg.suma,
+          diferencia: sumaCliente - agg.suma,
+          totalNoNumerico: noNumericos, totalComoString: comoString,
+          coincide: snap.size === agg.cantidad && Math.abs(sumaCliente - agg.suma) < 0.5
+        });
+      }
+    }
+    console.table(filas);
+    const conString = filas.reduce((a, f) => a + f.totalComoString, 0);
+    console.log(`[compararTotales ${anio}] ${filas.filter((f) => !f.coincide).length} mes(es) con diferencias · ${conString} documento(s) con total como string`);
     return filas;
   },
   export() {
