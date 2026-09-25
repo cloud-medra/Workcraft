@@ -18,6 +18,7 @@ import EmpresaSelect from '../EmpresaSelect';
 import CentroSelect from '../../../../../../ui/CentroSelect';
 import { verificarPeriodosBloque } from '../Cargastab/verificacionPeriodoBloque';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
+import { soloDigitos, nombreEnMayusculas, limpiarInputConservandoCursor } from '../../utils/camposPaciente';
 
 // Mismo permiso que el candado de Cargas: desbloquear un bloque imputado es
 // una sola acción para todo el bloque, no por pestaña.
@@ -169,8 +170,12 @@ export const InformacionTab = forwardRef(({
               <input
                 type="text"
                 name="gestionId"
+                inputMode="numeric"
                 value={formData.gestionId}
-                onChange={handleGeneralChange}
+                // Solo dígitos (también al pegar); se guarda como string.
+                onChange={(e) => handleGeneralChange({
+                  target: { name: 'gestionId', value: limpiarInputConservandoCursor(e.target, soloDigitos) }
+                })}
                 className="h-6.5 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none"
               />
             </div>
@@ -181,7 +186,11 @@ export const InformacionTab = forwardRef(({
                 type="text"
                 name="nombre"
                 value={formData.nombre}
-                onChange={handleGeneralChange}
+                // MAYÚSCULAS al escribir o pegar, sin mover el cursor. El
+                // trim se hace al guardar (GestionesImplantesDetalleView).
+                onChange={(e) => handleGeneralChange({
+                  target: { name: 'nombre', value: limpiarInputConservandoCursor(e.target, nombreEnMayusculas) }
+                })}
                 placeholder="Nombre del paciente"
                 className="h-6.5 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none"
               />

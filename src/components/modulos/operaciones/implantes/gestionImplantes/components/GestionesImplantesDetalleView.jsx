@@ -13,6 +13,7 @@ import { verificarPeriodosBloque } from './Cargastab/verificacionPeriodoBloque';
 import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
+import { nombreParaGuardar } from '../utils/camposPaciente';
 
 const MODULO_ACTUAL = 'implantes';
 
@@ -426,6 +427,10 @@ const GestionesImplantesDetalleView = forwardRef(({
       setActiveTab('informacion');
       return;
     }
+
+    // Nombre en MAYÚSCULAS y sin espacios sobrantes (también en registros
+    // antiguos guardados en minúsculas, que se corrigen al guardarlos).
+    formDataParaGuardar = { ...formDataParaGuardar, nombre: nombreParaGuardar(formDataParaGuardar.nombre) };
 
     const payload = {
       admisionId: formDataParaGuardar.gestionId,
