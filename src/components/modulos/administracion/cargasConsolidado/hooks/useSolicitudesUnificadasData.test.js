@@ -49,7 +49,11 @@ const snapDoc = (path) => ({
 // Resuelve cada consulta que arma el hook según sus restricciones.
 const resolverConsulta = (q) => {
   if (q.ref.path === 'cierres_periodos') {
-    return { empty: false, docs: [{ id: 'p', data: () => ({ anio: 2026, mes: 'septiembre', estado: 'ABIERTO' }) }] };
+    // Listener compartido de periodosStore: períodos abiertos de todos los módulos.
+    const docs = ['implantes', 'consignacion', 'hemodinamia'].map(modulo => ({
+      id: `p_${modulo}`, data: () => ({ anio: 2026, mes: 'septiembre', estado: 'ABIERTO', modulo })
+    }));
+    return { empty: false, docs };
   }
   const desde = q.constraints.find(c => c.op === '>=')?.valor;
   if (desde) {

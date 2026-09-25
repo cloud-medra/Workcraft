@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  collection,
   collectionGroup,
   doc,
   getDoc,
@@ -12,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '../../../../../firebaseConfig';
+import { usePeriodoAbiertoStore } from '../../../../../hooks/usePeriodoAbiertoStore';
 import { onSnapshotVisible } from '../../../../../hooks/useVisibleSnapshot';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
@@ -95,25 +95,11 @@ const descartarYaSolicitados = async (filasSeleccionadas) => {
   return { vigentes, descartadas };
 };
 
-// Escucha el período activo de un módulo — mismo query que
-// GestionesImplantesDetalleView.jsx / usePeriodoAbiertoModulo.
+// Período activo de un módulo desde el listener compartido de
+// cierres_periodos (src/stores/periodosStore.js).
 const usePeriodoActivo = (modulo) => {
-  const [periodo, setPeriodo] = useState(null);
-  useEffect(() => {
-    const q = query(
-      collection(db, 'cierres_periodos'),
-      where('modulo', '==', modulo),
-      where('estado', 'in', ['ABIERTO', 'REABIERTO'])
-    );
-    const unsub = onSnapshotVisible(q, (snap) => {
-      if (snap.empty) { setPeriodo(null); return; }
-      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      docs.sort((a, b) => (b.fechaApertura?.toMillis?.() || 0) - (a.fechaApertura?.toMillis?.() || 0));
-      setPeriodo({ anio: docs[0].anio, mes: docs[0].mes });
-    }, (err) => console.error(`Error al escuchar período de ${modulo}:`, err));
-    return () => unsub();
-  }, [modulo]);
-  return periodo;
+  const { periodo } = usePeriodoAbiertoStore(modulo);
+  return useMemo(() => (periodo ? { anio: periodo.anio, mes: periodo.mes } : null), [periodo]);
 };
 
 export const useSolicitudesUnificadasData = () => {

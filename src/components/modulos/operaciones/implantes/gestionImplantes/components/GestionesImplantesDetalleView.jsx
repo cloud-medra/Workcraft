@@ -1,11 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert } from 'lucide-react';
 
-import { db } from '../../../../../../firebaseConfig';
+import { usePeriodoAbiertoStore } from '../../../../../../hooks/usePeriodoAbiertoStore';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { useToast } from '../../../../../../context/ToastContext';
-import { COLECCIONES, MESES } from '../../../../administracion/controlMensual/constants';
+import { MESES } from '../../../../administracion/controlMensual/constants';
 import { InformacionTab } from './Informaciontab/Informaciontab';
 import { DetallesTab } from './Detallestab/Detallestab';
 import { CargasTab } from './Cargastab/Cargastab';
@@ -48,39 +47,14 @@ const GestionesImplantesDetalleView = forwardRef(({
     [hasAccesoProceso]
   );
 
-  const [periodoActivo, setPeriodoActivo] = useState(null);
-  const [cargandoPeriodo, setCargandoPeriodo] = useState(true);
-
-  // Único listener de "cierres_periodos" para esta vista: se pasa hacia
-  // abajo como prop (periodoAbierto/cargandoPeriodo) a CargasTab, que antes
-  // montaba su propio usePeriodoAbiertoModulo('implantes') con esta misma
-  // query, duplicando el listener mientras la pestaña "Cargas" estaba activa.
-  useEffect(() => {
-    const q = query(
-      collection(db, COLECCIONES.CIERRES),
-      where('modulo', '==', MODULO_ACTUAL),
-      where('estado', 'in', ['ABIERTO', 'REABIERTO'])
-    );
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        if (snap.empty) {
-          setPeriodoActivo(null);
-        } else {
-          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          docs.sort((a, b) => (b.fechaApertura?.toMillis?.() || 0) - (a.fechaApertura?.toMillis?.() || 0));
-          const activo = docs[0];
-          setPeriodoActivo({ anio: activo.anio, mes: activo.mes });
-        }
-        setCargandoPeriodo(false);
-      },
-      (error) => {
-        console.error('Error al escuchar el período activo de Implantes:', error);
-        setCargandoPeriodo(false);
-      }
-    );
-    return () => unsub();
-  }, []);
+  // Período activo del módulo desde el listener compartido de
+  // cierres_periodos (src/stores/periodosStore.js); se pasa hacia abajo como
+  // prop (periodoAbierto/cargandoPeriodo) a CargasTab.
+  const { periodo: periodoDoc, cargando: cargandoPeriodo } = usePeriodoAbiertoStore(MODULO_ACTUAL);
+  const periodoActivo = useMemo(
+    () => (periodoDoc ? { anio: periodoDoc.anio, mes: periodoDoc.mes } : null),
+    [periodoDoc]
+  );
 
   const nombrePeriodoActivo = useMemo(() => {
     if (!periodoActivo) return '';
