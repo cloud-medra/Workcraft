@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -46,7 +45,18 @@ const COLUMNAS = [
 ];
 
 const TabPendientes = () => {
-  const [registros, setRegistros] = useState([]);
+  // Pendientes = códigos sin `codigo`, filtrados en memoria desde el
+  // catalogosStore (el mismo listener compartido de maestros_codigos que usan
+  // Vista General y los autocompletados). Antes esta pestaña abría su propio
+  // listener sobre toda la colección (~3.000 lecturas por entrada). Sigue en
+  // tiempo real: el store se actualiza con cada cambio.
+  const { datos: codigosCatalogo } = useCatalogo('codigos');
+  const registros = useMemo(
+    () => codigosCatalogo
+      .filter(item => !item.codigo || String(item.codigo).trim() === '')
+      .sort(ordenarPor('fechaRegistro', 'desc')),
+    [codigosCatalogo]
+  );
   // Empresas desde el catalogosStore (lectura única por sesión, compartida).
   // Sin las que no tienen nombre, igual que el orderBy('nombre') original.
   const { datos: empresasCatalogo } = useCatalogo('empresas');
@@ -110,17 +120,6 @@ const TabPendientes = () => {
     if (num === '') return '';
     return new Intl.NumberFormat('es-ES').format(num);
   };
-
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const datos = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(item => !item.codigo || item.codigo.trim() === '');
-      setRegistros(datos);
-    });
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     const parts = [formData.referencia, formData.descriptorEmpresa].filter(Boolean);
