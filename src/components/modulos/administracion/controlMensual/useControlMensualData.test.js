@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { renderHook, act, cleanup } from '@testing-library/react';
 import { useControlMensualData, MENSAJE_ERROR_CIERRE_GENERICO } from './useControlMensualData';
 
 const mockCerrarPeriodo = vi.fn();
@@ -8,6 +8,10 @@ const mockHttpsCallable = vi.fn(() => mockCerrarPeriodo);
 let estadosCierres = [];
 
 vi.mock('../../../../firebaseConfig', () => ({ db: {}, functions: { _tipo: 'functions' } }));
+vi.mock('../../../../hooks/useVisibleSnapshot', async () => {
+  const fs = await import('firebase/firestore');
+  return { onSnapshotVisible: (...a) => fs.onSnapshot(...a) };
+});
 vi.mock('firebase/functions', () => ({ httpsCallable: (...args) => mockHttpsCallable(...args) }));
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
@@ -16,17 +20,31 @@ vi.mock('firebase/firestore', () => ({
   query: vi.fn(() => ({})),
   where: vi.fn(),
   onSnapshot: vi.fn((_q, cb) => { cb({ docs: estadosCierres.map(d => ({ id: d.id, data: () => d })) }); return () => {}; }),
+  getAggregateFromServer: vi.fn(async (ref) => ({ data: () => ({ cantidad: 3, montoTotal: 300, _ref: ref }) })),
+  count: vi.fn(),
+  sum: vi.fn(),
   arrayUnion: vi.fn(),
   serverTimestamp: vi.fn(),
   writeBatch: vi.fn()
 }));
 
 const mockGuardarSnapshot = vi.fn();
+const mockObtenerCelda = vi.fn(async (_anio, _mod, _mes, estado) => (
+  estado === 'CERRADO' ? { cantidad: 10, montoTotal: 1000 } : { cantidad: 3, montoTotal: 300 }
+));
+vi.mock('./resumenImputacionesStore', () => ({
+  ESTADOS_ABIERTOS: ['ABIERTO', 'REABIERTO'],
+  obtenerCelda: (...a) => mockObtenerCelda(...a),
+  invalidarResumenAnio: vi.fn()
+}));
 vi.mock('./snapshotMensual', () => ({
   calcularTotalMesDesdeDocumentos: vi.fn(async () => 1000),
   guardarSnapshotMensual: (...args) => mockGuardarSnapshot(...args),
   invalidarSnapshotMensual: vi.fn()
 }));
+
+// El listener de cierres es compartido por año: desmontar entre tests.
+afterEach(cleanup);
 
 const showToast = vi.fn();
 const confirmAction = vi.fn();
@@ -137,5 +155,34 @@ describe('useControlMensualData — cierre de mes', () => {
     act(() => { result.current.handleCerrarMes('septiembre', 'implantes'); });
     act(() => { result.current.cancelarCierre(); });
     expect(result.current.solicitudCierre).toBeNull();
+  });
+});
+
+
+describe('useControlMensualData — resumen de imputaciones', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    estadosCierres = [
+      { id: '2026_septiembre_implantes', anio: '2026', mes: 'septiembre', modulo: 'implantes', estado: 'ABIERTO' },
+      { id: '2026_agosto_implantes', anio: '2026', mes: 'agosto', modulo: 'implantes', estado: 'CERRADO' }
+    ];
+  });
+
+  it('Control Mensual pide solo los meses con estado (cerrados y abiertos), nunca los no abiertos', async () => {
+    const { result } = renderHook(() => useControlMensualData('2026', { uid: 'u1' }, showToast, confirmAction));
+    await act(async () => {});
+    expect(mockObtenerCelda).toHaveBeenCalledTimes(2);
+    expect(result.current.resumenImputaciones.implantes).toEqual({
+      septiembre: { cantidad: 3, montoTotal: 300 },
+      agosto: { cantidad: 10, montoTotal: 1000 }
+    });
+    expect(result.current.cargandoResumen).toBe(false);
+  });
+
+  it('Resumen Periodo Abierto (soloPeriodoAbierto) pide solo el mes abierto', async () => {
+    renderHook(() => useControlMensualData('2026', { uid: 'u1' }, showToast, confirmAction, { soloPeriodoAbierto: true }));
+    await act(async () => {});
+    expect(mockObtenerCelda).toHaveBeenCalledTimes(1);
+    expect(mockObtenerCelda).toHaveBeenCalledWith('2026', 'implantes', 'septiembre', 'ABIERTO');
   });
 });

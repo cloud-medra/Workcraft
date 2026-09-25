@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
-  collection, doc, getDocs, query, where, onSnapshot, arrayUnion, serverTimestamp, writeBatch 
+  collection, doc, getDocs, query, where, arrayUnion, serverTimestamp, writeBatch 
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../../../../firebaseConfig';
 import { MODULOS, MESES, COLECCIONES } from './constants';
 import { calcularTotalMesDesdeDocumentos, guardarSnapshotMensual, invalidarSnapshotMensual } from './snapshotMensual';
+import { useCierresAnio } from './cierresAnioStore';
+import { obtenerCelda, invalidarResumenAnio, ESTADOS_ABIERTOS } from './resumenImputacionesStore';
 
 // Códigos (del SDK cliente) de los HttpsError que lanza a propósito la Cloud
 // Function cerrarPeriodoImputacion; cualquier otro error muestra el genérico.
@@ -17,10 +19,13 @@ const CODIGOS_ERROR_CIERRE = [
 ];
 export const MENSAJE_ERROR_CIERRE_GENERICO = 'No se pudo cerrar el mes. Revisa tu conexión e intenta nuevamente.';
 
-export const useControlMensualData = (anioSeleccionado, userData, showToast, confirmAction) => {
-  const [estadosModulos, setEstadosModulos] = useState({});
-  const [resumenImputaciones, setResumenImputaciones] = useState({});
-  const [cargando, setCargando] = useState(true);
+// `soloPeriodoAbierto`: Resumen Periodo Abierto solo necesita los totales de
+// los meses abiertos; Control Mensual pide todos los meses con actividad.
+export const useControlMensualData = (anioSeleccionado, userData, showToast, confirmAction, { soloPeriodoAbierto = false } = {}) => {
+  // Estados del año: listener compartido por año (cierresAnioStore).
+  const { estadosModulos, cargando } = useCierresAnio(anioSeleccionado);
+  const [resumen, setResumen] = useState({ clave: null, datos: {} });
+  const [versionResumen, setVersionResumen] = useState(0);
   const [procesandoAccion, setProcesandoAccion] = useState(false);
 
   const obtenerUsuarioLog = useCallback(() => ({
@@ -29,76 +34,56 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     email: userData?.email || ''
   }), [userData]);
 
-  useEffect(() => {
-    setCargando(true);
-    const q = query(
-      collection(db, COLECCIONES.CIERRES),
-      where("anio", "==", anioSeleccionado)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const datosEstructurados = {};
-      snapshot.docs.forEach(d => {
-        const data = d.data();
-        if (data.modulo && data.mes) {
-          if (!datosEstructurados[data.modulo]) datosEstructurados[data.modulo] = {};
-          datosEstructurados[data.modulo][data.mes] = { id: d.id, ...data };
-        }
-      });
-      setEstadosModulos(datosEstructurados);
-      setCargando(false);
-    }, (error) => {
-      console.error("Error al escuchar cierres de períodos:", error);
-      showToast("Error al cargar estados de cierres", "error");
-      setCargando(false);
-    });
-
-    return () => unsubscribe();
-  }, [anioSeleccionado, showToast]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const cargarResumenFacturas = async () => {
-      const nuevoResumen = {};
-      MODULOS.forEach(mod => { nuevoResumen[mod.id] = {}; });
-
-      try {
-        const consultas = [];
-        for (const mod of MODULOS) {
-          for (const mesObj of MESES) {
-            consultas.push((async () => {
-              try {
-                const docsRef = collection(db, `${mod.id}_imputadas`, String(anioSeleccionado), "meses", mesObj.id, "documentos");
-                const snap = await getDocs(docsRef);
-                
-                let totalMonto = 0;
-                snap.docs.forEach(d => { totalMonto += Number(d.data().total || 0); });
-
-                return { modId: mod.id, mesId: mesObj.id, cantidad: snap.size, montoTotal: totalMonto };
-              } catch {
-                return { modId: mod.id, mesId: mesObj.id, cantidad: 0, montoTotal: 0 };
-              }
-            })());
-          }
-        }
-
-        const resultados = await Promise.all(consultas);
-        if (!isMounted) return;
-
-        resultados.forEach(item => {
-          nuevoResumen[item.modId][item.mesId] = { cantidad: item.cantidad, montoTotal: item.montoTotal };
-        });
-
-        setResumenImputaciones(nuevoResumen);
-      } catch (error) {
-        console.error("Error al obtener resumen de imputaciones:", error);
-      }
-    };
-
-    cargarResumenFacturas();
-    return () => { isMounted = false; };
+  // Vuelve a calcular el resumen del año (botón "Actualizar" y después de
+  // abrir/cerrar/reabrir un mes).
+  const actualizarResumen = useCallback((anio = anioSeleccionado) => {
+    invalidarResumenAnio(anio);
+    setVersionResumen(v => v + 1);
   }, [anioSeleccionado]);
+
+  // Totales por módulo/mes desde resumenImputacionesStore (snapshots para
+  // meses cerrados, count()/sum() para los abiertos, nada para los nunca
+  // abiertos). Antes: 60 getDocs que descargaban todas las imputadas del año.
+  const celdasPedidas = useMemo(() => {
+    if (cargando) return null;
+    const lista = [];
+    MODULOS.forEach(mod => MESES.forEach(mes => {
+      const estado = estadosModulos[mod.id]?.[mes.id]?.estado;
+      if (!estado) return;
+      if (soloPeriodoAbierto && !ESTADOS_ABIERTOS.includes(estado)) return;
+      lista.push({ modId: mod.id, mesId: mes.id, estado });
+    }));
+    return lista;
+  }, [cargando, estadosModulos, soloPeriodoAbierto]);
+
+  const claveResumen = celdasPedidas
+    ? `${anioSeleccionado}|${versionResumen}|${celdasPedidas.map(c => `${c.modId}.${c.mesId}.${c.estado}`).join(',')}`
+    : null;
+
+  useEffect(() => {
+    if (!celdasPedidas) return undefined;
+    let cancelado = false;
+    Promise.all(celdasPedidas.map(async ({ modId, mesId, estado }) => {
+      try {
+        return { modId, mesId, ...(await obtenerCelda(anioSeleccionado, modId, mesId, estado)) };
+      } catch (error) {
+        console.error(`Error al obtener el resumen de ${modId}/${mesId}:`, error);
+        return { modId, mesId, cantidad: 0, montoTotal: 0 };
+      }
+    })).then(resultados => {
+      if (cancelado) return;
+      const datos = {};
+      MODULOS.forEach(mod => { datos[mod.id] = {}; });
+      resultados.forEach(r => { datos[r.modId][r.mesId] = { cantidad: r.cantidad, montoTotal: r.montoTotal }; });
+      setResumen({ clave: claveResumen, datos });
+    });
+    return () => { cancelado = true; };
+    // claveResumen resume celdasPedidas + año + versión.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveResumen]);
+
+  const resumenImputaciones = resumen.datos;
+  const cargandoResumen = claveResumen !== null && resumen.clave !== claveResumen;
 
   const handleAbrirMes = (mesId, modTarget, anioTarget = anioSeleccionado, setAnioSeleccionadoCallback) => {
     const modulosAfectados = Array.isArray(modTarget) 
@@ -161,6 +146,7 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
           }
 
           await batch.commit();
+          actualizarResumen(anioTarget);
 
           if (anioTarget !== anioSeleccionado && setAnioSeleccionadoCallback) {
             setAnioSeleccionadoCallback(anioTarget);
@@ -241,6 +227,7 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
       showToast(`El mes se cerró, pero no se pudo guardar el resumen del mes; se calculará al consultarlo.`, 'warning');
     } finally {
       setProcesandoAccion(false);
+      actualizarResumen();
     }
 
     return { ok: true, mensaje: `Mes ${nombreMes} ${anioSeleccionado} cerrado correctamente.` };
@@ -289,6 +276,7 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
       // retroactivas mientras el período está reabierto. Se invalida y se
       // regenera en el próximo cierre (o vía cálculo lazy si se lee antes).
       await invalidarSnapshotMensual(modId, anioSeleccionado, mesId);
+      actualizarResumen();
 
       showToast(`Mes de ${mesId} reabierto correctamente`, 'warning');
       if (onSuccess) onSuccess();
@@ -304,6 +292,8 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     estadosModulos,
     resumenImputaciones,
     cargando,
+    cargandoResumen,
+    actualizarResumen,
     procesandoAccion,
     handleAbrirMes,
     handleCerrarMes,

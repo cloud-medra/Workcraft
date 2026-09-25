@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, History, AlertTriangle, Plus, CheckCircle, Lock, AlertCircle, PlayCircle, ShieldAlert } from 'lucide-react';
+import { Calendar, History, AlertTriangle, Plus, CheckCircle, Lock, AlertCircle, PlayCircle, ShieldAlert, RefreshCw } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useUser } from '../../../../context/UserContext';
@@ -32,6 +32,8 @@ const ControlMensual = () => {
     estadosModulos,
     resumenImputaciones,
     cargando,
+    cargandoResumen,
+    actualizarResumen,
     procesandoAccion,
     handleAbrirMes,
     handleCerrarMes,
@@ -131,6 +133,15 @@ const ControlMensual = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => actualizarResumen()}
+            disabled={cargandoResumen}
+            className="h-7 px-2 bg-slate-100 dark:bg-gray-700 hover:bg-slate-200 dark:hover:bg-gray-600 text-slate-600 dark:text-gray-300 rounded text-[11px] font-medium flex items-center gap-1 transition disabled:opacity-50"
+            title="Volver a calcular documentos y montos (los meses abiertos se recalculan solos cada 5 minutos)"
+          >
+            <RefreshCw size={12} className={cargandoResumen ? 'animate-spin' : ''} /> Actualizar
+          </button>
           <div className="flex items-center gap-1.5">
             <label htmlFor="select-modulo" className="text-[11px] font-medium text-slate-600 dark:text-gray-300">Módulo:</label>
             <select
