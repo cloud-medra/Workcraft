@@ -1,23 +1,23 @@
 import React, { createContext, useContext, useRef } from 'react';
 import { crearStoreDatosGestion } from '../shared/crearStoreDatosGestion';
 
-// Años/meses de cada colección, catálogo de códigos y órdenes de Laboratorio,
+// Años/meses de cada colección, catálogo de códigos y órdenes de Vacunatorio,
 // cacheados (ver shared/crearStoreDatosGestion.js).
-const COL_CODIGOS = "laboratorio_codigos";
+const COL_CODIGOS = "vacunatorio_codigos";
 const crearStore = () => crearStoreDatosGestion(COL_CODIGOS);
 
 const storeGlobal = crearStore();
-const LaboratorioDataContext = createContext(null);
+const VacunatorioDataContext = createContext(null);
 
-export const LaboratorioDataProvider = ({ children }) => {
+export const VacunatorioDataProvider = ({ children }) => {
     const storeRef = useRef(null);
     if (!storeRef.current) storeRef.current = crearStore();
     return (
-        <LaboratorioDataContext.Provider value={storeRef.current}>
+        <VacunatorioDataContext.Provider value={storeRef.current}>
             {children}
-        </LaboratorioDataContext.Provider>
+        </VacunatorioDataContext.Provider>
     );
 };
 
 // Fuera del provider cae a un store global, así los componentes siguen funcionando.
-export const useLaboratorioData = () => useContext(LaboratorioDataContext) ?? storeGlobal;
+export const useVacunatorioData = () => useContext(VacunatorioDataContext) ?? storeGlobal;

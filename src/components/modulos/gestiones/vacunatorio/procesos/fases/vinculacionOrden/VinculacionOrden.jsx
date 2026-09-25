@@ -20,6 +20,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleVinculacionOC from './DetalleVinculacionOC';
+import { useVacunatorioData } from '../../../VacunatorioDataContext';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const VinculacionOrden = () => {
@@ -32,6 +33,8 @@ const VinculacionOrden = () => {
     const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
     const { showToast } = useToast();
+
+    const { getAnios, getMeses } = useVacunatorioData();
     const { confirmAction } = useModal();
     const { hasPermission } = useGranularPermission();
 
@@ -70,8 +73,7 @@ const VinculacionOrden = () => {
     useEffect(() => {
         const cargarAnios = async () => {
             try {
-                const snap = await getDocs(collection(db, COL_BASE));
-                const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+                const anios = await getAnios(COL_BASE);
                 setAniosDisponibles(anios);
 
                 if (anios.length > 0) {
@@ -82,7 +84,7 @@ const VinculacionOrden = () => {
             }
         };
         cargarAnios();
-    }, []);
+    }, [getAnios]);
 
     const cargarDocumentosProcesarOC = useCallback(async () => {
         if (!filtroAnio) {
@@ -93,12 +95,11 @@ const VinculacionOrden = () => {
         setLoading(true);
         try {
             const estadosPermitidos = ["Procesar OC", "Solicitud Enviada"];
-            const snapMeses = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
+            const mesesIds = await getMeses(COL_BASE, filtroAnio);
 
-            // Consulta por mes filtrando por estado en el servidor (igual que
-            // Laboratorio), en vez del collectionGroup("documentos") sin filtro
-            // que leía todos los documentos de todos los módulos y años.
-            const resultadosPorMes = await Promise.all(snapMeses.docs.map(async ({ id: mesId }) => {
+            // Consulta por mes filtrando por estado en el servidor, en vez de un
+            // collectionGroup global que leía todos los documentos de todas las colecciones.
+            const resultadosPorMes = await Promise.all(mesesIds.map(async (mesId) => {
                 const snap = await getDocs(query(
                     collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"),
                     where("estado", "in", estadosPermitidos)
@@ -115,7 +116,7 @@ const VinculacionOrden = () => {
         } finally {
             setLoading(false);
         }
-    }, [filtroAnio, showToast]);
+    }, [filtroAnio, showToast, getMeses]);
 
     useEffect(() => {
         setDocumentoSeleccionado(null);
