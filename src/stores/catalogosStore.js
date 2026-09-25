@@ -31,6 +31,8 @@ export const CATALOGOS = {
   recargos: { coleccion: 'maestros_recargos', enVivo: false },
   centros: { coleccion: 'maestros_centros', enVivo: false },
   prestadores: { coleccion: 'maestros_prestadores', enVivo: false },
+  // No es un maestro, pero se usa igual: notas del panel (Dashboard + Notas Admin).
+  notas: { coleccion: 'administracion_notas', enVivo: false },
 };
 
 const ESTADO_INICIAL = Object.freeze({ datos: null, cargando: false, error: null });
