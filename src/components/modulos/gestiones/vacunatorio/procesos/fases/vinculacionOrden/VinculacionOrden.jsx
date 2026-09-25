@@ -6,7 +6,6 @@ import {
     updateDoc,
     addDoc,
     serverTimestamp,
-    collectionGroup,
     query,
     where
 } from 'firebase/firestore';
@@ -93,31 +92,20 @@ const VinculacionOrden = () => {
 
         setLoading(true);
         try {
-            const q = query(collectionGroup(db, "documentos"));
-
-            const querySnapshot = await getDocs(q);
-            const docsAcumulados = [];
             const estadosPermitidos = ["Procesar OC", "Solicitud Enviada"];
+            const snapMeses = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
 
-            querySnapshot.forEach((d) => {
-                const data = d.data();
-                const pathSegments = d.ref.path.split('/');
-                const coleccionRaiz = pathSegments[0];
-                const anioDoc = pathSegments[1];
-                const mesId = pathSegments[3];
-
-                if (
-                    coleccionRaiz === COL_BASE &&
-                    anioDoc === filtroAnio &&
-                    estadosPermitidos.includes(data.estado)
-                ) {
-                    docsAcumulados.push({
-                        id: d.id,
-                        mesId,
-                        ...data
-                    });
-                }
-            });
+            // Consulta por mes filtrando por estado en el servidor (igual que
+            // Laboratorio), en vez del collectionGroup("documentos") sin filtro
+            // que leía todos los documentos de todos los módulos y años.
+            const resultadosPorMes = await Promise.all(snapMeses.docs.map(async ({ id: mesId }) => {
+                const snap = await getDocs(query(
+                    collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"),
+                    where("estado", "in", estadosPermitidos)
+                ));
+                return snap.docs.map(d => ({ id: d.id, mesId, ...d.data() }));
+            }));
+            const docsAcumulados = resultadosPorMes.flat();
 
             docsAcumulados.sort((a, b) => parseFecha(b.fchEmis) - parseFecha(a.fchEmis));
             setDocumentos(docsAcumulados);
