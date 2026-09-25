@@ -67,7 +67,33 @@ corresponde aquí al control de duplicados de la importación).
 Error observado: `useFirestorePagination.js:35 The query requires an index` para
 `maestros_codigos (tieneCodigo, fechaRegistro desc)` (índice en construcción).
 
-## Después (rama `optimizacion-firestore`)
+## Medición final (rama `optimizacion-firestore`, ~8 min)
+
+Recorrido: Códigos Maestros, Gestión Implantes, Laboratorio, Control Mensual y
+Resumen Periodo Abierto. **No incluyó Reportes Info** (en la línea base aportó
+1.302 lecturas; su listado no cambió en esta rama: sigue leyendo el mes completo).
+Con la migración de `total` (pasos 1 y 2) ya aplicada y `compararTotales(2026)`
+coincidiendo en 7 de 7 meses.
+
+**Resumen: 242 lecturas · 3.051 desde caché** (línea base: 19.494 lecturas en ~15 min).
+
+| Pantalla | Línea base (medido) | Final (medido) |
+|---|---|---|
+| Códigos Maestros | 17.680 | **1** (`maestros_codigos` salió completo de la caché persistente) |
+| Control Mensual | 962 (+482 anotadas en `dashboard` por el error del medidor) | **15** |
+| Resumen Periodo Abierto | 1.506 | **0** (reutilizó lo calculado por Control Mensual) |
+| Reportes Info | 1.302 | no incluido en el recorrido |
+| **Total del recorrido** | **19.494** (~15 min, con Reportes Info) | **242** (~8 min, sin Reportes Info) |
+
+El detalle por consulta (`__FS_METER__.report()`) de esta medición no quedó
+registrado en este documento.
+
+Costo pendiente más grande: la carga inicial de los ~2.915 documentos de
+`maestros_codigos` por usuario (cada día / después de cerrar sesión). Ver
+"Próxima optimización a evaluar" en
+[firestore-buenas-practicas.md](firestore-buenas-practicas.md).
+
+## Estimaciones previas (antes de la medición final)
 
 Mediciones parciales de la segunda ronda (con el código de esta rama):
 
@@ -99,6 +125,6 @@ Si un mes cerrado no tiene snapshot en `imputaciones_periodos` (meses cerrados
 antes de ese mecanismo), la primera vez se calcula leyendo sus documentos y
 se guarda; desde ahí cuesta 0.
 
-_Pendiente: repetir el recorrido completo (Códigos Maestros, Reportes Info,
-Gestión Implantes, Laboratorio, Control Mensual, Resumen Periodo Abierto) y
-reemplazar los estimados por lo medido._
+_Las filas medidas en la medición final (arriba) reemplazan a estas
+estimaciones. Reportes Info, Cargas Consolidado y la 2ª entrada a cada
+pantalla siguen sin medir._

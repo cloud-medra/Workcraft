@@ -96,3 +96,28 @@ las reglas anteriores (`getDocs` siempre va al servidor).
 2. Volver a entrar a la pantalla: el segundo ingreso debería costar ≈ 0 si
    usa stores/caché.
 3. Revisar que cada consulta tenga `limit` o rango, y su índice declarado.
+
+## Próxima optimización a evaluar: carga inicial de `maestros_codigos`
+
+Hoy es el costo más grande que queda: cada usuario lee los **~2.915 códigos
+una vez por día** (y otra vez después de cerrar sesión, porque el cierre
+borra la caché local). Aunque la caché persistente guarde los documentos,
+Firestore vuelve a cobrar la consulta completa si el listener estuvo cerrado
+más de 30 min. A precio de lista son ~0,002 USD por carga, pero solo esa
+carga consume ~6 % de la cuota gratuita diaria (50.000 lecturas) por usuario,
+y crece con el catálogo. **Evaluarlo si aumentan los usuarios o el catálogo.**
+
+Alternativas (de menor a mayor cambio):
+
+| Opción | Cómo | Costo por usuario/día | Contras |
+|---|---|---|---|
+| Búsqueda en el servidor para el autocompletado | `where('referencia', '>=', t)`, `limit(8)` en vez de tener todo el catálogo en memoria | ~8 lecturas por búsqueda | Solo busca por prefijo (hoy busca "contiene" en referencia y código); Vista General y PAD siguen necesitando el catálogo completo |
+| Sincronización incremental | Campo `actualizadoEn` en cada código; al entrar se lee de la caché local y solo `where('actualizadoEn', '>', ultimaSync)`; mantener la caché al cerrar sesión si vuelve el mismo usuario | Cambios del día | Todas las escrituras (incluidas importaciones y la Cloud Function, si toca códigos) deben poner el campo; los borrados necesitan marca (`eliminado: true`); requiere migrar los 2.915 docs. **Es desnormalización: consultarlo antes** |
+| Catálogo agregado en pocos documentos | Una Cloud Function mantiene el catálogo en ~3–6 documentos "resumen" (< 1 MiB c/u) al escribir en `maestros_codigos` | ~3–6 lecturas por carga | Desnormalización + función a mantener; hay que resolver la concurrencia de escrituras. **Consultarlo antes** |
+| Firestore data bundles | Una función genera un bundle del catálogo, se sirve desde Hosting/CDN y el cliente lo carga con `loadBundle()` | ~0 lecturas de Firestore por usuario (se cobra al generar el bundle) | Infraestructura extra (función + caché CDN); frescura según cada cuánto se regenere; los cambios del día se complementan con un listener delta |
+
+Recomendación inicial: medir primero cuántas búsquedas de autocompletado
+hace un usuario por día. Si son pocas (< ~350), la búsqueda en el servidor es
+la opción más barata y simple para Cargas. Si Vista General / PAD / Inventario
+necesitan el catálogo completo seguido, evaluar sincronización incremental o
+catálogo agregado.
