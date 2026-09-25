@@ -67,16 +67,38 @@ corresponde aquí al control de duplicados de la importación).
 Error observado: `useFirestorePagination.js:35 The query requires an index` para
 `maestros_codigos (tieneCodigo, fechaRegistro desc)` (índice en construcción).
 
-## Después de la Etapa A
+## Después (rama `optimizacion-firestore`)
 
-_Pendiente de medir con el mismo recorrido._
+Mediciones parciales de la segunda ronda (con el código de esta rama):
 
-Costo esperado (producción; en `npm run dev` StrictMode duplica los getDocs que corren al montar):
+- Códigos Maestros: **33 lecturas** y 2.915 desde caché (antes 17.680).
+- ControlMensual, antes de su cambio: 962 lecturas en `/administracion/controlMensual`,
+  1.506 en `/administracion/ResumenPeriodoAbierto` y 482 anotadas en `dashboard`
+  (eran de ControlMensual: el medidor anotaba en la pantalla anterior las lecturas
+  del primer montaje; corregido).
 
-| Acción | Antes | Esperado |
-|---|---|---|
-| 1ª entrada a Códigos Maestros (Vista General) en la sesión | 2.915 + 43 (empresas) | 2.915 + 43, una sola vez por sesión (listener compartido de `catalogosStore`) |
-| Entradas siguientes a Códigos Maestros | 2.915 + 43 cada vez | ≈ 0 (+1 por cada código que cambie) |
-| Entrada a Códigos Maestros > Pendientes | 2.915 + 43 | 2.915 (sigue igual hasta la Etapa B) |
-| Entrada a Reportes Info (mes de 419 registros) | ≈ 419 + años/meses | igual: ≈ 419 + años/meses (el listado no cambió) |
-| Importar un Excel del mes que está en pantalla | 1 lectura por fila (419) | 0 |
+### Antes / después por pantalla
+
+"Medido" = medidor en `npm run dev`. "Estimado" = calculado a partir de las
+consultas y los tamaños de colección; **falta confirmarlo con el medidor**.
+En dev, StrictMode puede duplicar lecturas al montar.
+
+| Pantalla | Antes (medido) | Después, 1ª entrada | Después, 2ª entrada en la sesión |
+|---|---|---|---|
+| Códigos Maestros (Vista General) | 17.680 | ~2.960 una vez por sesión (listener de códigos + empresas) — medido: 33 + 2.915 desde caché | ≈ 0 (solo cambios) |
+| Códigos Maestros > Pendientes | ~2.958 por entrada | 0 extra (usa el mismo listener) | 0 |
+| Reportes Info (mes de 419) | 1.302 | ≈ 419 + años/meses (estimado; el listado no cambió) | ≈ 419 (getDocs siempre va al servidor) |
+| Reportes Info: importar el mes en pantalla | 419 | 0 | 0 |
+| Gestión Implantes | 161 | ≈ 150 + catálogos si no estaban (estimado) | ≈ cambios (caché persistente, < 30 min) |
+| Laboratorio (Archivos de Control) | 345 | ≈ igual en la 1ª (estimado) | menor: años/meses/códigos cacheados 5 min |
+| Control Mensual | 962 (+482 en "dashboard") | ≈ 15–25 (estimado): cierres del año (≤ 10) + 1 consulta de snapshots + 1 por módulo con mes abierto | ≈ 0 (resumen cacheado; meses abiertos se recalculan tras 5 min, ~5 lecturas) |
+| Resumen Periodo Abierto | 1.506 | ≈ 15–20 (estimado): cierres (compartido) + ≤ 5 agregaciones + snapshots del mes anterior | ≈ 0 |
+| Cargas Consolidado | (no medido) | 1 lectura por documento del año de la pestaña abierta | 0 al volver a la pestaña (caché de sesión) |
+
+Si un mes cerrado no tiene snapshot en `imputaciones_periodos` (meses cerrados
+antes de ese mecanismo), la primera vez se calcula leyendo sus documentos y
+se guarda; desde ahí cuesta 0.
+
+_Pendiente: repetir el recorrido completo (Códigos Maestros, Reportes Info,
+Gestión Implantes, Laboratorio, Control Mensual, Resumen Periodo Abierto) y
+reemplazar los estimados por lo medido._
