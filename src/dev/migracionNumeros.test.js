@@ -28,10 +28,11 @@ vi.mock('firebase/firestore', () => ({
   }
 }));
 
-const { aplicarTotalesTexto, revertirTotalesTexto } = await import('./migracionNumeros.js');
+const { migrarTotales, revertirMigracion } = await import('./migracionNumeros.js');
 
 const LAB = 'laboratorio_imputadas/2026/meses/agosto/documentos';
 const DOCS_LAB = 'laboratorio_documentos/2026/meses/agosto/documentos';
+let confirmar;
 
 beforeEach(() => {
   almacen.clear();
@@ -44,60 +45,64 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
   globalThis.URL.revokeObjectURL = vi.fn();
+  confirmar = vi.fn(() => true);
+  window.confirm = confirmar;
 });
 
-describe('aplicarTotalesTexto (paso 1: total de imputadas)', () => {
-  it('sin confirmar no escribe; lista NO seguros; con el código convierte solo los seguros', async () => {
-    const plan = await aplicarTotalesTexto(2026);
-    expect(plan.cambios).toBe(1);
-    expect(plan.noSeguros.map((n) => n.clave)).toEqual([`${LAB}/c|total`]);
-    expect(almacen.get(`${LAB}/a`).total).toBe('762909');
-
-    const r = await aplicarTotalesTexto(2026, { confirmar: plan.codigo });
+describe('migrarTotales (paso 1: total de imputadas)', () => {
+  it('descarga respaldo, pide confirmación y convierte solo los seguros', async () => {
+    const r = await migrarTotales(2026);
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
+    expect(confirmar).toHaveBeenCalledWith(expect.stringMatching(/^¿Aplicar 1 cambios en 1 documentos\? Se descargó un respaldo/));
     expect(r.actualizados).toBe(1);
+    expect(r.noSeguros.map((n) => n.clave)).toEqual([`${LAB}/c|total`]);
     expect(almacen.get(`${LAB}/a`)).toEqual({ total: 762909, folio: '1' });
     expect(almacen.get(`${LAB}/c`).total).toBe('1.234.567');
     // El paso 1 no toca *_documentos.
     expect(almacen.get(`${DOCS_LAB}/x`).total).toBe('100');
   });
 
+  it('Cancelar no escribe nada', async () => {
+    confirmar.mockReturnValue(false);
+    const r = await migrarTotales(2026);
+    expect(r).toEqual({ cancelado: true });
+    expect(almacen.get(`${LAB}/a`).total).toBe('762909');
+  });
+
   it('un NO seguro solo se escribe si se aprueba explícitamente', async () => {
-    const plan = await aplicarTotalesTexto(2026, { aprobados: { [`${LAB}/c|total`]: 1234567 } });
-    await aplicarTotalesTexto(2026, { confirmar: plan.codigo });
+    await migrarTotales(2026, { aprobados: { [`${LAB}/c|total`]: 1234567 } });
     expect(almacen.get(`${LAB}/c`).total).toBe(1234567);
   });
 
-  it('omite los documentos que cambiaron entre el plan y la confirmación', async () => {
-    const plan = await aplicarTotalesTexto(2026);
-    almacen.set(`${LAB}/a`, { total: '999' });
-    const r = await aplicarTotalesTexto(2026, { confirmar: plan.codigo });
+  it('omite los documentos que cambiaron mientras la ventana estaba abierta', async () => {
+    confirmar.mockImplementation(() => { almacen.set(`${LAB}/a`, { total: '999' }); return true; });
+    const r = await migrarTotales(2026);
     expect(r.omitidos).toEqual([`${LAB}/a`]);
     expect(almacen.get(`${LAB}/a`).total).toBe('999');
   });
 
-  it('el código se usa una sola vez', async () => {
-    const plan = await aplicarTotalesTexto(2026);
-    await aplicarTotalesTexto(2026, { confirmar: plan.codigo });
-    await expect(aplicarTotalesTexto(2026, { confirmar: plan.codigo })).rejects.toThrow(/desconocido/);
-  });
-
-  it('revertir restaura el valor original solo si no fue modificado después', async () => {
-    const plan = await aplicarTotalesTexto(2026, { aprobados: { [`${LAB}/c|total`]: 1234567 } });
-    await aplicarTotalesTexto(2026, { confirmar: plan.codigo });
+  it('revertirMigracion restaura solo lo que no fue modificado después', async () => {
+    await migrarTotales(2026, { aprobados: { [`${LAB}/c|total`]: 1234567 } });
     almacen.set(`${LAB}/c`, { total: 5 }); // editado después por otra persona
 
-    const rev = await revertirTotalesTexto();
-    const r = await revertirTotalesTexto(undefined, { confirmar: rev.codigo });
+    const r = await revertirMigracion();
+    expect(confirmar).toHaveBeenLastCalledWith('¿Revertir 2 documentos a sus valores originales?');
     expect(almacen.get(`${LAB}/a`).total).toBe('762909');
     expect(almacen.get(`${LAB}/c`).total).toBe(5);
     expect(r.omitidos).toEqual([`${LAB}/c`]);
   });
+
+  it('revertirMigracion con Cancelar no escribe', async () => {
+    await migrarTotales(2026);
+    confirmar.mockReturnValue(false);
+    await revertirMigracion();
+    expect(almacen.get(`${LAB}/a`).total).toBe(762909);
+  });
 });
 
-describe('aplicarTotalesTexto (paso 2: documentos de origen y detalles)', () => {
+describe('migrarTotales (paso 2: documentos de origen y detalles)', () => {
   it('convierte total y detalles de *_documentos sin tocar otros campos', async () => {
-    const plan = await aplicarTotalesTexto(2026, { paso: 2 });
-    await aplicarTotalesTexto(2026, { confirmar: plan.codigo });
+    await migrarTotales(2026, { paso: 2 });
     expect(almacen.get(`${DOCS_LAB}/x`)).toEqual({
       total: 100,
       detalles: [{ cantidad: 2, precio: 50, monto: 100, codigo: '001' }]

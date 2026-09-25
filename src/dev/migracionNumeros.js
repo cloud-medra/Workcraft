@@ -3,20 +3,16 @@
 // =====================================================================
 // Se usa desde la consola del navegador (npm run dev) a través del medidor:
 //
-//   Paso 1 — `total` de *_imputadas:
-//     await __FS_METER__.aplicarTotalesTexto(2026)
-//       → muestra el plan, descarga el respaldo JSON y entrega un código.
-//     await __FS_METER__.aplicarTotalesTexto(2026, { confirmar: 'CODIGO' })
-//       → escribe.
+//   await __FS_METER__.migrarTotales(2026)            // paso 1: `total` de *_imputadas
+//   await __FS_METER__.migrarTotales(2026, { paso: 2 })
+//     // paso 2: `total` de *_documentos + `detalles` (cantidad/precio/monto)
+//     // de *_documentos y *_imputadas (correr después de validar el paso 1)
+//   await __FS_METER__.revertirMigracion()             // última migración de esta pestaña
+//   await __FS_METER__.revertirMigracion(respaldoJson) // o el JSON descargado
 //
-//   Paso 2 — `total` de *_documentos + `detalles` (cantidad/precio/monto) de
-//   *_documentos y *_imputadas (correr después de validar el paso 1):
-//     await __FS_METER__.aplicarTotalesTexto(2026, { paso: 2 })
-//
-//   Revertir (con el respaldo en memoria o el JSON descargado):
-//     await __FS_METER__.revertirTotalesTexto()                 // último respaldo
-//     await __FS_METER__.revertirTotalesTexto(respaldoJson)     // objeto del archivo
-//       → muestra el plan y entrega un código; se repite con { confirmar }.
+// Cada comando muestra la tabla del plan, descarga el respaldo JSON (al
+// migrar) y pide confirmación con una ventana Aceptar/Cancelar. Cancelar no
+// escribe nada.
 //
 // Reglas:
 //   - Usa la sesión del navegador: las reglas de seguridad de Firestore
@@ -25,8 +21,8 @@
 //     seguros se listan y solo se escriben si se aprueban explícitamente:
 //       { aprobados: { '<ruta>|<campo>': 1234 } }
 //     con <campo> = 'total' o 'detalles[3].monto'.
-//   - Escribe en transacciones que vuelven a leer cada documento y abortan
-//     ese lote si el valor cambió desde que se armó el plan.
+//   - Escribe en transacciones que vuelven a leer cada documento y omiten
+//     (sin tocarlos) los que cambiaron desde que se armó el plan.
 //   - Al revertir, solo restaura los documentos cuyo valor actual sigue
 //     siendo el que escribió la migración.
 // =====================================================================
@@ -39,10 +35,7 @@ const MODULOS = ['laboratorio', 'vacunatorio'];
 const CAMPOS_DETALLE = ['cantidad', 'precio', 'monto'];
 const DOCS_POR_TRANSACCION = 100;
 
-const planesPendientes = new Map(); // código -> plan
 let ultimoRespaldo = null;
-
-const codigo = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 const iguales = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 const descargarJson = (nombre, datos) => {
@@ -155,69 +148,78 @@ const escribirEnTransacciones = async (items, { esperado, escribir }) => {
   return { procesados: escritos, omitidos };
 };
 
-export async function aplicarTotalesTexto(anio = new Date().getFullYear(), opciones = {}) {
-  const { confirmar, paso = 1 } = opciones;
-
-  if (confirmar) {
-    const plan = planesPendientes.get(confirmar);
-    if (!plan) throw new Error(`Código "${confirmar}" desconocido o ya usado. Vuelva a generar el plan.`);
-    planesPendientes.delete(confirmar);
-    const { procesados, omitidos } = await escribirEnTransacciones(plan.documentos, {
-      esperado: (it) => it.antes,
-      escribir: (it) => it.despues
-    });
-    ultimoRespaldo = plan.respaldo;
-    console.log(`[aplicarTotalesTexto] ${procesados - omitidos.length} documento(s) actualizado(s).`);
-    if (omitidos.length) console.warn('Omitidos porque cambiaron desde el plan (vuelva a generarlo):', omitidos);
-    console.log('Para revertir: await __FS_METER__.revertirTotalesTexto()  (o pase el JSON de respaldo descargado)');
-    return { actualizados: procesados - omitidos.length, omitidos };
+const informarResultado = (verbo, { procesados, omitidos }) => {
+  const hechos = procesados - omitidos.length;
+  if (omitidos.length) {
+    console.warn(`⚠️ ${hechos} documento(s) ${verbo}. ${omitidos.length} omitido(s) porque cambiaron mientras tanto (no se tocaron):`, omitidos);
+  } else {
+    console.log(`%c✅ Listo: ${hechos} documento(s) ${verbo}`, 'font-weight:bold;color:#16a34a');
   }
+  return { [verbo]: hechos, omitidos };
+};
 
+export async function migrarTotales(anio = new Date().getFullYear(), opciones = {}) {
+  const { paso = 1 } = opciones;
   const plan = await armarPlan(anio, opciones);
-  console.log(`[aplicarTotalesTexto ${anio} · paso ${paso}] ${plan.cambios.length} valor(es) a convertir en ${plan.documentos.length} documento(s).`);
+
+  console.log(`[migrarTotales ${anio} · paso ${paso}] ${plan.cambios.length} valor(es) a convertir en ${plan.documentos.length} documento(s).`);
   if (plan.cambios.length) console.table(plan.cambios.map(({ ruta, campo, original, nuevo, aprobadoManual }) => ({ ruta, campo, original: JSON.stringify(original), nuevo, aprobadoManual: !!aprobadoManual })));
   if (plan.noSeguros.length) {
-    console.warn(`${plan.noSeguros.length} valor(es) NO seguros (no se escribirán salvo aprobación):`);
+    console.warn(`${plan.noSeguros.length} valor(es) NO seguros: no se escribirán salvo que los apruebe con { aprobados: { 'ruta|campo': numero } }.`);
     console.table(plan.noSeguros);
   }
-  if (!plan.documentos.length) return plan;
+  if (!plan.documentos.length) {
+    console.log('✅ No hay nada que convertir.');
+    return { actualizados: 0, omitidos: [], noSeguros: plan.noSeguros };
+  }
 
-  plan.respaldo = {
+  const respaldo = {
     tipo: 'respaldo-numeros-texto',
     creado: new Date().toISOString(),
     anio, paso,
     documentos: plan.documentos
   };
-  const nombre = `respaldo-numeros-${anio}-paso${paso}-${plan.respaldo.creado.replace(/[:.]/g, '-')}.json`;
-  descargarJson(nombre, plan.respaldo);
+  const nombre = `respaldo-numeros-${anio}-paso${paso}-${respaldo.creado.replace(/[:.]/g, '-')}.json`;
+  descargarJson(nombre, respaldo);
 
-  const cod = codigo();
-  planesPendientes.set(cod, plan);
-  console.log(`Respaldo descargado: ${nombre}. Revíselo y, para escribir, ejecute:\n  await __FS_METER__.aplicarTotalesTexto(${anio}, { confirmar: '${cod}' })`);
-  return { documentos: plan.documentos.length, cambios: plan.cambios.length, noSeguros: plan.noSeguros, codigo: cod };
+  if (!window.confirm(`¿Aplicar ${plan.cambios.length} cambios en ${plan.documentos.length} documentos? Se descargó un respaldo (${nombre}).`)) {
+    console.log('Cancelado: no se escribió nada.');
+    return { cancelado: true };
+  }
+
+  try {
+    const resultado = await escribirEnTransacciones(plan.documentos, {
+      esperado: (it) => it.antes,
+      escribir: (it) => it.despues
+    });
+    ultimoRespaldo = respaldo;
+    return { ...informarResultado('actualizados', resultado), noSeguros: plan.noSeguros };
+  } catch (error) {
+    console.error('❌ Error al aplicar la migración. Los lotes ya confirmados quedan escritos; use revertirMigracion() con el respaldo si hace falta.', error);
+    throw error;
+  }
 }
 
-export async function revertirTotalesTexto(respaldo = ultimoRespaldo, { confirmar } = {}) {
-  if (confirmar) {
-    const plan = planesPendientes.get(confirmar);
-    if (!plan) throw new Error(`Código "${confirmar}" desconocido o ya usado.`);
-    planesPendientes.delete(confirmar);
-    const { procesados, omitidos } = await escribirEnTransacciones(plan.documentos, {
+export async function revertirMigracion(respaldo = ultimoRespaldo) {
+  if (!respaldo || respaldo.tipo !== 'respaldo-numeros-texto' || !Array.isArray(respaldo.documentos)) {
+    throw new Error('No hay respaldo: pase el objeto del JSON descargado (o migre primero en esta pestaña).');
+  }
+  console.log(`[revertirMigracion] ${respaldo.documentos.length} documento(s) del respaldo ${respaldo.creado} (año ${respaldo.anio}, paso ${respaldo.paso}).`);
+  console.table(respaldo.documentos.map((d) => ({ ruta: d.ruta, campos: Object.keys(d.antes).join(', ') })));
+
+  if (!window.confirm(`¿Revertir ${respaldo.documentos.length} documentos a sus valores originales?`)) {
+    console.log('Cancelado: no se escribió nada.');
+    return { cancelado: true };
+  }
+
+  try {
+    const resultado = await escribirEnTransacciones(respaldo.documentos, {
       esperado: (it) => it.despues,
       escribir: (it) => it.antes
     });
-    console.log(`[revertirTotalesTexto] ${procesados - omitidos.length} documento(s) restaurado(s).`);
-    if (omitidos.length) console.warn('No restaurados porque su valor ya no es el que escribió la migración:', omitidos);
-    return { restaurados: procesados - omitidos.length, omitidos };
+    return informarResultado('restaurados', resultado);
+  } catch (error) {
+    console.error('❌ Error al revertir.', error);
+    throw error;
   }
-
-  if (!respaldo || respaldo.tipo !== 'respaldo-numeros-texto' || !Array.isArray(respaldo.documentos)) {
-    throw new Error('Pase el objeto del JSON de respaldo (o use primero aplicarTotalesTexto en esta pestaña).');
-  }
-  const cod = codigo();
-  planesPendientes.set(cod, { documentos: respaldo.documentos });
-  console.log(`[revertirTotalesTexto] ${respaldo.documentos.length} documento(s) del respaldo ${respaldo.creado} (año ${respaldo.anio}, paso ${respaldo.paso}).`);
-  console.table(respaldo.documentos.map((d) => ({ ruta: d.ruta, campos: Object.keys(d.antes).join(', ') })));
-  console.log(`Para restaurar, ejecute:\n  await __FS_METER__.revertirTotalesTexto(undefined, { confirmar: '${cod}' })`);
-  return { documentos: respaldo.documentos.length, codigo: cod };
 }
