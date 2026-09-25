@@ -5,30 +5,50 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const almacen = new Map();
 
 vi.mock('../firebaseConfig.js', () => ({ db: {} }));
-vi.mock('firebase/firestore', () => ({
-  collection: (_db, ...segs) => ({ path: segs.join('/') }),
-  doc: (_db, ruta) => ({ path: ruta }),
-  getDocs: async ({ path }) => ({
-    docs: [...almacen.keys()]
-      .filter((r) => r.startsWith(`${path}/`) && r.split('/').length === path.split('/').length + 1)
-      .map((r) => ({ ref: { path: r }, data: () => structuredClone(almacen.get(r)) }))
-  }),
-  runTransaction: async (_db, fn) => {
-    const escrituras = [];
-    const tx = {
-      get: async (ref) => ({
-        ref,
-        exists: () => almacen.has(ref.path),
-        data: () => structuredClone(almacen.get(ref.path))
-      }),
-      update: (ref, datos) => escrituras.push([ref.path, datos])
-    };
-    await fn(tx);
-    escrituras.forEach(([r, datos]) => almacen.set(r, { ...almacen.get(r), ...datos }));
+// Firestore no garantiza el orden de las claves de un mapa entre lecturas:
+// la lectura de la transacción devuelve las claves invertidas para
+// reproducirlo (el bug del paso 2 omitía todos los docs con `detalles`).
+const invertirClaves = (v) => {
+  if (Array.isArray(v)) return v.map(invertirClaves);
+  if (v && typeof v === 'object' && v.constructor === Object) {
+    return Object.fromEntries(Object.keys(v).reverse().map((k) => [k, invertirClaves(v[k])]));
   }
-}));
+  return v;
+};
 
-const { migrarTotales, revertirMigracion } = await import('./migracionNumeros.js');
+vi.mock('firebase/firestore', () => {
+  class Timestamp {
+    constructor(seconds, nanoseconds) { this.seconds = seconds; this.nanoseconds = nanoseconds; }
+    toMillis() { return this.seconds * 1000 + this.nanoseconds / 1e6; }
+    toJSON() { return { seconds: this.seconds, nanoseconds: this.nanoseconds, type: 'firestore/timestamp/1.1.0' }; }
+  }
+  return {
+    Timestamp,
+    collection: (_db, ...segs) => ({ path: segs.join('/') }),
+    doc: (_db, ruta) => ({ path: ruta }),
+    getDocs: async ({ path }) => ({
+      docs: [...almacen.keys()]
+        .filter((r) => r.startsWith(`${path}/`) && r.split('/').length === path.split('/').length + 1)
+        .map((r) => ({ ref: { path: r }, data: () => structuredClone(almacen.get(r)) }))
+    }),
+    runTransaction: async (_db, fn) => {
+      const escrituras = [];
+      const tx = {
+        get: async (ref) => ({
+          ref,
+          exists: () => almacen.has(ref.path),
+          data: () => invertirClaves(almacen.get(ref.path))
+        }),
+        update: (ref, datos) => escrituras.push([ref.path, datos])
+      };
+      await fn(tx);
+      escrituras.forEach(([r, datos]) => almacen.set(r, { ...almacen.get(r), ...datos }));
+    }
+  };
+});
+
+const { migrarTotales, revertirMigracion, iguales } = await import('./migracionNumeros.js');
+const { Timestamp } = await import('firebase/firestore');
 
 const LAB = 'laboratorio_imputadas/2026/meses/agosto/documentos';
 const DOCS_LAB = 'laboratorio_documentos/2026/meses/agosto/documentos';
@@ -47,6 +67,15 @@ beforeEach(() => {
   globalThis.URL.revokeObjectURL = vi.fn();
   confirmar = vi.fn(() => true);
   window.confirm = confirmar;
+});
+
+describe('iguales', () => {
+  it('ignora el orden de las claves y compara Timestamp con su forma JSON', () => {
+    expect(iguales([{ a: 1, b: '2' }], [{ b: '2', a: 1 }])).toBe(true);
+    expect(iguales({ f: new Timestamp(5, 1) }, { f: { seconds: 5, nanoseconds: 1, type: 'x' } })).toBe(true);
+    expect(iguales([{ a: 1 }], [{ a: '1' }])).toBe(false);
+    expect(iguales([{ a: 1 }, { a: 2 }], [{ a: 2 }, { a: 1 }])).toBe(false);
+  });
 });
 
 describe('migrarTotales (paso 1: total de imputadas)', () => {
@@ -101,6 +130,36 @@ describe('migrarTotales (paso 1: total de imputadas)', () => {
 });
 
 describe('migrarTotales (paso 2: documentos de origen y detalles)', () => {
+  it('NO omite un documento con detalles que no cambió (aunque las claves vengan en otro orden)', async () => {
+    const IMP = 'laboratorio_imputadas/2026/meses/agosto/documentos';
+    almacen.set(`${IMP}/y`, {
+      total: 500,
+      detalles: [
+        { nroLin: '1', codigo: 'A', cantidad: '3', precio: '100', monto: '300', fecha: new Timestamp(10, 0) },
+        { nroLin: '2', codigo: 'B', cantidad: 2, precio: 100, monto: 200 }
+      ]
+    });
+    const r = await migrarTotales(2026, { paso: 2 });
+    expect(r.omitidos).toEqual([]);
+    expect(almacen.get(`${IMP}/y`).detalles[0]).toMatchObject({ cantidad: 3, precio: 100, monto: 300, codigo: 'A' });
+    expect(almacen.get(`${IMP}/y`).detalles[1]).toMatchObject({ cantidad: 2, codigo: 'B' });
+  });
+
+  it('revertir desde el JSON descargado restaura detalles y rehidrata los Timestamp', async () => {
+    const IMP = 'laboratorio_imputadas/2026/meses/agosto/documentos';
+    almacen.set(`${IMP}/y`, { detalles: [{ cantidad: '3', fecha: new Timestamp(10, 0) }] });
+    await migrarTotales(2026, { paso: 2 });
+    const blob = URL.createObjectURL.mock.calls.at(-1)[0];
+    const respaldo = JSON.parse(await blob.text());
+    expect(respaldo.documentos.find((d) => d.ruta === `${IMP}/y`).antes.detalles[0].fecha).toMatchObject({ seconds: 10 });
+
+    const r = await revertirMigracion(respaldo);
+    expect(r.omitidos).toEqual([]);
+    const restaurado = almacen.get(`${IMP}/y`).detalles[0];
+    expect(restaurado.cantidad).toBe('3');
+    expect(restaurado.fecha).toBeInstanceOf(Timestamp);
+  });
+
   it('convierte total y detalles de *_documentos sin tocar otros campos', async () => {
     await migrarTotales(2026, { paso: 2 });
     expect(almacen.get(`${DOCS_LAB}/x`)).toEqual({

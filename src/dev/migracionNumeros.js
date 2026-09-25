@@ -27,7 +27,7 @@
 //     siendo el que escribió la migración.
 // =====================================================================
 
-import { collection, doc, getDocs, runTransaction } from 'firebase/firestore';
+import { collection, doc, getDocs, runTransaction, Timestamp } from 'firebase/firestore';
 import { convertirNumeroSeguro } from '../components/modulos/gestiones/shared/numerosDocumento.js';
 
 const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -36,7 +36,37 @@ const CAMPOS_DETALLE = ['cantidad', 'precio', 'monto'];
 const DOCS_POR_TRANSACCION = 100;
 
 let ultimoRespaldo = null;
-const iguales = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Forma JSON de un Timestamp (así queda en el respaldo descargado).
+const esTimestampJson = (v) => v && typeof v === 'object' && !Array.isArray(v)
+  && typeof v.seconds === 'number' && typeof v.nanoseconds === 'number'
+  && Object.keys(v).every((k) => ['seconds', 'nanoseconds', 'type'].includes(k));
+const esTimestamp = (v) => v && typeof v === 'object' && typeof v.toMillis === 'function'
+  && typeof v.seconds === 'number' && typeof v.nanoseconds === 'number';
+
+// Representación canónica para comparar: claves de los mapas ordenadas
+// (Firestore NO garantiza el orden de las claves de un mapa entre lecturas,
+// así que JSON.stringify directo daba "distinto" en objetos iguales, p. ej.
+// cada elemento de `detalles`) y Timestamp == su forma JSON del respaldo.
+const canonico = (v) => {
+  if (esTimestamp(v) || esTimestampJson(v)) return { __ts: [v.seconds, v.nanoseconds] };
+  if (Array.isArray(v)) return v.map(canonico);
+  if (v && typeof v === 'object') {
+    return Object.keys(v).sort().reduce((acc, k) => { acc[k] = canonico(v[k]); return acc; }, {});
+  }
+  return v;
+};
+export const iguales = (a, b) => JSON.stringify(canonico(a)) === JSON.stringify(canonico(b));
+
+// Al revertir desde el JSON descargado, las fechas vuelven como
+// { seconds, nanoseconds }: se reconvierten a Timestamp antes de escribir.
+const rehidratar = (v) => {
+  if (esTimestampJson(v)) return new Timestamp(v.seconds, v.nanoseconds);
+  if (Array.isArray(v)) return v.map(rehidratar);
+  if (v && typeof v === 'object' && !esTimestamp(v)) {
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, rehidratar(x)]));
+  }
+  return v;
+};
 
 const descargarJson = (nombre, datos) => {
   const blob = new Blob([JSON.stringify(datos, null, 2)], { type: 'application/json' });
@@ -133,16 +163,26 @@ const escribirEnTransacciones = async (items, { esperado, escribir }) => {
   const omitidos = [];
   for (let i = 0; i < items.length; i += DOCS_POR_TRANSACCION) {
     const lote = items.slice(i, i + DOCS_POR_TRANSACCION);
+    let omitidosLote = [];
     await runTransaction(db, async (tx) => {
+      // Se recalcula en cada intento (Firestore puede reintentar la transacción).
+      omitidosLote = [];
       const snaps = await Promise.all(lote.map((it) => tx.get(doc(db, it.ruta))));
       snaps.forEach((snap, j) => {
         const it = lote[j];
         const actual = snap.exists() ? snap.data() : null;
-        const coincide = actual && Object.keys(esperado(it)).every((campo) => iguales(actual[campo], esperado(it)[campo]));
-        if (!coincide) { omitidos.push(it.ruta); return; }
-        tx.update(snap.ref, escribir(it));
+        const camposDistintos = actual
+          ? Object.keys(esperado(it)).filter((campo) => !iguales(actual[campo], esperado(it)[campo]))
+          : ['(el documento ya no existe)'];
+        if (camposDistintos.length) {
+          omitidosLote.push(it.ruta);
+          console.debug(`[migración] ${it.ruta} omitido: cambió ${camposDistintos.join(', ')}`);
+          return;
+        }
+        tx.update(snap.ref, rehidratar(escribir(it)));
       });
     });
+    omitidos.push(...omitidosLote);
     escritos += lote.length;
   }
   return { procesados: escritos, omitidos };
