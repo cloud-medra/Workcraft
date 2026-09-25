@@ -126,7 +126,21 @@ export function listenForSessionRequests() {
   }
 }
 
+// Tras cerrar sesión la página se recarga (para descartar datos en
+// memoria); esta marca evita que en esa recarga se copie la sesión de otra
+// pestaña abierta y el usuario quede logueado de nuevo.
+const SKIP_SYNC_KEY = "__medra_session_sync_skip__";
+
+export function omitirSincronizacionEnProximaCarga() {
+  sessionStorage.setItem(SKIP_SYNC_KEY, "1");
+}
+
 export async function syncSessionFromOtherTabs() {
+  if (sessionStorage.getItem(SKIP_SYNC_KEY)) {
+    sessionStorage.removeItem(SKIP_SYNC_KEY);
+    return;
+  }
+
   if (Object.keys(getFirebaseSessionEntries()).length > 0) {
     return;
   }
