@@ -1,7 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { collectionGroup, onSnapshot, collection, query, where } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig'; 
-import { useToast } from '../../../../../../context/ToastContext'; 
+import { useState, useMemo } from 'react';
+import { useResumenImputadas, TODOS_LOS_MESES } from '../../../shared/useResumenImputadas';
 
 export const NOMBRES_MESES = {
   "01": "Enero", "02": "Febrero", "03": "Marzo", "04": "Abril",
@@ -10,108 +8,22 @@ export const NOMBRES_MESES = {
 };
 
 export const ATRIBUTO_OPTIONS = ['CONSIGNACION', 'COTIZACION'];
-export const TODOS_LOS_MESES = 'TODOS';
-
-const FILTRO_MODULO = where('modulo', '==', 'CONSIGNACION');
+export { TODOS_LOS_MESES };
 
 export const useResumenConsignacionData = () => {
-  const [anio, setAnio] = useState('');   
-  const [mes, setMes] = useState('');   
+  // Años/meses por sondeo y documentos con lectura única al elegir el mes
+  // (antes: listener sobre todas las imputadas de todos los años).
+  const {
+    anio, setAnio,
+    mes, setMes,
+    aniosDisponibles,
+    mesesDelAnioActual,
+    documentos,
+    cargando,
+    actualizar
+  } = useResumenImputadas('consignacion_imputadas');
   const [busqueda, setBusqueda] = useState('');
   const [filtroAtributo, setFiltroAtributo] = useState('');
-  const [documentos, setDocumentos] = useState([]);
-  const [cargando, setCargando] = useState(false);
-
-  const [periodosDisponibles, setPeriodosDisponibles] = useState({});
-  const [cargandoPeriodos, setCargandoPeriodos] = useState(true);
-
-  const { showToast } = useToast();
-
-  useEffect(() => {
-    const q = query(collectionGroup(db, 'documentos'), FILTRO_MODULO);
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_imputadas/'));
-      const mapa = {};
-      docsConsignacion.forEach(d => {
-        const data = d.data();
-        const a = data.periodoAnio;
-        const m = data.periodoMes;
-        if (!a || !m) return;
-        if (!mapa[a]) mapa[a] = new Set();
-        mapa[a].add(m);
-      });
-      setPeriodosDisponibles(mapa);
-      setCargandoPeriodos(false);
-    }, (error) => {
-      console.error("Error al obtener períodos disponibles de consignación:", error);
-      showToast("Error al cargar períodos: " + error.message, "error");
-      setCargandoPeriodos(false);
-    });
-
-    return () => unsubscribe();
-  }, [showToast]);
-
-  const aniosDisponibles = useMemo(
-    () => Object.keys(periodosDisponibles).sort(),
-    [periodosDisponibles]
-  );
-
-  const mesesDelAnioActual = useMemo(() => {
-    if (!anio || !periodosDisponibles[anio]) return [];
-    return Array.from(periodosDisponibles[anio]).sort((a, b) => a.localeCompare(b));
-  }, [periodosDisponibles, anio]);
-
-  useEffect(() => {
-    if (anio && !aniosDisponibles.includes(anio)) {
-      setAnio('');
-    }
-  }, [aniosDisponibles, anio]);
-
-  useEffect(() => {
-    setMes('');
-  }, [anio]);
-
-  useEffect(() => {
-    if (!anio || !mes) {
-      setDocumentos([]);
-      setCargando(false);
-      return;
-    }
-
-    setCargando(true);
-    let unsubscribe;
-
-    if (mes === TODOS_LOS_MESES) {
-      const q = query(
-        collectionGroup(db, 'documentos'),
-        where('periodoAnio', '==', anio),
-        FILTRO_MODULO
-      );
-
-      unsubscribe = onSnapshot(q, (snapshot) => {
-        const docsConsignacion = snapshot.docs.filter(d => d.ref.path.startsWith('consignacion_imputadas/'));
-        setDocumentos(docsConsignacion.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
-        setCargando(false);
-      }, (error) => {
-        console.error("Error al escuchar consignacion_imputadas (año completo):", error);
-        showToast("Error al cargar el resumen: " + error.message, "error");
-        setCargando(false);
-      });
-    } else {
-      const colRef = collection(db, 'consignacion_imputadas', anio, 'meses', mes, 'documentos');
-      unsubscribe = onSnapshot(colRef, (snapshot) => {
-        setDocumentos(snapshot.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() })));
-        setCargando(false);
-      }, (error) => {
-        console.error("Error al escuchar consignacion_imputadas (mes):", error);
-        showToast("Error al cargar el resumen: " + error.message, "error");
-        setCargando(false);
-      });
-    }
-
-    return () => unsubscribe && unsubscribe();
-  }, [anio, mes, showToast]);
 
   const documentosFiltrados = useMemo(() => {
     let lista = documentos;
@@ -150,6 +62,7 @@ export const useResumenConsignacionData = () => {
     mesesDelAnioActual,
     documentosFiltrados,
     totales,
-    cargando: cargando || cargandoPeriodos
+    cargando,
+    actualizar
   };
 };

@@ -79,3 +79,32 @@ export const calcularMesPorDefecto = (anio, mesesDisponibles, mesActualValue) =>
   if (esAnioActual && mesesDisponibles.includes(mesActualValue)) return mesActualValue;
   return mesesDisponibles[mesesDisponibles.length - 1];
 };
+
+// Meses con al menos un documento en `{raiz}/{anio}/meses/{mes}/documentos`,
+// sin leer los documentos: recorre el índice de __name__ trayendo 1 solo
+// documento por mes y saltando al mes siguiente ("skip scan"). Cuesta
+// (meses con datos + 1) lecturas, sin importar cuántos registros tenga cada
+// mes, y descubre los IDs de mes tal como están guardados (no asume un
+// formato). Devuelve los IDs en orden de string.
+const MAX_MESES_SONDEO = 24; // tope de seguridad
+export const mesesDisponiblesPorSondeoImputadas = async (raiz, anio) => {
+  const meses = [];
+  const hasta = `${raiz}/${Number(anio) + 1}`;
+  let desde = `${raiz}/${anio}`;
+  for (let i = 0; i < MAX_MESES_SONDEO; i++) {
+    const snap = await getDocs(query(
+      collectionGroup(db, 'documentos'),
+      where(documentId(), '>=', desde),
+      where(documentId(), '<', hasta),
+      orderBy(documentId()),
+      limit(1)
+    ));
+    if (snap.empty) break;
+    // {raiz}/{anio}/{subcoleccion}/{mes}/documentos/{id}
+    const [, , subcoleccion, mes] = snap.docs[0].ref.path.split('/');
+    if (subcoleccion === 'meses') meses.push(mes);
+    // '\uf8ff' ordena después de cualquier ruta que cuelgue de ese mes.
+    desde = `${raiz}/${anio}/${subcoleccion}/${mes}\uf8ff`;
+  }
+  return meses;
+};
