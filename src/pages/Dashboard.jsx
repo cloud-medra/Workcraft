@@ -120,6 +120,11 @@ const Dashboard = () => {
   const { oscuro, alternarOscuro } = useTheme();
   const nombreSaludo = obtenerNombreMostrar(userData, { mayusculas: true });
 
+  // Medidor de lecturas de Firestore (solo `npm run dev`, ver src/dev/firestoreMeter.js).
+  useEffect(() => {
+    if (import.meta.env.DEV) window.__FS_METER__?.setScreen(activeView);
+  }, [activeView]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
