@@ -69,4 +69,14 @@ Error observado: `useFirestorePagination.js:35 The query requires an index` para
 
 ## Después de la Etapa A
 
-_Pendiente de medir._
+_Pendiente de medir con el mismo recorrido._
+
+Costo esperado (producción; en `npm run dev` StrictMode duplica los getDocs que corren al montar):
+
+| Acción | Antes | Esperado |
+|---|---|---|
+| 1ª entrada a Códigos Maestros (Vista General) en la sesión | 2.915 + 43 (empresas) | 2.915 + 43, una sola vez por sesión (listener compartido de `catalogosStore`) |
+| Entradas siguientes a Códigos Maestros | 2.915 + 43 cada vez | ≈ 0 (+1 por cada código que cambie) |
+| Entrada a Códigos Maestros > Pendientes | 2.915 + 43 | 2.915 (sigue igual hasta la Etapa B) |
+| Entrada a Reportes Info (mes de 419 registros) | ≈ 419 + años/meses | igual: ≈ 419 + años/meses (el listado no cambió) |
+| Importar un Excel del mes que está en pantalla | 1 lectura por fila (419) | 0 |
