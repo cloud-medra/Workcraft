@@ -25,6 +25,8 @@ const GestionesImplantes = () => {
   const { hasPermission } = useGranularPermission();
   const {
     implantes,
+    hayMasGestiones,
+    cargarMasGestiones,
     implantesFiltrados,
     implantesPagina,
     pagina,
@@ -342,6 +344,18 @@ const GestionesImplantes = () => {
                 totalFilas={implantesFiltrados.length}
                 setPagina={setPagina}
               />
+              {hayMasGestiones && (
+                <div className="flex justify-center py-1.5 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={cargarMasGestiones}
+                    className="h-7 px-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-[11px] font-medium transition"
+                    title="Se muestran las gestiones más recientes; los filtros aplican solo sobre las cargadas"
+                  >
+                    Cargar gestiones anteriores
+                  </button>
+                </div>
+              )}
             </>
           )}
         </>

@@ -12,6 +12,7 @@ import {
   getDocs,
   where,
   documentId,
+  limit,
   writeBatch,
   serverTimestamp
 } from 'firebase/firestore';
@@ -117,12 +118,22 @@ export const useGestionesHemodinamiaData = () => {
   const RANGO_MIN_GESTIONES = "hemodinamia_gestiones/0000";
   const RANGO_MAX_GESTIONES = "hemodinamia_gestiones/9999";
 
+  // Igual que Implantes: antes el listener no tenía límite y leía (y quedaba
+  // escuchando) el histórico COMPLETO de gestiones. Ahora escucha las
+  // TAMANO_PAGINA más recientes (orden por __name__ desc: el path lleva
+  // año/mes/día con ceros a la izquierda) y "Cargar más" amplía la ventana.
+  const TAMANO_PAGINA = 150;
+  const [limiteGestiones, setLimiteGestiones] = useState(TAMANO_PAGINA);
+  const [hayMasGestiones, setHayMasGestiones] = useState(false);
+  const cargarMasGestiones = () => setLimiteGestiones(l => l + TAMANO_PAGINA);
+
   useEffect(() => {
     const q = query(
       collectionGroup(db, "detalles"),
       where(documentId(), ">=", RANGO_MIN_GESTIONES),
       where(documentId(), "<", RANGO_MAX_GESTIONES),
-      orderBy(documentId())
+      orderBy(documentId(), "desc"),
+      limit(limiteGestiones)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const mapeados = snapshot.docs.map(document => ({
@@ -137,11 +148,12 @@ export const useGestionesHemodinamiaData = () => {
         return millisB - millisA;
       });
       setImplantes(mapeados);
+      setHayMasGestiones(snapshot.size >= limiteGestiones);
     }, (error) => {
       console.error("Error al escuchar gestiones:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [limiteGestiones]);
 
   const registrarLog = (docRef, accion, detalles) => registrarLogHemodinamia(docRef, accion, detalles, userData);
 
@@ -821,6 +833,8 @@ export const useGestionesHemodinamiaData = () => {
 
   return {
     implantes,
+    hayMasGestiones,
+    cargarMasGestiones,
     formData,
     setFormData,
     editingId,

@@ -143,6 +143,10 @@ export const useGestionesImplantesData = () => {
   // (el orden por __name__ ya viene soportado siempre). limit() acota la
   // ventana en vivo a las gestiones más recientes en vez de todo el histórico.
   const TAMANO_PAGINA = 150;
+  // "Cargar más": amplía la ventana en vivo de a TAMANO_PAGINA gestiones.
+  const [limiteGestiones, setLimiteGestiones] = useState(TAMANO_PAGINA);
+  const [hayMasGestiones, setHayMasGestiones] = useState(false);
+  const cargarMasGestiones = () => setLimiteGestiones(l => l + TAMANO_PAGINA);
 
   useEffect(() => {
     const q = query(
@@ -150,7 +154,7 @@ export const useGestionesImplantesData = () => {
       where(documentId(), ">=", RANGO_MIN_GESTIONES),
       where(documentId(), "<", RANGO_MAX_GESTIONES),
       orderBy(documentId(), "desc"),
-      limit(TAMANO_PAGINA)
+      limit(limiteGestiones)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const mapeados = snapshot.docs.map(document => ({
@@ -165,11 +169,12 @@ export const useGestionesImplantesData = () => {
         return millisB - millisA;
       });
       setImplantes(mapeados);
+      setHayMasGestiones(snapshot.size >= limiteGestiones);
     }, (error) => {
       console.error("Error al escuchar gestiones:", error);
     });
     return () => unsubscribe();
-  }, []);
+  }, [limiteGestiones]);
 
   const registrarLog = (docRef, accion, detalles) => registrarLogImplantes(docRef, accion, detalles, userData);
 
@@ -865,6 +870,8 @@ export const useGestionesImplantesData = () => {
 
   return {
     implantes,
+    hayMasGestiones,
+    cargarMasGestiones,
     formData,
     setFormData,
     editingId,

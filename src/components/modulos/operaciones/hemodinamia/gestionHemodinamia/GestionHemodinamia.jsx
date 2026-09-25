@@ -22,6 +22,8 @@ const GestionHemodinamia = () => {
   const { hasPermission } = useGranularPermission();
   const {
     implantes,
+    hayMasGestiones,
+    cargarMasGestiones,
     implantesFiltrados,
     formData,
     setFormData,
@@ -321,14 +323,28 @@ const GestionHemodinamia = () => {
           )}
 
           {hasPermission(PATH_VISTA, "tabla_datos") && (
-            <GestionesHemodinamiaTable
-              implantesFiltrados={implantesFiltrados}
-              handleCopiarTexto={handleCopiarTexto}
-              abrirHistorialLogs={abrirHistorialLogs}
-              iniciarEdicion={iniciarEdicion}
-              handleDelete={handleDelete}
-              onRowDoubleClick={(item) => setRegistroSeleccionado(item)}
-            />
+            <>
+              <GestionesHemodinamiaTable
+                implantesFiltrados={implantesFiltrados}
+                handleCopiarTexto={handleCopiarTexto}
+                abrirHistorialLogs={abrirHistorialLogs}
+                iniciarEdicion={iniciarEdicion}
+                handleDelete={handleDelete}
+                onRowDoubleClick={(item) => setRegistroSeleccionado(item)}
+              />
+              {hayMasGestiones && (
+                <div className="flex justify-center py-1.5 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    type="button"
+                    onClick={cargarMasGestiones}
+                    className="h-7 px-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded text-[11px] font-medium transition"
+                    title="Se muestran las gestiones más recientes; los filtros aplican solo sobre las cargadas"
+                  >
+                    Cargar gestiones anteriores
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </>
       )}
