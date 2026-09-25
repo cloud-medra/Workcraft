@@ -16,6 +16,7 @@
 //   - Consola: __FS_METER__.report()  |  __FS_METER__.reset()  |  await __FS_METER__.tamanos()
 //     await __FS_METER__.compararTotales(2026)  (count/sum del servidor vs. cliente)
 //     await __FS_METER__.listarTotalesTexto(2026)  (simulación de la migración de `total`)
+//     await __FS_METER__.aplicarTotalesTexto(2026) / revertirTotalesTexto()  (ver src/dev/migracionNumeros.js)
 //   - Desactivar: VITE_FIRESTORE_METER=off en .env.local y reiniciar `npm run dev`.
 //
 // Estimación de facturación (aproximada, igual que la documentación de Firestore):
@@ -369,6 +370,13 @@ const api = {
     console.table(filas);
     console.log(`[listarTotalesTexto ${anio}] ${filas.length} documento(s) · ${filas.filter((f) => !f.seguro).length} NO seguro(s)`);
     return filas;
+  },
+  // Migración de números guardados como texto (ver src/dev/migracionNumeros.js).
+  async aplicarTotalesTexto(anio, opciones) {
+    return (await import('./migracionNumeros.js')).aplicarTotalesTexto(anio, opciones);
+  },
+  async revertirTotalesTexto(respaldo, opciones) {
+    return (await import('./migracionNumeros.js')).revertirTotalesTexto(respaldo, opciones);
   },
   export() {
     return { totalLecturas, totalCache, listenersActivos, lecturasEnSegundoPlano, porPantalla: porPantalla(), porConsulta: filasOrdenadas() };
