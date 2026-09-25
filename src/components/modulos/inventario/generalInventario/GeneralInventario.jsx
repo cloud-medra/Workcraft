@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   getDocs,
   addDoc,
   updateDoc,
@@ -13,6 +12,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
 import { cargarCatalogo, ordenarPor } from '../../../../stores/catalogosStore';
 import { Package, Settings } from 'lucide-react';
 import Papa from 'papaparse';
@@ -29,7 +29,10 @@ import InventarioTable from './InventarioTable';
 const COL_BASE = "inventario_general";
 
 const GeneralInventario = () => {
-  const [cajas, setCajas] = useState([]);
+  // Cajas desde el listener compartido de inventario_general (ver
+  // src/stores/inventarioGeneralStore.js), ordenadas como antes por fecha.
+  const { cajas: cajasInventario } = useInventarioGeneral();
+  const cajas = useMemo(() => [...cajasInventario].sort(ordenarPor('fechaRegistro', 'desc')), [cajasInventario]);
   const [catalogoCodigos, setCatalogoCodigos] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -63,15 +66,6 @@ const GeneralInventario = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
-
-  // Cargar cajas en tiempo real
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setCajas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
 
   // Cargar catálogo de códigos (desde el catalogosStore: sin lecturas si
   // otra pantalla ya lo cargó en esta sesión)

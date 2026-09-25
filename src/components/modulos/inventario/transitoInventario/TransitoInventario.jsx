@@ -9,6 +9,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
 import {  
   Truck,  
   Search,  
@@ -30,7 +31,8 @@ const COL_EGRESOS = "inventario_egresos";
 
 const TransitoInventario = () => {
   const [documentosTransito, setDocumentosTransito] = useState([]);
-  const [cajasBase, setCajasBase] = useState([]);
+  // Cajas desde el listener compartido de inventario_general.
+  const { cajas: cajasBase } = useInventarioGeneral();
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [docSeleccionado, setDocSeleccionado] = useState(null);
@@ -46,15 +48,7 @@ const TransitoInventario = () => {
       setDocumentosTransito(docs.filter(d => d.estado === 'EN_TRANSITO'));
     });
 
-    const qCajas = query(collection(db, COL_GENERAL));
-    const unsubCajas = onSnapshot(qCajas, (snapshot) => {
-      setCajasBase(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    return () => {
-      unsubTransito();
-      unsubCajas();
-    };
+    return () => unsubTransito();
   }, []);
 
   // Lógica de guardado en Firestore alineada con Egresos

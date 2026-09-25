@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Layers, Search, PackageCheck, AlertCircle, DollarSign, Info, Calendar } from 'lucide-react';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
+import { ordenarPor } from '../../../../stores/catalogosStore';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import Spinner from '../../../ui/Spinner';
 import DetalleLotesDrawer from './DetalleLotesDrawer';
@@ -67,8 +67,12 @@ const calcularEstadoVencimiento = (fechaVencimientoStr) => {
 };
 
 const ExistenciasInventario = ({ cajas: cajasProp }) => {
-  const [cajasState, setCajasState] = useState([]);
-  const [cargando, setCargando] = useState(true);
+  // Si no vienen cajas por props se usan las del listener compartido de
+  // inventario_general (ver src/stores/inventarioGeneralStore.js).
+  const usaProps = Array.isArray(cajasProp) && cajasProp.length > 0;
+  const { cajas: cajasInventario, cargando: cargandoInventario } = useInventarioGeneral({ habilitado: !usaProps });
+  const cajasState = useMemo(() => [...cajasInventario].sort(ordenarPor('fechaRegistro', 'desc')), [cajasInventario]);
+  const cargando = !usaProps && cargandoInventario;
   const [filtro, setFiltro] = useState('');
 
   // Estados para controlar el Drawer lateral de Info
@@ -78,45 +82,9 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/inventario/existenciasInventario";
-  const COL_BASE = "inventario_general";
 
-  // 1. Obtener datos de Firestore si no vienen por props
-  useEffect(() => {
-    if (Array.isArray(cajasProp) && cajasProp.length > 0) {
-      setCajasState(cajasProp);
-      setCargando(false);
-      return;
-    }
 
-    setCargando(true);
-
-    try {
-      const q = query(collection(db, COL_BASE), orderBy('fechaRegistro', 'desc'));
-
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const data = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setCajasState(data);
-          setCargando(false);
-        },
-        (error) => {
-          console.error('Error al escuchar Firestore:', error);
-          setCargando(false);
-        }
-      );
-
-      return () => unsubscribe();
-    } catch (err) {
-      console.error('Error al configurar Firestore:', err);
-      setCargando(false);
-    }
-  }, [cajasProp]);
-
-  const cajas = Array.isArray(cajasProp) && cajasProp.length > 0 ? cajasProp : cajasState;
+  const cajas = usaProps ? cajasProp : cajasState;
 
   // 2. Consolidar ítems agrupándolos e integrando Precio, Valor Total y Estado de Vencimiento Crítico
   const existenciasConsolidadas = useMemo(() => {

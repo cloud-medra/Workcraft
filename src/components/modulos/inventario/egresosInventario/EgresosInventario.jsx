@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   doc,
   query,
   orderBy,
@@ -11,6 +10,8 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
+import { ordenarPor } from '../../../../stores/catalogosStore';
 import { Search, Plus, Trash2, ArrowRightLeft, AlertCircle, ShoppingBag, FileText, UserCheck } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
@@ -21,12 +22,22 @@ const COL_BASE = "inventario_general";
 const COL_TRANSITO = "inventario_transito";
 
 const EgresosInventario = () => {
-  const [cajas, setCajas] = useState([]);
+  // Cajas desde el listener compartido de inventario_general (ver
+  // src/stores/inventarioGeneralStore.js), ordenadas como antes por fecha.
+  const { cajas: cajasInventario } = useInventarioGeneral();
+  const cajas = useMemo(() => [...cajasInventario].sort(ordenarPor('fechaRegistro', 'desc')), [cajasInventario]);
   const [cargando, setCargando] = useState(false);
 
   // Búsqueda y Selección
   const [busqueda, setBusqueda] = useState('');
-  const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
+  // Se guarda solo el id: la caja se deriva de `cajas`, así siempre refleja
+  // el último snapshot (antes el listener se recreaba al cambiar de caja
+  // para mantenerla al día, releyendo toda la colección).
+  const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState(null);
+  const cajaSeleccionada = useMemo(
+    () => cajas.find(c => c.id === cajaSeleccionadaId) ?? null,
+    [cajas, cajaSeleccionadaId]
+  );
 
   // Formulario de Selección Temporal
   const [itemIndexSeleccionado, setItemIndexSeleccionado] = useState('');
@@ -85,23 +96,8 @@ const EgresosInventario = () => {
     generarSiguienteDocumento();
   }, []);
 
-  // Escuchar cajas en tiempo real
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setCajas(docs);
-
-      if (cajaSeleccionada) {
-        const actualizada = docs.find(c => c.id === cajaSeleccionada.id);
-        if (actualizada) setCajaSeleccionada(actualizada);
-      }
-    });
-    return () => unsubscribe();
-  }, [cajaSeleccionada?.id]);
-
   const handleSeleccionarCaja = (caja) => {
-    setCajaSeleccionada(caja);
+    setCajaSeleccionadaId(caja.id);
     setItemIndexSeleccionado('');
     setCantidadRetiro(''); 
   };
