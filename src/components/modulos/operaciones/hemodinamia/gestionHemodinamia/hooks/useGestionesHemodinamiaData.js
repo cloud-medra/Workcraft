@@ -90,7 +90,12 @@ const getDetallesRef = (fechaString, admisionId, empresaNombre) => {
   );
 };
 
-export const useGestionesHemodinamiaData = () => {
+// `admision` (opcional): modo detalle. En vez de la ventana de las
+// gestiones más recientes, escucha solo las de esa admisión (lo que
+// necesita el detalle abierto desde Cargas Consolidado). Sigue en tiempo
+// real: es la gestión en edición. `refPath` (opcional): si la admisión aún
+// no tiene código, se escucha solo ese documento.
+export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
   const [implantes, setImplantes] = useState([]);
   const [formData, setFormData] = useState(getInitialFormState);
 
@@ -128,15 +133,8 @@ export const useGestionesHemodinamiaData = () => {
   const cargarMasGestiones = () => setLimiteGestiones(l => l + TAMANO_PAGINA);
 
   useEffect(() => {
-    const q = query(
-      collectionGroup(db, "detalles"),
-      where(documentId(), ">=", RANGO_MIN_GESTIONES),
-      where(documentId(), "<", RANGO_MAX_GESTIONES),
-      orderBy(documentId(), "desc"),
-      limit(limiteGestiones)
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const mapeados = snapshot.docs.map(document => ({
+    const mapearYOrdenar = (docs) => {
+      const mapeados = docs.map(document => ({
         id: document.id,
         refPath: document.ref.path,
         active: true,
@@ -147,13 +145,53 @@ export const useGestionesHemodinamiaData = () => {
         const millisB = b.fechaRegistro?.toMillis ? b.fechaRegistro.toMillis() : new Date(b.fechaRegistro || 0).getTime();
         return millisB - millisA;
       });
-      setImplantes(mapeados);
+      return mapeados;
+    };
+
+    if (!admision && refPath) {
+      return onSnapshot(
+        doc(db, refPath),
+        (snap) => { setImplantes(snap.exists() ? mapearYOrdenar([snap]) : []); setHayMasGestiones(false); },
+        (error) => console.error(`Error al escuchar la gestión ${refPath}:`, error)
+      );
+    }
+
+    if (admision) {
+      // gestionId/agendaId pueden estar guardados como texto o número.
+      const texto = String(admision).trim();
+      const valores = Number.isFinite(Number(texto)) && texto !== '' ? [texto, Number(texto)] : [texto];
+      const porCampo = { gestionId: [], agendaId: [] };
+      const publicar = () => {
+        const unicos = new Map();
+        [...porCampo.gestionId, ...porCampo.agendaId]
+          .filter(d => d.ref.path.startsWith('hemodinamia_gestiones/'))
+          .forEach(d => unicos.set(d.ref.path, d));
+        setImplantes(mapearYOrdenar([...unicos.values()]));
+        setHayMasGestiones(false);
+      };
+      const unsubs = Object.keys(porCampo).map(campo => onSnapshot(
+        query(collectionGroup(db, "detalles"), where(campo, "in", valores)),
+        (snapshot) => { porCampo[campo] = snapshot.docs; publicar(); },
+        (error) => console.error(`Error al escuchar gestiones de la admisión ${texto} (${campo}):`, error)
+      ));
+      return () => unsubs.forEach(u => u());
+    }
+
+    const q = query(
+      collectionGroup(db, "detalles"),
+      where(documentId(), ">=", RANGO_MIN_GESTIONES),
+      where(documentId(), "<", RANGO_MAX_GESTIONES),
+      orderBy(documentId(), "desc"),
+      limit(limiteGestiones)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setImplantes(mapearYOrdenar(snapshot.docs));
       setHayMasGestiones(snapshot.size >= limiteGestiones);
     }, (error) => {
       console.error("Error al escuchar gestiones:", error);
     });
     return () => unsubscribe();
-  }, [limiteGestiones]);
+  }, [limiteGestiones, admision, refPath]);
 
   const registrarLog = (docRef, accion, detalles) => registrarLogHemodinamia(docRef, accion, detalles, userData);
 

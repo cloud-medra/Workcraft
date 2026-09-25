@@ -35,15 +35,19 @@ const ALL_TABS = [
 // el contenedor padre. Acá se replica esa misma cáscara para que el
 // comportamiento sea idéntico al de Implantes.
 //
-// El hook useGestionesImplantes() (carga TODA la colección de implantes,
-// en vivo) se llama ACÁ ADENTRO a propósito, no en CargasConsolidado — así
-// esa lectura completa solo se dispara cuando de verdad se abre el detalle
-// de un registro de Implantes, no cada vez que se entra al módulo o se
-// mira la tabla de Gestión (que ya trae sus propios datos acotados por año).
-// Hemodinamia comparte la misma cáscara (mismo contrato de hook y de vista de
-// detalle), por eso el componente recibe hook/vista/título por props.
+// El hook de gestiones se llama en modo detalle ({ admision }): escucha en
+// vivo solo las gestiones de la admisión abierta (lo que usa la vista de
+// detalle para agrupar las cotizaciones y para guardar), en vez de la
+// ventana de 150 gestiones del listado. Hemodinamia comparte la misma
+// cáscara (mismo contrato de hook y de vista), por eso el componente recibe
+// hook/vista/título por props.
 const DetalleGestionConHeader = ({ fila, onVolver, useGestiones, DetalleView, titulo, formatearFechaFn }) => {
-  const implantesHook = useGestiones();
+  const raw = fila._raw || {};
+  const admision = String(raw.gestionId ?? raw.agendaId ?? '').trim();
+  const admisionPendiente = ['', 'P', 'SIN_ADMISION'].includes(admision.toUpperCase());
+  const implantesHook = useGestiones(
+    admisionPendiente ? { refPath: fila.refPath } : { admision }
+  );
   const detalleRef = useRef(null);
   const [showConfirmSalir, setShowConfirmSalir] = useState(false);
 
