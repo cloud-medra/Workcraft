@@ -12,6 +12,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { cargarCatalogo } from '../../../../stores/catalogosStore';
 import { useToast } from '../../../../context/ToastContext';
 import { useUser } from '../../../../context/UserContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
@@ -30,7 +31,6 @@ import {
   XCircle
 } from 'lucide-react';
 
-const COL_CATALOGO_MAESTROS = "maestros_codigos"; 
 const COL_PADS = "maestros_pad";
 const PATH_VISTA = "/maestros/padMaestros";
 const MIN_CARACTERES_BUSQUEDA = 2;
@@ -133,11 +133,11 @@ const PadMaestros = () => {
     setCargandoComponentes(true);
     setErrorComponentes(false);
     try {
-      const snap = await getDocs(collection(db, COL_CATALOGO_MAESTROS));
+      // Desde el catalogosStore: sin lecturas si otra pantalla ya lo cargó.
+      const codigos = await cargarCatalogo('codigos');
       const codigosPad = [];
       const componentes = [];
-      snap.docs.forEach(docSnap => {
-        const item = { id: docSnap.id, ...docSnap.data() };
+      codigos.forEach(item => {
         if (normalizarTexto(item.clase) === 'PAD') codigosPad.push(item);
         else componentes.push(item);
       });

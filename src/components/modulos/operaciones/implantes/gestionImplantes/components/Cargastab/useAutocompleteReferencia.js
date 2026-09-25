@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../../../../firebaseConfig';
+import { cargarCatalogo, leerCatalogo, suscribirCatalogo } from '../../../../../../../stores/catalogosStore';
 
 // --- Caché en memoria compartida, mantenida en vivo con onSnapshot ---
 // Antes se cargaba una sola vez con getDocs() y quedaba "congelada": un
@@ -10,36 +9,10 @@ import { db } from '../../../../../../../firebaseConfig';
 // app; cualquier cambio en "maestros_codigos" (crear, editar, importar, o
 // modificar precio desde Vista General) actualiza la caché al instante,
 // sin depender de que cada punto de escritura recuerde invalidarla.
-let cacheCodigosMaestros = [];
-let hayDatosCache = false;
-let unsubscribeGlobal = null;
-let suscriptoresActivos = 0;
-const listenersCache = new Set();
-
-const notificarSuscriptores = () => listenersCache.forEach(cb => cb());
-
-const conectarListenerGlobal = () => {
-  suscriptoresActivos++;
-  if (!unsubscribeGlobal) {
-    unsubscribeGlobal = onSnapshot(
-      collection(db, "maestros_codigos"),
-      (snap) => {
-        cacheCodigosMaestros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        hayDatosCache = true;
-        notificarSuscriptores();
-      },
-      (error) => console.error("Error al escuchar maestros_codigos:", error)
-    );
-  }
-};
-
-const desconectarListenerGlobal = () => {
-  suscriptoresActivos = Math.max(0, suscriptoresActivos - 1);
-  if (suscriptoresActivos === 0 && unsubscribeGlobal) {
-    unsubscribeGlobal();
-    unsubscribeGlobal = null;
-  }
-};
+// La colección vive en el catalogosStore: un único listener de
+// maestros_codigos para toda la app, que no se cierra al desmontar
+// (cerrarlo y reabrirlo volvía a cobrar la colección completa).
+const obtenerCodigos = () => leerCatalogo('codigos') ?? [];
 
 // Se mantiene por compatibilidad si la llamas desde algún lado; ya no hace
 // falta porque la caché se mantiene sola vía onSnapshot.
@@ -59,8 +32,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
   const ultimoTextoRef = useRef('');
 
   useEffect(() => {
-    conectarListenerGlobal();
-    return () => desconectarListenerGlobal();
+    cargarCatalogo('codigos').catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -82,7 +54,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
       return;
     }
     const upper = t.toUpperCase();
-    const coincidencias = cacheCodigosMaestros.filter(item => {
+    const coincidencias = obtenerCodigos().filter(item => {
       const ref = (item.referencia || '').toUpperCase();
       const cod = (item.codigo || '').toUpperCase();
       return ref.includes(upper) || cod.includes(upper);
@@ -110,7 +82,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
       setMostrarSug(false);
       return;
     }
-    setBuscando(!hayDatosCache);
+    setBuscando(leerCatalogo('codigos') === null);
     const timeoutId = setTimeout(() => {
       recalcularSugerencias(referenciaTexto);
       setMostrarSug(true);
@@ -125,8 +97,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
     const cb = () => {
       if (ultimoTextoRef.current.length >= 2) recalcularSugerencias(ultimoTextoRef.current);
     };
-    listenersCache.add(cb);
-    return () => listenersCache.delete(cb);
+    return suscribirCatalogo('codigos', cb);
   }, []);
 
   return { sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, portalRef, skipNext };

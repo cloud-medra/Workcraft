@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -13,7 +12,9 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Layers, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
+import { ordenarPor, upsertLocal, removeLocal } from '../../../../stores/catalogosStore';
+import { Layers, Plus, Trash2, Search, Pencil, Save, X, History, Settings, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useToast } from '../../../../context/ToastContext';
@@ -24,7 +25,11 @@ import Spinner from '../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './RecargosMaestrosDrawers';
 
 const RecargosMaestros = () => {
-  const [recargos, setRecargos] = useState([]);
+  // Viene del catalogosStore (lectura única por sesión, compartida con los
+  // selects/autocompletados). Las escrituras de esta pantalla se reflejan con
+  // upsertLocal/removeLocal; "Actualizar" trae los cambios de otros usuarios.
+  const { datos: recargosCatalogo, refrescar: refrescarRecargos } = useCatalogo('recargos');
+  const recargos = useMemo(() => [...recargosCatalogo].sort(ordenarPor('desde')), [recargosCatalogo]);
   const [formData, setFormData] = useState({ desde: '', hasta: '', vecesCosto: '', comentario: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -46,14 +51,6 @@ const RecargosMaestros = () => {
 
   const PATH_VISTA = "/maestros/recargosMaestros";
   const COL_BASE = "maestros_recargos";
-
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("desde", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setRecargos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
@@ -118,6 +115,7 @@ const RecargosMaestros = () => {
         };
 
         await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
+        upsertLocal('recargos', editingId, dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
           desdeAnterior: recargoExistente?.desde,
@@ -143,6 +141,7 @@ const RecargosMaestros = () => {
         };
 
         const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
+        upsertLocal('recargos', docRef.id, dataAEnviar);
 
         await registrarLog(docRef.id, 'CREACION', {
           desde: desdeNum,
@@ -177,6 +176,7 @@ const RecargosMaestros = () => {
           });
 
           await deleteDoc(doc(db, COL_BASE, id));
+          removeLocal('recargos', id);
           showToast("Regla eliminada correctamente", "info");
         } catch (error) {
           showToast("Error al eliminar", "error");
@@ -289,6 +289,7 @@ const RecargosMaestros = () => {
       }
 
       await guardarRegistrosMasivos(registros);
+      await refrescarRecargos();
 
       showToast(`Se importaron ${registros.length} registros con éxito`, "success");
       setImportFile(null);
@@ -427,15 +428,24 @@ const RecargosMaestros = () => {
           {editingId ? "EDITAR REGLA DE RECARGO" : "RECARGOS MAESTROS (VECES COSTO)"}
         </h2>
 
-        {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+        <div className="flex items-center gap-1">
           <button
-            onClick={handleAbrirConfiguracion}
+            onClick={refrescarRecargos}
             className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            title="Configuración (Importar/Exportar)"
+            title="Actualizar (traer cambios de otros usuarios)"
           >
-            <Settings size={15} />
+            <RefreshCw size={15} />
           </button>
-        )}
+          {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+            <button
+              onClick={handleAbrirConfiguracion}
+              className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Configuración (Importar/Exportar)"
+            >
+              <Settings size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (

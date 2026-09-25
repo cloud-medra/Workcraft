@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -13,7 +12,9 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
+import { ordenarPor, upsertLocal, removeLocal } from '../../../../stores/catalogosStore';
+import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useToast } from '../../../../context/ToastContext';
@@ -24,7 +25,11 @@ import Spinner from '../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './PrestadoresMaestrosDrawers';
 
 const PrestadoresMaestros = () => {
-  const [prestadores, setPrestadores] = useState([]);
+  // Viene del catalogosStore (lectura única por sesión, compartida con los
+  // selects/autocompletados). Las escrituras de esta pantalla se reflejan con
+  // upsertLocal/removeLocal; "Actualizar" trae los cambios de otros usuarios.
+  const { datos: prestadoresCatalogo, refrescar: refrescarPrestadores } = useCatalogo('prestadores');
+  const prestadores = useMemo(() => [...prestadoresCatalogo].sort(ordenarPor('fechaRegistro')), [prestadoresCatalogo]);
   const [formData, setFormData] = useState({ nombre: '', especialidad: '', comentario: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -46,14 +51,6 @@ const PrestadoresMaestros = () => {
 
   const PATH_VISTA = "/maestros/prestadoresMaestros";
   const COL_BASE = "maestros_prestadores";
-
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPrestadores(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
@@ -110,6 +107,7 @@ const PrestadoresMaestros = () => {
         };
 
         await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
+        upsertLocal('prestadores', editingId, dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
           nombreAnterior: prestadorExistente?.nombre,
@@ -131,6 +129,7 @@ const PrestadoresMaestros = () => {
         };
 
         const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
+        upsertLocal('prestadores', docRef.id, dataAEnviar);
 
         await registrarLog(docRef.id, 'CREACION', {
           nombre: formData.nombre,
@@ -164,6 +163,7 @@ const PrestadoresMaestros = () => {
           });
 
           await deleteDoc(doc(db, COL_BASE, id));
+          removeLocal('prestadores', id);
 
           showToast("Prestador eliminado correctamente", "info");
         } catch (error) {
@@ -281,6 +281,7 @@ const PrestadoresMaestros = () => {
       }
 
       await guardarRegistrosMasivos(registrosNuevos);
+      await refrescarPrestadores();
 
       const omitidos = registros.length - registrosNuevos.length;
       const mensaje = omitidos > 0
@@ -440,15 +441,24 @@ const PrestadoresMaestros = () => {
           {editingId ? "EDITAR PRESTADOR" : "REGISTRO DE PRESTADORES"}
         </h2>
 
-        {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+        <div className="flex items-center gap-1">
           <button
-            onClick={handleAbrirConfiguracion}
+            onClick={refrescarPrestadores}
             className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            title="Configuración de Prestadores (Importar/Exportar)"
+            title="Actualizar (traer cambios de otros usuarios)"
           >
-            <Settings size={15} />
+            <RefreshCw size={15} />
           </button>
-        )}
+          {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+            <button
+              onClick={handleAbrirConfiguracion}
+              className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Configuración de Prestadores (Importar/Exportar)"
+            >
+              <Settings size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (

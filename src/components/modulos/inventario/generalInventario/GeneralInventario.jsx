@@ -13,6 +13,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { cargarCatalogo, ordenarPor } from '../../../../stores/catalogosStore';
 import { Package, Settings } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -26,7 +27,6 @@ import InventarioForm from './InventarioForm';
 import InventarioTable from './InventarioTable';
 
 const COL_BASE = "inventario_general";
-const COL_MAESTRO_CODIGOS = "maestros_codigos";
 
 const GeneralInventario = () => {
   const [cajas, setCajas] = useState([]);
@@ -73,17 +73,18 @@ const GeneralInventario = () => {
     return () => unsubscribe();
   }, []);
 
-  // Cargar catálogo de códigos
+  // Cargar catálogo de códigos (desde el catalogosStore: sin lecturas si
+  // otra pantalla ya lo cargó en esta sesión)
   useEffect(() => {
-    const cargarCatalogo = async () => {
+    const cargarCatalogoCodigos = async () => {
       try {
-        const snap = await getDocs(query(collection(db, COL_MAESTRO_CODIGOS), orderBy("fechaRegistro", "desc")));
-        setCatalogoCodigos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        const codigos = await cargarCatalogo('codigos');
+        setCatalogoCodigos([...codigos].sort(ordenarPor('fechaRegistro', 'desc')));
       } catch (error) {
         console.error("Error al cargar el catálogo de códigos:", error);
       }
     };
-    cargarCatalogo();
+    cargarCatalogoCodigos();
   }, []);
 
   const formatearFecha = (fecha) => {

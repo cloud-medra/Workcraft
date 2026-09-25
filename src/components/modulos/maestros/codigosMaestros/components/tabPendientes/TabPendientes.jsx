@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
   onSnapshot,
@@ -12,6 +12,8 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
+import { useCatalogo } from '../../../../../../hooks/useCatalogo';
+import { ordenarPor } from '../../../../../../stores/catalogosStore';
 import { Clock, Plus, Trash2, Search, Save, X, ChevronDown, History, Settings, Tag, RotateCcw } from 'lucide-react';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
@@ -45,7 +47,13 @@ const COLUMNAS = [
 
 const TabPendientes = () => {
   const [registros, setRegistros] = useState([]);
-  const [empresasMaestro, setEmpresasMaestro] = useState([]);
+  // Empresas desde el catalogosStore (lectura única por sesión, compartida).
+  // Sin las que no tienen nombre, igual que el orderBy('nombre') original.
+  const { datos: empresasCatalogo } = useCatalogo('empresas');
+  const empresasMaestro = useMemo(
+    () => empresasCatalogo.filter(e => e.nombre).sort(ordenarPor('nombre')),
+    [empresasCatalogo]
+  );
   const [formData, setFormData] = useState({
     referencia: '',
     descriptorEmpresa: '',
@@ -110,15 +118,6 @@ const TabPendientes = () => {
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(item => !item.codigo || item.codigo.trim() === '');
       setRegistros(datos);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    const q = query(collection(db, "maestros_empresas"), orderBy("nombre", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const lista = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEmpresasMaestro(lista);
     });
     return () => unsubscribe();
   }, []);

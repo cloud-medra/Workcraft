@@ -3,11 +3,10 @@ import {
   collection,
   getDocs,
   addDoc,
-  query,
-  orderBy,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { cargarCatalogo, ordenarPor } from '../../../../stores/catalogosStore';
 import { Save, PackageCheck, ChevronsUpDown, Check, Building2, Package } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useUser } from '../../../../context/UserContext';
@@ -15,8 +14,6 @@ import Spinner from '../../../ui/Spinner';
 import TablaItemsIngreso from './TablaItemsIngreso';
 
 const COL_BASE = "inventario_general";
-const COL_MAESTRO_CODIGOS = "maestros_codigos";
-const COL_EMPRESAS = "maestros_empresas";
 
 const IngresosInventario = () => {
   const [catalogoCodigos, setCatalogoCodigos] = useState([]);
@@ -59,16 +56,14 @@ const IngresosInventario = () => {
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
-        // Cargar Catálogo de Códigos
-        const snapCodigos = await getDocs(query(collection(db, COL_MAESTRO_CODIGOS), orderBy("fechaRegistro", "desc")));
-        setCatalogoCodigos(snapCodigos.docs.map(d => ({ id: d.id, ...d.data() })));
+        // Catálogos de códigos y empresas desde el catalogosStore (sin
+        // lecturas si otra pantalla ya los cargó en esta sesión)
+        const [codigos, empresas] = await Promise.all([cargarCatalogo('codigos'), cargarCatalogo('empresas')]);
+        setCatalogoCodigos([...codigos].sort(ordenarPor('fechaRegistro', 'desc')));
 
-        // Cargar Empresas
-        const snapEmpresas = await getDocs(collection(db, COL_EMPRESAS));
-        const empresasData = snapEmpresas.docs.map(d => {
-          const data = d.data();
+        const empresasData = empresas.map(data => {
           return {
-            id: d.id,
+            id: data.id,
             nombre: data.nombre || data.razonSocial || data.nombreEmpresa || 'Sin nombre',
             rut: data.rut || data.rutEmpresa || ''
           };

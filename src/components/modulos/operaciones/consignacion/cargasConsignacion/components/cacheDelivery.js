@@ -1,4 +1,5 @@
 import { collectionGroup, collection, query, where, getDocs } from 'firebase/firestore';
+import { codigosPorReferenciaSiDisponible } from '../../../../../../stores/catalogosStore';
 
 const NOMBRE_SUBCOL_DETALLES_GUIAS = 'detalles';
 const COL_BASE = 'consignacion_registros';
@@ -72,23 +73,29 @@ export function resolverGuiaCacheada(db, numeroDocumento, forzar = false) {
   return promesa;
 }
 
+const vinculoDesdeMaestro = (data) => (data
+  ? {
+      codigo: data.codigo || '',
+      descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
+      tipo: data.tipo || '',
+      empresa: data.empresa || ''
+    }
+  : null);
+
 export async function resolverMaestroCacheado(db, referencia) {
   const clave = (referencia || '').trim();
   if (!clave) return null;
+  // Si maestros_codigos ya está en el catalogosStore (lo carga el
+  // autocompletado de esta misma pantalla), se resuelve en memoria y al día.
+  const enMemoria = await codigosPorReferenciaSiDisponible([clave]);
+  if (enMemoria) return vinculoDesdeMaestro(enMemoria.get(clave));
+
   if (cacheMaestros.has(clave)) return cacheMaestros.get(clave);
 
   try {
     const q = query(collection(db, COL_MAESTROS_CODIGOS), where('referencia', '==', clave));
     const snap = await getDocs(q);
-    const data = snap.docs[0]?.data();
-    const vinculo = data
-      ? {
-          codigo: data.codigo || '',
-          descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-          tipo: data.tipo || '',
-          empresa: data.empresa || ''
-        }
-      : null;
+    const vinculo = vinculoDesdeMaestro(snap.docs[0]?.data());
     cacheMaestros.set(clave, vinculo);
     return vinculo;
   } catch (err) {
@@ -99,6 +106,13 @@ export async function resolverMaestroCacheado(db, referencia) {
 
 export async function resolverMaestrosCacheados(db, referencias) {
   const unicas = [...new Set((referencias || []).map((r) => (r || '').trim()).filter(Boolean))];
+  const enMemoria = await codigosPorReferenciaSiDisponible(unicas);
+  if (enMemoria) {
+    const resultado = {};
+    unicas.forEach((r) => { resultado[r] = vinculoDesdeMaestro(enMemoria.get(r)); });
+    return resultado;
+  }
+
   const pendientesPorConsultar = unicas.filter((r) => !referenciasResueltas.has(r));
 
   if (pendientesPorConsultar.length > 0) {
@@ -111,12 +125,7 @@ export async function resolverMaestrosCacheados(db, referencias) {
         snap.docs.forEach((d) => {
           const data = d.data();
           if (data.referencia) {
-            cacheMaestros.set(data.referencia, {
-              codigo: data.codigo || '',
-              descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
-              tipo: data.tipo || '',
-              empresa: data.empresa || ''
-            });
+            cacheMaestros.set(data.referencia, vinculoDesdeMaestro(data));
             encontrados.add(data.referencia);
           }
         });

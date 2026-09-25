@@ -1,50 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
+import { useCatalogo } from '../../hooks/useCatalogo';
+import { ordenarPor } from '../../stores/catalogosStore';
 import { ChevronDown, Check, Search } from 'lucide-react';
 
-// Caché en memoria compartida entre todas las instancias de CentroSelect
-// (mismo criterio que EmpresaSelect: "maestros_centros" es data maestra que
-// rara vez cambia, así que se lee una sola vez por sesión y se reutiliza en
-// vez de abrir un listener por cada formulario que lo monte).
-let promesaCentrosCache = null;
-
-const obtenerCentrosCacheados = (forzar = false) => {
-  if (!forzar && promesaCentrosCache) return promesaCentrosCache;
-
-  promesaCentrosCache = (async () => {
-    try {
-      const q = query(collection(db, "maestros_centros"), orderBy("nombre", "asc"));
-      const snap = await getDocs(q);
-      return snap.docs
-        .map(doc => ({ id: doc.id, ...doc.data() }))
-        .filter(centro => centro.estado !== 'INACTIVO');
-    } catch (err) {
-      promesaCentrosCache = null;
-      throw err;
-    }
-  })();
-
-  return promesaCentrosCache;
-};
+// "maestros_centros" viene del catalogosStore: se lee una sola vez por
+// sesión y la comparten todas las pantallas. Se excluyen los inactivos y
+// los que no tienen nombre (el orderBy('nombre') original los omitía).
+const filtrarCentrosActivos = (datos) => datos
+  .filter(centro => centro.nombre && centro.estado !== 'INACTIVO')
+  .sort(ordenarPor('nombre'));
 
 const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro...", disabled = false }) => {
-  const [centros, setCentros] = useState([]);
+  const { datos: centrosCatalogo } = useCatalogo('centros');
+  const centros = useMemo(() => filtrarCentrosActivos(centrosCatalogo), [centrosCatalogo]);
   const [busqueda, setBusqueda] = useState('');
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
   const containerRef = useRef(null);
   const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    let cancelado = false;
-    obtenerCentrosCacheados()
-      .then(data => { if (!cancelado) setCentros(data); })
-      .catch(err => console.error("Error al cargar maestros_centros:", err));
-
-    return () => { cancelado = true; };
-  }, []);
 
   // El dropdown se renderiza en un portal a document.body (ver más abajo),
   // así que "clic afuera" tiene que ignorar tanto la caja del select como el

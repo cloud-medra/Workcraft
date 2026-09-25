@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   collection,
   addDoc,
@@ -12,6 +12,8 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
+import { useCatalogo } from '../../../../../../hooks/useCatalogo';
+import { ordenarPor } from '../../../../../../stores/catalogosStore';
 import {
   CheckCircle2, Plus, Trash2, Search, Pencil, Save, X, ChevronDown,
   History, Settings, ChevronLeft, ChevronRight, RotateCcw
@@ -54,7 +56,13 @@ const COLUMNAS = [
 ];
 
 const TabConCodigo = () => {
-  const [empresasMaestro, setEmpresasMaestro] = useState([]);
+  // Empresas desde el catalogosStore (lectura única por sesión, compartida).
+  // Sin las que no tienen nombre, igual que el orderBy('nombre') original.
+  const { datos: empresasCatalogo } = useCatalogo('empresas');
+  const empresasMaestro = useMemo(
+    () => empresasCatalogo.filter(e => e.nombre).sort(ordenarPor('nombre')),
+    [empresasCatalogo]
+  );
   const [formData, setFormData] = useState({
     codigo: '',
     referencia: '',
@@ -139,18 +147,6 @@ const TabConCodigo = () => {
     if (num === '') return '';
     return new Intl.NumberFormat('es-ES').format(num);
   };
-
-  useEffect(() => {
-    const cargarEmpresas = async () => {
-      try {
-        const snap = await getDocs(query(collection(db, "maestros_empresas"), orderBy("nombre", "asc")));
-        setEmpresasMaestro(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      } catch (err) {
-        console.error("Error al cargar empresas:", err);
-      }
-    };
-    cargarEmpresas();
-  }, []);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';

@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -13,7 +12,9 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Building2, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
+import { ordenarPor, upsertLocal, removeLocal } from '../../../../stores/catalogosStore';
+import { Building2, Plus, Trash2, Search, Pencil, Save, X, History, Settings, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useToast } from '../../../../context/ToastContext';
@@ -24,7 +25,11 @@ import Spinner from '../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CentrosMaestrosDrawers';
 
 const CentrosMaestros = () => {
-  const [centros, setCentros] = useState([]);
+  // Viene del catalogosStore (lectura única por sesión, compartida con los
+  // selects/autocompletados). Las escrituras de esta pantalla se reflejan con
+  // upsertLocal/removeLocal; "Actualizar" trae los cambios de otros usuarios.
+  const { datos: centrosCatalogo, refrescar: refrescarCentros } = useCatalogo('centros');
+  const centros = useMemo(() => [...centrosCatalogo].sort(ordenarPor('fechaRegistro')), [centrosCatalogo]);
   const [formData, setFormData] = useState({ nombre: '', comentario: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -46,14 +51,6 @@ const CentrosMaestros = () => {
 
   const PATH_VISTA = "/maestros/centrosMaestros";
   const COL_BASE = "maestros_centros";
-
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setCentros(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
 
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
@@ -110,6 +107,7 @@ const CentrosMaestros = () => {
         };
 
         await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
+        upsertLocal('centros', editingId, dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
           nombreAnterior: centroExistente?.nombre,
@@ -129,6 +127,7 @@ const CentrosMaestros = () => {
         };
 
         const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
+        upsertLocal('centros', docRef.id, dataAEnviar);
 
         await registrarLog(docRef.id, 'CREACION', {
           nombre: formData.nombre,
@@ -160,6 +159,7 @@ const CentrosMaestros = () => {
           });
 
           await deleteDoc(doc(db, COL_BASE, id));
+          removeLocal('centros', id);
 
           showToast("Centro eliminado correctamente", "info");
         } catch (error) {
@@ -275,6 +275,7 @@ const CentrosMaestros = () => {
       }
 
       await guardarRegistrosMasivos(registrosNuevos);
+      await refrescarCentros();
 
       const omitidos = registros.length - registrosNuevos.length;
       const mensaje = omitidos > 0
@@ -430,15 +431,24 @@ const CentrosMaestros = () => {
           {editingId ? "EDITAR CENTRO" : "REGISTRO DE CENTROS"}
         </h2>
 
-        {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+        <div className="flex items-center gap-1">
           <button
-            onClick={handleAbrirConfiguracion}
+            onClick={refrescarCentros}
             className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            title="Configuración de Centros (Importar/Exportar)"
+            title="Actualizar (traer cambios de otros usuarios)"
           >
-            <Settings size={15} />
+            <RefreshCw size={15} />
           </button>
-        )}
+          {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+            <button
+              onClick={handleAbrirConfiguracion}
+              className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Configuración de Centros (Importar/Exportar)"
+            >
+              <Settings size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (

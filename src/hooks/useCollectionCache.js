@@ -1,37 +1,33 @@
-import { useState, useEffect, useCallback } from 'react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { useMemo } from 'react';
+import { CATALOGOS, ordenarPor } from '../stores/catalogosStore';
+import { useCatalogo } from './useCatalogo';
+
+// Antes este hook hacía un getDocs de la colección completa en cada montaje
+// (el estado vivía dentro del componente, así que no cacheaba nada: cada
+// entrada a Códigos Maestros > Vista General leía los ~3.000 códigos).
+// Ahora es un envoltorio del catalogosStore: la colección se lee una sola
+// vez por sesión y la comparten todas las pantallas. Solo acepta
+// colecciones registradas como catálogo.
+const nombrePorColeccion = Object.fromEntries(
+  Object.entries(CATALOGOS).map(([nombre, { coleccion }]) => [coleccion, nombre])
+);
 
 export function useCollectionCache(colName, orderField = 'fechaRegistro', orderDir = 'desc') {
-  const [allDocs, setAllDocs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const nombre = nombrePorColeccion[colName];
+  if (!nombre) throw new Error(`useCollectionCache: "${colName}" no está registrado en catalogosStore`);
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const q = query(collection(db, colName), orderBy(orderField, orderDir));
-      const snap = await getDocs(q);
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setAllDocs(data);
-    } catch (err) {
-      console.error(`Error al cargar la colección "${colName}":`, err);
-      setError(err);
-      setAllDocs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [colName, orderField, orderDir]);
+  const { datos, cargando, error, refrescar } = useCatalogo(nombre);
 
-  useEffect(() => {
-    cargar();
-  }, [cargar]);
+  const allDocs = useMemo(
+    () => [...datos].sort(ordenarPor(orderField, orderDir)),
+    [datos, orderField, orderDir]
+  );
 
   return {
     allDocs,
-    loading,
+    loading: cargando,
     error,
-    reload: cargar
+    // En el catálogo en vivo (maestros_codigos) no relee nada: ya está al día.
+    reload: refrescar
   };
 }
