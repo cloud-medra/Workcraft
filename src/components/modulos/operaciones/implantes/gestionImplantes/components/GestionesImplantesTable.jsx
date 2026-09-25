@@ -191,7 +191,10 @@ export const GestionesImplantesTable = ({
   const celdaBase = 'py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis';
 
   return (
-    <div className="flex-grow overflow-auto select-none relative">
+    // Sin select-none en el contenedor: el texto de las celdas se puede
+    // seleccionar y copiar. El encabezado sí lo mantiene (redimensionar
+    // columnas no debe seleccionar los títulos).
+    <div className="flex-grow overflow-auto relative">
       <div className="sticky top-0 z-20 flex justify-end px-1 py-0.5 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
         <button
           type="button"
@@ -213,7 +216,7 @@ export const GestionesImplantesTable = ({
           ))}
         </colgroup>
 
-        <thead className="bg-gray-100 dark:bg-gray-900 sticky top-[22px] z-10">
+        <thead className="bg-gray-100 dark:bg-gray-900 sticky top-[22px] z-10 select-none">
           <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
             {COLUMNAS.map(col => (
               <th
@@ -245,9 +248,14 @@ export const GestionesImplantesTable = ({
             return (
               <tr
                 key={i.id}
-                onDoubleClick={() => onRowDoubleClick && onRowDoubleClick(i)}
+                onDoubleClick={() => {
+                  // Doble clic sobre una palabra la selecciona: en ese caso
+                  // no se abre el detalle (se está copiando texto).
+                  if (window.getSelection()?.toString().trim()) return;
+                  if (onRowDoubleClick) onRowDoubleClick(i);
+                }}
                 className="group border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer"
-                title="Haz doble clic para abrir vista de modificación detallada"
+                title="Doble clic en un espacio sin texto (o botón Ver Detalle) para abrir la vista detallada"
               >
                 <td style={getStickyStyle('estado')} className={`${celdaBase} text-center ${getStickyClass('estado')}`}>
                   <div className="flex items-center justify-center">

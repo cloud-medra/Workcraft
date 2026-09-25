@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Calendar, Search, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X } from 'lucide-react';
+import { Calendar, Search, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 import PaginacionSimple from '../../../../ui/PaginacionSimple';
@@ -23,6 +23,9 @@ const NOMBRES_MESES = {
 
 const GestionesImplantes = () => {
   const { hasPermission } = useGranularPermission();
+  // Formulario de registro visible/oculto (siempre visible al entrar). Al
+  // ocultarlo, la tabla (flex-grow) ocupa el espacio liberado.
+  const [formularioVisible, setFormularioVisible] = useState(true);
   const {
     implantes,
     hayMasGestiones,
@@ -189,6 +192,20 @@ const GestionesImplantes = () => {
           </button>
         ) : (
           <div className="flex items-center gap-1">
+            {hasPermission(PATH_VISTA, "formulario_registro") && (
+              <button
+                type="button"
+                onClick={() => setFormularioVisible(v => !v)}
+                className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                title={formularioVisible ? "Ocultar formulario" : "Mostrar formulario"}
+                aria-label={formularioVisible ? "Ocultar formulario" : "Mostrar formulario"}
+                aria-expanded={formularioVisible}
+                aria-controls="gestion-implantes-formulario"
+              >
+                {formularioVisible ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </button>
+            )}
+
             {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
               <button
                 onClick={handleSincronizarVinculados}
@@ -229,14 +246,24 @@ const GestionesImplantes = () => {
       ) : (
         <>
           {hasPermission(PATH_VISTA, "formulario_registro") && (
-            <GestionesImplantesForm
-              formData={formData}
-              setFormData={setFormData}
-              editingId={editingId}
-              handleGuardar={handleGuardar}
-              handleIdChange={handleIdChange}
-              cancelarEdicion={cancelarEdicion}
-            />
+            // grid-rows 1fr <-> 0fr: colapso con transición de altura sin
+            // medir el contenido. `inert` saca del foco los campos ocultos.
+            <div
+              id="gestion-implantes-formulario"
+              className={`grid shrink-0 transition-[grid-template-rows,opacity] duration-300 ease-in-out ${formularioVisible ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+              inert={!formularioVisible}
+            >
+              <div className="overflow-hidden min-h-0">
+                <GestionesImplantesForm
+                  formData={formData}
+                  setFormData={setFormData}
+                  editingId={editingId}
+                  handleGuardar={handleGuardar}
+                  handleIdChange={handleIdChange}
+                  cancelarEdicion={cancelarEdicion}
+                />
+              </div>
+            </div>
           )}
 
           {hasPermission(PATH_VISTA, "barra_busqueda") && (
@@ -334,7 +361,11 @@ const GestionesImplantes = () => {
                 numeroInicial={(pagina - 1) * TAMANO_PAGINA_TABLA}
                 handleCopiarTexto={handleCopiarTexto}
                 abrirHistorialLogs={abrirHistorialLogs}
-                iniciarEdicion={iniciarEdicion}
+                iniciarEdicion={(...args) => {
+                  // Editar carga la fila en el formulario: si estaba oculto, se muestra.
+                  setFormularioVisible(true);
+                  return iniciarEdicion(...args);
+                }}
                 handleDelete={handleDelete}
                 onRowDoubleClick={(item) => setRegistroSeleccionado(item)}
               />

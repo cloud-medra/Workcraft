@@ -14,6 +14,17 @@ import { cargarCatalogo, leerCatalogo, suscribirCatalogo } from '../../../../../
 // (cerrarlo y reabrirlo volvía a cobrar la colección completa).
 const obtenerCodigos = () => leerCatalogo('codigos') ?? [];
 
+// Códigos Maestros marca los códigos dados de baja con estado 'INACTIVO'
+// (sin campo = activo, ver ModificarRegistroDrawer). No se ofrecen como
+// sugerencia al cargar ni al cambiar la referencia de un ítem. El filtro va
+// acá y no en la consulta: el catálogo es un único listener compartido por
+// toda la app (otros módulos sí necesitan los inactivos) y un
+// where('estado', '!=', 'INACTIVO') dejaría fuera los documentos sin campo.
+// Los ítems ya guardados con una referencia hoy inactiva no se ven
+// afectados: guardan su propia copia de referencia/código/precio.
+export const esCodigoActivo = (item) =>
+  String(item?.estado ?? 'ACTIVO').trim().toUpperCase() !== 'INACTIVO';
+
 // Se mantiene por compatibilidad si la llamas desde algún lado; ya no hace
 // falta porque la caché se mantiene sola vía onSnapshot.
 export const invalidarCacheCodigosMaestros = () => {};
@@ -55,6 +66,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
     }
     const upper = t.toUpperCase();
     const coincidencias = obtenerCodigos().filter(item => {
+      if (!esCodigoActivo(item)) return false;
       const ref = (item.referencia || '').toUpperCase();
       const cod = (item.codigo || '').toUpperCase();
       return ref.includes(upper) || cod.includes(upper);
