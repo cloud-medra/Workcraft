@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collectionGroup, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, orderBy, getDocs, documentId } from 'firebase/firestore';
 
 // ⚠️ Ajusta estas rutas según dónde ubiques finalmente este archivo dentro de
 // components/modulos/... (mismo patrón que EmpresasMaestros.jsx).
@@ -29,12 +29,6 @@ const NOMBRES_MESES = [
 // reales de guías, dejando el listado siempre vacío aunque sí existieran
 // datos guardados.
 const COL_BASE = 'consignacion_guias';
-
-// El collectionGroup 'detalles' es compartido con otros módulos (por
-// ejemplo Implantes), así que hay que filtrar por el prefijo real de la
-// ruta para no mezclar documentos de otra colección.
-const filtrarSoloConsignacion = (docs) =>
-  docs.filter((d) => d.ref.path.startsWith(`${COL_BASE}/`));
 
 const TAMANO_PAGINA_TABLA = 50;
 
@@ -69,29 +63,25 @@ const ListadoGuiasConsignacion = () => {
     [calendario, año]
   );
 
-  // --- 1) Escanear toda la colección para saber qué años/meses tienen datos ---
+  // --- 1) Años/meses con registros, leídos de los documentos "marcador"
+  // que IngresarGuiaDespacho escribe junto con cada guía:
+  // consignacion_guias/{año} y consignacion_guias/{año}/mes/{NombreMes}
+  // (campo `mes` numérico). Cuesta 1 lectura por año + 1 por mes, en vez del
+  // collectionGroup('detalles') de TODO el histórico de todos los módulos. ---
   const cargarCalendario = async () => {
     setCargandoCalendario(true);
     try {
-      const q = query(collectionGroup(db, 'detalles'), orderBy('fechaEmision', 'asc'));
-      const snapshot = await getDocs(q);
-
-      const docsConsignacion = filtrarSoloConsignacion(snapshot.docs);
-
-      const mapa = {};
-      docsConsignacion.forEach((doc) => {
-        const fecha = doc.data().fechaEmision;
-        if (!fecha || fecha.length < 7) return;
-        const [y, m] = fecha.split('-');
-        const mesNum = Number(m);
-        if (!mapa[y]) mapa[y] = new Set();
-        mapa[y].add(mesNum);
-      });
+      const snapAnios = await getDocs(collection(db, COL_BASE));
+      const anios = snapAnios.docs.map((d) => d.id).filter((id) => /^\d{4}$/.test(id));
 
       const resultado = {};
-      Object.keys(mapa).forEach((y) => {
-        resultado[y] = Array.from(mapa[y]);
-      });
+      await Promise.all(anios.map(async (y) => {
+        const snapMeses = await getDocs(collection(db, COL_BASE, y, 'mes'));
+        const meses = snapMeses.docs
+          .map((d) => Number(d.data().mes) || NOMBRES_MESES.indexOf(d.id) + 1)
+          .filter((m) => m >= 1 && m <= 12);
+        if (meses.length > 0) resultado[y] = meses;
+      }));
 
       setCalendario(resultado);
       return resultado;
@@ -119,18 +109,27 @@ const ListadoGuiasConsignacion = () => {
           ? `${Number(añoSel) + 1}-01-01`
           : `${añoSel}-${String(Number(mesSel) + 1).padStart(2, '0')}-01`;
 
+      // Solo los "detalles" de consignacion_guias/{año}/mes/{NombreMes}/...
+      // (rango sobre __name__). Antes era un collectionGroup('detalles') por
+      // fecha que también traía los detalles de otros módulos y se filtraba
+      // en el cliente.
+      const rutaMes = `${COL_BASE}/${añoSel}/mes/${NOMBRES_MESES[Number(mesSel) - 1]}`;
       const q = query(
         collectionGroup(db, 'detalles'),
-        where('fechaEmision', '>=', inicio),
-        where('fechaEmision', '<', fin),
-        orderBy('fechaEmision', 'desc')
+        where(documentId(), '>=', rutaMes),
+        where(documentId(), '<', `${rutaMes}\uf8ff`),
+        orderBy(documentId())
       );
 
       const snapshot = await getDocs(q);
 
-      const docsConsignacion = filtrarSoloConsignacion(snapshot.docs);
-
-      setProductos(docsConsignacion.map((d) => ({ id: d.id, ...d.data() })));
+      // Mismo filtro por fecha y orden (fechaEmision desc) que la consulta anterior.
+      setProductos(
+        snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter((p) => p.fechaEmision >= inicio && p.fechaEmision < fin)
+          .sort((a, b) => String(b.fechaEmision || '').localeCompare(String(a.fechaEmision || '')))
+      );
     } catch (err) {
       console.error('Error al cargar guías de consignación:', err);
       if (err?.code === 'failed-precondition') {

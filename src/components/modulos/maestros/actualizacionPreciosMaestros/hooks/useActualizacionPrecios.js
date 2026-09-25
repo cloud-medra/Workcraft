@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { COL_CODIGOS, COL_EMPRESAS, COL_IMPORTACIONES, normalizarTexto } from '../utils/formatoPrecios';
+import { cargarCatalogo, ordenarPor } from '../../../../../stores/catalogosStore';
+import { COL_IMPORTACIONES, normalizarTexto } from '../utils/formatoPrecios';
 import { analizarImportacionPrecios } from '../utils/analizarImportacionPrecios';
 import { leerArchivoExcelPrecios } from '../utils/leerExcelPrecios';
 import { descargarFormatoPrecios } from '../utils/generarFormatoPrecios';
@@ -9,13 +10,11 @@ import { guardarImportacionPrecios, ConflictoPreciosError } from '../utils/guard
 
 const LIMITE_HISTORIAL = 15;
 
-// Se lee maestros_codigos completo y se filtra en memoria por empresa
+// Se usa maestros_codigos completo y se filtra en memoria por empresa
 // normalizada: el campo `empresa` es texto libre y un where("empresa", "==")
-// exacto dejaría fuera códigos con otras mayúsculas o espacios.
-const cargarTodosLosCodigos = async () => {
-  const snap = await getDocs(collection(db, COL_CODIGOS));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-};
+// exacto dejaría fuera códigos con otras mayúsculas o espacios. Sale del
+// catalogosStore, que lo mantiene al día con un listener compartido.
+const cargarTodosLosCodigos = () => cargarCatalogo('codigos');
 
 const codigosDeEmpresa = (codigos, empresa) => {
   const nombre = normalizarTexto(empresa?.nombre);
@@ -50,9 +49,10 @@ export const useActualizacionPrecios = ({ userData, showToast }) => {
 
   useEffect(() => {
     let cancelado = false;
-    getDocs(query(collection(db, COL_EMPRESAS), orderBy('nombre', 'asc')))
-      .then(snap => {
-        if (!cancelado) setEmpresas(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    cargarCatalogo('empresas')
+      .then(datos => {
+        // Igual que el orderBy('nombre') original: sin las que no tienen nombre.
+        if (!cancelado) setEmpresas(datos.filter(e => e.nombre).sort(ordenarPor('nombre')));
       })
       .catch(error => {
         console.error('Error al cargar maestros_empresas:', error);

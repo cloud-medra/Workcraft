@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../../../../firebaseConfig';
+import { cargarCatalogo, leerCatalogo, suscribirCatalogo } from '../../../../../../../stores/catalogosStore';
 
 import { esCodigoDeHemodinamia, buscarCodigosHemodinamia } from './cargasHelpers';
 
@@ -9,37 +8,19 @@ import { esCodigoDeHemodinamia, buscarCodigosHemodinamia } from './cargasHelpers
 // segmento "HEMODINAMIA" de maestros_codigos (campo `segmento`, ya existente
 // en Códigos Maestros junto a IMPLANTES/CONSIGNACION) — a diferencia de
 // Implantes/Consignación, que buscan en toda la colección sin filtrar.
-let cacheCodigosMaestros = [];
-let hayDatosCache = false;
-let unsubscribeGlobal = null;
-let suscriptoresActivos = 0;
-const listenersCache = new Set();
-
-const notificarSuscriptores = () => listenersCache.forEach(cb => cb());
-
-const conectarListenerGlobal = () => {
-  suscriptoresActivos++;
-  if (!unsubscribeGlobal) {
-    unsubscribeGlobal = onSnapshot(
-      collection(db, "maestros_codigos"),
-      (snap) => {
-        cacheCodigosMaestros = snap.docs
-          .map(d => ({ id: d.id, ...d.data() }))
-          .filter(esCodigoDeHemodinamia);
-        hayDatosCache = true;
-        notificarSuscriptores();
-      },
-      (error) => console.error("Error al escuchar maestros_codigos:", error)
-    );
+// La colección vive en el catalogosStore: un único listener de
+// maestros_codigos para toda la app, que no se cierra al desmontar.
+// Aquí solo se deriva (y memoiza) el subconjunto de Hemodinamia.
+let ultimaBase = null;
+let codigosHemodinamia = [];
+const obtenerCodigos = () => {
+  const base = leerCatalogo('codigos');
+  if (!base) return [];
+  if (base !== ultimaBase) {
+    ultimaBase = base;
+    codigosHemodinamia = base.filter(esCodigoDeHemodinamia);
   }
-};
-
-const desconectarListenerGlobal = () => {
-  suscriptoresActivos = Math.max(0, suscriptoresActivos - 1);
-  if (suscriptoresActivos === 0 && unsubscribeGlobal) {
-    unsubscribeGlobal();
-    unsubscribeGlobal = null;
-  }
+  return codigosHemodinamia;
 };
 
 export const useAutocompleteReferencia = (referenciaTexto) => {
@@ -52,8 +33,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
   const ultimoTextoRef = useRef('');
 
   useEffect(() => {
-    conectarListenerGlobal();
-    return () => desconectarListenerGlobal();
+    cargarCatalogo('codigos').catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -74,7 +54,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
       setBuscando(false);
       return;
     }
-    setSugerencias(buscarCodigosHemodinamia(cacheCodigosMaestros, t));
+    setSugerencias(buscarCodigosHemodinamia(obtenerCodigos(), t));
     setBuscando(false);
   };
 
@@ -89,7 +69,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
       setMostrarSug(false);
       return;
     }
-    setBuscando(!hayDatosCache);
+    setBuscando(leerCatalogo('codigos') === null);
     const timeoutId = setTimeout(() => {
       recalcularSugerencias(referenciaTexto);
       setMostrarSug(true);
@@ -102,8 +82,7 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
     const cb = () => {
       if (ultimoTextoRef.current.length >= 2) recalcularSugerencias(ultimoTextoRef.current);
     };
-    listenersCache.add(cb);
-    return () => listenersCache.delete(cb);
+    return suscribirCatalogo('codigos', cb);
   }, []);
 
   return { sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, portalRef, skipNext };

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../../../../../../firebaseConfig';
+import { useVacunatorioData } from '../../../VacunatorioDataContext';
 import {
     ListOrdered,
     X,
@@ -62,6 +61,7 @@ const DrawerSeleccionOC = ({
     const [busquedaOC, setBusquedaOC] = useState('');
 
     const [cargandoItemsId, setCargandoItemsId] = useState(null);
+    const { getAnios, getMeses, getOrdenes, getLineasOrden } = useVacunatorioData();
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -88,10 +88,10 @@ const DrawerSeleccionOC = ({
 
         const cargarAniosOC = async () => {
             try {
-                const snap = await getDocs(collection(db, COL_ORDENES));
+                const idsAnios = await getAnios(COL_ORDENES);
                 if (isCancelled) return;
 
-                const anios = snap.docs.map(d => d.id).sort((a, b) => Number(b) - Number(a));
+                const anios = [...idsAnios].sort((a, b) => Number(b) - Number(a));
                 setAniosDisponibles(anios);
             } catch (error) {
                 if (!isCancelled) console.error("Error al cargar años de OC:", error);
@@ -103,7 +103,7 @@ const DrawerSeleccionOC = ({
         }
 
         return () => { isCancelled = true; };
-    }, [panelAbierto]);
+    }, [panelAbierto, getAnios]);
 
     useEffect(() => {
         let isCancelled = false;
@@ -122,12 +122,11 @@ const DrawerSeleccionOC = ({
             setOrdenes([]);
 
             try {
-                const snap = await getDocs(collection(db, COL_ORDENES, String(anioOC), "meses"));
+                const idsMeses = await getMeses(COL_ORDENES, anioOC);
                 if (isCancelled) return;
 
-                const meses = snap.docs
-                    .map(d => {
-                        const rawId = d.id;
+                const meses = idsMeses
+                    .map(rawId => {
                         const padId = rawId.length === 1 ? `0${rawId}` : rawId;
                         return {
                             id: rawId,
@@ -153,7 +152,7 @@ const DrawerSeleccionOC = ({
         }
 
         return () => { isCancelled = true; };
-    }, [anioOC, panelAbierto]);
+    }, [anioOC, panelAbierto, getMeses]);
 
     const cargarOrdenes = useCallback(async (isCancelledRef) => {
         if (!anioOC || !mesOC) {
@@ -163,17 +162,14 @@ const DrawerSeleccionOC = ({
 
         setLoadingOC(true);
         try {
-            const pathSubcoleccion = collection(db, COL_ORDENES, String(anioOC), "meses", String(mesOC), "ordenes");
-            const docSnap = await getDocs(pathSubcoleccion);
+            const docsOrdenes = await getOrdenes(COL_ORDENES, anioOC, mesOC);
 
             if (isCancelledRef && isCancelledRef.current) return;
 
-            const lista = docSnap.docs.map(d => {
-                const data = d.data();
+            const lista = docsOrdenes.map(data => {
                 return {
-                    id: d.id,
                     ...data,
-                    folioCalculado: data["Nro.Orden"] || data.numero_oc || d.id,
+                    folioCalculado: data["Nro.Orden"] || data.numero_oc || data.id,
                     proveedorCalculado: data["Proveedor"] || data.proveedor || 'Sin Razón Social',
                     montoCalculado: parseMontoToFloat(data.totalOrden || data.montoTotal || 0),
                     fechaCalculada: data["F.Orden"] || data.fecha || 'N/A'
@@ -192,7 +188,7 @@ const DrawerSeleccionOC = ({
                 setLoadingOC(false);
             }
         }
-    }, [anioOC, mesOC]);
+    }, [anioOC, mesOC, getOrdenes]);
 
     useEffect(() => {
         const isCancelledRef = { current: false };
@@ -209,20 +205,9 @@ const DrawerSeleccionOC = ({
     const handleSeleccionarOrden = useCallback(async (oc) => {
         setCargandoItemsId(oc.id);
         try {
-            const pathDocumentos = collection(
-                db,
-                COL_ORDENES,
-                String(anioOC),
-                "meses",
-                String(mesOC),
-                "ordenes",
-                String(oc.id),
-                "documentos"
-            );
-            const docSnap = await getDocs(pathDocumentos);
+            const lineas = await getLineasOrden(COL_ORDENES, anioOC, mesOC, oc.id);
 
-            const articulosOC = docSnap.docs.map(d => {
-                const item = d.data();
+            const articulosOC = lineas.map(item => {
 
                 const rawCodigo = item["Cod.Artículo"] ??
                     item["Cod.Articulo"] ??
@@ -233,7 +218,7 @@ const DrawerSeleccionOC = ({
                     item.codigo ??
                     item.codigo_producto ??
                     item.cod_articulo ??
-                    d.id;
+                    item.id;
 
                 const rawPrecio = item["P.Unitario"] ??
                     item["Precio Net. Unitario"] ??
@@ -262,7 +247,6 @@ const DrawerSeleccionOC = ({
                 const articulo_oc = String(rawArticulo).trim();
 
                 return {
-                    id: d.id,
                     ...item,
                     codigo_oc: String(rawCodigo).trim(),
                     precio_oc,
@@ -285,7 +269,7 @@ const DrawerSeleccionOC = ({
         } finally {
             setCargandoItemsId(null);
         }
-    }, [anioOC, mesOC, setOcSeleccionada]);
+    }, [anioOC, mesOC, setOcSeleccionada, getLineasOrden]);
 
     const ordenesFiltradas = ordenes.filter(oc => {
         const termino = busquedaOC.toLowerCase().trim();

@@ -17,6 +17,7 @@ import {
 import { useToast } from '../../../../../../../context/ToastContext';
 import { doc, updateDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../../../../../../../firebaseConfig';
+import { normalizarNumerosDocumento } from '../../../../shared/numerosDocumento';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 import { usePeriodoAbierto, obtenerPeriodoAbierto, formatearPeriodo } from '../../../../shared/periodoImputacion';
 
@@ -136,8 +137,10 @@ const DetalleListasIngreso = ({
         setDoc(refMes, { mes: periodo.mes, anio: periodo.anio, activo: true }, { merge: true }),
       ]);
 
+      // normalizarNumerosDocumento: aunque el documento de origen tenga `total`
+      // como texto (importaciones antiguas), la imputada queda numérica.
       await setDoc(refImputada, {
-        ...documento,
+        ...normalizarNumerosDocumento(documento),
         ...datosActa,
         origenAnio: documento.anio,
         origenMes: documento.mesId,

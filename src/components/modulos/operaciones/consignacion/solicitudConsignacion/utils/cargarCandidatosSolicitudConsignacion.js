@@ -9,6 +9,7 @@
 // faltaban sus filas de desglose (productos de la guía).
 import { collectionGroup, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
+import { codigosPorReferenciaSiDisponible } from '../../../../../../stores/catalogosStore';
 
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_ORIGEN = 'CARGADO';
@@ -60,6 +61,21 @@ const resolverGuiaCacheada = async (deliveryValor, forzar) => {
 
 const resolverMaestrosCacheados = async (referencias, forzar) => {
   const unicas = [...new Set(referencias.map(r => (r || '').trim()).filter(Boolean))];
+
+  // Si maestros_codigos ya está en el catalogosStore en esta sesión, se
+  // resuelve en memoria (y al día) sin consultas por referencia.
+  const enMemoria = await codigosPorReferenciaSiDisponible(unicas);
+  if (enMemoria) {
+    const resultado = {};
+    unicas.forEach(r => {
+      const data = enMemoria.get(r);
+      resultado[r] = data
+        ? { descripcion: data.descriptorEmpresa || data.descriptorAuto || '', tipo: data.tipo || '', empresa: data.empresa || '' }
+        : null;
+    });
+    return resultado;
+  }
+
   const pendientes = forzar ? unicas : unicas.filter(r => !cacheMaestrosPorCodigo.has(r));
 
   if (pendientes.length > 0) {

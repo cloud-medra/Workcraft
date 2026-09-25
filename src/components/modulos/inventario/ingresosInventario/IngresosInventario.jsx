@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   collection,
-  getDocs,
   addDoc,
-  query,
-  orderBy,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
+import { cargarCatalogo, ordenarPor } from '../../../../stores/catalogosStore';
 import { Save, PackageCheck, ChevronsUpDown, Check, Building2, Package } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useUser } from '../../../../context/UserContext';
@@ -15,13 +14,28 @@ import Spinner from '../../../ui/Spinner';
 import TablaItemsIngreso from './TablaItemsIngreso';
 
 const COL_BASE = "inventario_general";
-const COL_MAESTRO_CODIGOS = "maestros_codigos";
-const COL_EMPRESAS = "maestros_empresas";
 
 const IngresosInventario = () => {
   const [catalogoCodigos, setCatalogoCodigos] = useState([]);
   const [listaEmpresas, setListaEmpresas] = useState([]);
-  const [listaCajas, setListaCajas] = useState([]);
+  // Nombres únicos de caja desde el listener compartido de inventario_general
+  // (antes un getDocs de toda la colección en cada entrada).
+  const { cajas: cajasInventario } = useInventarioGeneral();
+  const listaCajas = useMemo(() => {
+    const cajasMap = new Map();
+    cajasInventario.forEach(data => {
+      if (data.nombreCaja && data.nombreCaja.trim() !== '') {
+        const nombreNormalizado = data.nombreCaja.trim();
+        if (!cajasMap.has(nombreNormalizado.toLowerCase())) {
+          cajasMap.set(nombreNormalizado.toLowerCase(), {
+            nombre: nombreNormalizado,
+            ubicacion: data.ubicacion || ''
+          });
+        }
+      }
+    });
+    return Array.from(cajasMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [cajasInventario]);
   const [cargando, setCargando] = useState(false);
 
   // Estados para Buscador/Desplegable de Empresas
@@ -59,42 +73,20 @@ const IngresosInventario = () => {
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
-        // Cargar Catálogo de Códigos
-        const snapCodigos = await getDocs(query(collection(db, COL_MAESTRO_CODIGOS), orderBy("fechaRegistro", "desc")));
-        setCatalogoCodigos(snapCodigos.docs.map(d => ({ id: d.id, ...d.data() })));
+        // Catálogos de códigos y empresas desde el catalogosStore (sin
+        // lecturas si otra pantalla ya los cargó en esta sesión)
+        const [codigos, empresas] = await Promise.all([cargarCatalogo('codigos'), cargarCatalogo('empresas')]);
+        setCatalogoCodigos([...codigos].sort(ordenarPor('fechaRegistro', 'desc')));
 
-        // Cargar Empresas
-        const snapEmpresas = await getDocs(collection(db, COL_EMPRESAS));
-        const empresasData = snapEmpresas.docs.map(d => {
-          const data = d.data();
+        const empresasData = empresas.map(data => {
           return {
-            id: d.id,
+            id: data.id,
             nombre: data.nombre || data.razonSocial || data.nombreEmpresa || 'Sin nombre',
             rut: data.rut || data.rutEmpresa || ''
           };
         });
         empresasData.sort((a, b) => a.nombre.localeCompare(b.nombre));
         setListaEmpresas(empresasData);
-
-        // Cargar Cajas Existentes del Inventario
-        const snapInventario = await getDocs(collection(db, COL_BASE));
-        const cajasMap = new Map();
-
-        snapInventario.docs.forEach(doc => {
-          const data = doc.data();
-          if (data.nombreCaja && data.nombreCaja.trim() !== '') {
-            const nombreNormalizado = data.nombreCaja.trim();
-            if (!cajasMap.has(nombreNormalizado.toLowerCase())) {
-              cajasMap.set(nombreNormalizado.toLowerCase(), {
-                nombre: nombreNormalizado,
-                ubicacion: data.ubicacion || ''
-              });
-            }
-          }
-        });
-
-        const cajasUnicas = Array.from(cajasMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
-        setListaCajas(cajasUnicas);
 
       } catch (error) {
         console.error("Error al cargar datos iniciales:", error);

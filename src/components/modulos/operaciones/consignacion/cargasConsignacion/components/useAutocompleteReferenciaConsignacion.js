@@ -1,40 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig';
+import { cargarCatalogo, leerCatalogo, suscribirCatalogo } from '../../../../../../stores/catalogosStore';
 
 // Mismo patrón que useAutocompleteReferencia de Implantes (Cargastab/), pero
 // vive local a Consignación para no acoplar módulos de negocio distintos —
 // ambos apuntan a la misma colección compartida "maestros_codigos".
-let cacheCodigosMaestros = [];
-let hayDatosCache = false;
-let unsubscribeGlobal = null;
-let suscriptoresActivos = 0;
-const listenersCache = new Set();
-
-const notificarSuscriptores = () => listenersCache.forEach(cb => cb());
-
-const conectarListenerGlobal = () => {
-  suscriptoresActivos++;
-  if (!unsubscribeGlobal) {
-    unsubscribeGlobal = onSnapshot(
-      collection(db, "maestros_codigos"),
-      (snap) => {
-        cacheCodigosMaestros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        hayDatosCache = true;
-        notificarSuscriptores();
-      },
-      (error) => console.error("Error al escuchar maestros_codigos:", error)
-    );
-  }
-};
-
-const desconectarListenerGlobal = () => {
-  suscriptoresActivos = Math.max(0, suscriptoresActivos - 1);
-  if (suscriptoresActivos === 0 && unsubscribeGlobal) {
-    unsubscribeGlobal();
-    unsubscribeGlobal = null;
-  }
-};
+// La colección vive en el catalogosStore: un único listener de
+// maestros_codigos para toda la app, que no se cierra al desmontar
+// (cerrarlo y reabrirlo volvía a cobrar la colección completa).
+const obtenerCodigos = () => leerCatalogo('codigos') ?? [];
 
 export const useAutocompleteReferenciaConsignacion = (referenciaTexto) => {
   const [sugerencias, setSugerencias] = useState([]);
@@ -50,8 +23,7 @@ export const useAutocompleteReferenciaConsignacion = (referenciaTexto) => {
   const ultimoTextoRef = useRef('');
 
   useEffect(() => {
-    conectarListenerGlobal();
-    return () => desconectarListenerGlobal();
+    cargarCatalogo('codigos').catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -73,7 +45,7 @@ export const useAutocompleteReferenciaConsignacion = (referenciaTexto) => {
       return;
     }
     const upper = t.toUpperCase();
-    const coincidencias = cacheCodigosMaestros.filter(item => {
+    const coincidencias = obtenerCodigos().filter(item => {
       const ref = (item.referencia || '').toUpperCase();
       const cod = (item.codigo || '').toUpperCase();
       return ref.includes(upper) || cod.includes(upper);
@@ -101,7 +73,7 @@ export const useAutocompleteReferenciaConsignacion = (referenciaTexto) => {
       setMostrarSug(false);
       return;
     }
-    setBuscando(!hayDatosCache);
+    setBuscando(leerCatalogo('codigos') === null);
     const timeoutId = setTimeout(() => {
       recalcularSugerencias(referenciaTexto);
       setMostrarSug(true);
@@ -116,8 +88,7 @@ export const useAutocompleteReferenciaConsignacion = (referenciaTexto) => {
     const cb = () => {
       if (ultimoTextoRef.current.length >= 2) recalcularSugerencias(ultimoTextoRef.current);
     };
-    listenersCache.add(cb);
-    return () => listenersCache.delete(cb);
+    return suscribirCatalogo('codigos', cb);
   }, []);
 
   return { sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, portalRef, skipNext };

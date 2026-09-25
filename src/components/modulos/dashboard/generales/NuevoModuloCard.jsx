@@ -1,30 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { db } from '../../../../firebaseConfig';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { upsertLocal } from '../../../../stores/catalogosStore';
+import { useNotasPanel } from '../../administracion/notasAdmin/useNotasPanel';
 import { StickyNote, CheckSquare, AlignLeft, Check } from 'lucide-react';
 
 const NuevoModuloCard = () => {
-  const [notas, setNotas] = useState([]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'administracion_notas'), orderBy('orden', 'asc'));
-    const unsubscribe = onSnapshot(
-      q,
-      (snapshot) => {
-        const docs = snapshot.docs.map((d, index) => ({
-          id: d.id,
-          ...d.data(),
-          orden: d.data().orden !== undefined ? d.data().orden : index,
-        }));
-        setNotas(docs);
-      },
-      (error) => {
-        console.error('Error al obtener notas:', error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
+  const { notas } = useNotasPanel();
 
   const handleToggleCheck = async (notaId, itemIndex, currentItems) => {
     const nuevosItems = [...currentItems];
@@ -37,6 +19,7 @@ const NuevoModuloCard = () => {
       await updateDoc(doc(db, 'administracion_notas', notaId), {
         items: nuevosItems,
       });
+      upsertLocal('notas', notaId, { items: nuevosItems });
     } catch (error) {
       console.error('Error al actualizar el checklist:', error);
     }

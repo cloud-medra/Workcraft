@@ -14,6 +14,8 @@ import {
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import { db } from '../../../../../firebaseConfig';
+import { numeroDesdeXml } from '../../shared/numerosDocumento';
+import { useVacunatorioData } from '../VacunatorioDataContext';
 import { FileText, Search, Upload, X } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
@@ -38,6 +40,9 @@ const XmlFacturasVacunatorio = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
+  // Años/meses cacheados (misma caché que las fases del módulo); se
+  // invalidan al importar para que aparezcan los períodos nuevos.
+  const { getAnios, getMeses, invalidar: invalidarCacheDatos } = useVacunatorioData();
 
   const PATH_VISTA = "/vacunatorio/xmlDocVacunatorio";
   const COL_BASE = "vacunatorio_documentos";
@@ -45,15 +50,14 @@ const XmlFacturasVacunatorio = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   useEffect(() => {
     if (!filtroAnio) {
@@ -62,15 +66,14 @@ const XmlFacturasVacunatorio = () => {
     }
     const cargarMeses = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-        const meses = snap.docs.map(d => d.id);
+        const meses = await getMeses(COL_BASE, filtroAnio);
         setMesesDisponibles(meses);
       } catch (error) {
         console.error("Error al cargar meses:", error);
       }
     };
     cargarMeses();
-  }, [filtroAnio]);
+  }, [filtroAnio, getMeses]);
 
   useEffect(() => {
     if (!filtroAnio || !filtroMes) {
@@ -135,10 +138,10 @@ const XmlFacturasVacunatorio = () => {
           nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent ?? "",
           codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent ?? "N/A",
           nombre: d.getElementsByTagName("NmbItem")[0]?.textContent ?? "",
-          cantidad: String(parseFloat(d.getElementsByTagName("QtyItem")[0]?.textContent ?? "0")),
+          cantidad: numeroDesdeXml(d.getElementsByTagName("QtyItem")[0]?.textContent),
           unidad: d.getElementsByTagName("UnmdItem")[0]?.textContent ?? "Un",
-          precio: String(parseFloat(d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0")),
-          monto: d.getElementsByTagName("MontoItem")[0]?.textContent ?? "0"
+          precio: numeroDesdeXml(d.getElementsByTagName("PrcItem")[0]?.textContent),
+          monto: numeroDesdeXml(d.getElementsByTagName("MontoItem")[0]?.textContent)
         }));
 
         await setDoc(doc(db, COL_BASE, anio), { active: "true" }, { merge: true });
@@ -160,7 +163,8 @@ const XmlFacturasVacunatorio = () => {
           anio,
           mes: nombreMes,
           rznSoc: xmlDoc.getElementsByTagName("RznSoc")[0]?.textContent || "Sin Razón Social",
-          total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent ?? "0",
+          // Numérico (antes texto): count()/sum() de Firestore ignoran los strings.
+          total: numeroDesdeXml(xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent),
           estado: "Iniciar Ingreso",
           xmlOriginal: text,
           detalles,
@@ -182,6 +186,7 @@ const XmlFacturasVacunatorio = () => {
         });
       }
 
+      if (nuevosAnios.length > 0 || nuevosMeses.length > 0) invalidarCacheDatos();
       if (nuevosAnios.length > 0) {
         setAniosDisponibles(prev => Array.from(new Set([...prev, ...nuevosAnios])).sort((a, b) => b - a));
       }
@@ -200,7 +205,7 @@ const XmlFacturasVacunatorio = () => {
     } finally {
       setCargando(false);
     }
-  }, [userData, showToast, filtroAnio]);
+  }, [userData, showToast, filtroAnio, invalidarCacheDatos]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

@@ -27,6 +27,7 @@ import SolicitudDiferencias from './fases/solicitudDiferencias/SolicitudDiferenc
 import DocumentosListasIngreso from './fases/documentosListasIngreso/DocListasIngreso';
 import DocImputados from './fases/documentosImputados/DocumentosImputados';
 import DocumentosEditor from './fases/documentosEditor/DocumentosEditor';
+import { VacunatorioDataProvider } from '../VacunatorioDataContext';
 
 // Cada pestaña es un `proceso` propio (path independiente) del
 // componentMap de esta pantalla (ver
@@ -276,4 +277,10 @@ const ArchivosControl = () => {
   );
 };
 
-export default ArchivosControl;
+const ArchivosControlConDatos = () => (
+  <VacunatorioDataProvider>
+    <ArchivosControl />
+  </VacunatorioDataProvider>
+);
+
+export default ArchivosControlConDatos;

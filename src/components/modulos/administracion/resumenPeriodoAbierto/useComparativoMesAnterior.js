@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MODULOS, MESES } from '../controlMensual/constants';
-import { obtenerSnapshotMensual } from '../controlMensual/snapshotMensual';
+import { useCierresAnio } from '../controlMensual/cierresAnioStore';
+import { obtenerCelda } from '../controlMensual/resumenImputacionesStore';
 
 const mesAnteriorDe = (mesId, anioStr) => {
   const idx = MESES.findIndex(m => m.id === mesId);
@@ -11,47 +12,54 @@ const mesAnteriorDe = (mesId, anioStr) => {
   return { mesId: MESES[idx - 1].id, anio: anioStr };
 };
 
-// Trae el total del mes anterior por módulo leyendo el snapshot guardado en
-// `imputaciones_periodos` (una lectura liviana por módulo), en vez de recalcular
-// sumando los documentos crudos del mes ya cerrado.
+// Total del mes anterior por módulo desde resumenImputacionesStore (el mismo
+// que usa Control Mensual): snapshot de imputaciones_periodos si el mes está
+// cerrado, count()/sum() si sigue abierto, 0 sin lecturas si nunca se abrió.
+// Los estados salen del listener compartido de cierres del año (si el mes
+// anterior es diciembre del año pasado, se escucha ese año).
 export const useComparativoMesAnterior = (periodoAbiertoInfo) => {
-  const [datosPorModulo, setDatosPorModulo] = useState({});
-  const [cargando, setCargando] = useState(false);
+  const [resultado, setResultado] = useState({ clave: null, datos: {} });
 
   const mesAnteriorInfo = periodoAbiertoInfo
     ? mesAnteriorDe(periodoAbiertoInfo.mesId, periodoAbiertoInfo.anio)
     : null;
 
+  const anioEstados = mesAnteriorInfo?.anio ?? periodoAbiertoInfo?.anio ?? String(new Date().getFullYear());
+  const { estadosModulos, cargando: cargandoEstados } = useCierresAnio(anioEstados);
+
+  const firma = mesAnteriorInfo && !cargandoEstados
+    ? `${mesAnteriorInfo.anio}|${mesAnteriorInfo.mesId}|${MODULOS.map(m => estadosModulos[m.id]?.[mesAnteriorInfo.mesId]?.estado || '-').join(',')}`
+    : null;
+
   useEffect(() => {
-    if (!mesAnteriorInfo) return;
-
+    if (!firma) return undefined;
     let cancelado = false;
-    setCargando(true);
-
+    const { anio, mesId } = mesAnteriorInfo;
     Promise.all(
       MODULOS.map(async (mod) => {
-        const snap = await obtenerSnapshotMensual(mod.id, mesAnteriorInfo.anio, mesAnteriorInfo.mesId);
-        return [mod.id, snap];
+        const estado = estadosModulos[mod.id]?.[mesId]?.estado;
+        try {
+          return [mod.id, await obtenerCelda(anio, mod.id, mesId, estado)];
+        } catch (error) {
+          console.error(`Error al obtener el mes anterior de ${mod.id}:`, error);
+          return [mod.id, { cantidad: 0, montoTotal: 0 }];
+        }
       })
     ).then((entradas) => {
-      if (cancelado) return;
-      setDatosPorModulo(Object.fromEntries(entradas));
-      setCargando(false);
+      if (!cancelado) setResultado({ clave: firma, datos: Object.fromEntries(entradas) });
     });
-
     return () => { cancelado = true; };
-    // Se depende de los primitivos (mesId/anio) y no del objeto mesAnteriorInfo,
-    // que es una referencia nueva en cada render y dispararía el efecto sin fin.
+    // `firma` resume mes anterior + estados de ese mes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mesAnteriorInfo?.mesId, mesAnteriorInfo?.anio]);
+  }, [firma]);
 
   const mesAnteriorNombre = mesAnteriorInfo
     ? MESES.find(m => m.id === mesAnteriorInfo.mesId)?.nombre
     : null;
 
   return {
-    datosMesAnterior: datosPorModulo,
-    cargandoMesAnterior: cargando,
+    datosMesAnterior: resultado.datos,
+    cargandoMesAnterior: Boolean(mesAnteriorInfo) && (firma === null || resultado.clave !== firma),
     mesAnteriorInfo: mesAnteriorInfo ? { ...mesAnteriorInfo, nombre: mesAnteriorNombre } : null
   };
 };

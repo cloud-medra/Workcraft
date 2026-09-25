@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -13,7 +12,9 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
-import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings, Copy } from 'lucide-react';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
+import { ordenarPor, upsertLocal, removeLocal } from '../../../../stores/catalogosStore';
+import { Microscope, Plus, Trash2, Search, Pencil, Save, X, History, Settings, Copy, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { useToast } from '../../../../context/ToastContext';
@@ -24,7 +25,11 @@ import Spinner from '../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './EmpresasMaestrosDrawers';
 
 const EmpresasMaestros = () => {
-  const [empresas, setEmpresas] = useState([]);
+  // Viene del catalogosStore (lectura única por sesión, compartida con los
+  // selects/autocompletados). Las escrituras de esta pantalla se reflejan con
+  // upsertLocal/removeLocal; "Actualizar" trae los cambios de otros usuarios.
+  const { datos: empresasCatalogo, refrescar: refrescarEmpresas } = useCatalogo('empresas');
+  const empresas = useMemo(() => [...empresasCatalogo].sort(ordenarPor('fechaRegistro')), [empresasCatalogo]);
   const [formData, setFormData] = useState({ nombre: '', rut: '', estado: 'ACTIVO' });
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
@@ -46,14 +51,6 @@ const EmpresasMaestros = () => {
 
   const PATH_VISTA = "/maestros/empresasMaestros";
   const COL_BASE = "maestros_empresas";
-
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setEmpresas(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsubscribe();
-  }, []);
 
   const formatearRut = (rut) => {
     let valor = rut.replace(/[^0-9kK]/g, '');
@@ -134,6 +131,7 @@ const EmpresasMaestros = () => {
         };
 
         await updateDoc(doc(db, COL_BASE, editingId), dataAEnviar);
+        upsertLocal('empresas', editingId, dataAEnviar);
 
         await registrarLog(editingId, 'EDICION', {
           nombreAnterior: empresaExistente?.nombre,
@@ -154,6 +152,7 @@ const EmpresasMaestros = () => {
         };
 
         const docRef = await addDoc(collection(db, COL_BASE), dataAEnviar);
+        upsertLocal('empresas', docRef.id, dataAEnviar);
 
         await registrarLog(docRef.id, 'CREACION', {
           nombre: formData.nombre,
@@ -186,6 +185,7 @@ const EmpresasMaestros = () => {
           });
 
           await deleteDoc(doc(db, COL_BASE, id));
+          removeLocal('empresas', id);
 
           showToast("Empresa eliminada correctamente", "info");
         } catch (error) {
@@ -297,6 +297,7 @@ const EmpresasMaestros = () => {
       }
 
       await guardarRegistrosMasivos(registrosNuevos);
+      await refrescarEmpresas();
 
       const omitidos = registros.length - registrosNuevos.length;
       const mensaje = omitidos > 0
@@ -456,15 +457,24 @@ const EmpresasMaestros = () => {
           {editingId ? "EDITAR EMPRESA" : "REGISTRO DE EMPRESAS"}
         </h2>
 
-        {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+        <div className="flex items-center gap-1">
           <button
-            onClick={handleAbrirConfiguracion}
+            onClick={refrescarEmpresas}
             className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-            title="Configuración de Empresas (Importar/Exportar)"
+            title="Actualizar (traer cambios de otros usuarios)"
           >
-            <Settings size={15} />
+            <RefreshCw size={15} />
           </button>
-        )}
+          {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+            <button
+              onClick={handleAbrirConfiguracion}
+              className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              title="Configuración de Empresas (Importar/Exportar)"
+            >
+              <Settings size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       {hasPermission(PATH_VISTA, "formulario_registro") && (

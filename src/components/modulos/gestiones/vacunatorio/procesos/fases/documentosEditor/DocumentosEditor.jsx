@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
+import { normalizarNumerosDocumento } from '../../../../shared/numerosDocumento';
 import { FileText, Trash2, Search, Eye, Settings, History } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
@@ -9,6 +10,7 @@ import { useGranularPermission } from '../../../../../../../hooks/useGranularPer
 import VizualizadorDetallesImputados from './VizualizadorDetallesImputados';
 import EdicionComponent from './EdicionComponent';
 import HistorialDocumentos from '../documentosRecibidos/HistorialDocumentos';
+import { useVacunatorioData } from '../../../VacunatorioDataContext';
 import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
 
 const DocumentosEditor = () => {
@@ -29,6 +31,8 @@ const DocumentosEditor = () => {
   const [filtroMes, setFiltroMes] = useState("");
 
   const { showToast } = useToast();
+
+  const { getAnios, getMeses } = useVacunatorioData();
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
@@ -51,29 +55,27 @@ const DocumentosEditor = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   useEffect(() => {
     if (!filtroAnio) { setMesesDisponibles([]); return; }
     const cargarMeses = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-        const meses = snap.docs.map(d => d.id);
+        const meses = await getMeses(COL_BASE, filtroAnio);
         setMesesDisponibles(meses);
       } catch (error) {
         console.error("Error al cargar meses:", error);
       }
     };
     cargarMeses();
-  }, [filtroAnio]);
+  }, [filtroAnio, getMeses]);
 
   useEffect(() => {
     if (!filtroAnio || !filtroMes) { setDocumentos([]); return; }
@@ -93,7 +95,8 @@ const DocumentosEditor = () => {
     try {
       const { id, ...dataToUpdate } = formData;
       const ref = doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", formData.id);
-      await updateDoc(ref, dataToUpdate);
+      // Los <input type="number"> entregan texto: se guarda como número.
+      await updateDoc(ref, normalizarNumerosDocumento(dataToUpdate));
       showToast("Documento actualizado correctamente", "success");
     } catch (error) {
       console.error("Error al actualizar documento:", error);

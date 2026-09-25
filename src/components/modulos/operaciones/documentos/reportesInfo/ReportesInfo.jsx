@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     collection,
     doc,
@@ -75,6 +75,12 @@ const COLUMNAS = [
 
 const ReportesInfo = () => {
     const [reportes, setReportes] = useState([]);
+    // IDs del mes que está descargado COMPLETO en `reportes` ({ clave: 'anio/mes', ids: Set }).
+    // Lo usa idsExistentesDelMes() para no volver a consultar Firestore al
+    // importar un Excel del mismo mes. Si la lista pasa a paginarse en el
+    // servidor, solo debe asignarse cuando se tengan todos los IDs del mes
+    // (si queda en null, la importación consulta por lotes como antes).
+    const idsMesCargadoRef = useRef(null);
     const [aniosDisponibles, setAniosDisponibles] = useState([]);
     const [mesesDisponibles, setMesesDisponibles] = useState([]);
     const [busqueda, setBusqueda] = useState('');
@@ -148,10 +154,12 @@ const ReportesInfo = () => {
         }
 
         setCargandoLista(true);
+        idsMesCargadoRef.current = null;
         try {
             const path = `${COL_BASE}/${anio}/meses/${mes}/registros`;
             const snap = await getDocs(query(collection(db, path), orderBy("Fecha", "desc")));
             setReportes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            idsMesCargadoRef.current = { clave: `${anio}/${mes}`, ids: new Set(snap.docs.map(d => d.id)) };
             setPagina(1);
         } catch (err) {
             console.error("Error al cargar reportes:", err);
@@ -188,6 +196,25 @@ const ReportesInfo = () => {
         }
         return str.split('T')[0];
     };
+
+    // Qué IDs de `ids` ya existen en registros de anio/mes. Si ese mes está
+    // descargado completo en pantalla se responde en memoria (0 lecturas);
+    // si no, se consulta por documentId() 'in' en lotes de 30 (límite de
+    // Firestore) solo para los IDs a importar.
+    const idsExistentesDelMes = useCallback(async (anio, mes, ids) => {
+        const cargado = idsMesCargadoRef.current;
+        if (cargado && cargado.clave === `${anio}/${mes}`) {
+            return new Set(ids.filter(id => cargado.ids.has(id)));
+        }
+        const existentes = new Set();
+        const regsCol = collection(db, COL_BASE, anio, "meses", mes, "registros");
+        for (let i = 0; i < ids.length; i += 30) {
+            const loteIds = ids.slice(i, i + 30);
+            const snapLote = await getDocs(query(regsCol, where(documentId(), "in", loteIds)));
+            snapLote.docs.forEach(d => existentes.add(d.id));
+        }
+        return existentes;
+    }, []);
 
     const onDrop = useCallback(async (acceptedFiles) => {
         setCargando(true);
@@ -247,21 +274,9 @@ const ReportesInfo = () => {
                     fechaResult = { y, m };
 
                     // 1. Verificar duplicados SOLO para los IDs que se van a
-                    // importar (antes se leía la colección "registros"
-                    // COMPLETA del mes en cada importación, aunque el mes ya
-                    // tuviera miles de filas cargadas de antes). Como el ID
-                    // de cada registro es determinístico, se puede consultar
-                    // por documentId() 'in' en lotes de 30 (límite de Firestore).
+                    // importar (el ID de cada registro es determinístico).
                     const idsUnicos = [...new Set(items.map(item => item.docId))];
-                    const idsExistentes = new Set();
-                    const regsCol = collection(db, COL_BASE, y, "meses", m, "registros");
-                    for (let i = 0; i < idsUnicos.length; i += 30) {
-                        const loteIds = idsUnicos.slice(i, i + 30);
-                        const snapLote = await getDocs(
-                            query(regsCol, where(documentId(), "in", loteIds))
-                        );
-                        snapLote.docs.forEach(d => idsExistentes.add(d.id));
-                    }
+                    const idsExistentes = await idsExistentesDelMes(y, m, idsUnicos);
 
                     // 2. Filtrar solo los registros que NO existen
                     const itemsNuevos = items.filter(item => !idsExistentes.has(item.docId));
@@ -286,6 +301,12 @@ const ReportesInfo = () => {
 
                         await batch.commit();
                         totalNuevos += chunk.length;
+
+                        // Si se importan varios archivos del mismo mes, los
+                        // siguientes deben ver estos registros como existentes.
+                        if (idsMesCargadoRef.current?.clave === `${y}/${m}`) {
+                            chunk.forEach(({ docId }) => idsMesCargadoRef.current.ids.add(docId));
+                        }
                     }
                 }
             }
@@ -308,7 +329,7 @@ const ReportesInfo = () => {
         } finally {
             setCargando(false);
         }
-    }, [showToast, cargarPrimeraPagina]);
+    }, [showToast, cargarPrimeraPagina, idsExistentesDelMes]);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         onDrop,

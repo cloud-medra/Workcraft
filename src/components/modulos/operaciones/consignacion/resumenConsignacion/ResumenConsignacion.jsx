@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileBarChart, Search, Calendar as CalendarIcon, FilterX, RotateCcw } from 'lucide-react';
+import { FileBarChart, Search, Calendar as CalendarIcon, FilterX, RotateCcw, RefreshCw } from 'lucide-react';
 import Spinner from '../../../../ui/Spinner'; // AJUSTAR ruta
 import {
   useResumenConsignacionData,
@@ -53,7 +53,8 @@ const ResumenConsignacion = () => {
     mesesDelAnioActual,
     documentosFiltrados,
     totales,
-    cargando
+    cargando,
+    actualizar
   } = useResumenConsignacionData();
 
   const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(COLUMNAS);
@@ -138,6 +139,15 @@ const ResumenConsignacion = () => {
               <FilterX size={12} /> Limpiar
             </button>
           )}
+
+          <button
+            onClick={actualizar}
+            disabled={cargando}
+            className="h-7 px-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded font-medium flex items-center gap-1 transition disabled:opacity-50"
+            title="Volver a leer los períodos y los datos del mes"
+          >
+            <RefreshCw size={12} /> Actualizar
+          </button>
         </div>
       </div>
 

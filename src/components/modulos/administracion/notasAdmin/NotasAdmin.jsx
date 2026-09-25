@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { db, auth } from '../../../../firebaseConfig';
 import { 
   collection, addDoc, updateDoc, deleteDoc, doc, 
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch 
+  serverTimestamp, writeBatch 
 } from 'firebase/firestore';
+import { removeLocal } from '../../../../stores/catalogosStore';
+import { useNotasPanel } from './useNotasPanel';
 import { 
   Send, PlusCircle, CheckSquare, AlignLeft, 
   Trash2, Edit2, Plus, X, ArrowUp, ArrowDown 
@@ -21,33 +23,11 @@ const NotasAdmin = ({ userData }) => {
   const [contenido, setContenido] = useState('');
   const [items, setItems] = useState(['']);
   const [cargando, setCargando] = useState(false);
-  const [cargandoNotas, setCargandoNotas] = useState(true);
   const [editandoId, setEditandoId] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [idParaEliminar, setIdParaEliminar] = useState(null);
-  const [notas, setNotas] = useState([]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'administracion_notas'), orderBy('orden', 'asc'));
-    const unsubscribe = onSnapshot(
-      q, 
-      (snapshot) => {
-        const docs = snapshot.docs.map((d, index) => ({
-          id: d.id,
-          ...d.data(),
-          orden: d.data().orden !== undefined ? d.data().orden : index
-        }));
-        setNotas(docs);
-        setCargandoNotas(false);
-      },
-      (error) => {
-        console.error('Error al escuchar notas:', error);
-        setCargandoNotas(false);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
+  const { notas, cargando: cargandoNotas, refrescar: refrescarNotas } = useNotasPanel();
 
   const handleItemChange = (index, value) => {
     const nuevosItems = [...items];
@@ -81,6 +61,7 @@ const NotasAdmin = ({ userData }) => {
       batch.update(doc(db, 'administracion_notas', notaActual.id), { orden: ordenDestino });
       batch.update(doc(db, 'administracion_notas', notaDestino.id), { orden: ordenActual });
       await batch.commit();
+      await refrescarNotas();
     } catch (error) {
       console.error('Error al reordenar:', error);
       showToast('Error al cambiar la posición', 'error');
@@ -118,6 +99,7 @@ const NotasAdmin = ({ userData }) => {
               }),
         };
         await updateDoc(doc(db, 'administracion_notas', editandoId), payloadActualizacion);
+        await refrescarNotas();
         showToast('Nota actualizada con éxito', 'success');
       } else {
         const batch = writeBatch(db);
@@ -144,6 +126,7 @@ const NotasAdmin = ({ userData }) => {
         });
 
         await batch.commit();
+        await refrescarNotas();
         showToast('Nota publicada correctamente', 'success');
       }
       resetFormulario();
@@ -178,6 +161,7 @@ const NotasAdmin = ({ userData }) => {
 
     try {
       await deleteDoc(doc(db, 'administracion_notas', idParaEliminar));
+      removeLocal('notas', idParaEliminar);
       showToast('Nota eliminada correctamente', 'success');
     } catch (error) {
       console.error('Error al eliminar:', error);

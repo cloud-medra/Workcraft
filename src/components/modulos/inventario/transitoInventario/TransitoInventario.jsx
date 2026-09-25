@@ -6,7 +6,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
-  writeBatch
+  runTransaction
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
 import {  
@@ -30,7 +30,6 @@ const COL_EGRESOS = "inventario_egresos";
 
 const TransitoInventario = () => {
   const [documentosTransito, setDocumentosTransito] = useState([]);
-  const [cajasBase, setCajasBase] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [docSeleccionado, setDocSeleccionado] = useState(null);
@@ -46,15 +45,7 @@ const TransitoInventario = () => {
       setDocumentosTransito(docs.filter(d => d.estado === 'EN_TRANSITO'));
     });
 
-    const qCajas = query(collection(db, COL_GENERAL));
-    const unsubCajas = onSnapshot(qCajas, (snapshot) => {
-      setCajasBase(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    return () => {
-      unsubTransito();
-      unsubCajas();
-    };
+    return () => unsubTransito();
   }, []);
 
   // Lógica de guardado en Firestore alineada con Egresos
@@ -67,8 +58,6 @@ const TransitoInventario = () => {
 
     setCargando(true);
     try {
-      const batch = writeBatch(db);
-
       const itemsEgresadosFinales = [];
       const itemsDevueltosFinales = [];
       const devolucionesPorCaja = {};
@@ -123,105 +112,125 @@ const TransitoInventario = () => {
         }
       });
 
-      // 1. Devolver al inventario general si aplica
-      for (const cajaId in devolucionesPorCaja) {
-        const cajaDoc = cajasBase.find(c => c.id === cajaId);
-        if (!cajaDoc) continue;
+      // Transacción: se releen el documento en tránsito y las cajas de
+      // destino en el momento. Si otro usuario ya procesó o modificó el
+      // documento se aborta, y las devoluciones se suman sobre los ítems
+      // actuales de cada caja (antes se escribía el arreglo `items`
+      // calculado desde la copia en pantalla, pudiendo pisar otros movimientos).
+      await runTransaction(db, async (tx) => {
+        const docTransitoRef = doc(db, COL_TRANSITO, docSeleccionado.id);
+        const cajaIds = Object.keys(devolucionesPorCaja);
+        const [snapTransito, ...snapsCajas] = await Promise.all([
+          tx.get(docTransitoRef),
+          ...cajaIds.map(id => tx.get(doc(db, COL_GENERAL, id)))
+        ]);
 
-        const nuevosItems = structuredClone(cajaDoc.items);
-        const devoluciones = devolucionesPorCaja[cajaId];
+        const transitoActual = snapTransito.exists() ? snapTransito.data() : null;
+        if (
+          !transitoActual ||
+          transitoActual.estado !== 'EN_TRANSITO' ||
+          JSON.stringify(transitoActual.items) !== JSON.stringify(docSeleccionado.items)
+        ) {
+          throw new Error('El documento en tránsito fue procesado o modificado por otro usuario. Vuelve a abrirlo.');
+        }
 
-        devoluciones.forEach(({ itemRef, cantidadDevuelta }) => {
-          const idxEnCaja = nuevosItems.findIndex(i => 
-            (i.codigo === itemRef.codigo || i.tipo === itemRef.tipo) && 
-            i.lote === itemRef.lote
-          );
+        // 1. Devolver al inventario general si aplica
+        cajaIds.forEach((cajaId, posicion) => {
+          const snapCaja = snapsCajas[posicion];
+          if (!snapCaja.exists()) return;
 
-          if (idxEnCaja !== -1) {
-            nuevosItems[idxEnCaja].cantidad += cantidadDevuelta;
-          } else {
-            nuevosItems.push({
-              codigo: itemRef.codigo || '',
-              tipo: itemRef.tipo || '',
-              referencia: itemRef.referencia || '',
-              lote: itemRef.lote || 'S/L',
-              vencimiento: itemRef.vencimiento || 'S/V',
-              cantidad: cantidadDevuelta
-            });
-          }
+          const nuevosItems = structuredClone(snapCaja.data().items || []);
+          const devoluciones = devolucionesPorCaja[cajaId];
+
+          devoluciones.forEach(({ itemRef, cantidadDevuelta }) => {
+            const idxEnCaja = nuevosItems.findIndex(i => 
+              (i.codigo === itemRef.codigo || i.tipo === itemRef.tipo) && 
+              i.lote === itemRef.lote
+            );
+
+            if (idxEnCaja !== -1) {
+              nuevosItems[idxEnCaja].cantidad += cantidadDevuelta;
+            } else {
+              nuevosItems.push({
+                codigo: itemRef.codigo || '',
+                tipo: itemRef.tipo || '',
+                referencia: itemRef.referencia || '',
+                lote: itemRef.lote || 'S/L',
+                vencimiento: itemRef.vencimiento || 'S/V',
+                cantidad: cantidadDevuelta
+              });
+            }
+          });
+
+          const cajaRef = doc(db, COL_GENERAL, cajaId);
+          tx.update(cajaRef, {
+            items: nuevosItems,
+            ultimaModificacion: serverTimestamp()
+          });
+
+          const logRef = doc(collection(db, COL_GENERAL, cajaId, "logs"));
+          tx.set(logRef, {
+            accion: 'REINGRESO_PARCIAL_DESDE_TRANSITO',
+            numeroDocumento: docSeleccionado.numeroDocumento,
+            detalles: {
+              itemsDevueltos: devoluciones.map(d => ({
+                tipo: d.itemRef.tipo || d.itemRef.codigo,
+                lote: d.itemRef.lote,
+                cantidadDevuelta: d.cantidadDevuelta
+              }))
+            },
+            usuario: userData?.nombreCompleto || 'Usuario',
+            fecha: new Date(),
+            timestamp: serverTimestamp()
+          });
         });
 
-        const cajaRef = doc(db, COL_GENERAL, cajaId);
-        batch.update(cajaRef, {
-          items: nuevosItems,
-          ultimaModificacion: serverTimestamp()
-        });
-
-        const logRef = doc(collection(db, COL_GENERAL, cajaId, "logs"));
-        batch.set(logRef, {
-          accion: 'REINGRESO_PARCIAL_DESDE_TRANSITO',
-          numeroDocumento: docSeleccionado.numeroDocumento,
-          detalles: {
-            itemsDevueltos: devoluciones.map(d => ({
-              tipo: d.itemRef.tipo || d.itemRef.codigo,
-              lote: d.itemRef.lote,
-              cantidadDevuelta: d.cantidadDevuelta
-            }))
-          },
-          usuario: userData?.nombreCompleto || 'Usuario',
-          fecha: new Date(),
-          timestamp: serverTimestamp()
-        });
-      }
-
-      // 2. Guardar egresos (Alineado con estructura de Egreso.jsx)
-      // Nota: itemsEgresadosFinales ya viene con una línea por CADA salida registrada,
-      // cada una con su propia cantidadEgresada y observacionInsumo.
-      if (itemsEgresadosFinales.length > 0) {
-        const egresoRef = doc(collection(db, COL_EGRESOS));
-        batch.set(egresoRef, {
-          numeroDocumento: docSeleccionado.numeroDocumento,
-          motivoOriginal: docSeleccionado.motivo,
-          solicitante: docSeleccionado.solicitante,
-          destino: destinoFinal || docSeleccionado.destino || 'No especificado',
-          observacionOriginal: docSeleccionado.observaciones || '',
-          observacionCierre: observacionGlobal || '',
-          itemsEgresados: itemsEgresadosFinales,
-          totalUnidadesEgresadas: totalEgresado,
-          totalUnidadesDevueltasStock: totalDevuelto,
-          registradoPor: userData?.nombreCompleto || 'Usuario',
-          usuarioEmail: userData?.email || '',
-          fechaEfectivaEgreso: serverTimestamp(),
-          fechaInicioTransito: docSeleccionado.fechaRegistro || null
-        });
-      }
-
-      // 3. Actualizar documento en tránsito
-      const docTransitoRef = doc(db, COL_TRANSITO, docSeleccionado.id);
-
-      if (nuevosItemsTransito.length > 0) {
-        batch.update(docTransitoRef, {
-          items: nuevosItemsTransito,
-          ultimaModificacion: serverTimestamp(),
-          ultimoProcesadoPor: userData?.nombreCompleto || 'Usuario'
-        });
-      } else {
-        batch.update(docTransitoRef, {
-          estado: 'PROCESADO',
-          fechaProcesado: serverTimestamp(),
-          procesadoPor: userData?.nombreCompleto || 'Usuario',
-          resumenFinal: {
-            unidadesEgresadas: totalEgresado,
-            unidadesDevueltas: totalDevuelto,
-            itemsDevueltos: itemsDevueltosFinales,
+        // 2. Guardar egresos (Alineado con estructura de Egreso.jsx)
+        // Nota: itemsEgresadosFinales ya viene con una línea por CADA salida registrada,
+        // cada una con su propia cantidadEgresada y observacionInsumo.
+        if (itemsEgresadosFinales.length > 0) {
+          const egresoRef = doc(collection(db, COL_EGRESOS));
+          tx.set(egresoRef, {
+            numeroDocumento: docSeleccionado.numeroDocumento,
+            motivoOriginal: docSeleccionado.motivo,
+            solicitante: docSeleccionado.solicitante,
+            destino: destinoFinal || docSeleccionado.destino || 'No especificado',
+            observacionOriginal: docSeleccionado.observaciones || '',
+            observacionCierre: observacionGlobal || '',
             itemsEgresados: itemsEgresadosFinales,
-            destinoFinal: destinoFinal,
-            observacionCierre: observacionGlobal
-          }
-        });
-      }
+            totalUnidadesEgresadas: totalEgresado,
+            totalUnidadesDevueltasStock: totalDevuelto,
+            registradoPor: userData?.nombreCompleto || 'Usuario',
+            usuarioEmail: userData?.email || '',
+            fechaEfectivaEgreso: serverTimestamp(),
+            fechaInicioTransito: docSeleccionado.fechaRegistro || null
+          });
+        }
 
-      await batch.commit();
+        // 3. Actualizar documento en tránsito
+
+        if (nuevosItemsTransito.length > 0) {
+          tx.update(docTransitoRef, {
+            items: nuevosItemsTransito,
+            ultimaModificacion: serverTimestamp(),
+            ultimoProcesadoPor: userData?.nombreCompleto || 'Usuario'
+          });
+        } else {
+          tx.update(docTransitoRef, {
+            estado: 'PROCESADO',
+            fechaProcesado: serverTimestamp(),
+            procesadoPor: userData?.nombreCompleto || 'Usuario',
+            resumenFinal: {
+              unidadesEgresadas: totalEgresado,
+              unidadesDevueltas: totalDevuelto,
+              itemsDevueltos: itemsDevueltosFinales,
+              itemsEgresados: itemsEgresadosFinales,
+              destinoFinal: destinoFinal,
+              observacionCierre: observacionGlobal
+            }
+          });
+        }
+      });
 
       showToast("Registro completado con éxito", "success");
       setDocSeleccionado(null);

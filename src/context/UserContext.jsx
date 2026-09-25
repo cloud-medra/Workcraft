@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { auth, db, prepararCacheParaUsuario } from '../firebaseConfig';
 
 const UserContext = createContext();
 
@@ -13,6 +13,10 @@ useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
     if (currentUser) {
       try {
+        // Antes de la primera lectura: si la caché local de Firestore es de
+        // otro usuario, se borra (ver firebaseConfig.js).
+        await prepararCacheParaUsuario(currentUser.uid);
+
         // Obtenemos el documento directamente
         const userRef = doc(db, "usuarios", currentUser.uid);
         const userDoc = await getDoc(userRef);

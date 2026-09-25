@@ -6,7 +6,6 @@ import {
     updateDoc,
     addDoc,
     serverTimestamp,
-    collectionGroup,
     query,
     where
 } from 'firebase/firestore';
@@ -21,6 +20,7 @@ import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import DetalleVinculacionOC from './DetalleVinculacionOC';
+import { useVacunatorioData } from '../../../VacunatorioDataContext';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 
 const VinculacionOrden = () => {
@@ -33,6 +33,8 @@ const VinculacionOrden = () => {
     const [documentoSeleccionado, setDocumentoSeleccionado] = useState(null);
 
     const { showToast } = useToast();
+
+    const { getAnios, getMeses } = useVacunatorioData();
     const { confirmAction } = useModal();
     const { hasPermission } = useGranularPermission();
 
@@ -71,8 +73,7 @@ const VinculacionOrden = () => {
     useEffect(() => {
         const cargarAnios = async () => {
             try {
-                const snap = await getDocs(collection(db, COL_BASE));
-                const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+                const anios = await getAnios(COL_BASE);
                 setAniosDisponibles(anios);
 
                 if (anios.length > 0) {
@@ -83,7 +84,7 @@ const VinculacionOrden = () => {
             }
         };
         cargarAnios();
-    }, []);
+    }, [getAnios]);
 
     const cargarDocumentosProcesarOC = useCallback(async () => {
         if (!filtroAnio) {
@@ -93,31 +94,19 @@ const VinculacionOrden = () => {
 
         setLoading(true);
         try {
-            const q = query(collectionGroup(db, "documentos"));
-
-            const querySnapshot = await getDocs(q);
-            const docsAcumulados = [];
             const estadosPermitidos = ["Procesar OC", "Solicitud Enviada"];
+            const mesesIds = await getMeses(COL_BASE, filtroAnio);
 
-            querySnapshot.forEach((d) => {
-                const data = d.data();
-                const pathSegments = d.ref.path.split('/');
-                const coleccionRaiz = pathSegments[0];
-                const anioDoc = pathSegments[1];
-                const mesId = pathSegments[3];
-
-                if (
-                    coleccionRaiz === COL_BASE &&
-                    anioDoc === filtroAnio &&
-                    estadosPermitidos.includes(data.estado)
-                ) {
-                    docsAcumulados.push({
-                        id: d.id,
-                        mesId,
-                        ...data
-                    });
-                }
-            });
+            // Consulta por mes filtrando por estado en el servidor, en vez de un
+            // collectionGroup global que leía todos los documentos de todas las colecciones.
+            const resultadosPorMes = await Promise.all(mesesIds.map(async (mesId) => {
+                const snap = await getDocs(query(
+                    collection(db, COL_BASE, filtroAnio, "meses", mesId, "documentos"),
+                    where("estado", "in", estadosPermitidos)
+                ));
+                return snap.docs.map(d => ({ id: d.id, mesId, ...d.data() }));
+            }));
+            const docsAcumulados = resultadosPorMes.flat();
 
             docsAcumulados.sort((a, b) => parseFecha(b.fchEmis) - parseFecha(a.fchEmis));
             setDocumentos(docsAcumulados);
@@ -127,7 +116,7 @@ const VinculacionOrden = () => {
         } finally {
             setLoading(false);
         }
-    }, [filtroAnio, showToast]);
+    }, [filtroAnio, showToast, getMeses]);
 
     useEffect(() => {
         setDocumentoSeleccionado(null);

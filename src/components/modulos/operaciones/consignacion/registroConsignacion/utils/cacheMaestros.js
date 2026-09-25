@@ -1,44 +1,18 @@
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { cargarCatalogo, refrescarCatalogo } from '../../../../../../stores/catalogosStore';
 import { buscarReporteInfoPorAdmision as buscarReporteInfoPorAdmisionBase } from './buscarReporteInfoPorAdmision';
 
-let promesaMedicos = null;
-
-export function obtenerMedicosCacheados(db, forzar = false) {
-  if (!forzar && promesaMedicos) return promesaMedicos;
-
-  promesaMedicos = (async () => {
-    try {
-      const snap = await getDocs(collection(db, 'maestros_prestadores'));
-      return snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((p) => (p.estado || 'ACTIVO').toUpperCase() !== 'INACTIVO');
-    } catch (err) {
-      promesaMedicos = null; 
-      throw err;
-    }
-  })();
-
-  return promesaMedicos;
+// Prestadores y códigos salen del catalogosStore (una lectura por sesión,
+// compartida con el resto de la app). `db` se mantiene en la firma por
+// compatibilidad con los llamadores.
+export async function obtenerMedicosCacheados(_db, forzar = false) {
+  const datos = forzar ? await refrescarCatalogo('prestadores') : await cargarCatalogo('prestadores');
+  return datos.filter((p) => (p.estado || 'ACTIVO').toUpperCase() !== 'INACTIVO');
 }
 
-const cachePorTipo = new Map();
-
-export function obtenerCodigosCacheados(db, tipo, forzar = false) {
-  if (!forzar && cachePorTipo.has(tipo)) return cachePorTipo.get(tipo);
-
-  const promesa = (async () => {
-    try {
-      const q = query(collection(db, 'maestros_codigos'), where('tipo', '==', tipo));
-      const snap = await getDocs(q);
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    } catch (err) {
-      cachePorTipo.delete(tipo);
-      throw err;
-    }
-  })();
-
-  cachePorTipo.set(tipo, promesa);
-  return promesa;
+// maestros_codigos está en vivo en el store, así que `forzar` no hace falta.
+export async function obtenerCodigosCacheados(_db, tipo) {
+  const datos = await cargarCatalogo('codigos');
+  return datos.filter((c) => c.tipo === tipo);
 }
 
 const cacheReportes = new Map(); 

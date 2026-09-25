@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { useMemo } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { usePeriodoAbiertoStore } from '../../../../hooks/usePeriodoAbiertoStore';
 
 // Período de imputación abierto de un módulo de Gestiones ('laboratorio' |
 // 'vacunatorio'), según cierres_periodos. El período se asigna al documento
@@ -32,17 +33,12 @@ export const obtenerPeriodoAbierto = async (moduloId) =>
   aPeriodo(await getDocs(queryPeriodoAbierto(moduloId)));
 
 // Suscripción en vivo: { periodo: {mes, anio} | null, cargando, error }.
+// Usa el listener compartido de cierres_periodos (src/stores/periodosStore.js).
 export const usePeriodoAbierto = (moduloId) => {
-  const [estado, setEstado] = useState({ periodo: null, cargando: true, error: null });
-
-  useEffect(() => onSnapshot(
-    queryPeriodoAbierto(moduloId),
-    (snap) => setEstado({ periodo: aPeriodo(snap), cargando: false, error: null }),
-    (error) => {
-      console.error('Error al obtener el período abierto:', error);
-      setEstado({ periodo: null, cargando: false, error });
-    }
-  ), [moduloId]);
-
-  return estado;
+  const { periodo, cargando, error } = usePeriodoAbiertoStore(moduloId);
+  const periodoSimple = useMemo(
+    () => (periodo?.mes && periodo?.anio ? { mes: periodo.mes, anio: String(periodo.anio) } : null),
+    [periodo]
+  );
+  return { periodo: periodoSimple, cargando, error };
 };

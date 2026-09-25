@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
-import { Calculator, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calculator, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useUser } from '../../../../context/UserContext';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
+import { ordenarPor } from '../../../../stores/catalogosStore';
 import Spinner from '../../../ui/Spinner';
 
 const CalculadorMaestros = () => {
-  const [recargos, setRecargos] = useState([]);
-  const [cargando, setCargando] = useState(true);
+  // Reglas desde el catalogosStore (lectura única por sesión, compartida con
+  // Recargos Maestros y las Cargas); "Actualizar" trae cambios de otros usuarios.
+  const { datos: recargosCatalogo, cargando, error: errorRecargos, refrescar: refrescarRecargos } = useCatalogo('recargos');
+  const recargos = useMemo(() => [...recargosCatalogo].sort(ordenarPor('desde')), [recargosCatalogo]);
   const [precioInput, setPrecioInput] = useState('');
   const [reglaEncontrada, setReglaEncontrada] = useState(null);
 
@@ -23,22 +20,10 @@ const CalculadorMaestros = () => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/maestros/calculadorMaestros";
-  const COL_BASE = "maestros_recargos";
 
-  // Cargar reglas de recargos en tiempo real
   useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("desde", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const datos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setRecargos(datos);
-      setCargando(false);
-    }, (error) => {
-      console.error("Error al cargar reglas:", error);
-      showToast("Error al sincronizar las reglas de recargo", "error");
-      setCargando(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    if (errorRecargos) showToast("Error al sincronizar las reglas de recargo", "error");
+  }, [errorRecargos, showToast]);
 
   // Función para formatear números chilenos
   const formatNumber = (num) => {
@@ -88,6 +73,13 @@ const CalculadorMaestros = () => {
           <Calculator size={14} className="text-[#2383C2]" />
           CALCULADOR DE RECARGOS MAESTROS
         </h2>
+        <button
+          onClick={refrescarRecargos}
+          className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+          title="Actualizar reglas (traer cambios de otros usuarios)"
+        >
+          <RefreshCw size={15} />
+        </button>
       </div>
 
       {/* Input de Precio */}

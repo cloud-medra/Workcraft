@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   doc,
   query,
   orderBy,
   serverTimestamp,
-  writeBatch,
+  runTransaction,
   getDocs,
   limit
 } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
+import { ordenarPor } from '../../../../stores/catalogosStore';
 import { Search, Plus, Trash2, ArrowRightLeft, AlertCircle, ShoppingBag, FileText, UserCheck } from 'lucide-react';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
@@ -20,13 +21,27 @@ import Spinner from '../../../ui/Spinner';
 const COL_BASE = "inventario_general";
 const COL_TRANSITO = "inventario_transito";
 
+// El ítem en la posición elegida sigue siendo el mismo que vio el usuario.
+const mismoItem = (actual, original) => Boolean(actual) && ['codigo', 'referencia', 'lote', 'vencimiento']
+  .every(campo => (actual[campo] ?? '') === (original?.[campo] ?? ''));
+
 const EgresosInventario = () => {
-  const [cajas, setCajas] = useState([]);
+  // Cajas desde el listener compartido de inventario_general (ver
+  // src/stores/inventarioGeneralStore.js), ordenadas como antes por fecha.
+  const { cajas: cajasInventario } = useInventarioGeneral();
+  const cajas = useMemo(() => [...cajasInventario].sort(ordenarPor('fechaRegistro', 'desc')), [cajasInventario]);
   const [cargando, setCargando] = useState(false);
 
   // Búsqueda y Selección
   const [busqueda, setBusqueda] = useState('');
-  const [cajaSeleccionada, setCajaSeleccionada] = useState(null);
+  // Se guarda solo el id: la caja se deriva de `cajas`, así siempre refleja
+  // el último snapshot (antes el listener se recreaba al cambiar de caja
+  // para mantenerla al día, releyendo toda la colección).
+  const [cajaSeleccionadaId, setCajaSeleccionadaId] = useState(null);
+  const cajaSeleccionada = useMemo(
+    () => cajas.find(c => c.id === cajaSeleccionadaId) ?? null,
+    [cajas, cajaSeleccionadaId]
+  );
 
   // Formulario de Selección Temporal
   const [itemIndexSeleccionado, setItemIndexSeleccionado] = useState('');
@@ -85,23 +100,8 @@ const EgresosInventario = () => {
     generarSiguienteDocumento();
   }, []);
 
-  // Escuchar cajas en tiempo real
-  useEffect(() => {
-    const q = query(collection(db, COL_BASE), orderBy("fechaRegistro", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setCajas(docs);
-
-      if (cajaSeleccionada) {
-        const actualizada = docs.find(c => c.id === cajaSeleccionada.id);
-        if (actualizada) setCajaSeleccionada(actualizada);
-      }
-    });
-    return () => unsubscribe();
-  }, [cajaSeleccionada?.id]);
-
   const handleSeleccionarCaja = (caja) => {
-    setCajaSeleccionada(caja);
+    setCajaSeleccionadaId(caja.id);
     setItemIndexSeleccionado('');
     setCantidadRetiro(''); 
   };
@@ -168,8 +168,6 @@ const EgresosInventario = () => {
       async () => {
         setCargando(true);
         try {
-          const batch = writeBatch(db);
-
           const retirosPorCaja = {};
           listaTraspaso.forEach(linea => {
             if (!retirosPorCaja[linea.cajaId]) {
@@ -178,70 +176,88 @@ const EgresosInventario = () => {
             retirosPorCaja[linea.cajaId].push(linea);
           });
 
-          for (const cajaId in retirosPorCaja) {
-            const cajaDoc = cajas.find(c => c.id === cajaId);
-            if (!cajaDoc) continue;
+          // Transacción: cada caja se relee en el momento y el descuento se
+          // calcula sobre sus ítems actuales (antes se escribía el arreglo
+          // `items` calculado desde la copia en pantalla, y dos usuarios que
+          // movían stock de la misma caja podían pisarse). Si la caja o el
+          // ítem cambiaron, o ya no alcanza el stock, se aborta todo.
+          await runTransaction(db, async (tx) => {
+            const cajaIds = Object.keys(retirosPorCaja);
+            const snaps = await Promise.all(cajaIds.map(id => tx.get(doc(db, COL_BASE, id))));
 
-            const nuevosItems = structuredClone(cajaDoc.items);
-            const lineasDeEstaCaja = retirosPorCaja[cajaId];
+            const actualizaciones = snaps.map((snap, i) => {
+              const cajaId = cajaIds[i];
+              if (!snap.exists()) throw new Error(`La caja ya no existe (${retirosPorCaja[cajaId][0].nombreCaja})`);
 
-            lineasDeEstaCaja.forEach(linea => {
-              nuevosItems[linea.itemIndex].cantidad -= linea.cantidadRetirar;
+              const nuevosItems = structuredClone(snap.data().items || []);
+              const lineasDeEstaCaja = retirosPorCaja[cajaId];
+
+              lineasDeEstaCaja.forEach(linea => {
+                const item = nuevosItems[linea.itemIndex];
+                if (!mismoItem(item, linea.itemOriginal)) {
+                  throw new Error(`La caja ${linea.nombreCaja} cambió mientras preparabas el traspaso. Vuelve a seleccionar los ítems.`);
+                }
+                if (Number(item.cantidad) < linea.cantidadRetirar) {
+                  throw new Error(`Stock insuficiente en ${linea.nombreCaja} (${item.referencia || item.codigo}): quedan ${item.cantidad}.`);
+                }
+                item.cantidad -= linea.cantidadRetirar;
+              });
+              return { cajaId, nuevosItems, lineasDeEstaCaja };
             });
 
-            const cajaRef = doc(db, COL_BASE, cajaId);
-            batch.update(cajaRef, {
-              items: nuevosItems,
-              ultimaModificacion: serverTimestamp()
+            // Todas las lecturas van antes que las escrituras.
+            actualizaciones.forEach(({ cajaId, nuevosItems, lineasDeEstaCaja }) => {
+              const cajaRef = doc(db, COL_BASE, cajaId);
+              tx.update(cajaRef, {
+                items: nuevosItems,
+                ultimaModificacion: serverTimestamp()
+              });
+              const logRef = doc(collection(db, COL_BASE, cajaId, "logs"));
+              tx.set(logRef, {
+                accion: 'TRASPASO_TRANSITO',
+                numeroDocumento: numeroDocumento.trim(),
+                detalles: {
+                  motivo,
+                  tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
+                  solicitante: solicitante.trim() || 'No especificado',
+                  observaciones: observaciones.trim(),
+                  itemsTrasladados: lineasDeEstaCaja.map(l => ({
+                    ...l.itemOriginal,
+                    cantidadTraspasada: l.cantidadRetirar
+                  }))
+                },
+                usuario: userData?.nombreCompleto || 'Usuario Desconocido',
+                usuarioEmail: userData?.email || '',
+                fecha: new Date(),
+                timestamp: serverTimestamp()
+              });
             });
 
-            const logRef = doc(collection(db, COL_BASE, cajaId, "logs"));
-            batch.set(logRef, {
-              accion: 'TRASPASO_TRANSITO',
-              numeroDocumento: numeroDocumento.trim(),
-              detalles: {
-                motivo,
-                tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
-                solicitante: solicitante.trim() || 'No especificado',
-                observaciones: observaciones.trim(),
-                itemsTrasladados: lineasDeEstaCaja.map(l => ({
-                  ...l.itemOriginal,
-                  cantidadTraspasada: l.cantidadRetirar
-                }))
-              },
-              usuario: userData?.nombreCompleto || 'Usuario Desconocido',
-              usuarioEmail: userData?.email || '',
-              fecha: new Date(),
-              timestamp: serverTimestamp()
-            });
-          }
-
-          const transitoRef = doc(collection(db, COL_TRANSITO)); 
+            const transitoRef = doc(collection(db, COL_TRANSITO)); 
           
-          const itemsFinalesTransito = listaTraspaso.map(linea => ({
-            ...linea.itemOriginal,
-            cajaOrigenId: linea.cajaId,
-            nombreCajaOrigen: linea.nombreCaja,
-            ubicacionOrigen: linea.ubicacionOrigen,
-            cantidadTraspasada: linea.cantidadRetirar,
-            fechaAgregadoLista: new Date()
-          }));
+            const itemsFinalesTransito = listaTraspaso.map(linea => ({
+              ...linea.itemOriginal,
+              cajaOrigenId: linea.cajaId,
+              nombreCajaOrigen: linea.nombreCaja,
+              ubicacionOrigen: linea.ubicacionOrigen,
+              cantidadTraspasada: linea.cantidadRetirar,
+              fechaAgregadoLista: new Date()
+            }));
 
-          batch.set(transitoRef, {
-            numeroDocumento: numeroDocumento.trim(),
-            estado: 'EN_TRANSITO',
-            motivo,
-            tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
-            solicitante: solicitante.trim() || 'No especificado',
-            observaciones: observaciones.trim(),
-            items: itemsFinalesTransito,
-            totalUnidades: listaTraspaso.reduce((acc, i) => acc + i.cantidadRetirar, 0),
-            registradoPor: userData?.nombreCompleto || 'Usuario',
-            usuarioEmail: userData?.email || '',
-            fechaRegistro: serverTimestamp()
+            tx.set(transitoRef, {
+              numeroDocumento: numeroDocumento.trim(),
+              estado: 'EN_TRANSITO',
+              motivo,
+              tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
+              solicitante: solicitante.trim() || 'No especificado',
+              observaciones: observaciones.trim(),
+              items: itemsFinalesTransito,
+              totalUnidades: listaTraspaso.reduce((acc, i) => acc + i.cantidadRetirar, 0),
+              registradoPor: userData?.nombreCompleto || 'Usuario',
+              usuarioEmail: userData?.email || '',
+              fechaRegistro: serverTimestamp()
+            });
           });
-
-          await batch.commit();
 
           showToast("Traspaso a tránsito realizado con éxito", "success");
 

@@ -43,7 +43,7 @@ const ResumenPeriodoAbierto = () => {
     estadosModulos,
     resumenImputaciones,
     cargando
-  } = useControlMensualData(anioActualStr, userData, showToast, confirmAction);
+  } = useControlMensualData(anioActualStr, userData, showToast, confirmAction, { soloPeriodoAbierto: true });
 
   // Detectar automáticamente el primer mes que se encuentre ABIERTO o REABIERTO
   const periodoAbiertoInfo = useMemo(() => {

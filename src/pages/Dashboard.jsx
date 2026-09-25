@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { auth } from '../firebaseConfig';
+import { auth, limpiarCacheAlCerrarSesion } from '../firebaseConfig';
+import { omitirSincronizacionEnProximaCarga } from '../services/sessionSync';
 import { signOut } from 'firebase/auth';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
@@ -100,7 +100,6 @@ import OrdenModulos from '../components/modulos/general/settings/ordenModulos/Or
 // import PreferenciasGenerales from '../components/modulos/ajustes/PreferenciasGenerales';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeModule, setActiveModule] = useState(null);
@@ -119,6 +118,12 @@ const Dashboard = () => {
   const { userData, setUserData } = useUser();
   const { oscuro, alternarOscuro } = useTheme();
   const nombreSaludo = obtenerNombreMostrar(userData, { mayusculas: true });
+
+  // Medidor de lecturas de Firestore (solo `npm run dev`, ver src/dev/firestoreMeter.js).
+  // Se avisa durante el render y no en un efecto: los efectos de la pantalla
+  // hija corren ANTES que los del Dashboard, así que con un useEffect sus
+  // primeras lecturas se anotaban en la pantalla anterior.
+  if (import.meta.env.DEV) window.__FS_METER__?.setScreen(activeView);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -285,9 +290,15 @@ const Dashboard = () => {
 
   const handleLogout = async () => {
     try {
+      // Primero se cierra Firestore y se borra su caché local (IndexedDB),
+      // para que el próximo usuario no vea datos de esta cuenta.
+      await limpiarCacheAlCerrarSesion();
       await signOut(auth);
       sessionStorage.clear();
-      navigate('/');
+      // Recarga completa: descarta también los catálogos y cachés en memoria
+      // de los módulos (y reinicializa Firestore desde cero).
+      omitirSincronizacionEnProximaCarga();
+      window.location.replace('/');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }

@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, doc, query, orderBy, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useUser } from '../../../../../../context/UserContext';
@@ -10,8 +10,9 @@ import { resolverGuiaCacheada, resolverMaestroCacheado, resolverMaestrosCacheado
 import { useAutocompleteReferenciaConsignacion } from './useAutocompleteReferenciaConsignacion';
 import { periodoEstaAbierto } from './verificacionPeriodoConsignacion';
 import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
+import { useCatalogo } from '../../../../../../hooks/useCatalogo';
+import { ordenarPor } from '../../../../../../stores/catalogosStore';
 
-const COL_MAESTROS_RECARGOS = 'maestros_recargos';
 const VIEW_PATH_CARGAS = '/consignacion/cargasConsignacion/cargas';
 
 const formatearFechaTabla = (fechaString) => {
@@ -351,17 +352,10 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
 
   const registrarLog = (docRef, accion, detalles) => registrarLogConsignacion(docRef, accion, detalles, userData);
 
-  const [recargos, setRecargos] = useState([]);
-
-  useEffect(() => {
-    const q = query(collection(db, COL_MAESTROS_RECARGOS), orderBy('desde', 'asc'));
-    const unsub = onSnapshot(
-      q,
-      (snap) => setRecargos(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
-      (err) => console.error('Error al cargar recargos maestros:', err)
-    );
-    return () => unsub();
-  }, []);
+  // Reglas de recargo desde el catalogosStore (lectura única por sesión,
+  // compartida con Implantes/Hemodinamia) en vez de un listener por montaje.
+  const { datos: recargosCatalogo } = useCatalogo('recargos');
+  const recargos = useMemo(() => [...recargosCatalogo].sort(ordenarPor('desde')), [recargosCatalogo]);
 
   const buscarRecargo = (costo) => {
     if (!Number.isFinite(costo) || costo <= 0) return null;
