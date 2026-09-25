@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import { db } from '../../../../../firebaseConfig';
+import { numeroDesdeXml } from '../../shared/numerosDocumento';
 import { FileText, Search, Upload, X } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
@@ -136,10 +137,10 @@ const XmlDocLaboratorio = () => {
           nroLin: d.getElementsByTagName("NroLinDet")[0]?.textContent ?? "",
           codigo: d.getElementsByTagName("VlrCodigo")[0]?.textContent ?? "N/A",
           nombre: d.getElementsByTagName("NmbItem")[0]?.textContent ?? "",
-          cantidad: String(parseFloat(d.getElementsByTagName("QtyItem")[0]?.textContent ?? "0")),
+          cantidad: numeroDesdeXml(d.getElementsByTagName("QtyItem")[0]?.textContent),
           unidad: d.getElementsByTagName("UnmdItem")[0]?.textContent ?? "Un",
-          precio: String(parseFloat(d.getElementsByTagName("PrcItem")[0]?.textContent ?? "0")),
-          monto: d.getElementsByTagName("MontoItem")[0]?.textContent ?? "0"
+          precio: numeroDesdeXml(d.getElementsByTagName("PrcItem")[0]?.textContent),
+          monto: numeroDesdeXml(d.getElementsByTagName("MontoItem")[0]?.textContent)
         }));
 
         await setDoc(doc(db, COL_BASE, anio), { active: "true" }, { merge: true });
@@ -161,7 +162,8 @@ const XmlDocLaboratorio = () => {
           anio,
           mes: nombreMes,
           rznSoc: xmlDoc.getElementsByTagName("RznSoc")[0]?.textContent || "Sin Razón Social",
-          total: xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent ?? "0",
+          // Numérico (antes texto): count()/sum() de Firestore ignoran los strings.
+          total: numeroDesdeXml(xmlDoc.getElementsByTagName("MntNeto")[0]?.textContent),
           estado: "Iniciar Ingreso",
           xmlOriginal: text,
           detalles,

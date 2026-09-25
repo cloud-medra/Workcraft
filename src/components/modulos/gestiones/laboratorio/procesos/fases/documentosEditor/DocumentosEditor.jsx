@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, deleteDoc, doc, query, orderBy, getDocs, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
+import { normalizarNumerosDocumento } from '../../../../shared/numerosDocumento';
 import { FileText, Trash2, Search, Eye, Settings, History } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../../context/ModalContext';
@@ -94,7 +95,8 @@ const DocumentosEditor = () => {
     try {
       const { id, ...dataToUpdate } = formData;
       const ref = doc(db, COL_BASE, filtroAnio, "meses", filtroMes, "documentos", formData.id);
-      await updateDoc(ref, dataToUpdate);
+      // Los <input type="number"> entregan texto: se guarda como número.
+      await updateDoc(ref, normalizarNumerosDocumento(dataToUpdate));
       showToast("Documento actualizado correctamente", "success");
     } catch (error) {
       console.error("Error al actualizar documento:", error);
