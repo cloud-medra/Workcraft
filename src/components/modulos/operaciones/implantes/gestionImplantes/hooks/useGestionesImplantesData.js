@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   collectionGroup,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -17,6 +16,7 @@ import {
   limit
 } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
+import { onSnapshotVisible } from '../../../../../../hooks/useVisibleSnapshot';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
@@ -170,7 +170,7 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
     };
 
     if (!admision && refPath) {
-      return onSnapshot(
+      return onSnapshotVisible(
         doc(db, refPath),
         (snap) => { setImplantes(snap.exists() ? mapearYOrdenar([snap]) : []); setHayMasGestiones(false); },
         (error) => console.error(`Error al escuchar la gestión ${refPath}:`, error)
@@ -190,7 +190,7 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
         setImplantes(mapearYOrdenar([...unicos.values()]));
         setHayMasGestiones(false);
       };
-      const unsubs = Object.keys(porCampo).map(campo => onSnapshot(
+      const unsubs = Object.keys(porCampo).map(campo => onSnapshotVisible(
         query(collectionGroup(db, "detalles"), where(campo, "in", valores)),
         (snapshot) => { porCampo[campo] = snapshot.docs; publicar(); },
         (error) => console.error(`Error al escuchar gestiones de la admisión ${texto} (${campo}):`, error)
@@ -205,7 +205,7 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
       orderBy(documentId(), "desc"),
       limit(limiteGestiones)
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshotVisible(q, (snapshot) => {
       setImplantes(mapearYOrdenar(snapshot.docs));
       setHayMasGestiones(snapshot.size >= limiteGestiones);
     }, (error) => {

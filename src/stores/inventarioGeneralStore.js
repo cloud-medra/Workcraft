@@ -1,5 +1,6 @@
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { onSnapshotVisible } from '../hooks/useVisibleSnapshot';
 
 // =====================================================================
 // inventario_general — un único listener compartido
@@ -29,7 +30,8 @@ const actualizar = (cambios) => {
 };
 
 const abrir = () => {
-  unsubscribe = onSnapshot(
+  // Se pausa tras 10 min con la pestaña oculta (ver useVisibleSnapshot).
+  unsubscribe = onSnapshotVisible(
     collection(db, COLECCION),
     (snap) => actualizar({ datos: snap.docs.map((d) => ({ id: d.id, ...d.data() })), error: null }),
     (error) => {

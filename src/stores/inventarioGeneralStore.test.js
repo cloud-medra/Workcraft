@@ -5,6 +5,7 @@ const mockUnsubscribe = vi.fn();
 let emitir = null;
 
 vi.mock('../firebaseConfig', () => ({ db: {} }));
+vi.mock('../hooks/useVisibleSnapshot', () => ({ onSnapshotVisible: (...a) => mockOnSnapshot(...a) }));
 vi.mock('firebase/firestore', () => ({
   collection: (_db, ruta) => ({ path: ruta }),
   onSnapshot: (...a) => mockOnSnapshot(...a),

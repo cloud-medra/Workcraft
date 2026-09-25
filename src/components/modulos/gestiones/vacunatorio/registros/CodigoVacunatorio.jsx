@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   collection,
-  onSnapshot,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -13,6 +12,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
+import { onSnapshotVisible } from '../../../../../hooks/useVisibleSnapshot';
 import { Package, Plus, Trash2, Search, Pencil, Save, X, History, Settings } from 'lucide-react';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -49,7 +49,7 @@ const CodigoVacunatorio = () => {
 
   useEffect(() => {
     const q = query(collection(db, COL_BASE), orderBy("referencia", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshotVisible(q, (snapshot) => {
       setCodigos(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();

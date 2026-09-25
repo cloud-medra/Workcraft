@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import {
   collection,
   collectionGroup,
-  onSnapshot,
   doc,
   writeBatch,
   addDoc,
@@ -14,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { db } from '../../../../../../firebaseConfig';
+import { onSnapshotVisible } from '../../../../../../hooks/useVisibleSnapshot';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
@@ -56,7 +56,7 @@ export const useSolicitudImplantesData = () => {
       orderBy(documentId())
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshotVisible(q, (snapshot) => {
       const docsImplantes = snapshot.docs;
 
       const lista = docsImplantes.map(document => {
