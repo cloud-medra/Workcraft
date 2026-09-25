@@ -15,6 +15,7 @@ import {
 import { useDropzone } from 'react-dropzone';
 import { db } from '../../../../../firebaseConfig';
 import { numeroDesdeXml } from '../../shared/numerosDocumento';
+import { useLaboratorioData } from '../LaboratorioDataContext';
 import { FileText, Search, Upload, X } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
@@ -39,6 +40,9 @@ const XmlDocLaboratorio = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
+  // Años/meses cacheados (misma caché que las fases del módulo); se
+  // invalidan al importar para que aparezcan los períodos nuevos.
+  const { getAnios, getMeses, invalidar: invalidarCacheDatos } = useLaboratorioData();
 
   const PATH_VISTA = "/laboratorio/xmlDocLaboratorio";
   const COL_BASE = "laboratorio_documentos";
@@ -47,15 +51,14 @@ const XmlDocLaboratorio = () => {
   useEffect(() => {
     const cargarAnios = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE));
-        const anios = snap.docs.map(d => d.id).sort((a, b) => b - a);
+        const anios = await getAnios(COL_BASE);
         setAniosDisponibles(anios);
       } catch (error) {
         console.error("Error al cargar años:", error);
       }
     };
     cargarAnios();
-  }, []);
+  }, [getAnios]);
 
   useEffect(() => {
     if (!filtroAnio) {
@@ -64,15 +67,14 @@ const XmlDocLaboratorio = () => {
     }
     const cargarMeses = async () => {
       try {
-        const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-        const meses = snap.docs.map(d => d.id);
+        const meses = await getMeses(COL_BASE, filtroAnio);
         setMesesDisponibles(meses);
       } catch (error) {
         console.error("Error al cargar meses:", error);
       }
     };
     cargarMeses();
-  }, [filtroAnio]);
+  }, [filtroAnio, getMeses]);
 
   useEffect(() => {
     if (!filtroAnio || !filtroMes) {
@@ -185,6 +187,7 @@ const XmlDocLaboratorio = () => {
         });
       }
 
+      if (nuevosAnios.length > 0 || nuevosMeses.length > 0) invalidarCacheDatos();
       if (nuevosAnios.length > 0) {
         setAniosDisponibles(prev => Array.from(new Set([...prev, ...nuevosAnios])).sort((a, b) => b - a));
       }
@@ -203,7 +206,7 @@ const XmlDocLaboratorio = () => {
     } finally {
       setCargando(false);
     }
-  }, [userData, showToast, filtroAnio]);
+  }, [userData, showToast, filtroAnio, invalidarCacheDatos]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
