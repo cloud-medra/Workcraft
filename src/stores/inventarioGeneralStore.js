@@ -4,15 +4,15 @@ import { db } from '../firebaseConfig';
 // =====================================================================
 // inventario_general — un único listener compartido
 // =====================================================================
-// General, Ingresos, Egresos, Tránsito y Existencias leían cada una la
-// colección completa con su propio listener/getDocs (y Egresos lo recreaba
-// cada vez que se elegía otra caja). Ahora comparten este listener, que se
-// abre con la primera pantalla de Inventario montada y se cierra cuando ya
-// no queda ninguna.
+// General, Ingresos, Egresos y Existencias leían cada una la colección
+// completa con su propio listener/getDocs (y Egresos lo recreaba cada vez
+// que se elegía otra caja). Ahora comparten este listener, que se abre con
+// la primera pantalla de Inventario montada y se cierra cuando ya no queda
+// ninguna.
 //
-// Sigue en tiempo real a propósito: Egresos y Tránsito escriben el arreglo
-// `items` completo calculado desde estos datos (sin transacción), así que
-// trabajar con una copia vieja podría pisar movimientos de otro usuario.
+// Sigue en tiempo real a propósito (decisión del equipo): el stock que se
+// muestra debe estar al día. Las escrituras de stock (Egresos, Tránsito)
+// igual releen la caja dentro de una transacción; no dependen de esta copia.
 // =====================================================================
 
 const COLECCION = 'inventario_general';
