@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useRef } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { crearStoreDatosGestion } from '../shared/crearStoreDatosGestion';
 
 // Años/meses de cada colección, catálogo de códigos y órdenes de Laboratorio,
@@ -10,14 +10,14 @@ const storeGlobal = crearStore();
 const LaboratorioDataContext = createContext(null);
 
 export const LaboratorioDataProvider = ({ children }) => {
-    const storeRef = useRef(null);
-    if (!storeRef.current) storeRef.current = crearStore();
+    const [store] = useState(crearStore);
     return (
-        <LaboratorioDataContext.Provider value={storeRef.current}>
+        <LaboratorioDataContext.Provider value={store}>
             {children}
         </LaboratorioDataContext.Provider>
     );
 };
 
 // Fuera del provider cae a un store global, así los componentes siguen funcionando.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useLaboratorioData = () => useContext(LaboratorioDataContext) ?? storeGlobal;
