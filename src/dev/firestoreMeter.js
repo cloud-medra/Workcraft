@@ -269,6 +269,7 @@ const horasTranscurridas = () => Math.max((Date.now() - inicio) / 3_600_000, 1 /
 
 const api = {
   setScreen(nombre) {
+    if ((nombre || 'inicio') === pantallaActual) return;
     pantallaActual = nombre || 'inicio';
     programarRender();
   },

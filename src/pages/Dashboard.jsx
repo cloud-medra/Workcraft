@@ -120,9 +120,10 @@ const Dashboard = () => {
   const nombreSaludo = obtenerNombreMostrar(userData, { mayusculas: true });
 
   // Medidor de lecturas de Firestore (solo `npm run dev`, ver src/dev/firestoreMeter.js).
-  useEffect(() => {
-    if (import.meta.env.DEV) window.__FS_METER__?.setScreen(activeView);
-  }, [activeView]);
+  // Se avisa durante el render y no en un efecto: los efectos de la pantalla
+  // hija corren ANTES que los del Dashboard, así que con un useEffect sus
+  // primeras lecturas se anotaban en la pantalla anterior.
+  if (import.meta.env.DEV) window.__FS_METER__?.setScreen(activeView);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
