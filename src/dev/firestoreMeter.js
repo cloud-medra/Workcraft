@@ -15,6 +15,7 @@
 //   - Panel flotante abajo a la derecha (se puede minimizar).
 //   - Consola: __FS_METER__.report()  |  __FS_METER__.reset()  |  await __FS_METER__.tamanos()
 //     await __FS_METER__.compararTotales(2026)  (count/sum del servidor vs. cliente)
+//     await __FS_METER__.listarTotalesTexto(2026)  (simulación de la migración de `total`)
 //   - Desactivar: VITE_FIRESTORE_METER=off en .env.local y reiniciar `npm run dev`.
 //
 // Estimación de facturación (aproximada, igual que la documentación de Firestore):
@@ -342,6 +343,30 @@ const api = {
     console.table(filas);
     const conString = filas.reduce((a, f) => a + f.totalComoString, 0);
     console.log(`[compararTotales ${anio}] ${filas.filter((f) => !f.coincide).length} mes(es) con diferencias · ${conString} documento(s) con total como string`);
+    return filas;
+  },
+  // Simulación (solo lectura) de functions/scripts/convertirTotalesImputadas.js:
+  // lista ruta, valor actual y valor convertido de cada `total` no numérico
+  // en *_imputadas, con el mismo criterio de conversión segura.
+  // Uso: await __FS_METER__.listarTotalesTexto(2026)
+  async listarTotalesTexto(anio = new Date().getFullYear(), modulos = ['laboratorio', 'vacunatorio']) {
+    const { db } = await import('../firebaseConfig.js');
+    const { convertirNumeroSeguro } = await import('../components/modulos/gestiones/shared/numerosDocumento.js');
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const filas = [];
+    for (const modulo of modulos) {
+      for (const mes of meses) {
+        const snap = await fs.getDocs(fs.collection(db, `${modulo}_imputadas`, String(anio), 'meses', mes, 'documentos'));
+        snap.docs.forEach((d) => {
+          const total = d.data().total;
+          if (typeof total === 'number') return;
+          const { valor, seguro } = convertirNumeroSeguro(total);
+          filas.push({ ruta: d.ref.path, actual: JSON.stringify(total), convertido: seguro ? valor : '-', seguro });
+        });
+      }
+    }
+    console.table(filas);
+    console.log(`[listarTotalesTexto ${anio}] ${filas.length} documento(s) · ${filas.filter((f) => !f.seguro).length} NO seguro(s)`);
     return filas;
   },
   export() {

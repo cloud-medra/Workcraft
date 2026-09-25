@@ -5,12 +5,13 @@ describe('convertirNumeroSeguro', () => {
   it('convierte enteros y decimales con punto', () => {
     expect(convertirNumeroSeguro('14582947')).toEqual({ valor: 14582947, seguro: true });
     expect(convertirNumeroSeguro(' 12.5 ')).toEqual({ valor: 12.5, seguro: true });
+    expect(convertirNumeroSeguro('1234.567')).toEqual({ valor: 1234.567, seguro: true });
     expect(convertirNumeroSeguro('-3')).toEqual({ valor: -3, seguro: true });
     expect(convertirNumeroSeguro(42)).toEqual({ valor: 42, seguro: true });
   });
 
   it('no convierte formatos ambiguos ni vacíos', () => {
-    ['1.234.567', '1,5', '1.234,50', '$1000', '', '  ', 'NaN'].forEach((v) => {
+    ['1.234.567', '1.234', '-12.500', '1,5', '1.234,50', '$1000', '', '  ', 'NaN'].forEach((v) => {
       expect(convertirNumeroSeguro(v)).toEqual({ valor: v, seguro: false });
     });
     expect(convertirNumeroSeguro(null).seguro).toBe(false);

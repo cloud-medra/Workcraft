@@ -10,17 +10,20 @@
 // Solo dígitos, con signo y decimales con punto opcionales: el formato del
 // XML del SII (MntNeto, PrcItem, QtyItem, MontoItem) y de <input type="number">.
 const NUMERO_SIMPLE = /^-?\d+(\.\d+)?$/;
+// "1.234" podría ser 1,234 o mil doscientos treinta y cuatro con separador
+// de miles: se considera ambiguo y no se convierte.
+const MILES_AMBIGUO = /^-?\d{1,3}\.\d{3}$/;
 
 /**
  * Convierte a número solo cuando no hay ambigüedad. Devuelve
  * { valor, seguro }: `seguro` es false para vacíos o formatos con separador
- * de miles/coma decimal ("1.234.567", "1,5"), que se dejan como están.
+ * de miles/coma decimal ("1.234.567", "1.234", "1,5"), que se dejan como están.
  */
 export const convertirNumeroSeguro = (valor) => {
   if (typeof valor === 'number') return { valor, seguro: Number.isFinite(valor) };
   if (typeof valor !== 'string') return { valor, seguro: false };
   const texto = valor.trim();
-  if (!NUMERO_SIMPLE.test(texto)) return { valor, seguro: false };
+  if (!NUMERO_SIMPLE.test(texto) || MILES_AMBIGUO.test(texto)) return { valor, seguro: false };
   return { valor: Number(texto), seguro: true };
 };
 
