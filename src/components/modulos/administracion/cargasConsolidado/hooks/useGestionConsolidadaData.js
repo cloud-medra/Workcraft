@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { onSnapshot } from 'firebase/firestore';
+import { getDocs } from 'firebase/firestore';
+import { leerConCache } from './cacheLecturasAnio';
 import {
   aniosDisponiblesPorMarcador,
   aniosDisponiblesPorSondeo,
@@ -29,8 +30,15 @@ export const useGestionConsolidadaData = () => {
   const [bloquesImplantes, setBloquesImplantes] = useState([]);
   const [itemsConsignacion, setItemsConsignacion] = useState([]);
   const [bloquesHemodinamia, setBloquesHemodinamia] = useState([]);
-  const [cargandoDatos, setCargandoDatos] = useState(false);
+  // Qué lectura (año + versión) terminó; `cargando` se deriva de ahí.
+  const [lecturaLista, setLecturaLista] = useState({ anio: null, version: null });
   const [pagina, setPagina] = useState(1);
+  const [version, setVersion] = useState(0);
+  const forzarLecturaRef = useRef(false);
+  const actualizar = () => {
+    forzarLecturaRef.current = true;
+    setVersion(v => v + 1);
+  };
 
   const [busqueda, setBusqueda] = useState('');
   const [origenesSeleccionados, setOrigenesSeleccionados] = useState([]);
@@ -80,32 +88,40 @@ export const useGestionConsolidadaData = () => {
     setBloquesHemodinamia([]);
     setPagina(1);
     necesitaMesPorDefectoRef.current = true;
-
-    if (!anio) return;
-
-    setCargandoDatos(true);
-    let faltanPorLlegar = 3;
-    const unaLlego = () => { faltanPorLlegar -= 1; if (faltanPorLlegar <= 0) setCargandoDatos(false); };
-
-    const unsubImplantes = onSnapshot(
-      construirQueryAnioGestion(RAIZ_IMPLANTES, anio),
-      (snap) => { setBloquesImplantes(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() }))); unaLlego(); },
-      (err) => { console.error('Error al escuchar Gestión de Implantes por año:', err); unaLlego(); }
-    );
-    const unsubConsignacion = onSnapshot(
-      construirQueryAnioGestion(RAIZ_CONSIGNACION, anio),
-      (snap) => { setItemsConsignacion(snap.docs.map(d => ({ id: d.id, ref: d.ref, refPath: d.ref.path, ...d.data() }))); unaLlego(); },
-      (err) => { console.error('Error al escuchar Gestión de Consignación por año:', err); unaLlego(); }
-    );
-
-    const unsubHemodinamia = onSnapshot(
-      construirQueryAnioGestion(RAIZ_HEMODINAMIA, anio),
-      (snap) => { setBloquesHemodinamia(snap.docs.map(d => ({ id: d.id, refPath: d.ref.path, ...d.data() }))); unaLlego(); },
-      (err) => { console.error('Error al escuchar Gestión de Hemodinamia por año:', err); unaLlego(); }
-    );
-
-    return () => { unsubImplantes(); unsubConsignacion(); unsubHemodinamia(); };
   }, [anio]);
+
+  // Lectura única por año (con caché de sesión, ver cacheLecturasAnio.js).
+  // `version` la sube "Actualizar" para forzar una nueva lectura sin
+  // resetear el mes elegido.
+  useEffect(() => {
+    if (!anio) return undefined;
+    const forzar = forzarLecturaRef.current;
+    forzarLecturaRef.current = false;
+    let cancelado = false;
+
+    const leer = (raiz, mapear) => leerConCache(
+      `gestion|${raiz}|${anio}`,
+      () => getDocs(construirQueryAnioGestion(raiz, anio)).then(snap => snap.docs.map(mapear)),
+      { forzar }
+    );
+
+    Promise.allSettled([
+      leer(RAIZ_IMPLANTES, d => ({ id: d.id, refPath: d.ref.path, ...d.data() })),
+      leer(RAIZ_CONSIGNACION, d => ({ id: d.id, ref: d.ref, refPath: d.ref.path, ...d.data() })),
+      leer(RAIZ_HEMODINAMIA, d => ({ id: d.id, refPath: d.ref.path, ...d.data() }))
+    ]).then(([r0, r1, r2]) => {
+      if (cancelado) return;
+      if (r0.status === 'fulfilled') setBloquesImplantes(r0.value);
+      else console.error('Error al leer Gestión de Implantes por año:', r0.reason);
+      if (r1.status === 'fulfilled') setItemsConsignacion(r1.value);
+      else console.error('Error al leer Gestión de Consignación por año:', r1.reason);
+      if (r2.status === 'fulfilled') setBloquesHemodinamia(r2.value);
+      else console.error('Error al leer Gestión de Hemodinamia por año:', r2.reason);
+      setLecturaLista({ anio, version });
+    });
+
+    return () => { cancelado = true; };
+  }, [anio, version]);
 
   const filasAnio = useMemo(() => [
     ...bloquesImplantes.map(normalizarFilaGestionImplantes),
@@ -154,7 +170,8 @@ export const useGestionConsolidadaData = () => {
     aniosDisponibles,
     mesesDisponibles,
     cargandoAnios,
-    cargando: cargandoDatos,
+    cargando: Boolean(anio) && (lecturaLista.anio !== anio || lecturaLista.version !== version),
+    actualizar,
     busqueda, setBusqueda,
     origenesSeleccionados, toggleOrigen, limpiarOrigenes,
     totalFilas: filasFiltradas.length,

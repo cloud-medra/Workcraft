@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { FolderKanban, BarChart2, FilePlus, ArrowLeft, Save, AlertTriangle, X, ShieldAlert, Loader2 } from 'lucide-react';
+import { FolderKanban, BarChart2, FilePlus, ArrowLeft, Save, AlertTriangle, X, ShieldAlert, Loader2, RefreshCw } from 'lucide-react';
 import Spinner from '../../../ui/Spinner';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 
@@ -145,6 +145,158 @@ const DetalleGestionConHeader = ({ fila, onVolver, useGestiones, DetalleView, ti
   );
 };
 
+// Cada pestaña monta su propio hook: solo la pestaña activa lee Firestore
+// (antes CargasConsolidado montaba los hooks de Gestión e Imputadas siempre,
+// cada uno con listeners por año, aunque se estuviera mirando otra pestaña).
+// Los datos por año quedan en caché de sesión (cacheLecturasAnio.js), así
+// que volver a una pestaña no vuelve a leer; "Actualizar" fuerza la lectura.
+const PestanaGestion = ({ filaSeleccionada, setFilaSeleccionada, setCargandoConsignacionDetalle }) => {
+  const gestionData = useGestionConsolidadaData();
+
+  const handleAbrirDetalle = (fila) => setFilaSeleccionada(fila);
+  // Al volver del detalle se relee el año: ahí se pudo editar la gestión.
+  const handleVolverDeDetalle = () => {
+    setFilaSeleccionada(null);
+    gestionData.actualizar();
+  };
+
+  return (
+    filaSeleccionada ? (
+      filaSeleccionada.origen === ORIGEN.IMPLANTES ? (
+        <DetalleGestionConHeader
+          fila={filaSeleccionada}
+          onVolver={handleVolverDeDetalle}
+          useGestiones={useGestionesImplantes}
+          DetalleView={GestionesImplantesDetalleView}
+          titulo="Detalle de Gestión de Implante"
+          formatearFechaFn={formatearFecha}
+        />
+      ) : filaSeleccionada.origen === ORIGEN.HEMODINAMIA ? (
+        <DetalleGestionConHeader
+          fila={filaSeleccionada}
+          onVolver={handleVolverDeDetalle}
+          useGestiones={useGestionesHemodinamia}
+          DetalleView={GestionesHemodinamiaDetalleView}
+          titulo="Detalle de Gestión de Hemodinamia"
+          formatearFechaFn={formatearFechaHemodinamia}
+        />
+      ) : (
+        <CargasConsignacionDetalleView
+          registro={filaSeleccionada._raw}
+          onVolver={handleVolverDeDetalle}
+          setCargando={setCargandoConsignacionDetalle}
+        />
+      )
+    ) : (
+      <div className="flex-grow flex flex-col overflow-hidden">
+        <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
+          <FiltroAnioMes
+            anio={gestionData.anio}
+            setAnio={gestionData.setAnio}
+            mes={gestionData.mes}
+            setMes={gestionData.setMes}
+            aniosDisponibles={gestionData.aniosDisponibles}
+            mesesDisponibles={gestionData.mesesDisponibles}
+            cargandoAnios={gestionData.cargandoAnios}
+            labelCampo="fecha"
+          />
+          <FiltrosBusquedaOrigen
+            busqueda={gestionData.busqueda}
+            setBusqueda={gestionData.setBusqueda}
+            origenesSeleccionados={gestionData.origenesSeleccionados}
+            toggleOrigen={gestionData.toggleOrigen}
+            limpiarOrigenes={gestionData.limpiarOrigenes}
+          />
+          <button
+            type="button"
+            onClick={gestionData.actualizar}
+            disabled={!gestionData.anio || gestionData.cargando}
+            className="h-7 px-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded font-medium flex items-center gap-1 transition disabled:opacity-50"
+            title="Volver a leer los registros del año"
+          >
+            <RefreshCw size={12} /> Actualizar
+          </button>
+        </div>
+        {!gestionData.anio ? (
+          <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
+            Elegí un año para cargar los registros.
+          </div>
+        ) : gestionData.cargando ? (
+          <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
+            <Loader2 size={14} className="animate-spin mr-1.5" /> Cargando registros...
+          </div>
+        ) : (
+          <>
+            <GestionUnificadaTable filas={gestionData.filasPagina} onAbrirDetalle={handleAbrirDetalle} />
+            <PaginacionSimple
+              pagina={gestionData.pagina}
+              totalPaginas={gestionData.totalPaginas}
+              totalFilas={gestionData.totalFilas}
+              setPagina={gestionData.setPagina}
+            />
+          </>
+        )}
+      </div>
+    )
+  );
+};
+
+const PestanaImputadas = () => {
+  const imputadasData = useImputadasUnificadasData();
+
+  return (
+    <div className="flex-grow flex flex-col overflow-hidden">
+      <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
+        <FiltroAnioMes
+          anio={imputadasData.anio}
+          setAnio={imputadasData.setAnio}
+          mes={imputadasData.mes}
+          setMes={imputadasData.setMes}
+          aniosDisponibles={imputadasData.aniosDisponibles}
+          mesesDisponibles={imputadasData.mesesDisponibles}
+          cargandoAnios={imputadasData.cargandoAnios}
+          labelCampo="período"
+        />
+        <FiltrosBusquedaOrigen
+          busqueda={imputadasData.busqueda}
+          setBusqueda={imputadasData.setBusqueda}
+          origenesSeleccionados={imputadasData.origenesSeleccionados}
+          toggleOrigen={imputadasData.toggleOrigen}
+          limpiarOrigenes={imputadasData.limpiarOrigenes}
+        />
+        <button
+          type="button"
+          onClick={imputadasData.actualizar}
+          disabled={!imputadasData.anio || imputadasData.cargando}
+          className="h-7 px-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 rounded font-medium flex items-center gap-1 transition disabled:opacity-50"
+          title="Volver a leer los registros del año"
+        >
+          <RefreshCw size={12} /> Actualizar
+        </button>
+      </div>
+      {!imputadasData.anio ? (
+        <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
+          Elegí un año para cargar las imputadas.
+        </div>
+      ) : imputadasData.cargando ? (
+        <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
+          <Loader2 size={14} className="animate-spin mr-1.5" /> Cargando imputadas...
+        </div>
+      ) : (
+        <>
+          <ImputadasUnificadasTable filas={imputadasData.filasPagina} />
+          <PaginacionSimple
+            pagina={imputadasData.pagina}
+            totalPaginas={imputadasData.totalPaginas}
+            totalFilas={imputadasData.totalFilas}
+            setPagina={imputadasData.setPagina}
+          />
+        </>
+      )}
+    </div>
+  );
+};
+
 const CargasConsolidado = () => {
   const { hasAccesoProceso } = useGranularPermission();
   const tabsPermitidas = useMemo(() => ALL_TABS.filter(t => hasAccesoProceso(t.path)), [hasAccesoProceso]);
@@ -155,14 +307,8 @@ const CargasConsolidado = () => {
     [tabsPermitidas, activeTab]
   );
 
-  const [filaSeleccionada, setFilaSeleccionada] = useState(null);
   const [cargandoConsignacionDetalle, setCargandoConsignacionDetalle] = useState(false);
-
-  const gestionData = useGestionConsolidadaData();
-  const imputadasData = useImputadasUnificadasData();
-
-  const handleAbrirDetalle = (fila) => setFilaSeleccionada(fila);
-  const handleVolverDeDetalle = () => setFilaSeleccionada(null);
+  const [filaSeleccionada, setFilaSeleccionada] = useState(null);
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -212,118 +358,14 @@ const CargasConsolidado = () => {
           )}
 
           {tabActual?.id === 'gestion' && (
-            filaSeleccionada ? (
-              filaSeleccionada.origen === ORIGEN.IMPLANTES ? (
-                <DetalleGestionConHeader
-                  fila={filaSeleccionada}
-                  onVolver={handleVolverDeDetalle}
-                  useGestiones={useGestionesImplantes}
-                  DetalleView={GestionesImplantesDetalleView}
-                  titulo="Detalle de Gestión de Implante"
-                  formatearFechaFn={formatearFecha}
-                />
-              ) : filaSeleccionada.origen === ORIGEN.HEMODINAMIA ? (
-                <DetalleGestionConHeader
-                  fila={filaSeleccionada}
-                  onVolver={handleVolverDeDetalle}
-                  useGestiones={useGestionesHemodinamia}
-                  DetalleView={GestionesHemodinamiaDetalleView}
-                  titulo="Detalle de Gestión de Hemodinamia"
-                  formatearFechaFn={formatearFechaHemodinamia}
-                />
-              ) : (
-                <CargasConsignacionDetalleView
-                  registro={filaSeleccionada._raw}
-                  onVolver={handleVolverDeDetalle}
-                  setCargando={setCargandoConsignacionDetalle}
-                />
-              )
-            ) : (
-              <div className="flex-grow flex flex-col overflow-hidden">
-                <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
-                  <FiltroAnioMes
-                    anio={gestionData.anio}
-                    setAnio={gestionData.setAnio}
-                    mes={gestionData.mes}
-                    setMes={gestionData.setMes}
-                    aniosDisponibles={gestionData.aniosDisponibles}
-                    mesesDisponibles={gestionData.mesesDisponibles}
-                    cargandoAnios={gestionData.cargandoAnios}
-                    labelCampo="fecha"
-                  />
-                  <FiltrosBusquedaOrigen
-                    busqueda={gestionData.busqueda}
-                    setBusqueda={gestionData.setBusqueda}
-                    origenesSeleccionados={gestionData.origenesSeleccionados}
-                    toggleOrigen={gestionData.toggleOrigen}
-                    limpiarOrigenes={gestionData.limpiarOrigenes}
-                  />
-                </div>
-                {!gestionData.anio ? (
-                  <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
-                    Elegí un año para cargar los registros.
-                  </div>
-                ) : gestionData.cargando ? (
-                  <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
-                    <Loader2 size={14} className="animate-spin mr-1.5" /> Cargando registros...
-                  </div>
-                ) : (
-                  <>
-                    <GestionUnificadaTable filas={gestionData.filasPagina} onAbrirDetalle={handleAbrirDetalle} />
-                    <PaginacionSimple
-                      pagina={gestionData.pagina}
-                      totalPaginas={gestionData.totalPaginas}
-                      totalFilas={gestionData.totalFilas}
-                      setPagina={gestionData.setPagina}
-                    />
-                  </>
-                )}
-              </div>
-            )
+            <PestanaGestion
+              filaSeleccionada={filaSeleccionada}
+              setFilaSeleccionada={setFilaSeleccionada}
+              setCargandoConsignacionDetalle={setCargandoConsignacionDetalle}
+            />
           )}
 
-          {tabActual?.id === 'imputadas' && (
-            <div className="flex-grow flex flex-col overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
-                <FiltroAnioMes
-                  anio={imputadasData.anio}
-                  setAnio={imputadasData.setAnio}
-                  mes={imputadasData.mes}
-                  setMes={imputadasData.setMes}
-                  aniosDisponibles={imputadasData.aniosDisponibles}
-                  mesesDisponibles={imputadasData.mesesDisponibles}
-                  cargandoAnios={imputadasData.cargandoAnios}
-                  labelCampo="período"
-                />
-                <FiltrosBusquedaOrigen
-                  busqueda={imputadasData.busqueda}
-                  setBusqueda={imputadasData.setBusqueda}
-                  origenesSeleccionados={imputadasData.origenesSeleccionados}
-                  toggleOrigen={imputadasData.toggleOrigen}
-                  limpiarOrigenes={imputadasData.limpiarOrigenes}
-                />
-              </div>
-              {!imputadasData.anio ? (
-                <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
-                  Elegí un año para cargar las imputadas.
-                </div>
-              ) : imputadasData.cargando ? (
-                <div className="flex-grow flex items-center justify-center text-slate-400 dark:text-gray-500 text-[10px]">
-                  <Loader2 size={14} className="animate-spin mr-1.5" /> Cargando imputadas...
-                </div>
-              ) : (
-                <>
-                  <ImputadasUnificadasTable filas={imputadasData.filasPagina} />
-                  <PaginacionSimple
-                    pagina={imputadasData.pagina}
-                    totalPaginas={imputadasData.totalPaginas}
-                    totalFilas={imputadasData.totalFilas}
-                    setPagina={imputadasData.setPagina}
-                  />
-                </>
-              )}
-            </div>
-          )}
+          {tabActual?.id === 'imputadas' && <PestanaImputadas />}
 
           {tabActual?.id === 'solicitudes' && <SolicitudesUnificadasTable />}
         </>

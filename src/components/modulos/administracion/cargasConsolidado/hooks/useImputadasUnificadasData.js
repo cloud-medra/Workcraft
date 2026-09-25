@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { onSnapshot } from 'firebase/firestore';
+import { getDocs } from 'firebase/firestore';
+import { leerConCache } from './cacheLecturasAnio';
 import { MESES } from '../../controlMensual/constants';
 import {
   aniosDisponiblesPorSondeoImputadas,
@@ -29,8 +30,15 @@ export const useImputadasUnificadasData = () => {
   const [docsImplantes, setDocsImplantes] = useState([]);
   const [docsConsignacion, setDocsConsignacion] = useState([]);
   const [docsHemodinamia, setDocsHemodinamia] = useState([]);
-  const [cargandoDatos, setCargandoDatos] = useState(false);
+  // Qué lectura (año + versión) terminó; `cargando` se deriva de ahí.
+  const [lecturaLista, setLecturaLista] = useState({ anio: null, version: null });
   const [pagina, setPagina] = useState(1);
+  const [version, setVersion] = useState(0);
+  const forzarLecturaRef = useRef(false);
+  const actualizar = () => {
+    forzarLecturaRef.current = true;
+    setVersion(v => v + 1);
+  };
 
   const [busqueda, setBusqueda] = useState('');
   const [origenesSeleccionados, setOrigenesSeleccionados] = useState([]);
@@ -69,32 +77,40 @@ export const useImputadasUnificadasData = () => {
     setDocsHemodinamia([]);
     setPagina(1);
     necesitaMesPorDefectoRef.current = true;
-
-    if (!anio) return;
-
-    setCargandoDatos(true);
-    let faltanPorLlegar = 3;
-    const unaLlego = () => { faltanPorLlegar -= 1; if (faltanPorLlegar <= 0) setCargandoDatos(false); };
-
-    const unsubImplantes = onSnapshot(
-      construirQueryAnioImputadas(RAIZ_IMPLANTES, anio),
-      (snap) => { setDocsImplantes(snap.docs.map(d => ({ id: d.id, ...d.data() }))); unaLlego(); },
-      (err) => { console.error('Error al escuchar implantes_imputadas por año:', err); unaLlego(); }
-    );
-    const unsubConsignacion = onSnapshot(
-      construirQueryAnioImputadas(RAIZ_CONSIGNACION, anio),
-      (snap) => { setDocsConsignacion(snap.docs.map(d => ({ id: d.id, ...d.data() }))); unaLlego(); },
-      (err) => { console.error('Error al escuchar consignacion_imputadas por año:', err); unaLlego(); }
-    );
-
-    const unsubHemodinamia = onSnapshot(
-      construirQueryAnioImputadas(RAIZ_HEMODINAMIA, anio),
-      (snap) => { setDocsHemodinamia(snap.docs.map(d => ({ id: d.id, ...d.data() }))); unaLlego(); },
-      (err) => { console.error('Error al escuchar hemodinamia_imputadas por año:', err); unaLlego(); }
-    );
-
-    return () => { unsubImplantes(); unsubConsignacion(); unsubHemodinamia(); };
   }, [anio]);
+
+  // Lectura única por año (con caché de sesión, ver cacheLecturasAnio.js).
+  // `version` la sube "Actualizar" para forzar una nueva lectura sin
+  // resetear el mes elegido.
+  useEffect(() => {
+    if (!anio) return undefined;
+    const forzar = forzarLecturaRef.current;
+    forzarLecturaRef.current = false;
+    let cancelado = false;
+
+    const leer = (raiz, mapear) => leerConCache(
+      `imputadas|${raiz}|${anio}`,
+      () => getDocs(construirQueryAnioImputadas(raiz, anio)).then(snap => snap.docs.map(mapear)),
+      { forzar }
+    );
+
+    Promise.allSettled([
+      leer(RAIZ_IMPLANTES, d => ({ id: d.id, ...d.data() })),
+      leer(RAIZ_CONSIGNACION, d => ({ id: d.id, ...d.data() })),
+      leer(RAIZ_HEMODINAMIA, d => ({ id: d.id, ...d.data() }))
+    ]).then(([r0, r1, r2]) => {
+      if (cancelado) return;
+      if (r0.status === 'fulfilled') setDocsImplantes(r0.value);
+      else console.error('Error al leer implantes_imputadas por año:', r0.reason);
+      if (r1.status === 'fulfilled') setDocsConsignacion(r1.value);
+      else console.error('Error al leer consignacion_imputadas por año:', r1.reason);
+      if (r2.status === 'fulfilled') setDocsHemodinamia(r2.value);
+      else console.error('Error al leer hemodinamia_imputadas por año:', r2.reason);
+      setLecturaLista({ anio, version });
+    });
+
+    return () => { cancelado = true; };
+  }, [anio, version]);
 
   // Antes esto solo ordenaba por fecha (descendente) — no agrupaba por
   // admisión en absoluto, así que filas de una misma admisión podían
@@ -149,7 +165,8 @@ export const useImputadasUnificadasData = () => {
     aniosDisponibles,
     mesesDisponibles,
     cargandoAnios,
-    cargando: cargandoDatos,
+    cargando: Boolean(anio) && (lecturaLista.anio !== anio || lecturaLista.version !== version),
+    actualizar,
     busqueda, setBusqueda,
     origenesSeleccionados, toggleOrigen, limpiarOrigenes,
     totalFilas: filasFiltradas.length,
