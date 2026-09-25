@@ -75,18 +75,62 @@ Resumen Periodo Abierto. **No incluyó Reportes Info** (en la línea base aport�
 Con la migración de `total` (pasos 1 y 2) ya aplicada y `compararTotales(2026)`
 coincidiendo en 7 de 7 meses.
 
-**Resumen: 242 lecturas · 3.051 desde caché** (línea base: 19.494 lecturas en ~15 min).
+**Total: 242 lecturas · 3.051 desde caché · 2 listeners activos** (línea base:
+19.494 lecturas y 5.967 desde caché en ~15 min).
 
-| Pantalla | Línea base (medido) | Final (medido) |
+### Por pantalla
+
+| Pantalla | Lecturas | Desde caché | Consultas |
+|---|---|---|---|
+| /implantes/gestionImplantes | 168 | 3.007 | 7 |
+| /laboratorio/xmlDocLaboratorio | 48 | 14 | 4 |
+| /administracion/controlMensual | 15 | 5 | 7 |
+| /laboratorio/archivosControlLaboratorio | 5 | 15 | 4 |
+| inicio | 2 | 0 | 3 |
+| /consignacion/cargasConsignacion | 2 | 0 | 1 |
+| dashboard | 1 | 0 | 1 |
+| /maestros/codigosMaestros | 1 | 0 | 1 |
+| /administracion/ResumenPeriodoAbierto | 0 | 10 | 1 |
+
+### Consultas principales
+
+| Origen | Consulta | Lecturas | Desde caché |
+|---|---|---|---|
+| useVisibleSnapshot.js (Gestión Implantes) | cg detalles, limit 150 | 94 | 92 |
+| catalogosStore.js (lectura única) | maestros_empresas / maestros_recargos / maestros_centros | 43 / 15 / 7 | — |
+| XmlDocLaboratorio.jsx | laboratorio_documentos agosto / septiembre | 22 / 14 | 14 |
+| XmlDocLaboratorio.jsx | laboratorio_documentos/2026/meses | 8 | — |
+| XmlDocLaboratorio.jsx | laboratorio_documentos (años), 4 llamadas | 4 | — |
+| resumenImputacionesStore.js | imputaciones_periodos where anio | 5 | — |
+| resumenImputacionesStore.js | 5 agregaciones count/sum (septiembre, una por módulo) | 5 | — |
+| catalogosStore.js (listener) | maestros_codigos | **0** | **2.915** |
+
+Las 4 llamadas de años en XML Laboratorio eran StrictMode (x2) por 2 entradas;
+después de esta medición pasaron a la caché del módulo (commit "XML
+Laboratorio/Vacunatorio: años/meses desde la caché del módulo").
+
+### Comparación con la línea base
+
+| Pantalla | Línea base | Final |
 |---|---|---|
-| Códigos Maestros | 17.680 | **1** (`maestros_codigos` salió completo de la caché persistente) |
+| Códigos Maestros | 17.680 | **1** (`maestros_codigos` completo desde la caché persistente) |
 | Control Mensual | 962 (+482 anotadas en `dashboard` por el error del medidor) | **15** |
 | Resumen Periodo Abierto | 1.506 | **0** (reutilizó lo calculado por Control Mensual) |
+| Gestión Implantes | 161 | 168 (incluye la 1ª lectura de empresas/recargos/centros de la sesión: 65) |
+| Laboratorio (Archivos de Control) | 345 | **5** |
 | Reportes Info | 1.302 | no incluido en el recorrido |
 | **Total del recorrido** | **19.494** (~15 min, con Reportes Info) | **242** (~8 min, sin Reportes Info) |
 
-El detalle por consulta (`__FS_METER__.report()`) de esta medición no quedó
-registrado en este documento.
+### Pendiente de verificar en producción
+
+No se probaron manualmente antes del merge:
+
+- Cerrar un mes desde otra pestaña y comprobar que se bloquean las Cargas.
+- Inventario con dos pestañas descontando de la misma caja (la segunda debe fallar).
+- Importar un XML (Laboratorio / Vacunatorio): `total` y montos de `detalles` como número.
+- Finalizar un acta (imputación con `total` numérico).
+- Cambio de usuario en el mismo navegador (cubierto por tests automáticos:
+  `firebaseConfig.test.js` y `UserContext.test.jsx`).
 
 Costo pendiente más grande: la carga inicial de los ~2.915 documentos de
 `maestros_codigos` por usuario (cada día / después de cerrar sesión). Ver
