@@ -151,6 +151,62 @@
         }
       ],
       "density": "SPARSE_ALL"
+    },
+    {
+      "collectionGroup": "maestros_codigos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tieneCodigo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "fechaRegistro",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "maestros_codigos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tieneCodigo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "codigo",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "maestros_codigos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tieneCodigo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "referencia",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "maestros_codigos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tieneCodigo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "empresa",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": [
