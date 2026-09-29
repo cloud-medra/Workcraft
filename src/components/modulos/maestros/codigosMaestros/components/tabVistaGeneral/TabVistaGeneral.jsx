@@ -19,6 +19,7 @@ import { ManijaRedimension } from '../../../../../ui/ManijaRedimension';
 import Spinner from '../../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer } from './TabConCodigoDrawers';
 import ModificarRegistroDrawer from './ModificarRegistroDrawer';
+import { CLASES_CODIGO } from '../../clasesCodigo';
 
 const COL_BASE = "maestros_codigos";
 const PAGE_SIZE = 50;
@@ -293,9 +294,7 @@ const TabVistaGeneral = () => {
               className="bg-transparent text-[10px] outline-none text-gray-700 dark:text-gray-200 cursor-pointer"
             >
               <option value="">Todas las Clases</option>
-              <option value="IMPLANTE">IMPLANTE</option>
-              <option value="INSUMOS">INSUMOS</option>
-              <option value="PAD">PAD</option>
+              {CLASES_CODIGO.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 

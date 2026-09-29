@@ -30,6 +30,7 @@ import {
   PlusCircle,
   XCircle
 } from 'lucide-react';
+import { claseBadgeCodigo } from '../codigosMaestros/clasesCodigo';
 
 const COL_PADS = "maestros_pad";
 const PATH_VISTA = "/maestros/padMaestros";
@@ -125,6 +126,7 @@ const PadMaestros = () => {
 
   // 2. CARGAR CATÁLOGO maestros_codigos (una sola lectura)
   // Se separa en memoria: clase "PAD" → autocompletado del nuevo registro;
+  // clase "KIT" → se excluye (un KIT no puede ir dentro de un PAD);
   // todo lo demás → componentes que se pueden añadir al PAD. Antes se usaba
   // where("clase", "in", ["INSUMOS", "IMPLANTE", "IMPLANTES"]), que es una
   // igualdad exacta en Firestore y dejaba fuera, sin ningún error, los códigos
@@ -138,8 +140,9 @@ const PadMaestros = () => {
       const codigosPad = [];
       const componentes = [];
       codigos.forEach(item => {
-        if (normalizarTexto(item.clase) === 'PAD') codigosPad.push(item);
-        else componentes.push(item);
+        const clase = normalizarTexto(item.clase);
+        if (clase === 'PAD') codigosPad.push(item);
+        else if (clase !== 'KIT') componentes.push(item);
       });
       setListaCodigosPad(codigosPad);
       setListaInsumosImplantes(componentes);
@@ -895,11 +898,7 @@ const PadMaestros = () => {
                           <tr key={idx} className="border-b border-slate-100 dark:border-gray-700/60 hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition">
                             <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-center text-slate-400 font-bold">{idx + 1}</td>
                             <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700">
-                              <span className={`px-1 py-0.2 rounded text-[7.5px] font-bold ${
-                                item.clase === 'IMPLANTE' || item.clase === 'IMPLANTES'
-                                  ? 'bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300'
-                                  : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                              }`}>
+                              <span className={`px-1 py-0.2 rounded text-[7.5px] font-bold ${claseBadgeCodigo(item.clase)}`}>
                                 {item.clase}
                               </span>
                             </td>

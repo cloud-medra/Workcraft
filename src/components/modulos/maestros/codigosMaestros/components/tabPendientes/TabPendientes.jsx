@@ -25,6 +25,7 @@ import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabPendientesDrawers'
 import AsignarCodigoDrawer from './AsignarCodigoDrawer';
 import { useImportExportPendientes } from './useImportExportPendientes';
 import { normalizarDescriptorEmpresa } from './normalizarDescriptorEmpresa';
+import { CLASES_CODIGO } from '../../clasesCodigo';
 
 const COL_BASE = "maestros_codigos";
 
@@ -410,9 +411,7 @@ const TabPendientes = () => {
             <label className="block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5">Clase</label>
             <select value={formData.clase} onChange={e => setFormData({ ...formData, clase: e.target.value })} className="w-full h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100">
               <option value="">Seleccione...</option>
-              <option value="IMPLANTE">IMPLANTE</option>
-              <option value="INSUMOS">INSUMOS</option>
-              <option value="PAD">PAD</option>
+              {CLASES_CODIGO.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 

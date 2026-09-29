@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Edit3, DollarSign } from 'lucide-react';
 import Spinner from '../../../../../ui/Spinner';
 import { construirCambiosRegistro } from './camposAuditablesRegistro';
+import { CLASES_CODIGO } from '../../clasesCodigo';
 
 const ModificarRegistroDrawer = ({
   show,
@@ -246,9 +247,7 @@ const ModificarRegistroDrawer = ({
               className="w-full h-7 px-1.5 border border-gray-300 dark:border-gray-600 rounded outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 cursor-pointer"
             >
               <option value="">Seleccione...</option>
-              <option value="IMPLANTE">IMPLANTE</option>
-              <option value="INSUMOS">INSUMOS</option>
-              <option value="PAD">PAD</option>
+              {CLASES_CODIGO.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
