@@ -12,6 +12,7 @@ import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
 import { verificarPeriodosBloque } from './Cargastab/verificacionPeriodoBloque';
 import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
+import { validarNuevaEmpresaFecha, extraerDatosBase } from '../../../shared/empresaFechaDesdeDetalle';
 import { HistorialLogsContenido } from '../GestionesHemodinamiaDrawers';
 import { CENTRO_HEMODINAMIA } from '../utils/constantesHemodinamia';
 
@@ -29,6 +30,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
   todosLosRegistros = [],
   onGuardar,
   onCancelar,
+  onAgregarEmpresaFecha,
   logsList = [],
   loadingLogs = false,
   cargarLogsDeImplante,
@@ -151,6 +153,12 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
       }));
     })
   );
+
+  // Último estado guardado de cada registro de las cards, por id. Se
+  // actualiza con el alta rápida y con su guardado automático (que puede
+  // mover el registro a otra ruta con un id nuevo, p. ej. al pasar de 'P' a
+  // un ID real). Es la base que hereda un nuevo registro.
+  const registrosGuardadosRef = useRef(new Map(registrosDeEstaAdmision.map(r => [r.id, r])));
 
   const [erroresFecha, setErroresFecha] = useState({});
   const [bloqueActivoIndex, setBloqueActivoIndex] = useState(0);
@@ -330,8 +338,11 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hayCambios]);
 
-  const handleSubmit = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+  // Valida y arma el payload de guardarDesdeDetalle con los cambios del
+  // detalle (lo usan "Guardar" y el guardado automático del alta rápida).
+  // Devuelve { payload, formDataParaGuardar } o null si algo no es válido
+  // (en ese caso ya se mostró el error en pantalla).
+  const prepararGuardado = async () => {
 
     if (cargasTabRef.current?.estaBloqueDesbloqueado?.() || informacionTabRef.current?.estaBloqueDesbloqueado?.()) {
       const bloqueDesbloqueado = formData.bloques[bloqueActivoIndex];
@@ -344,7 +355,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
             : 'No se guardó: no se pudo determinar el período de este bloque.',
           'error'
         );
-        return;
+        return null;
       }
     }
 
@@ -354,7 +365,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
       const resultado = cargasTabRef.current.confirmarItemPendiente();
 
       if (resultado.status === 'incompleto') {
-        return;
+        return null;
       }
 
       if (resultado.status === 'solo-total') {
@@ -407,7 +418,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
       const primerIndexConError = Number(Object.keys(nuevosErrores)[0]);
       setBloqueActivoIndex(primerIndexConError);
       setActiveTab('informacion');
-      return;
+      return null;
     }
 
     const payload = {
@@ -448,8 +459,98 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
       })
     };
 
-    onGuardar(payload);
+    return { payload, formDataParaGuardar };
   };
+
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const preparado = await prepararGuardado();
+    if (preparado) onGuardar(preparado.payload);
+  };
+  // Alta rápida Empresa/Fecha (columna "Empresas / Fechas"). El registro se
+  // crea al instante en Firestore; aquí solo se agrega la card y se marca como
+  // ya guardada en la foto inicial, para no contarla como cambio pendiente.
+  const validarAgregarEmpresaFecha = ({ fecha, empresa }) => validarNuevaEmpresaFecha({
+    fecha,
+    empresa,
+    bloques: formData.bloques,
+    periodo: periodoActivo,
+    cargandoPeriodo,
+    nombreModulo: 'Hemodinamia'
+  });
+
+  const handleAgregarEmpresaFecha = async ({ fecha, empresa }) => {
+    const errorLocal = validarAgregarEmpresaFecha({ fecha, empresa });
+    if (errorLocal) return { error: errorLocal };
+
+    // Con cambios sin guardar (p. ej. el ID recién ingresado), se guardan
+    // primero en la misma acción: el ID es parte de la ruta en Firestore y el
+    // registro original y el nuevo deben quedar en la misma admisión. El nuevo
+    // hereda entonces los datos recién guardados.
+    let preparado = null;
+    if (JSON.stringify(formData) !== snapshotInicialRef.current) {
+      preparado = await prepararGuardado();
+      if (!preparado) {
+        return { error: 'Hay cambios pendientes con errores: corrígelos antes de agregar.' };
+      }
+    }
+
+    const indiceBase = bloqueActivoIndex;
+    const idBase = formData.bloques[indiceBase]?.idOriginal;
+    const resultado = await onAgregarEmpresaFecha({
+      base: extraerDatosBase(registrosGuardadosRef.current.get(idBase) || item),
+      fecha,
+      empresa,
+      cambiosPendientes: preparado?.payload,
+      indiceBase
+    });
+
+    const { creado, guardado } = resultado || {};
+    if (!creado && !guardado?.ok) return resultado;
+
+    // Estado ya guardado: las cards toman el id/ruta final de cada registro
+    // (el guardado pudo moverlos) y se agrega la nueva.
+    let bloques = (preparado?.formDataParaGuardar || formData).bloques;
+    if (guardado?.ok) {
+      bloques = bloques.map((b, idx) => {
+        const reg = guardado.registros[idx];
+        if (!reg) return b;
+        registrosGuardadosRef.current.set(reg.id, reg);
+        return { ...b, idOriginal: reg.id, refPath: reg.refPath };
+      });
+    }
+    if (creado) {
+      registrosGuardadosRef.current.set(creado.id, creado);
+      bloques = [...bloques, {
+        uniqueKey: `id_${creado.id}`,
+        idOriginal: creado.id,
+        refPath: creado.refPath,
+        empresa: creado.empresa,
+        fecha: creado.fecha,
+        costo: creado.costo ?? 0,
+        cotizaciones: [],
+        solicitud: creado.solicitud || 'PENDIENTE',
+        estado: creado.estado || 'AGENDADO',
+        fechaInicioCarga: null,
+        fechaCarga: null
+      }];
+    }
+
+    const nuevoFormData = { ...(preparado?.formDataParaGuardar || formData), bloques };
+    // Todo lo que muestra el detalle quedó guardado: nueva foto inicial, sin
+    // "cambios sin guardar" falsos.
+    snapshotInicialRef.current = JSON.stringify(nuevoFormData);
+    idsItemsOriginalesRef.current = bloques.map(b => (b.cotizaciones?.[0]?.items || []).map(it => ({
+      id: it.id,
+      periodoAnio: it.periodoAnio,
+      periodoMes: it.periodoMes
+    })));
+    setErroresFecha({});
+    setFormData(nuevoFormData);
+    if (creado) setBloqueActivoIndex(bloques.length - 1);
+    return resultado;
+  };
+
   useImperativeHandle(ref, () => ({
     guardarTodo: handleSubmit,
     hayCambiosSinGuardar: () => hayCambios
@@ -527,6 +628,13 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
             bloqueActivoIndex={bloqueActivoIndex}
             setBloqueActivoIndex={setBloqueActivoIndex}
             erroresFecha={erroresFecha}
+            onAgregar={onAgregarEmpresaFecha ? handleAgregarEmpresaFecha : undefined}
+            validarAgregar={validarAgregarEmpresaFecha}
+            motivoAgregarDeshabilitado={
+              esCodigoPendiente(formData.gestionId)
+                ? 'Ingresa el ID de admisión en Información para agregar empresa/fecha'
+                : undefined
+            }
           />
         )}
 

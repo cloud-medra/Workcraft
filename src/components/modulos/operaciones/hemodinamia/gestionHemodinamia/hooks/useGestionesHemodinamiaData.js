@@ -25,6 +25,7 @@ import { exportarGestionesAExcel, descargarPlantillaCSV, parsearArchivoImportaci
 import { periodoEstaAbierto } from '../components/Cargastab/verificacionPeriodoBloque';
 import { refImputada, construirPayloadImputada } from '../utils/imputadaSync';
 import { registrarLogHemodinamia } from '../utils/registrarLogHemodinamia';
+import { existeGestionEnColeccion, extraerDatosBase, MENSAJE_DUPLICADO } from '../../../shared/empresaFechaDesdeDetalle';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -88,6 +89,35 @@ const getDetallesRef = (fechaString, admisionId, empresaNombre) => {
     'empresa', empresaClean,
     'detalles'
   );
+};
+
+// Normalización de una gestión a partir de los campos del formulario
+// (vacíos → 'P'). Compartida por el formulario principal y el alta rápida
+// Empresa/Fecha del detalle, para que ambos registros queden iguales.
+const normalizarGestion = (formData) => {
+  const gestionIdLimpio = (formData.gestionId || formData.agendaId)?.trim() || 'P';
+  const admisionValor = (gestionIdLimpio !== '' && gestionIdLimpio !== 'P') ? gestionIdLimpio : 'SIN_ADMISION';
+
+  return {
+    gestionId: gestionIdLimpio,
+    agendaId: gestionIdLimpio,
+    admision: admisionValor,
+    nombre: formData.nombre?.trim() || 'P',
+    fecha: formData.fecha || 'P',
+    empresa: formData.empresa?.trim() || 'P',
+    informe: formData.informe || 'PENDIENTE',
+    observacion: formData.observacion?.trim() || '',
+    convenio: formData.convenio === 'Cargando...' ? 'P' : (formData.convenio || 'P'),
+    prevision: formData.prevision === 'Cargando...' ? 'P' : (formData.prevision || 'P'),
+    medico: formData.medico === 'Cargando...' ? 'P' : (formData.medico || 'P'),
+    descripcion: formData.descripcion === 'Cargando...' ? 'P' : (formData.descripcion || 'P'),
+    centro: CENTRO_HEMODINAMIA,
+    atributo: formData.atributo || 'HEMODINAMIA',
+    estado: formData.estado || 'AGENDANDO',
+    costo: Number(formData.costo) || 0,
+    solicitud: 'PENDIENTE',
+    active: true
+  };
 };
 
 // `admision` (opcional): modo detalle. En vez de la ventana de las
@@ -377,6 +407,117 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
     }, 400);
   };
 
+  // Crea una gestión nueva en su colección por fecha/admisión/empresa y
+  // deja el log de CREACION. `detallesLogExtra` se suma a los detalles del log.
+  const crearGestion = async (dataNormalizada, detallesLogExtra = {}) => {
+    const detallesColRef = getDetallesRef(dataNormalizada.fecha, dataNormalizada.admision, dataNormalizada.empresa);
+
+    const dataAEnviar = {
+      ...dataNormalizada,
+      fechaRegistro: new Date(),
+      registradoPor: userData?.nombreCompleto || 'Usuario'
+    };
+
+    const docRef = await addDoc(detallesColRef, dataAEnviar);
+    await registrarLog(docRef, 'CREACION', { ...dataNormalizada, ...detallesLogExtra });
+    return { id: docRef.id, refPath: docRef.path, ...dataAEnviar };
+  };
+
+  // Registros guardados o creados desde el detalle (alta rápida y guardado
+  // automático previo). guardarDesdeDetalle los busca aquí si todavía no están
+  // en `implantes` (la ventana en vivo solo trae las gestiones más recientes,
+  // y en modo { refPath } el doc movido a su nueva ruta deja de escucharse):
+  // si no los encontrara, trataría la card como nueva y crearía un duplicado.
+  const guardadosDesdeDetalleRef = useRef(new Map());
+  const buscarOriginal = (id) =>
+    implantes.find(i => i.id === id) || guardadosDesdeDetalleRef.current.get(id) || null;
+
+  // Antes del guardado automático: si un bloque cambia de ruta (nuevo ID de
+  // admisión, empresa o fecha) y en la ruta destino ya hay un registro,
+  // guardarDesdeDetalle crearía un duplicado. Se omite para SIN_ADMISION
+  // (esa ruta la comparten pacientes distintos sin ID).
+  const buscarConflictoDeRuta = async ({ admisionId, registrosActualizados }) => {
+    const gestionIdLimpio = admisionId?.trim() || 'P';
+    const admisionValor = (gestionIdLimpio !== '' && gestionIdLimpio !== 'P') ? gestionIdLimpio : 'SIN_ADMISION';
+    if (admisionValor === 'SIN_ADMISION') return null;
+
+    for (const registro of registrosActualizados) {
+      const original = registro.id ? buscarOriginal(registro.id) : null;
+      const empresa = registro.empresa?.trim() || 'P';
+      const cambiaRuta = !original ||
+        original.fecha !== registro.fecha ||
+        (original.empresa || '') !== empresa ||
+        ((original.gestionId || original.agendaId) || '') !== gestionIdLimpio;
+      if (!cambiaRuta) continue;
+      if (await existeGestionEnColeccion(getDetallesRef(registro.fecha, admisionValor, empresa))) {
+        return `No se guardó: ya existe un registro de la admisión ${gestionIdLimpio} para ${empresa} – ${registro.fecha}.`;
+      }
+    }
+    return null;
+  };
+
+  // Alta rápida Empresa/Fecha desde el detalle. Solo cambian fecha y empresa;
+  // cotizaciones/cargas/imputación no se copian: el bloque parte pendiente,
+  // igual que desde el formulario.
+  //  - Sin cambios pendientes: `base` = registro guardado de la card activa.
+  //  - Con `cambiosPendientes` (payload de guardarDesdeDetalle): primero se
+  //    guardan —el ID es parte de la ruta, así que el original y el nuevo
+  //    deben quedar en la misma admisión— y la base pasa a ser el registro
+  //    recién guardado en `indiceBase`. Si el guardado falla, no se crea nada.
+  // Devuelve { creado?, guardado?, error? } (error: mensaje para el formulario).
+  const agregarEmpresaFechaDesdeDetalle = async ({ base, fecha, empresa, cambiosPendientes, indiceBase }) => {
+    const empresaLimpia = empresa?.trim();
+    if (!fecha || !empresaLimpia) return { error: 'La fecha y la empresa son obligatorias.' };
+
+    const gestionIdDestino = cambiosPendientes ? cambiosPendientes.admisionId : base?.gestionId;
+    const { admision } = normalizarGestion({ gestionId: gestionIdDestino });
+    if (admision === 'SIN_ADMISION') {
+      return { error: 'La admisión no tiene ID: ingrésalo en Información antes de agregar empresa/fecha.' };
+    }
+
+    let guardado = null;
+    try {
+      if (await existeGestionEnColeccion(getDetallesRef(fecha, admision, empresaLimpia))) {
+        return { error: MENSAJE_DUPLICADO };
+      }
+
+      let datosBase = base;
+      if (cambiosPendientes) {
+        const conflicto = await buscarConflictoDeRuta(cambiosPendientes);
+        if (conflicto) return { error: conflicto };
+
+        guardado = await guardarDesdeDetalle(cambiosPendientes, { toastExito: false });
+        if (!guardado?.ok) {
+          return { error: `No se agregó: ${guardado?.error || 'no se pudieron guardar los cambios pendientes.'}` };
+        }
+        datosBase = guardado.registros[indiceBase] || guardado.registros[0];
+      }
+
+      const dataNormalizada = normalizarGestion({ ...extraerDatosBase(datosBase), fecha, empresa: empresaLimpia });
+      const creado = await crearGestion(dataNormalizada, {
+        origen: 'DETALLE',
+        mensaje: `Se agregó empresa/fecha: ${empresaLimpia} – ${fecha}`
+      });
+      guardadosDesdeDetalleRef.current.set(creado.id, creado);
+      showToast(
+        guardado
+          ? 'Se guardaron los cambios y se agregó la nueva empresa/fecha'
+          : `Se agregó ${empresaLimpia} – ${fecha}`,
+        'success'
+      );
+      return { creado, guardado };
+    } catch (error) {
+      console.error('Error al agregar empresa/fecha:', error);
+      showToast('Error al agregar empresa/fecha: ' + error.message, 'error');
+      return {
+        guardado,
+        error: guardado
+          ? 'Se guardaron los cambios, pero no se pudo agregar la empresa/fecha: ' + error.message
+          : 'No se pudo agregar: ' + error.message
+      };
+    }
+  };
+
   const handleGuardar = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -388,28 +529,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
     setCargando(true);
     try {
       const gestionIdLimpio = (formData.gestionId || formData.agendaId)?.trim() || 'P';
-      const admisionValor = (gestionIdLimpio !== '' && gestionIdLimpio !== 'P') ? gestionIdLimpio : 'SIN_ADMISION';
-
-      const dataNormalizada = {
-        gestionId: gestionIdLimpio,
-        agendaId: gestionIdLimpio,
-        admision: admisionValor,
-        nombre: formData.nombre?.trim() || 'P',
-        fecha: formData.fecha || 'P',
-        empresa: formData.empresa?.trim() || 'P',
-        informe: formData.informe || 'PENDIENTE',
-        observacion: formData.observacion?.trim() || '',
-        convenio: formData.convenio === 'Cargando...' ? 'P' : (formData.convenio || 'P'),
-        prevision: formData.prevision === 'Cargando...' ? 'P' : (formData.prevision || 'P'),
-        medico: formData.medico === 'Cargando...' ? 'P' : (formData.medico || 'P'),
-        descripcion: formData.descripcion === 'Cargando...' ? 'P' : (formData.descripcion || 'P'),
-        centro: CENTRO_HEMODINAMIA,
-        atributo: formData.atributo || 'HEMODINAMIA',
-        estado: formData.estado || 'AGENDANDO',
-        costo: Number(formData.costo) || 0,
-        solicitud: 'PENDIENTE',
-        active: true
-      };
+      const dataNormalizada = normalizarGestion(formData);
 
       const idEsReal = gestionIdLimpio !== '' && gestionIdLimpio !== 'P';
 
@@ -440,16 +560,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
         await registrarLog(docRef, 'EDICION', { ...dataNormalizada });
         showToast("Gestión actualizada correctamente", "success");
       } else {
-        const detallesColRef = getDetallesRef(dataNormalizada.fecha, dataNormalizada.admision, dataNormalizada.empresa);
-
-        const dataAEnviar = {
-          ...dataNormalizada,
-          fechaRegistro: new Date(),
-          registradoPor: userData?.nombreCompleto || 'Usuario'
-        };
-
-        const docRef = await addDoc(detallesColRef, dataAEnviar);
-        await registrarLog(docRef, 'CREACION', { ...dataNormalizada });
+        await crearGestion(dataNormalizada);
         showToast("Gestión registrada correctamente", "success");
       }
 
@@ -462,18 +573,21 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
     }
   };
 
-  const guardarDesdeDetalle = async (payload) => {
+  // Devuelve { ok: true, registros } (registros guardados, en el mismo orden
+  // que registrosActualizados) o { ok: false, error }. toastExito: false omite
+  // el aviso genérico de éxito (el alta rápida muestra el suyo).
+  const guardarDesdeDetalle = async (payload, { toastExito = true } = {}) => {
     const { admisionId, paciente, registrosActualizados } = payload;
 
     if (!registrosActualizados || registrosActualizados.length === 0) {
       showToast("No hay registros para guardar", "error");
-      return;
+      return { ok: false, error: 'No hay registros para guardar.' };
     }
 
     const sinFecha = registrosActualizados.find(r => !r.fecha || String(r.fecha).trim() === '');
     if (sinFecha) {
       showToast("La fecha es requerida en todos los bloques", "error");
-      return;
+      return { ok: false, error: 'La fecha es requerida en todos los bloques.' };
     }
 
     setCargando(true);
@@ -504,6 +618,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
 
       let totalImputadasActualizadas = 0;
       const itemsNoSincronizados = [];
+      const registrosGuardados = [];
 
       for (const registro of registrosActualizados) {
         const dataNormalizada = {
@@ -528,7 +643,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
           active: true
         };
 
-        const original = registro.id ? implantes.find(i => i.id === registro.id) : null;
+        const original = registro.id ? buscarOriginal(registro.id) : null;
 
         dataNormalizada.fechaInicioCarga = registro.fechaInicioCarga || original?.fechaInicioCarga || null;
         dataNormalizada.fechaCarga = registro.fechaCarga || original?.fechaCarga || null;
@@ -540,26 +655,28 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
         );
 
         let docRefFinal;
+        let datosGuardados;
 
         if (original && !rutaCambio) {
           const docRef = doc(db, original.refPath);
           docRefFinal = docRef;
-          batch.update(docRef, {
+          datosGuardados = {
             ...dataNormalizada,
             fechaRegistro: original.fechaRegistro || new Date(),
             registradoPor: original.registradoPor || userData?.nombreCompleto || 'Usuario'
-          });
+          };
+          batch.update(docRef, datosGuardados);
           logsAAgregar.push({ docRef, accion: 'EDICION', detalles: dataNormalizada });
         } else {
           const detallesColRef = getDetallesRef(dataNormalizada.fecha, dataNormalizada.admision, dataNormalizada.empresa);
           const nuevoDocRef = doc(detallesColRef);
           docRefFinal = nuevoDocRef;
-
-          batch.set(nuevoDocRef, {
+          datosGuardados = {
             ...dataNormalizada,
             fechaRegistro: original?.fechaRegistro || new Date(),
             registradoPor: original?.registradoPor || userData?.nombreCompleto || 'Usuario'
-          });
+          };
+          batch.set(nuevoDocRef, datosGuardados);
           logsAAgregar.push({ docRef: nuevoDocRef, accion: original ? 'EDICION' : 'CREACION', detalles: dataNormalizada });
 
           if (original) {
@@ -567,6 +684,8 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
             batch.delete(oldDocRef);
           }
         }
+
+        registrosGuardados.push({ id: docRefFinal.id, refPath: docRefFinal.path, ...datosGuardados });
 
         const itemsAntes = original?.cotizaciones?.[0]?.items || [];
         const itemsDespues = registro.cotizaciones?.[0]?.items || [];
@@ -709,12 +828,16 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
           `Gestión actualizada, pero ${itemsNoSincronizados.length} ítem${itemsNoSincronizados.length === 1 ? '' : 's'} no se pudo sincronizar con Resumen: período cerrado`,
           "info"
         );
-      } else {
+      } else if (toastExito) {
         showToast("Gestión actualizada correctamente", "success");
       }
+
+      registrosGuardados.forEach(r => guardadosDesdeDetalleRef.current.set(r.id, r));
+      return { ok: true, registros: registrosGuardados };
     } catch (error) {
       console.error("Error al guardar:", error);
       showToast("Error al guardar: " + error.message, "error");
+      return { ok: false, error: error.message };
     } finally {
       setCargando(false);
     }
@@ -893,6 +1016,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
     handleIdChange,
     handleGuardar,
     guardarDesdeDetalle,
+    agregarEmpresaFechaDesdeDetalle,
     handleDelete,
     iniciarEdicion,
     cancelarEdicion,

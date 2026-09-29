@@ -73,6 +73,7 @@ const GestionesImplantes = () => {
     handleIdChange,
     handleGuardar,
     guardarDesdeDetalle,
+    agregarEmpresaFechaDesdeDetalle,
     handleDelete,
     iniciarEdicion,
     cancelarEdicion,
@@ -236,6 +237,7 @@ const GestionesImplantes = () => {
           item={registroSeleccionado}
           todosLosRegistros={implantes}
           onGuardar={handleGuardarDetalle}
+          onAgregarEmpresaFecha={agregarEmpresaFechaDesdeDetalle}
           onCancelar={handleIntentarVolver}
           logsList={logsList}
           loadingLogs={loadingLogs}

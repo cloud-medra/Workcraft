@@ -61,6 +61,7 @@ const GestionHemodinamia = () => {
     handleIdChange,
     handleGuardar,
     guardarDesdeDetalle,
+    agregarEmpresaFechaDesdeDetalle,
     handleDelete,
     iniciarEdicion,
     cancelarEdicion,
@@ -210,6 +211,7 @@ const GestionHemodinamia = () => {
           item={registroSeleccionado}
           todosLosRegistros={implantes}
           onGuardar={handleGuardarDetalle}
+          onAgregarEmpresaFecha={agregarEmpresaFechaDesdeDetalle}
           onCancelar={handleIntentarVolver}
           logsList={logsList}
           loadingLogs={loadingLogs}

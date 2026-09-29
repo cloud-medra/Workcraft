@@ -138,6 +138,7 @@ const DetalleGestionConHeader = ({ fila, onVolver, useGestiones, DetalleView, ti
         item={itemActual}
         todosLosRegistros={implantesHook.implantes}
         onGuardar={handleGuardarDetalle}
+        onAgregarEmpresaFecha={implantesHook.agregarEmpresaFechaDesdeDetalle}
         onCancelar={handleIntentarVolver}
         logsList={implantesHook.logsList}
         loadingLogs={implantesHook.loadingLogs}

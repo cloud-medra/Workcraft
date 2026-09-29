@@ -71,6 +71,7 @@ const DetalleLog = ({ log }) => {
     case 'IMPORTACION':
       return (
         <div className="space-y-0.5">
+          {d.mensaje && <p className="font-semibold text-[#2383C2]">{d.mensaje}</p>}
           <p><strong>ID:</strong> {d.gestionId || d.agendaId || '-'}</p>
           <p><strong>Nombre:</strong> {d.nombre || '-'}</p>
           <p><strong>Empresa:</strong> {d.empresa || '-'}</p>

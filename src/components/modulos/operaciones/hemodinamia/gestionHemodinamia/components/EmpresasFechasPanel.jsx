@@ -1,5 +1,7 @@
-import React from 'react';
-import { Layers, Building2, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
+import { Layers, Building2, AlertCircle, Plus } from 'lucide-react';
+import EmpresaSelect from './EmpresaSelect';
+import AgregarEmpresaFechaForm from '../../../shared/AgregarEmpresaFechaForm';
 
 const ESTADO_STYLES = {
   AGENDADO:         { dot: 'bg-yellow-400',  text: 'text-yellow-700 dark:text-yellow-400',   bg: 'bg-yellow-50 dark:bg-yellow-950/20',   border: 'border-yellow-300 dark:border-yellow-800' },
@@ -25,8 +27,21 @@ export const EmpresasFechasPanel = ({
   bloques = [],
   bloqueActivoIndex,
   setBloqueActivoIndex,
-  erroresFecha = {}
+  erroresFecha = {},
+  // Alta rápida Empresa/Fecha: sin onAgregar no se muestra el "+".
+  // motivoAgregarDeshabilitado: si viene, el "+" queda deshabilitado con ese tooltip.
+  onAgregar,
+  validarAgregar,
+  motivoAgregarDeshabilitado
 }) => {
+  const [agregando, setAgregando] = useState(false);
+
+  const handleAgregar = async (datos) => {
+    const resultado = await onAgregar(datos);
+    if (!resultado?.error) setAgregando(false);
+    return resultado;
+  };
+
   return (
     <div className="w-48 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200 dark:border-gray-700 flex flex-col overflow-y-auto">
       <div className="p-2 border-b border-slate-200 dark:border-gray-700 flex items-center gap-1.5 sticky top-0 bg-white dark:bg-gray-800 z-10">
@@ -34,7 +49,28 @@ export const EmpresasFechasPanel = ({
         <h2 className="text-[10px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
           Empresas / Fechas ({bloques.length})
         </h2>
+        {onAgregar && (
+          <button
+            type="button"
+            onClick={() => setAgregando(true)}
+            disabled={agregando || !!motivoAgregarDeshabilitado}
+            title={motivoAgregarDeshabilitado || 'Agregar empresa/fecha'}
+            aria-label="Agregar empresa/fecha"
+            className="ml-auto p-0.5 rounded text-[#2383C2] hover:bg-[#2383C2]/10 dark:hover:bg-blue-950/50 transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            <Plus size={14} />
+          </button>
+        )}
       </div>
+
+      {agregando && (
+        <AgregarEmpresaFechaForm
+          EmpresaSelect={EmpresaSelect}
+          validar={validarAgregar}
+          onAgregar={handleAgregar}
+          onCancelar={() => setAgregando(false)}
+        />
+      )}
 
       {bloques.length === 0 ? (
         <div className="p-2.5 text-amber-700 dark:text-amber-400 text-[10px] flex items-start gap-1.5">
