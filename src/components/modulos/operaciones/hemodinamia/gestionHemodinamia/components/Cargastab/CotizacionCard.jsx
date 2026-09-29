@@ -33,20 +33,22 @@ import { ManijaRedimension } from '../ManijaRedimension';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { PadContenidoRow, crearFilaContenidoPadVacia, construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 
+// `px` (opcional): relleno horizontal de la columna en encabezado y celdas
+// (por defecto px-2.5); permite columnas más angostas sin cortar el contenido.
 const COLUMNAS_ITEMS = [
   { key: 'id', label: 'ID', ancho: 60, min: 40 },
   { key: 'fecha', label: 'Fecha', ancho: 80, min: 40 },
   { key: 'codigo', label: 'Código', ancho: 70, min: 40 },
   { key: 'cantidad', label: 'Cant.', ancho: 50, min: 36, align: 'center' },
-  { key: 'venta', label: 'Venta', ancho: 65, min: 40 },
-  { key: 'referencia', label: 'Referencia', ancho: 100, min: 80 },
-  { key: 'descriptorAuto', label: 'Desc. Auto', ancho: 180, min: 60 },
+  { key: 'venta', label: 'Venta', ancho: 85, min: 40 },
+  { key: 'referencia', label: 'Referencia', ancho: 90, min: 80 },
+  { key: 'descriptorAuto', label: 'Desc. Auto', ancho: 160, min: 60 },
   { key: 'clase', label: 'Clase', ancho: 50, min: 32 },
   { key: 'tipo', label: 'Tipo', ancho: 50, min: 32 },
-  { key: 'precio', label: 'Precio', ancho: 60, min: 40 },
-  { key: 'totalItem', label: 'Total Ítem', ancho: 70, min: 40 },
-  { key: 'lote', label: 'Lote', ancho: 65, min: 40 },
-  { key: 'vencimiento', label: 'Vencimiento', ancho: 80, min: 40 },
+  { key: 'precio', label: 'Precio', ancho: 69, min: 40, px: 'px-1.5' },
+  { key: 'totalItem', label: 'Total Ítem', ancho: 69, min: 40, px: 'px-1.5' },
+  { key: 'lote', label: 'Lote', ancho: 60, min: 40 },
+  { key: 'vencimiento', label: 'Vencimiento', ancho: 79, min: 40, px: 'px-1.5' },
   { key: 'estadoCarga', label: 'Estado Carga', ancho: 95, min: 60 },
   { key: 'acciones', label: 'Acciones', ancho: 75, min: 60, align: 'center' }
 ];
@@ -457,7 +459,7 @@ export const CotizacionCard = ({
                     <th
                       key={col.key}
                       title={col.label}
-                      className={`relative px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700 ${idx < COLUMNAS_ITEMS.length - 1 ? 'border-r' : ''} ${col.align === 'center' ? 'text-center' : ''}`}
+                      className={`relative ${col.px || 'px-2.5'} py-1.5 border-b border-slate-200 dark:border-gray-700 ${idx < COLUMNAS_ITEMS.length - 1 ? 'border-r' : ''} ${col.align === 'center' ? 'text-center' : ''}`}
                     >
                       <span className="block truncate">{col.label}</span>
                       <ManijaRedimension colKey={col.key} anchoActual={anchos[col.key]} anchoMin={col.min} onResize={handleResize} />
@@ -569,7 +571,7 @@ export const CotizacionCard = ({
                           </td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">{borrador.clase || 'P'}</td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">{borrador.tipoVinculado || 'P'}</td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">
+                          <td className="px-1 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px]">
                             {edicionEsContenidoPad ? (
                               <span className="text-fuchsia-600 dark:text-fuchsia-400 italic">$0</span>
                             ) : edicionEsLoteAdicional ? (
@@ -585,11 +587,14 @@ export const CotizacionCard = ({
                             )}
                           </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 font-medium">
+                          <td
+                            className="px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 font-medium"
+                            title={financierosPreview ? `$${Number(financierosPreview.totalItem).toLocaleString('es-CL')}` : undefined}
+                          >
                             {financierosPreview ? `$${Number(financierosPreview.totalItem).toLocaleString('es-CL')}` : <span className="text-slate-400">—</span>}
                           </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                          <td className="px-1 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
                             {edicionEsPad ? (
                               <input
                                 type="text"
@@ -607,7 +612,8 @@ export const CotizacionCard = ({
                             )}
                           </td>
 
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                          {/* px-0: el input de fecha necesita ~78px para mostrar el año completo */}
+                          <td className="px-0 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
                             {edicionEsPad ? (
                               <input
                                 type="text"
@@ -715,16 +721,16 @@ export const CotizacionCard = ({
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                             {it.tipoVinculado || 'P'}
                           </td>
-                          <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad ? 'text-fuchsia-500 dark:text-fuchsia-400 italic' : esLoteAdicional ? 'text-sky-500 dark:text-sky-400 italic' : 'text-slate-600 dark:text-gray-300'}`}>
+                          <td className={`px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad ? 'text-fuchsia-500 dark:text-fuchsia-400 italic' : esLoteAdicional ? 'text-sky-500 dark:text-sky-400 italic' : 'text-slate-600 dark:text-gray-300'}`} title={`$${Number(it.precio || 0).toLocaleString('es-CL')}`}>
                             ${Number(it.precio || 0).toLocaleString('es-CL')}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
+                          <td className="px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold" title={`$${Number(it.totalItem || 0).toLocaleString('es-CL')}`}>
                             ${Number(it.totalItem || 0).toLocaleString('es-CL')}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300" title={it.lote}>
                             {it.lote}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                             {esPrincipalPad || esContenidoPad ? (it.vencimiento || 'PAD') : formatearFechaTabla(it.vencimiento)}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
@@ -866,7 +872,9 @@ export const CotizacionCard = ({
                     <td colSpan={10} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right">
                       Suma de ítems:
                     </td>
-                    <td className={`px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 ${totalCoincide ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    {/* Sin recorte: la suma puede ser más ancha que la columna Total Ítem
+                        y se extiende sobre la celda vacía de la derecha. */}
+                    <td className={`px-1.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 !overflow-visible ${totalCoincide ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
                       ${totalItems.toLocaleString('es-CL')}
                     </td>
                     <td colSpan={4} className="border-t border-slate-200 dark:border-gray-700"></td>
