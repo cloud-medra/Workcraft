@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useDropdownFlotante } from '../../../../../../hooks/useDropdownFlotante';
 import { CalendarDays, ChevronDown, Check } from 'lucide-react';
 
 // Mismo patrón de selección múltiple que EstadoFilterDropdown.jsx: arreglo
@@ -11,15 +13,8 @@ export const DiaFilterDropdown = ({
   limpiarFiltroDias
 }) => {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const cerrar = useCallback(() => setOpen(false), []);
+  const { anclaRef, panelRef, estilo } = useDropdownFlotante({ abierto: open, cerrar, alturaMax: 256 });
 
   const hayFiltroActivo = filtrosDias.length > 0;
   const label = !hayFiltroActivo
@@ -29,7 +24,7 @@ export const DiaFilterDropdown = ({
       : `${filtrosDias.length} días`;
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={anclaRef}>
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -43,8 +38,12 @@ export const DiaFilterDropdown = ({
         <ChevronDown size={12} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 max-h-64 overflow-auto">
+      {open && createPortal(
+        <div
+          ref={panelRef}
+          style={estilo}
+          className="z-[1000] w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg py-1 overflow-auto"
+        >
           <button
             type="button"
             onClick={limpiarFiltroDias}
@@ -72,7 +71,8 @@ export const DiaFilterDropdown = ({
           {opcionesDias.length === 0 && (
             <div className="px-2.5 py-1.5 text-[11px] text-gray-400">Sin días disponibles</div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

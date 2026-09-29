@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useCatalogo } from '../../../../../../hooks/useCatalogo';
+import { useDropdownFlotante } from '../../../../../../hooks/useDropdownFlotante';
 import { ordenarPor } from '../../../../../../stores/catalogosStore';
 import { ChevronDown, Check, Search } from 'lucide-react';
 
@@ -15,17 +17,10 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
   const empresas = useMemo(() => filtrarEmpresasActivas(empresasCatalogo), [empresasCatalogo]);
   const [busqueda, setBusqueda] = useState('');
   const [abierto, setAbierto] = useState(false);
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setAbierto(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const cerrar = useCallback(() => setAbierto(false), []);
+  // El panel va en un portal a document.body: el formulario vive dentro de
+  // un contenedor con overflow-hidden (animación de colapso) que lo recortaba.
+  const { anclaRef, panelRef, estilo } = useDropdownFlotante({ abierto, cerrar, anchoIgual: true });
 
   const empresasFiltradas = empresas.filter(emp =>
     emp.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -35,13 +30,13 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
   const empresaSeleccionada = empresas.find(emp => emp.id === value || emp.nombre === value);
 
   const handleSelect = (empresa) => {
-    onChange(empresa); 
+    onChange(empresa);
     setBusqueda('');
     setAbierto(false);
   };
 
   return (
-    <div className="relative w-full" ref={containerRef}>
+    <div className="relative w-full" ref={anclaRef}>
       <div
         onClick={disabled ? undefined : () => setAbierto(!abierto)}
         className={`w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex items-center justify-between focus-within:border-[#2383C2] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
@@ -52,9 +47,13 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
         <ChevronDown size={13} className="text-gray-400 shrink-0 ml-1" />
       </div>
 
-      {abierto && (
-        <div className="absolute top-full left-0 mt-1 w-full max-h-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-50 flex flex-col overflow-hidden">
-          <div className="p-1.5 border-b border-gray-200 dark:border-gray-700 flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900">
+      {abierto && createPortal(
+        <div
+          ref={panelRef}
+          style={estilo}
+          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded shadow-lg z-[1000] flex flex-col overflow-hidden"
+        >
+          <div className="shrink-0 p-1.5 border-b border-gray-200 dark:border-gray-700 flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900">
             <Search size={12} className="text-gray-400 shrink-0" />
             <input
               type="text"
@@ -66,7 +65,7 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
             />
           </div>
 
-          <ul className="overflow-y-auto max-h-44 text-[11px]">
+          <ul className="flex-1 min-h-0 overflow-y-auto text-[11px]">
             {empresasFiltradas.length > 0 ? (
               empresasFiltradas.map((emp) => {
                 const isSelected = value === emp.id || value === emp.nombre;
@@ -92,7 +91,8 @@ const EmpresaSelect = ({ value, onChange, placeholder = "Seleccionar empresa..."
               </li>
             )}
           </ul>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
