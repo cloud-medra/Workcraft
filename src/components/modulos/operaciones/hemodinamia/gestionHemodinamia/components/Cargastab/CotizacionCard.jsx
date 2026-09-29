@@ -32,6 +32,7 @@ import {
 import { ManijaRedimension } from '../ManijaRedimension';
 import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { PadContenidoRow, crearFilaContenidoPadVacia, construirItemContenidoPadDesdeFila } from './PadContenidoRow';
+import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 
 // `px` (opcional): relleno horizontal de la columna en encabezado y celdas
 // (por defecto px-2.5); permite columnas más angostas sin cortar el contenido.
@@ -389,7 +390,7 @@ export const CotizacionCard = ({
             </span>
           )}
           <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
-            {tieneTotalIngresado ? `$${Number(cotizacion.totalCotizacion).toLocaleString('es-CL')}` : 'Sin total'}
+            {tieneTotalIngresado ? `$${formatearPesos(cotizacion.totalCotizacion)}` : 'Sin total'}
           </span>
           <button
             type="button"
@@ -409,8 +410,8 @@ export const CotizacionCard = ({
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded text-[10px] text-orange-700 dark:text-orange-400">
               <AlertCircle size={12} className="shrink-0" />
               <span>
-                La suma de los ítems (${totalItems.toLocaleString('es-CL')}) no coincide con el Total de la Cotización
-                (${Number(cotizacion.totalCotizacion || 0).toLocaleString('es-CL')}). Diferencia: ${Math.abs(diferencia).toLocaleString('es-CL')}
+                La suma de los ítems (${formatearPesos(totalItems)}) no coincide con el Total de la Cotización
+                (${formatearPesos(cotizacion.totalCotizacion || 0)}). Diferencia: ${formatearPesos(Math.abs(diferencia))}
               </span>
             </div>
           )}
@@ -518,7 +519,7 @@ export const CotizacionCard = ({
                           </td>
 
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 font-medium">
-                            {financierosPreview ? `$${Number(financierosPreview.venta).toLocaleString('es-CL')}` : <span className="text-slate-400">—</span>}
+                            {financierosPreview ? `$${formatearPesos(financierosPreview.venta)}` : <span className="text-slate-400">—</span>}
                           </td>
 
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRef}>
@@ -589,9 +590,9 @@ export const CotizacionCard = ({
 
                           <td
                             className="px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 font-medium"
-                            title={financierosPreview ? `$${Number(financierosPreview.totalItem).toLocaleString('es-CL')}` : undefined}
+                            title={financierosPreview ? `$${formatearPesos(financierosPreview.totalItem)}` : undefined}
                           >
-                            {financierosPreview ? `$${Number(financierosPreview.totalItem).toLocaleString('es-CL')}` : <span className="text-slate-400">—</span>}
+                            {financierosPreview ? `$${formatearPesos(financierosPreview.totalItem)}` : <span className="text-slate-400">—</span>}
                           </td>
 
                           <td className="px-1 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
@@ -693,7 +694,7 @@ export const CotizacionCard = ({
                             {it.cantidad}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium">
-                            ${Number(it.venta || 0).toLocaleString('es-CL')}
+                            ${formatearPesos(it.venta || 0)}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200" title={it.referencia}>
                             <span className="flex items-center gap-1">
@@ -721,11 +722,11 @@ export const CotizacionCard = ({
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                             {it.tipoVinculado || 'P'}
                           </td>
-                          <td className={`px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad ? 'text-fuchsia-500 dark:text-fuchsia-400 italic' : esLoteAdicional ? 'text-sky-500 dark:text-sky-400 italic' : 'text-slate-600 dark:text-gray-300'}`} title={`$${Number(it.precio || 0).toLocaleString('es-CL')}`}>
-                            ${Number(it.precio || 0).toLocaleString('es-CL')}
+                          <td className={`px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 ${esContenidoPad ? 'text-fuchsia-500 dark:text-fuchsia-400 italic' : esLoteAdicional ? 'text-sky-500 dark:text-sky-400 italic' : 'text-slate-600 dark:text-gray-300'}`} title={`$${formatearPesos(it.precio || 0)}`}>
+                            ${formatearPesos(it.precio || 0)}
                           </td>
-                          <td className="px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold" title={`$${Number(it.totalItem || 0).toLocaleString('es-CL')}`}>
-                            ${Number(it.totalItem || 0).toLocaleString('es-CL')}
+                          <td className="px-1.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold" title={`$${formatearPesos(it.totalItem || 0)}`}>
+                            ${formatearPesos(it.totalItem || 0)}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300" title={it.lote}>
                             {it.lote}
@@ -875,7 +876,7 @@ export const CotizacionCard = ({
                     {/* Sin recorte: la suma puede ser más ancha que la columna Total Ítem
                         y se extiende sobre la celda vacía de la derecha. */}
                     <td className={`px-1.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 !overflow-visible ${totalCoincide ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                      ${totalItems.toLocaleString('es-CL')}
+                      ${formatearPesos(totalItems)}
                     </td>
                     <td colSpan={4} className="border-t border-slate-200 dark:border-gray-700"></td>
                   </tr>

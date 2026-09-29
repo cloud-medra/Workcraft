@@ -22,6 +22,7 @@ import { useGranularPermission } from '../../../../../../../hooks/useGranularPer
 import { CotizacionCard } from './CotizacionCard';
 import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 import { construirItemLoteDesdeFila } from './loteAdicionalHelpers';
+import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 
 const PATH_VISTA = '/hemodinamia/gestionHemodinamia/cargas';
 
@@ -1033,7 +1034,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
             <span className="flex items-center gap-1">
               <span className="font-bold text-gray-500 dark:text-gray-400 text-[9px] uppercase">Precio:</span>
               <span className="font-semibold text-gray-700 dark:text-gray-200">
-                {nuevoItem.precio !== '' ? `$${Number(nuevoItem.precio).toLocaleString('es-CL')}` : 'P'}
+                {nuevoItem.precio !== '' ? `$${formatearPesos(nuevoItem.precio)}` : 'P'}
               </span>
             </span>
             <span className="flex items-center gap-1">
@@ -1045,7 +1046,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
             <span className="flex items-center gap-1">
               <span className="font-bold text-gray-500 dark:text-gray-400 text-[9px] uppercase">Venta:</span>
               <span className="font-semibold text-gray-700 dark:text-gray-200">
-                ${ventaActual.toLocaleString('es-CL')}
+                ${formatearPesos(ventaActual)}
               </span>
             </span>
             <span className="flex items-center gap-1">

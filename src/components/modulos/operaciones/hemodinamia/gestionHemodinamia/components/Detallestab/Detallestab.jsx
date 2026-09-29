@@ -10,6 +10,7 @@ import {
 import { formatearFechaTabla, getEstadoCargaStyle } from '../Cargastab/cargasHelpers';
 import { formatearFecha } from '../../utils/gestionesImportExport';
 import { MESES } from '../../../../../administracion/controlMensual/constants';
+import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 
 export const DetallesTab = ({ formData }) => {
   const bloques = formData?.bloques || [];
@@ -134,7 +135,7 @@ export const DetallesTab = ({ formData }) => {
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
                     <DollarSign size={11} />
-                    ${Number(bloque.costo || 0).toLocaleString('es-CL')}
+                    ${formatearPesos(bloque.costo || 0)}
                   </span>
                   <span className="flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full uppercase bg-purple-100 dark:bg-purple-950/50 text-purple-700 dark:text-purple-400 font-bold">
                     <Tag size={9} />
@@ -190,19 +191,19 @@ export const DetallesTab = ({ formData }) => {
                               {it.tipoVinculado || 'P'}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                              ${Number(it.precio || 0).toLocaleString('es-CL')}
+                              ${formatearPesos(it.precio || 0)}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">
                               {it.vecesCosto || 1}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium">
-                              ${Number(it.venta || 0).toLocaleString('es-CL')}
+                              ${formatearPesos(it.venta || 0)}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">
                               {it.cantidad}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
-                              ${Number(it.totalItem || 0).toLocaleString('es-CL')}
+                              ${formatearPesos(it.totalItem || 0)}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                               {it.lote}
@@ -231,7 +232,7 @@ export const DetallesTab = ({ formData }) => {
                           Suma de ítems:
                         </td>
                         <td className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-emerald-700 dark:text-emerald-400">
-                          ${items.reduce((acc, it) => acc + (Number(it.totalItem) || 0), 0).toLocaleString('es-CL')}
+                          ${formatearPesos(items.reduce((acc, it) => acc + (Number(it.totalItem) || 0), 0))}
                         </td>
                         <td colSpan={3} className="border-t border-slate-200 dark:border-gray-700"></td>
                       </tr>
