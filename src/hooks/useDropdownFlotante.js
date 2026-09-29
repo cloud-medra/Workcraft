@@ -16,7 +16,10 @@ const SEPARACION = 4;
 export function useDropdownFlotante({ abierto, cerrar, alturaMax = 300, anchoIgual = false }) {
   const anclaRef = useRef(null);
   const panelRef = useRef(null);
-  const [estilo, setEstilo] = useState({ position: 'fixed', top: 0, left: 0, visibility: 'hidden' });
+  // Sin visibility:hidden inicial: un elemento oculto no puede recibir foco y
+  // el autoFocus del buscador se perdería en la primera apertura. No hay
+  // parpadeo porque useLayoutEffect lo ubica antes del primer pintado.
+  const [estilo, setEstilo] = useState({ position: 'fixed', top: 0, left: 0 });
 
   const posicionar = useCallback(() => {
     const ancla = anclaRef.current;
