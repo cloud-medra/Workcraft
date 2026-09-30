@@ -7,8 +7,9 @@
 // módulos con el mismo campo gestionId, así que se acota por ruta al rango
 // de implantes_gestiones (mismo truco de documentId() que
 // useGestionesImplantesData.js); sin eso limit(1) podría devolver un
-// registro de Hemodinamia. gestionId + rango de __name__ necesita el índice
-// compuesto (gestionId, __name__) COLLECTION_GROUP de firestore.indexes.json.
+// registro de Hemodinamia. gestionId + rango de __name__ usa el índice de
+// campo único de gestionId a nivel COLLECTION_GROUP (fieldOverrides de
+// firestore.indexes.json); Firestore no admite un compuesto para esto.
 //
 // Todos los que escriben gestiones guardan gestionId (y agendaId con el
 // mismo valor), así que basta con gestionId. Puede estar como texto o
