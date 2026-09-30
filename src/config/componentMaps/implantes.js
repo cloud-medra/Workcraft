@@ -1,6 +1,6 @@
 export const implantesComponentMaps = {
-  // Bug corregido (v2): la visibilidad de las 4 pestañas de la vista de
-  // detalle (Detalles, Información, Cargas, Logs) se movió de una sección
+  // Bug corregido (v2): la visibilidad de las pestañas de la vista de
+  // detalle (Detalles, Información, Cargas, Orden, Documentos, Logs) se movió de una sección
   // "navegacion" con un checkbox maestro compartido (que podía apagar las
   // 4 de golpe, o no aparecer en el editor para usuarios ya asignados
   // antes de que existiera) a `procesos` — cada pestaña es su propio path
@@ -167,6 +167,24 @@ export const implantesComponentMaps = {
           },
         },
       },
+      '/implantes/gestionImplantes/orden': {
+        label: 'Pestaña: Orden — Empresas / Fechas de la admisión',
+        sections: {
+          empresas_fechas: {
+            label: 'Sección: Empresas / Fechas',
+            elements: {},
+          },
+        },
+      },
+      '/implantes/gestionImplantes/documentos': {
+        label: 'Pestaña: Documentos — PDF de la admisión en Storage (Documentostab.jsx)',
+        sections: {
+          contenido: {
+            label: 'Sección: Subida múltiple y listado de PDF (DP, RP, INF, COT)',
+            elements: {},
+          },
+        },
+      },
       '/implantes/gestionImplantes/logs': {
         label: 'Pestaña: Logs — historial del bloque activo, solo lectura',
         sections: {
@@ -175,6 +193,20 @@ export const implantesComponentMaps = {
             elements: {},
           },
         },
+      },
+    },
+  },
+
+  '/implantes/cargaMasivaDocumentos': {
+    label: 'Carga masiva de documentos (CargaMasivaDocumentos.jsx) — PDF de varias admisiones, sin granularidad cableada aún',
+    sections: {
+      zona_carga: {
+        label: 'Sección: Zona de carga (arrastrar/seleccionar PDF)',
+        elements: {},
+      },
+      vista_previa: {
+        label: 'Sección: Vista previa por admisión y subida',
+        elements: {},
       },
     },
   },

@@ -27,6 +27,21 @@ service firebase.storage {
       allow read, write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
     }
 
+    // PDFs de cada admisión de Implantes (pestaña Documentos de Gestión
+    // Implantes). Solo "create": nunca se sobrescribe ni se borra desde la
+    // app; ante un nombre repetido el cliente usa "(2)", "(3)"...
+    // El chequeo de permiso (getUsuario) cuesta 1 lectura de Firestore por
+    // operación (listar, subir cada PDF, abrir uno). Se mantiene a propósito
+    // también en "create": son documentos con datos de pacientes.
+    match /implantes/{admision}/documentos/{archivo} {
+      allow read: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
+      allow create: if request.auth != null
+        && request.resource.contentType == 'application/pdf'
+        && archivo.matches('.*\\.pdf$')
+        && request.resource.size < 20 * 1024 * 1024
+        && (esAdminODev() || tienePermiso('implantes'));
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

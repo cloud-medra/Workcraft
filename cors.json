@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://ideal-garbanzo-wv57j7jjxwxrc99v6-5173.app.github.dev",
+      "http://localhost:5173",
+      "https://workcraft-491b7.web.app",
+      "https://workcraft-491b7.firebaseapp.com"
+    ],
+    "method": ["GET"],
+    "maxAgeSeconds": 3600
+  }
+]

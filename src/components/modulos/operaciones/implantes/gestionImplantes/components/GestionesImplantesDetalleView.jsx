@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert, ClipboardList, Folder } from 'lucide-react';
 
 import { usePeriodoAbiertoStore } from '../../../../../../hooks/usePeriodoAbiertoStore';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
@@ -8,6 +8,8 @@ import { MESES } from '../../../../administracion/controlMensual/constants';
 import { InformacionTab } from './Informaciontab/Informaciontab';
 import { DetallesTab } from './Detallestab/Detallestab';
 import { CargasTab } from './Cargastab/Cargastab';
+import { DocumentosTab } from './Documentostab/Documentostab';
+import { listarDocumentosAdmision } from '../../shared/documentosAdmision/documentosStorage';
 import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
 import { verificarPeriodosBloque } from './Cargastab/verificacionPeriodoBloque';
 import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
@@ -27,6 +29,8 @@ const ALL_TABS = [
   { id: 'detalles', label: 'Detalles', Icon: ListFilter, path: '/implantes/gestionImplantes/detalles' },
   { id: 'informacion', label: 'Información', Icon: Info, path: '/implantes/gestionImplantes/informacion' },
   { id: 'cargas', label: 'Cargas', Icon: UploadCloud, path: '/implantes/gestionImplantes/cargas' },
+  { id: 'orden', label: 'Orden', Icon: ClipboardList, path: '/implantes/gestionImplantes/orden' },
+  { id: 'documentos', label: 'Documentos', Icon: Folder, path: '/implantes/gestionImplantes/documentos' },
   { id: 'logs', label: 'Logs', Icon: History, path: '/implantes/gestionImplantes/logs' },
 ];
 
@@ -589,6 +593,50 @@ const GestionesImplantesDetalleView = forwardRef(({
     });
   }, [tabActual?.id, refPathBloqueActivo]);
 
+  // Documentos: ID YA guardado (la foto inicial), no el que se esté editando
+  // sin guardar — el PDF no debe quedar en la carpeta de un ID que todavía no
+  // existe en Firestore. También es contra el que se validan los nombres.
+  const gestionIdGuardado = JSON.parse(snapshotInicialRef.current).gestionId;
+  const idAdmisionDocs = esCodigoPendiente(gestionIdGuardado) ? '' : String(gestionIdGuardado).trim();
+
+  // El listado de Storage vive acá (no en DocumentosTab, que se desmonta al
+  // cambiar de pestaña): se pide una sola vez por admisión mientras el panel
+  // esté abierto. `docsSolicitadoRef` evita un segundo listAll si se sale y
+  // se vuelve a la pestaña (antes o después de que termine el primero, y
+  // también si falló: en ese caso solo "Reintentar" vuelve a listar).
+  const [documentosAdmision, setDocumentosAdmision] = useState(null);
+  const docsSolicitadoRef = useRef(null);
+
+  const cargarDocumentos = useCallback((idAdmision) => {
+    docsSolicitadoRef.current = idAdmision;
+    listarDocumentosAdmision(idAdmision)
+      .then(lista => {
+        if (docsSolicitadoRef.current === idAdmision) setDocumentosAdmision({ idAdmision, lista, error: null });
+      })
+      .catch(err => {
+        console.error('Error al listar documentos de implantes:', err);
+        if (docsSolicitadoRef.current !== idAdmision) return;
+        setDocumentosAdmision({ idAdmision, lista: [], error: 'No se pudo cargar el listado de documentos.' });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (tabActual?.id !== 'documentos' || !idAdmisionDocs || docsSolicitadoRef.current === idAdmisionDocs) return;
+    cargarDocumentos(idAdmisionDocs);
+  }, [tabActual?.id, idAdmisionDocs, cargarDocumentos]);
+
+  const handleRecargarDocumentos = () => {
+    setDocumentosAdmision(null);
+    cargarDocumentos(idAdmisionDocs);
+  };
+
+  // Al terminar una tanda de subida, DocumentosTab entrega el listado ya
+  // armado en memoria (lo previo + lo subido): una sola actualización, sin
+  // volver a listar Storage.
+  const handleDocumentosSubidos = (lista) => {
+    setDocumentosAdmision({ idAdmision: idAdmisionDocs, lista, error: null });
+  };
+
   return (
     <div className="flex-grow flex flex-col bg-slate-50/50 dark:bg-gray-900 overflow-hidden text-[10px]">
 
@@ -644,7 +692,9 @@ const GestionesImplantesDetalleView = forwardRef(({
           )}
         </div>
 
-        {(tabActual?.id === 'informacion' || tabActual?.id === 'cargas' || tabActual?.id === 'logs') && (
+        {/* Orden reutiliza el mismo panel (y el mismo formData.bloques ya en
+            memoria) que Información/Cargas: no hace lecturas propias. */}
+        {(tabActual?.id === 'informacion' || tabActual?.id === 'cargas' || tabActual?.id === 'orden' || tabActual?.id === 'logs') && (
           <EmpresasFechasPanel
             bloques={formData.bloques}
             bloqueActivoIndex={bloqueActivoIndex}
@@ -697,6 +747,19 @@ const GestionesImplantesDetalleView = forwardRef(({
               periodoAbierto={periodoActivo}
               cargandoPeriodo={cargandoPeriodo}
               handleCopiarTexto={handleCopiarTexto}
+            />
+          )}
+
+          {tabActual?.id === 'documentos' && (
+            <DocumentosTab
+              idAdmision={idAdmisionDocs}
+              documentos={{
+                lista: documentosAdmision?.idAdmision === idAdmisionDocs ? documentosAdmision.lista : [],
+                cargando: Boolean(idAdmisionDocs) && documentosAdmision?.idAdmision !== idAdmisionDocs,
+                error: documentosAdmision?.idAdmision === idAdmisionDocs ? documentosAdmision.error : null
+              }}
+              onRecargar={handleRecargarDocumentos}
+              onDocumentosSubidos={handleDocumentosSubidos}
             />
           )}
 

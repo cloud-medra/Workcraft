@@ -56,6 +56,14 @@ const CLASE_REVISADO = {
 };
 const getRevisado = (r) => (OPCIONES_REVISADO.includes(r.revisado) ? r.revisado : REVISADO.PENDIENTE);
 
+// `Fecha` se guarda como texto 'YYYY-MM-DD' (ver formatearFecha), así que el
+// día se lee del texto y no con new Date(): parsearlo lo interpreta en UTC y
+// en Chile lo correría al día anterior.
+const getDia = (r) => {
+    const m = /^\d{4}-\d{2}-(\d{2})/.exec(String(r["Fecha"] ?? ''));
+    return m ? m[1] : '';
+};
+
 const SIN_ARANCEL = '(Sin arancel)';
 const getArancel = (r) => String(r["Arancel"] ?? '').trim() || SIN_ARANCEL;
 
@@ -87,6 +95,7 @@ const ReportesInfo = () => {
     const [showModal, setShowModal] = useState(false);
     const [filtroAnio, setFiltroAnio] = useState('');
     const [filtroMes, setFiltroMes] = useState('');
+    const [filtroDia, setFiltroDia] = useState('');
     const [cargando, setCargando] = useState(false);
     const [cargandoLista, setCargandoLista] = useState(false);
     const [filtroRevisado, setFiltroRevisado] = useState('');
@@ -313,6 +322,7 @@ const ReportesInfo = () => {
 
             if (fechaResult.y) setFiltroAnio(fechaResult.y);
             if (fechaResult.m) setFiltroMes(fechaResult.m);
+            if (fechaResult.y || fechaResult.m) setFiltroDia('');
 
             // Ya no hay listener en vivo: se refresca explícitamente la
             // primera página con los valores recién importados (por si
@@ -341,9 +351,18 @@ const ReportesInfo = () => {
         [reportes]
     );
 
+    // Solo los días con al menos un registro. Se calculan sobre el mes que ya
+    // está descargado completo en `reportes` (0 lecturas extra; Firestore no
+    // tiene DISTINCT, así que una consulta aparte leería el mes igual).
+    const diasDisponibles = useMemo(
+        () => [...new Set(reportes.map(getDia).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+        [reportes]
+    );
+
     const reportesFiltrados = useMemo(() => {
         const aranceles = new Set(filtroAranceles);
         return reportes.filter(r => {
+            if (filtroDia && getDia(r) !== filtroDia) return false;
             if (filtroRevisado && getRevisado(r) !== filtroRevisado) return false;
             if (aranceles.size > 0 && !aranceles.has(getArancel(r))) return false;
             return (
@@ -355,7 +374,7 @@ const ReportesInfo = () => {
                 incluyeTexto(r["Arancel"], busquedaDebounced)
             );
         });
-    }, [reportes, filtroRevisado, filtroAranceles, busquedaDebounced]);
+    }, [reportes, filtroDia, filtroRevisado, filtroAranceles, busquedaDebounced]);
 
     const conteoRevisado = useMemo(() => reportes.reduce((acc, r) => {
         const estado = getRevisado(r);
@@ -371,6 +390,9 @@ const ReportesInfo = () => {
     const reportesPagina = reportesFiltrados.slice((paginaActual - 1) * tamanoPagina, paginaActual * tamanoPagina);
 
     const conResetPagina = (setter) => (valor) => { setter(valor); setPagina(1); };
+    // El día solo tiene sentido dentro del año/mes elegido: al cambiar
+    // cualquiera de los dos vuelve a "Todos".
+    const conResetDia = (setter) => (valor) => { setter(valor); setFiltroDia(''); setPagina(1); };
 
     const cambiarRevisado = async (registro, nuevoEstado) => {
         const anterior = registro.revisado;
@@ -425,14 +447,24 @@ const ReportesInfo = () => {
 
             {/* Filtros */}
             <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center border-b border-slate-200 dark:border-gray-700">
-                <select value={filtroAnio} onChange={(e) => conResetPagina(setFiltroAnio)(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]">
+                <select value={filtroAnio} onChange={(e) => conResetDia(setFiltroAnio)(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]">
                     <option value="">Año</option>
                     {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
                 </select>
 
-                <select value={filtroMes} onChange={(e) => conResetPagina(setFiltroMes)(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none capitalize focus:border-[#2383C2]">
+                <select value={filtroMes} onChange={(e) => conResetDia(setFiltroMes)(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none capitalize focus:border-[#2383C2]">
                     <option value="">Mes</option>
                     {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+
+                <select
+                    value={filtroDia}
+                    onChange={(e) => conResetPagina(setFiltroDia)(e.target.value)}
+                    disabled={!filtroAnio || !filtroMes || cargandoLista}
+                    className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <option value="">Día (Todos)</option>
+                    {diasDisponibles.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
 
                 <div className="relative flex-grow max-w-xs">

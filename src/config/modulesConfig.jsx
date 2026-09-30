@@ -59,7 +59,8 @@ import {
   BadgeDollarSign,
   HelpCircle,
   Home,
-  FileText
+  FileText,
+  FolderUp
 } from "lucide-react";
 
 export const MODULES = {
@@ -159,6 +160,7 @@ export const MODULES = {
     icon: <Activity size={18} />,
     subItems: [
       { label: 'Gestion', path: '/implantes/gestionImplantes', icon: <FolderKanban size={14} /> },
+      { label: 'Carga masiva de documentos', path: '/implantes/cargaMasivaDocumentos', icon: <FolderUp size={14} /> },
       { label: 'Solicitud', path: '/implantes/solicitudImplantes', icon: <FilePlus size={14} /> },
       { label: 'Resumen', path: '/implantes/resumenImplantes', icon: <BarChart2 size={14} /> },
       { label: 'Sincronizar', path: '/implantes/sincronizacionImputadas', icon: <GitCompareArrows size={14} /> },
