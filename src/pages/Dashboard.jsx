@@ -242,6 +242,7 @@ const Dashboard = () => {
 
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/cargaMasivaDocumentos': <CargaMasivaDocumentos />,
+    '/implantes/reportesInfo': <ReportesInfo />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,
     '/implantes/resumenImplantes': <ResumenImplantes />,
     '/implantes/sincronizacionImputadas': <SincronizacionImputadas />,

@@ -2,9 +2,11 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 
 // Mismo formato usado por la columna "Admisión - Nombre" de la tabla
-// principal de gestión y por el botón de copiado en CargasTab, para que
-// ambos copien exactamente el mismo texto.
-export const construirTextoAdmisionNombre = (idMostrado, nombre) => `${idMostrado || 'P'} - ${nombre || 'P'} -`;
+// principal de gestión y por los botones de copiado de CargasTab y
+// DocumentosTab, para que los tres copien exactamente el mismo texto:
+// "102030 - JUAN PEREZ - ". El espacio final es intencional (se pega y se
+// sigue escribiendo el tipo del documento): no aplicarle trim.
+export const construirTextoAdmisionNombre = (idMostrado, nombre) => `${idMostrado || 'P'} - ${nombre || 'P'} - `;
 
 // "Hoy" en formato "YYYY-MM-DD", igual convención que el campo `fecha` de
 // cada registro (string ISO, sin hora/timezone) — comparable con `<=`/`>=`

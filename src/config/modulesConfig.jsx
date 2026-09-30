@@ -164,6 +164,7 @@ export const MODULES = {
       { label: 'Solicitud', path: '/implantes/solicitudImplantes', icon: <FilePlus size={14} /> },
       { label: 'Resumen', path: '/implantes/resumenImplantes', icon: <BarChart2 size={14} /> },
       { label: 'Sincronizar', path: '/implantes/sincronizacionImputadas', icon: <GitCompareArrows size={14} /> },
+      { label: 'Reportes Info', path: '/implantes/reportesInfo', icon: <BarChart2 size={14} /> },
     ]
   },
   hemodinamia: {

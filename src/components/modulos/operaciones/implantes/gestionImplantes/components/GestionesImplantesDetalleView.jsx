@@ -753,6 +753,9 @@ const GestionesImplantesDetalleView = forwardRef(({
           {tabActual?.id === 'documentos' && (
             <DocumentosTab
               idAdmision={idAdmisionDocs}
+              gestionId={formData.gestionId}
+              nombre={formData.nombre}
+              handleCopiarTexto={handleCopiarTexto}
               documentos={{
                 lista: documentosAdmision?.idAdmision === idAdmisionDocs ? documentosAdmision.lista : [],
                 cargando: Boolean(idAdmisionDocs) && documentosAdmision?.idAdmision !== idAdmisionDocs,

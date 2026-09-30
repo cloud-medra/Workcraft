@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, UploadCloud, Eye, Download, Loader2, AlertCircle, RefreshCw, FolderOpen, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
+import { FileText, UploadCloud, Eye, Download, Loader2, AlertCircle, RefreshCw, FolderOpen, CheckCircle2, XCircle, HelpCircle, Copy } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import {
   TIPOS_DOCUMENTO,
@@ -11,6 +11,7 @@ import {
 } from '../../../shared/documentosAdmision/documentosHelpers';
 import { subirTandaAdmision, obtenerBlobDocumento } from '../../../shared/documentosAdmision/documentosStorage';
 import { ZonaSubidaPdf } from '../../../shared/documentosAdmision/ZonaSubidaPdf';
+import { construirTextoAdmisionNombre } from '../../utils/gestionesImportExport';
 
 const SIN_TIPO = 'SIN_TIPO';
 
@@ -23,6 +24,9 @@ const SIN_TIPO = 'SIN_TIPO';
 // una tanda de subida, se le entrega el listado actualizado en memoria.
 export const DocumentosTab = ({
   idAdmision,
+  gestionId,
+  nombre,
+  handleCopiarTexto,
   documentos,
   onRecargar,
   onDocumentosSubidos
@@ -115,6 +119,24 @@ export const DocumentosTab = ({
 
   return (
     <div className="flex-grow overflow-y-auto p-3 space-y-3">
+
+      {/* Mismo encabezado y botón de copiado que CargasTab. */}
+      <div className="flex items-center gap-1.5 px-1">
+        <FolderOpen size={13} className="text-[#2383C2]" />
+        <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
+          Documentos — Admisión #{gestionId || 'N/A'} - {nombre || 'P'}
+        </h3>
+        {handleCopiarTexto && (
+          <button
+            type="button"
+            onClick={() => handleCopiarTexto(construirTextoAdmisionNombre(gestionId, nombre))}
+            title="Copiar Admisión - Nombre"
+            className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition shrink-0"
+          >
+            <Copy size={11} />
+          </button>
+        )}
+      </div>
 
       {sinAdmision && (
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-700 dark:text-amber-400">

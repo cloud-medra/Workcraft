@@ -9,6 +9,11 @@ service cloud.firestore {
       let u = getUsuario();
       return u.rol == 'admin' || u.rol == 'dev';
     }
+    // Un ítem de menú puntual (ruta) dentro de permisos[modulo]; sin el
+    // módulo, lista vacía en vez de error.
+    function tieneItem(modulo, ruta) {
+      return ruta in getUsuario().permisos.get(modulo, []);
+    }
     function tienePermiso(modulo) {
       let u = getUsuario();
       return u.permisos[modulo] != null;
@@ -286,9 +291,13 @@ service cloud.firestore {
      allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
     }
 
+    // Reportes Info es la misma pantalla en Documentos y en Implantes
+    // (/implantes/reportesInfo): escribe (Revisado, importar Excel) quien
+    // tenga Documentos o, en Implantes, específicamente ese ítem.
     match /documentos_reportesInfo/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos')
+        || tieneItem('implantes', '/implantes/reportesInfo'));
     }
 
     // Importar Detalles OC: documentos_sistema/{anio}/meses/{mes}/admisiones/
