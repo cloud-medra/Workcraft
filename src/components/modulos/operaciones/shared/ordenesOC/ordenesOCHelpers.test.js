@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   extraerOCDeNombre, nombreCoincideConOC, claveOC, rutaPdfOC,
-  agruparIndicePorOC, listarOCSinPdf, clasificarArchivosOC
+  agruparIndicePorOC, clasificarArchivosOC
 } from './ordenesOCHelpers';
 
 const pdf = (name, size = 1000) => ({ name, size, type: 'application/pdf' });
@@ -37,21 +37,6 @@ const indice = {
   c: { k: '100002|2026-08-20|520040', e: 'PROVEEDOR DOS', oc: '4500001', p: 'PACIENTE DOS' },
   d: { k: '100003|2026-09-01|1', e: 'PROVEEDOR UNO', oc: '4500002', p: 'PACIENTE TRES' }
 };
-
-describe('listarOCSinPdf', () => {
-  it('una fila por OC con todas sus admisiones/empresas, sin las que tienen PDF', () => {
-    const porOC = agruparIndicePorOC(indice);
-    const filas = listarOCSinPdf(porOC, { 4500002: { subidoEn: 1 } });
-    expect(filas).toEqual([{
-      oc: '4500001',
-      admisiones: ['100001', '100002'],
-      empresas: ['PROVEEDOR DOS', 'PROVEEDOR UNO'],
-      pacientes: ['PACIENTE DOS', 'PACIENTE UNO'],
-      fechas: ['2026-08-20', '2026-09-15'],
-      fecha: '2026-08-20'
-    }]);
-  });
-});
 
 describe('clasificarArchivosOC', () => {
   it('separa por motivo sin tocar Firebase', () => {

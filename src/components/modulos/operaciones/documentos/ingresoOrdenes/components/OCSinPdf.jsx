@@ -1,5 +1,5 @@
 import { useDropzone } from 'react-dropzone';
-import { Loader2, AlertCircle, RefreshCw, Search, Upload, CheckCircle2, XCircle, X, FileWarning } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw, Search, Upload, CheckCircle2, XCircle, X, FileWarning, CalendarSearch, Database } from 'lucide-react';
 import PaginacionSimple from '../../../../../ui/PaginacionSimple';
 import { ZonaSubidaPdf } from '../../../implantes/shared/documentosAdmision/ZonaSubidaPdf';
 import { useSubirPdfOC } from '../../../shared/ordenesOC/useSubirPdfOC';
@@ -97,25 +97,7 @@ const selectClase = 'h-7 px-2 border border-gray-300 dark:border-gray-600 rounde
 const OCSinPdf = () => {
   const d = useOCSinPdf();
   const { subirParaOC, subiendo } = useSubirPdfOC({ registro: d.registro, onRegistrado: d.onRegistrado });
-  const ocupado = Boolean(d.progreso) || Boolean(subiendo);
-
-  if (d.cargando) {
-    return (
-      <div className="flex-grow flex items-center justify-center gap-2 text-slate-400 dark:text-gray-500 text-[11px]">
-        <Loader2 size={14} className="animate-spin" /> Cargando OC...
-      </div>
-    );
-  }
-  if (d.error) {
-    return (
-      <div className="flex-grow flex flex-col items-center justify-center gap-2 text-[11px] text-red-600 dark:text-red-400 px-6 text-center">
-        <span className="flex items-center gap-1.5"><AlertCircle size={14} /> {d.error}</span>
-        <button type="button" onClick={d.recargar} className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50">
-          <RefreshCw size={11} /> Reintentar
-        </button>
-      </div>
-    );
-  }
+  const ocupado = Boolean(d.progreso) || d.preparando || Boolean(subiendo);
 
   const r = d.resumen;
   return (
@@ -123,10 +105,12 @@ const OCSinPdf = () => {
       <div className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 space-y-2">
         <ZonaSubidaPdf
           onArchivos={d.subirMasivo}
-          deshabilitada={Boolean(subiendo)}
+          deshabilitada={Boolean(subiendo) || d.preparando}
           progreso={d.progreso}
           tamanoMaximoMb={TAMANO_MAXIMO_PDF_OC_MB}
-          textoAyuda="Subida masiva: arrastra aquí los PDF de OC (OC_12345.pdf) o haz clic para elegirlos"
+          textoAyuda={d.preparando
+            ? 'Cargando el índice de OC...'
+            : 'Subida masiva (no necesita mes): arrastra aquí los PDF de OC (OC_12345.pdf) o haz clic para elegirlos'}
         />
         {r && (
           <div className="space-y-1 text-[10px]">
@@ -145,11 +129,11 @@ const OCSinPdf = () => {
       </div>
 
       <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-        <select value={d.anio} onChange={(e) => d.setAnio(e.target.value)} className={selectClase}>
+        <select value={d.anio} onChange={(e) => d.setAnio(e.target.value)} disabled={d.cargando} className={selectClase}>
           <option value="">Año</option>
           {d.anios.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
-        <select value={d.mes} onChange={(e) => d.setMes(e.target.value)} disabled={!d.anio} className={selectClase}>
+        <select value={d.mes} onChange={(e) => d.setMes(e.target.value)} disabled={!d.anio || d.cargando} className={selectClase}>
           <option value="">Mes</option>
           {d.meses.map(m => <option key={m} value={m}>{NOMBRES_MESES[m] || m}</option>)}
         </select>
@@ -159,13 +143,31 @@ const OCSinPdf = () => {
             type="search"
             value={d.busqueda}
             onChange={(e) => d.setBusqueda(e.target.value)}
-            placeholder="OC, admisión, paciente o empresa"
-            className="h-7 pl-6 pr-2 w-60 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2]"
+            disabled={!d.infoCarga}
+            placeholder="Buscar en el mes: OC, admisión, paciente o empresa"
+            className="h-7 pl-6 pr-2 w-72 disabled:opacity-50 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2]"
           />
         </label>
-        <span className="ml-auto text-[10px] text-slate-500 dark:text-gray-400">
-          {d.totalSinPdf} de {d.totalOC} OC sin PDF
-        </span>
+        {d.infoCarga && (
+          <span className="ml-auto flex items-center gap-2 text-[10px] text-slate-500 dark:text-gray-400">
+            <span>{d.totalSinPdf} OC sin PDF · {d.infoCarga.gestiones} gestión(es) con OC en el mes</span>
+            <span
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-700/60"
+              title="Lecturas de Firestore al cargar este mes (gestiones del mes + registro de PDF la primera vez)"
+            >
+              <Database size={10} /> {d.infoCarga.desdeCache && d.infoCarga.lecturas === 0 ? 'desde caché · 0 lecturas' : `${d.infoCarga.lecturas} lectura(s)`}
+            </span>
+            <button
+              type="button"
+              onClick={d.actualizarMes}
+              disabled={d.cargando}
+              title="Volver a leer este mes desde Firestore"
+              className="p-1 rounded border border-slate-300 dark:border-gray-600 hover:bg-slate-100 dark:hover:bg-gray-700/50 disabled:opacity-40"
+            >
+              <RefreshCw size={10} />
+            </button>
+          </span>
+        )}
       </div>
 
       <div className="flex-grow overflow-auto">
@@ -181,10 +183,24 @@ const OCSinPdf = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200">
-            {d.filasPagina.length === 0 ? (
+            {!d.mesSeleccionado || d.cargando || d.error || d.filasPagina.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
-                  {d.totalSinPdf === 0 ? 'Todas las OC del índice ya tienen PDF.' : 'No hay OC sin PDF para los filtros seleccionados.'}
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400 dark:text-gray-500 text-xs">
+                  {!d.mesSeleccionado ? (
+                    <span className="inline-flex flex-col items-center gap-1.5">
+                      <CalendarSearch size={22} className="text-slate-300 dark:text-gray-600" />
+                      Selecciona año y mes para ver las órdenes sin PDF
+                    </span>
+                  ) : d.cargando ? (
+                    <span className="inline-flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> Cargando gestiones del mes...</span>
+                  ) : d.error ? (
+                    <span className="inline-flex items-center gap-2 text-red-600 dark:text-red-400">
+                      <AlertCircle size={13} /> {d.error}
+                      <button type="button" onClick={d.actualizarMes} className="flex items-center gap-1 px-2 py-0.5 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300">
+                        <RefreshCw size={10} /> Reintentar
+                      </button>
+                    </span>
+                  ) : d.totalSinPdf === 0 ? 'Todas las OC de las gestiones de este mes ya tienen PDF (o aún no tienen OC asignada).' : 'Ninguna OC del mes coincide con la búsqueda.'}
                 </td>
               </tr>
             ) : d.filasPagina.map(fila => (

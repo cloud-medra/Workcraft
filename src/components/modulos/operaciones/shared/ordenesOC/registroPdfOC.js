@@ -9,15 +9,24 @@ import { claveOC } from './ordenesOCHelpers';
 
 const refRegistro = () => doc(db, 'ordenesOC', 'registroPdf');
 
+// Copia en memoria de la sesión. Solo la usa quien pide `usarCache`
+// (Ingreso de Órdenes); las subidas de este navegador la mantienen al día.
+let enMemoria = null;
+
 // { [claveOC]: { subidoEn, subidoPor } } ({} si aún no existe).
-export const leerRegistroPdfOC = async () => {
+// Con usarCache devuelve { pdfs, lecturas } y no relee si ya se leyó.
+export const leerRegistroPdfOC = async ({ usarCache = false } = {}) => {
+  if (usarCache && enMemoria) return { pdfs: enMemoria, lecturas: 0 };
   const snap = await getDoc(refRegistro());
-  return (snap.exists() && snap.data().pdfs) || {};
+  enMemoria = (snap.exists() && snap.data().pdfs) || {};
+  return usarCache ? { pdfs: enMemoria, lecturas: 1 } : enMemoria;
 };
 
 // Devuelve la entrada escrita (para actualizar el registro en memoria).
 export const registrarPdfOC = async (oc) => {
   const entrada = { subidoEn: serverTimestamp(), subidoPor: auth.currentUser?.email || '' };
   await setDoc(refRegistro(), { pdfs: { [claveOC(oc)]: entrada }, actualizadoEn: serverTimestamp() }, { merge: true });
-  return { subidoEn: new Date(), subidoPor: entrada.subidoPor };
+  const local = { subidoEn: new Date(), subidoPor: entrada.subidoPor };
+  if (enMemoria) enMemoria = { ...enMemoria, [claveOC(oc)]: local };
+  return local;
 };

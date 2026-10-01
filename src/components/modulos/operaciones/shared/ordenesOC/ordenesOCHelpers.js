@@ -60,28 +60,6 @@ export const agruparIndicePorOC = (indice) => {
   return porOC;
 };
 
-const lista = (set) => [...set].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
-
-// Filas de "OC sin PDF": las OC del índice que no están en el registro.
-// `fecha` es la más antigua de la OC ('YYYY-MM-DD'); `fechas` sirve para
-// filtrar por año/mes.
-export const listarOCSinPdf = (porOC, registro = {}) => {
-  const filas = [];
-  porOC.forEach((g, clave) => {
-    if (registro[clave]) return;
-    const fechas = lista(g.fechas);
-    filas.push({
-      oc: clave,
-      admisiones: lista(g.admisiones),
-      empresas: lista(g.empresas),
-      pacientes: lista(g.pacientes),
-      fechas,
-      fecha: fechas[0] || ''
-    });
-  });
-  return filas.sort((a, b) => b.fecha.localeCompare(a.fecha) || a.oc.localeCompare(b.oc, 'es', { numeric: true }));
-};
-
 export const MOTIVOS_PDF_OC = {
   NO_PDF: 'No es un archivo PDF.',
   TAMANO: `Supera el máximo de ${TAMANO_MAXIMO_PDF_OC_MB} MB.`,
