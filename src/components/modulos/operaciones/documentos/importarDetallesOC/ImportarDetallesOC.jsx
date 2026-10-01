@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
   FileSpreadsheet, Upload, X, Loader2, AlertTriangle,
-  Search, CalendarSearch, Database
+  Search, CalendarSearch, Database, Trash2
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
@@ -11,6 +11,8 @@ import PaginacionSimple from '../../../../ui/PaginacionSimple';
 import { procesarImportacionDetallesOC, SnapshotAntiguoError } from './utils/procesarImportacionDetallesOC';
 import { reconstruirSnapshotDetallesOC } from './utils/snapshotStorageDetallesOC';
 import { ResumenImportacion } from './components/ResumenImportacion';
+import { ModalEliminarFilas } from './components/ModalEliminarFilas';
+import { eliminarFilasDetallesOC } from './utils/eliminarFilasDetallesOC';
 import { useModal } from '../../../../../context/ModalContext';
 import { useDetallesOCData } from './hooks/useDetallesOCData';
 import { useDetallesOCFiltros, CAMPOS_BUSQUEDA_OC } from './hooks/useDetallesOCFiltros';
@@ -78,19 +80,65 @@ const ImportarDetallesOC = () => {
     anio, setAnio, anios, cargandoAnios,
     mes, setMes, meses, cargandoMeses,
     filas, cargandoFilas, huboTope,
-    recargarFilas
+    recargarFilas, quitarFilas
   } = useDetallesOCData();
 
   const {
     busquedaAdmisionPaciente, setBusquedaAdmisionPaciente,
     campoBusquedaOC, setCampoBusquedaOC,
     textoBusquedaOC, setTextoBusquedaOC,
-    filasPagina, totalFilas,
+    filasFiltradas, filasPagina, totalFilas,
     pagina, setPagina, totalPaginas
   } = useDetallesOCFiltros(filas);
   const usuario = userData?.uid;
   const { anchos, handleResize, restablecerAnchos, anchoTotalTabla, personalizados } =
     useColumnResize(COLUMNAS, { clave: 'importarDetallesOC', usuario });
+
+  // "Eliminar filas seleccionadas" (solo admin/dev). La selección guarda
+  // refPath; solo cuentan las filas que siguen en el período cargado.
+  const [seleccion, setSeleccion] = useState(() => new Set());
+  const [modalEliminar, setModalEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [progresoEliminar, setProgresoEliminar] = useState(null);
+  const [resultadoEliminacion, setResultadoEliminacion] = useState(null);
+  const seleccionadas = useMemo(() => filas.filter(f => seleccion.has(f.refPath)), [filas, seleccion]);
+  const todasFiltradasSeleccionadas = filasFiltradas.length > 0 && filasFiltradas.every(f => seleccion.has(f.refPath));
+  const algunaFiltradaSeleccionada = filasFiltradas.some(f => seleccion.has(f.refPath));
+  const alternarFila = (refPath) => setSeleccion((prev) => {
+    const s = new Set(prev);
+    if (s.has(refPath)) s.delete(refPath); else s.add(refPath);
+    return s;
+  });
+  const alternarTodasFiltradas = () => setSeleccion((prev) => {
+    const s = new Set(prev);
+    if (todasFiltradasSeleccionadas) filasFiltradas.forEach(f => s.delete(f.refPath));
+    else filasFiltradas.forEach(f => s.add(f.refPath));
+    return s;
+  });
+  const ANCHO_SELECCION = 30;
+  const anchoTabla = anchoTotalTabla + (esAdminODev ? ANCHO_SELECCION : 0);
+
+  const handleEliminar = async ({ liberarOC }) => {
+    setEliminando(true);
+    setProgresoEliminar({ actual: 0, total: seleccionadas.length });
+    try {
+      const r = await eliminarFilasDetallesOC(seleccionadas, { liberarOC, usuario: userData, onProgreso: setProgresoEliminar });
+      const errores = new Set(r.errores.map(e => e.id));
+      const eliminadas = seleccionadas.filter(f => !errores.has(f.id)).map(f => f.refPath);
+      quitarFilas(eliminadas);
+      setSeleccion(prev => { const s = new Set(prev); eliminadas.forEach(p => s.delete(p)); return s; });
+      setResultadoEliminacion(r);
+      setModalEliminar(false);
+      showToast(`${r.eliminadas} fila(s) eliminada(s)${r.errores.length ? `, ${r.errores.length} con error` : ''}.`, r.errores.length ? 'error' : 'success');
+    } catch (err) {
+      console.error('Error al eliminar filas de Detalles OC:', err);
+      showToast(err instanceof SnapshotAntiguoError ? err.message : 'No se pudieron eliminar las filas: ' + err.message, 'error');
+      if (err instanceof SnapshotAntiguoError) { setSnapshotAntiguo(true); setModalEliminar(false); }
+    } finally {
+      setEliminando(false);
+      setProgresoEliminar(null);
+    }
+  };
 
   const periodoSeleccionado = Boolean(anio && mes);
   const cargando = cargandoFilas;
@@ -252,6 +300,32 @@ const ImportarDetallesOC = () => {
         </div>
       )}
 
+      {resultadoEliminacion && (
+        <div className="shrink-0 bg-slate-50 dark:bg-gray-800/60 border-b border-slate-200 dark:border-gray-700 px-3 py-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] text-slate-700 dark:text-gray-200">
+          <span className="flex items-center gap-1 font-semibold text-red-700 dark:text-red-400"><Trash2 size={12} /> {resultadoEliminacion.eliminadas} fila(s) eliminada(s) (con respaldo)</span>
+          {resultadoEliminacion.gestionesOC && (
+            <span title={resultadoEliminacion.gestionesOC.error || undefined}>
+              {resultadoEliminacion.gestionesOC.error
+                ? `OC a liberar: ${resultadoEliminacion.gestionesOC.ocLiberadas} — ${resultadoEliminacion.gestionesOC.error}`
+                : `OC liberada en ${resultadoEliminacion.gestionesOC.itemsLiberados} ítem(s) de ${resultadoEliminacion.gestionesOC.gestionesActualizadas} gestión(es)`}
+            </span>
+          )}
+          {resultadoEliminacion.errores.length > 0 && <span className="text-red-600 dark:text-red-400">{resultadoEliminacion.errores.length} no se pudieron eliminar ({resultadoEliminacion.errores[0].error})</span>}
+          <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-gray-700/60"><Database size={11} /> Firestore: {resultadoEliminacion.lecturasFirestore} lectura(s) · {resultadoEliminacion.escriturasFirestore} escritura(s)</span>
+          <button type="button" onClick={() => setResultadoEliminacion(null)} className="ml-auto p-0.5 rounded hover:bg-slate-200 dark:hover:bg-gray-700"><X size={12} /></button>
+        </div>
+      )}
+
+      {modalEliminar && (
+        <ModalEliminarFilas
+          filas={seleccionadas}
+          eliminando={eliminando}
+          progreso={progresoEliminar}
+          onConfirmar={handleEliminar}
+          onCerrar={() => setModalEliminar(false)}
+        />
+      )}
+
       {resumen && (
         <ResumenImportacion
           resumen={resumen}
@@ -326,7 +400,25 @@ const ImportarDetallesOC = () => {
             />
           </div>
 
-          <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className="ml-auto" />
+          {esAdminODev && seleccionadas.length > 0 && (
+            <div className="ml-auto flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSeleccion(new Set())}
+                className="h-7 px-2 rounded border border-gray-300 dark:border-gray-600 text-[10.5px] text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Quitar selección
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalEliminar(true)}
+                className="h-7 px-2 rounded bg-red-600 hover:bg-red-700 text-white text-[10.5px] font-semibold flex items-center gap-1"
+              >
+                <Trash2 size={12} /> Eliminar seleccionadas ({seleccionadas.length})
+              </button>
+            </div>
+          )}
+          <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className={esAdminODev && seleccionadas.length > 0 ? '' : 'ml-auto'} />
         </div>
       )}
 
@@ -349,11 +441,24 @@ const ImportarDetallesOC = () => {
           <div className="flex-grow min-h-0 overflow-auto relative">
             <table
               className="text-left text-[11px] border-collapse"
-              style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
+              style={{ tableLayout: 'fixed', width: anchoTabla, minWidth: '100%' }}
             >
+              {esAdminODev && <colgroup><col style={{ width: ANCHO_SELECCION }} /></colgroup>}
               <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} relleno />
               <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                 <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
+                  {esAdminODev && (
+                    <th className={`${TH} text-center`}>
+                      <input
+                        type="checkbox"
+                        aria-label="Seleccionar todas las filas filtradas"
+                        title="Seleccionar todas las filas filtradas (todas las páginas)"
+                        checked={todasFiltradasSeleccionadas}
+                        ref={el => { if (el) el.indeterminate = algunaFiltradaSeleccionada && !todasFiltradasSeleccionadas; }}
+                        onChange={alternarTodasFiltradas}
+                      />
+                    </th>
+                  )}
                   {COLUMNAS.map(col => (
                     <ThRedimensionable key={col.key} col={col} anchos={anchos} onResize={handleResize} className={`${TH} ${col.th || ''}`} title={col.label}>
                       {col.label}
@@ -365,13 +470,18 @@ const ImportarDetallesOC = () => {
               <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                 {filasPagina.length === 0 ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                    <td colSpan={COLUMNAS.length + 1 + (esAdminODev ? 1 : 0)} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                       No hay registros para los filtros seleccionados.
                     </td>
                   </tr>
                 ) : (
                   filasPagina.map((item) => (
-                    <tr key={item.refPath} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150">
+                    <tr key={item.refPath} className={`transition-all duration-150 ${seleccion.has(item.refPath) ? 'bg-red-50/60 dark:bg-red-950/20' : 'hover:bg-slate-50 dark:hover:bg-gray-700/40'}`}>
+                      {esAdminODev && (
+                        <td className={`${TD} text-center`}>
+                          <input type="checkbox" aria-label={`Seleccionar fila ${item.id}`} checked={seleccion.has(item.refPath)} onChange={() => alternarFila(item.refPath)} />
+                        </td>
+                      )}
                       {COLUMNAS.map(col => {
                         const valor = col.valor(item);
                         return <td key={col.key} className={`${TD} ${col.td || ''}`} title={String(valor)}>{valor}</td>;

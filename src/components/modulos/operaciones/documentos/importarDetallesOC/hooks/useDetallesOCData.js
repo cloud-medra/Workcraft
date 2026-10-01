@@ -131,10 +131,16 @@ export const useDetallesOCData = () => {
     setRefrescarKey(k => k + 1);
   }, []);
 
+  // Quita filas ya eliminadas de la tabla, sin volver a leer el período.
+  const quitarFilas = useCallback((refPaths) => {
+    const set = new Set(refPaths);
+    setFilas(prev => prev.filter(f => !set.has(f.refPath)));
+  }, []);
+
   return {
     anio, setAnio, anios, cargandoAnios,
     mes, setMes, meses, cargandoMeses,
     filas, cargandoFilas, huboTope,
-    recargarFilas
+    recargarFilas, quitarFilas
   };
 };

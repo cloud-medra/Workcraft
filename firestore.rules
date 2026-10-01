@@ -338,6 +338,16 @@ service cloud.firestore {
     // Versión del índice de OC (ver snapshots/indiceOC en storage.rules).
     // La importación publica la versión (documentos); la sincronización deja
     // constancia de la última versión aplicada (implantes).
+    // Respaldo de las filas de Detalles OC eliminadas desde Importar Detalles
+    // OC ("Eliminar filas seleccionadas", solo admin/dev en pantalla). Se crea
+    // en el mismo lote que el borrado; contiene datos de pacientes: solo
+    // admin/dev la leen, y nadie la modifica ni la borra.
+    match /detallesOCEliminados/{docId} {
+      allow read: if request.auth != null && esAdminODev();
+      allow create: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
+      allow update, delete: if false;
+    }
+
     match /ocImport/{docId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
