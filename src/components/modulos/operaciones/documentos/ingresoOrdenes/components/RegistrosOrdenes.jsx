@@ -42,7 +42,7 @@ const RegistrosOrdenes = () => {
   } = useIngresoOrdenesFiltros(filas);
 
   return (
-    <div className="flex-grow flex flex-col overflow-hidden">
+    <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
       {grupoSeleccionado ? (
         <>
           <div className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-1.5 flex items-center gap-2">
@@ -115,7 +115,7 @@ const RegistrosOrdenes = () => {
                   <AlertTriangle size={11} /> Este período tiene muchos registros — puede que no se estén mostrando todos.
                 </div>
               )}
-              <div className="flex-grow overflow-auto">
+              <div className="flex-grow min-h-0 overflow-auto">
                 <table className="w-full text-left text-[11px] border-collapse">
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">

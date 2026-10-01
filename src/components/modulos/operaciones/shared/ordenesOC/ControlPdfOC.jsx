@@ -15,11 +15,13 @@ export const ControlPdfOC = ({ oc, tienePdf, subiendo = null, abriendo = false, 
     disabled: ocupado
   });
 
+  // relative: contiene el <input type="file"> de react-dropzone, que va con
+  // position:absolute; sin esto se ubica respecto del body y estira la página.
   return (
     <span
       {...getRootProps()}
       title={`Suelta aquí el PDF de la OC ${oc}`}
-      className={`inline-flex items-center gap-1 px-1 py-0.5 rounded border transition ${
+      className={`relative inline-flex items-center gap-1 px-1 py-0.5 rounded border transition ${
         isDragActive ? 'border-[#2383C2] bg-[#2383C2]/10' : 'border-transparent'
       }`}
     >

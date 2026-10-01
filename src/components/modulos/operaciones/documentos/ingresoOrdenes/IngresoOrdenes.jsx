@@ -19,7 +19,7 @@ const IngresoOrdenes = () => {
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden font-sans text-[11px]">
-      <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center gap-2">
+      <header className="shrink-0 bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center gap-2">
         <FileUp size={16} className="text-[#2383C2]" />
         <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
           Ingreso de Órdenes
@@ -43,7 +43,7 @@ const IngresoOrdenes = () => {
       </header>
 
       {PESTANAS.filter(p => abiertas.has(p.id)).map(p => (
-        <div key={p.id} className={pestana === p.id ? 'flex-grow flex flex-col overflow-hidden' : 'hidden'}>
+        <div key={p.id} className={pestana === p.id ? 'flex-grow flex flex-col min-h-0 overflow-hidden' : 'hidden'}>
           {p.id === 'sinPdf' ? <OCSinPdf /> : <RegistrosOrdenes />}
         </div>
       ))}

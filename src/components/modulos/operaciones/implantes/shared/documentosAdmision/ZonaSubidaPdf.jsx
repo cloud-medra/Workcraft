@@ -28,7 +28,7 @@ export const ZonaSubidaPdf = ({
     <>
       <div
         {...getRootProps()}
-        className={`border-2 border-dashed rounded-lg px-4 py-5 text-center flex flex-col items-center justify-center gap-1.5 transition ${
+        className={`relative border-2 border-dashed rounded-lg px-4 py-5 text-center flex flex-col items-center justify-center gap-1.5 transition ${
           deshabilitada || subiendo
             ? 'border-slate-200 dark:border-gray-700 opacity-50 cursor-not-allowed'
             : isDragReject

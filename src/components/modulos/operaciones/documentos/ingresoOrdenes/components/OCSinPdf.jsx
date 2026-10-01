@@ -101,8 +101,8 @@ const OCSinPdf = () => {
 
   const r = d.resumen;
   return (
-    <div className="flex-grow flex flex-col overflow-hidden">
-      <div className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 space-y-2">
+    <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
+      <div className="shrink-0 max-h-[40%] overflow-y-auto bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 space-y-2">
         <ZonaSubidaPdf
           onArchivos={d.subirMasivo}
           deshabilitada={Boolean(subiendo) || d.preparando}
@@ -128,7 +128,7 @@ const OCSinPdf = () => {
         )}
       </div>
 
-      <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="shrink-0 bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
         {d.cargandoPeriodos ? (
           <span className="flex items-center gap-1.5 h-7 text-[11px] text-slate-400 dark:text-gray-500">
             <Loader2 size={12} className="animate-spin" /> Cargando períodos...
@@ -182,7 +182,10 @@ const OCSinPdf = () => {
         )}
       </div>
 
-      <div className="flex-grow overflow-auto">
+      {/* relative: los <input type="file"> de react-dropzone de cada fila van
+          con position:absolute; sin un ancestro posicionado se ubican
+          respecto del body y estiran la página principal. */}
+      <div className="flex-grow min-h-0 overflow-auto relative">
         <table className="w-full text-left text-[11px] border-collapse">
           <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
             <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
