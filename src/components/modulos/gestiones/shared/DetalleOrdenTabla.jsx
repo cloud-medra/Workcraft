@@ -1,6 +1,6 @@
 import { Search, X } from 'lucide-react';
 import { useColumnResize } from '../../../../hooks/useColumnResize';
-import { ThRedimensionable, ColgroupRedimensionable } from '../../../ui/ThRedimensionable';
+import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../ui/ThRedimensionable';
 import { normalizarCodigo } from './useFacturacionOrden';
 import { useFiltrosDetalleOrden } from './useFiltrosDetalleOrden';
 
@@ -68,7 +68,7 @@ const DetalleOrdenTabla = ({ detalle, facturacion, errorFacturacion, totalOrden 
           className="text-left text-[11px] border-collapse"
           style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
         >
-          <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
+          <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} relleno />
           <thead className="bg-slate-100/90 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
             <tr className="text-slate-500 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider border-b border-slate-200 dark:border-gray-700">
               {th(0, 'Código')}
@@ -79,12 +79,13 @@ const DetalleOrdenTabla = ({ detalle, facturacion, errorFacturacion, totalOrden 
               {th(5, 'N° Documento')}
               {th(6, 'Cant. Facturada', 'text-center')}
               {th(7, 'Cant. Pendiente', 'text-center')}
+              <ThRelleno />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/40 bg-white dark:bg-gray-800">
             {detalleFiltrado.length === 0 && (
               <tr>
-                <td colSpan={COLUMNAS.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                <td colSpan={COLUMNAS.length + 1} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                   {hayFiltros ? 'Ninguna línea coincide con los filtros.' : 'La orden no tiene líneas.'}
                 </td>
               </tr>
@@ -137,11 +138,12 @@ const DetalleOrdenTabla = ({ detalle, facturacion, errorFacturacion, totalOrden 
                     {facturada}
                   </td>
                   <td
-                    className={`px-3 py-1 text-center font-normal ${pendiente < 0 ? 'text-red-600 dark:text-red-400' : pendiente === 0 && facturada > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-gray-300'}`}
+                    className={`px-3 py-1 border-r border-slate-200/50 dark:border-gray-700/50 text-center font-normal ${pendiente < 0 ? 'text-red-600 dark:text-red-400' : pendiente === 0 && facturada > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-gray-300'}`}
                     title={pendiente < 0 ? 'Facturado sobre la cantidad de la orden' : undefined}
                   >
                     {pendiente}
                   </td>
+                  <TdRelleno />
                 </tr>
               );
             })}

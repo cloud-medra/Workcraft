@@ -20,6 +20,7 @@ import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
 import { ManijaRedimension } from '../../../../../ui/ManijaRedimension';
+import { ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
 import Spinner from '../../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './TabPendientesDrawers';
 import AsignarCodigoDrawer from './AsignarCodigoDrawer';
@@ -477,12 +478,13 @@ const TabPendientes = () => {
           </div>
           <table
             className="text-left text-[11px] border-collapse"
-            style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: anchoTotalTabla }}
+            style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
           >
             <colgroup>
               {COLUMNAS.map(col => (
                 <col key={col.key} style={{ width: anchos[col.key] }} />
               ))}
+              <col />
             </colgroup>
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-[22px] z-10">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
@@ -501,6 +503,7 @@ const TabPendientes = () => {
                     />
                   </th>
                 ))}
+                <ThRelleno className="border-b border-gray-200 dark:border-gray-700" />
               </tr>
             </thead>
             <tbody>
@@ -546,6 +549,7 @@ const TabPendientes = () => {
                       </button>
                     </div>
                   </td>
+                  <TdRelleno className="border-b border-gray-200 dark:border-gray-700/70" />
                 </tr>
               ))}
             </tbody>

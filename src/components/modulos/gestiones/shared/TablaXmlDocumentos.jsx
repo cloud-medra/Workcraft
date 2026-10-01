@@ -1,6 +1,6 @@
 import { Eye, Trash2 } from 'lucide-react';
 import { useColumnResize } from '../../../../hooks/useColumnResize';
-import { ThRedimensionable, ColgroupRedimensionable } from '../../../ui/ThRedimensionable';
+import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../ui/ThRedimensionable';
 import EstadoProcesoBadge from './EstadoProcesoBadge';
 import CeldasDatosIngreso from './CeldasDatosIngreso';
 import { COLUMNAS_DATOS_INGRESO } from './columnasDatosIngreso';
@@ -36,7 +36,7 @@ const TablaXmlDocumentos = ({ documentos, mensajeVacio, puedeVer, puedeEliminar,
       className="text-left text-[11px] border-collapse"
       style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
     >
-      <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
+      <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} relleno />
       <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
         <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
           {th(COLUMNAS[0], '#')}
@@ -48,12 +48,13 @@ const TablaXmlDocumentos = ({ documentos, mensajeVacio, puedeVer, puedeEliminar,
           {th(COLUMNAS[6], 'Estado')}
           {COLUMNAS_DATOS_INGRESO.map(col => th(col, col.label))}
           {th(COLUMNAS[COLUMNAS.length - 1], 'Acciones')}
+          <ThRelleno className="border-b border-slate-200 dark:border-gray-700" />
         </tr>
       </thead>
       <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
         {documentos.length === 0 ? (
           <tr>
-            <td colSpan={COLUMNAS.length} className="text-center py-6 text-slate-400 dark:text-gray-500">
+            <td colSpan={COLUMNAS.length + 1} className="text-center py-6 text-slate-400 dark:text-gray-500">
               {mensajeVacio}
             </td>
           </tr>
@@ -84,7 +85,7 @@ const TablaXmlDocumentos = ({ documentos, mensajeVacio, puedeVer, puedeEliminar,
               <EstadoProcesoBadge estado={docItem.estado} fallback="Iniciar Ingreso" />
             </td>
             <CeldasDatosIngreso documento={docItem} />
-            <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
+            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700 text-center">
               <div className="flex justify-center gap-2">
                 {puedeVer && (
                   <button
@@ -106,6 +107,7 @@ const TablaXmlDocumentos = ({ documentos, mensajeVacio, puedeVer, puedeEliminar,
                 )}
               </div>
             </td>
+            <TdRelleno className="border-b border-slate-200/60 dark:border-gray-700/70" />
           </tr>
         ))}
       </tbody>

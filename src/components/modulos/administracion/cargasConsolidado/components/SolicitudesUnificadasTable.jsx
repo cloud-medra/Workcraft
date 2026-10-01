@@ -123,7 +123,7 @@ const SolicitudesUnificadasTable = () => {
         />
       </div>
 
-      <div className="flex-grow overflow-auto select-none relative">
+      <div className="flex-grow overflow-auto relative">
         <div className="sticky top-0 z-20 flex justify-end px-1 py-0.5 bg-slate-100 dark:bg-gray-900 border-b border-slate-200 dark:border-gray-700">
           <button
             type="button"

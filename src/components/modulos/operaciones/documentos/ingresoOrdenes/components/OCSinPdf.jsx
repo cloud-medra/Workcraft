@@ -7,7 +7,7 @@ import { TAMANO_MAXIMO_PDF_OC_MB } from '../../../shared/ordenesOC/ordenesOCHelp
 import { useOCSinPdf } from '../hooks/useOCSinPdf';
 import { useUser } from '../../../../../../context/UserContext';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
-import { ThRedimensionable, ColgroupRedimensionable } from '../../../../../ui/ThRedimensionable';
+import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
 import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
 
 const NOMBRES_MESES = {
@@ -62,11 +62,11 @@ const FilaOC = ({ fila, subiendo, deshabilitado, onArchivos }) => {
         <input {...getInputProps()} />
         {fila.oc}
       </td>
-      <td className={celda}><Multi valores={fila.admisiones} /></td>
-      <td className={celda}><Multi valores={fila.pacientes} /></td>
-      <td className={celda}><Multi valores={fila.empresas} /></td>
-      <td className={celda}><Multi valores={fila.fechas.map(fechaCorta)} /></td>
-      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+      <td className={celda} title={fila.admisiones.join(' · ')}><Multi valores={fila.admisiones} /></td>
+      <td className={celda} title={fila.pacientes.join(' · ')}><Multi valores={fila.pacientes} /></td>
+      <td className={celda} title={fila.empresas.join(' · ')}><Multi valores={fila.empresas} /></td>
+      <td className={celda} title={fila.fechas.map(fechaCorta).join(' · ')}><Multi valores={fila.fechas.map(fechaCorta)} /></td>
+      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center">
         {subiendo ? (
           <span className="inline-flex items-center gap-1 text-[#2383C2] text-[10px]"><Loader2 size={11} className="animate-spin" /> {subiendo.porcentaje}%</span>
         ) : (
@@ -80,6 +80,7 @@ const FilaOC = ({ fila, subiendo, deshabilitado, onArchivos }) => {
           </button>
         )}
       </td>
+      <TdRelleno className="border-b border-slate-200/60 dark:border-gray-700/70" />
     </tr>
   );
 };
@@ -210,7 +211,7 @@ const OCSinPdf = () => {
           className="text-left text-[11px] border-collapse"
           style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
         >
-          <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
+          <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} relleno />
           <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
             <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
               {COLUMNAS.map(col => (
@@ -218,12 +219,13 @@ const OCSinPdf = () => {
                   {col.label}
                 </ThRedimensionable>
               ))}
+              <ThRelleno className="border-b border-slate-200 dark:border-gray-700" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200">
             {!d.mesSeleccionado || d.cargando || d.error || d.filasPagina.length === 0 ? (
               <tr>
-                <td colSpan={COLUMNAS.length} className="px-4 py-8 text-center text-slate-400 dark:text-gray-500 text-xs">
+                <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-slate-400 dark:text-gray-500 text-xs">
                   {!d.mesSeleccionado ? (
                     <span className="inline-flex flex-col items-center gap-1.5">
                       <CalendarSearch size={22} className="text-slate-300 dark:text-gray-600" />

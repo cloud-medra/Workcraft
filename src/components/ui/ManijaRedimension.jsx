@@ -6,32 +6,43 @@ export const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) =
   const xInicial = useRef(0);
   const anchoInicial = useRef(0);
 
+  // La selección de texto se desactiva SOLO mientras dura el arrastre (en el
+  // body, para que no se marque texto al pasar sobre otras celdas) y se
+  // restaura tal como estaba al soltar. Fuera del arrastre las celdas se
+  // seleccionan y copian normalmente.
   const handleMouseDown = useCallback((e) => {
+    if (e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     arrastrando.current = true;
     xInicial.current = e.clientX;
     anchoInicial.current = anchoActual;
+    const cursorPrevio = document.body.style.cursor;
+    const seleccionPrevia = document.body.style.userSelect;
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
 
-    const handleMouseMove = (ev) => {
+    const terminar = () => {
       if (!arrastrando.current) return;
-      const delta = ev.clientX - xInicial.current;
-      const nuevoAncho = Math.max(anchoMin, Math.round(anchoInicial.current + delta));
-      onResize(colKey, nuevoAncho);
+      arrastrando.current = false;
+      document.body.style.cursor = cursorPrevio;
+      document.body.style.userSelect = seleccionPrevia;
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', terminar);
+      window.removeEventListener('blur', terminar);
     };
 
-    const handleMouseUp = () => {
-      arrastrando.current = false;
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    function handleMouseMove(ev) {
+      if (!arrastrando.current) return;
+      // Se soltó el botón fuera de la ventana (no llegó el mouseup).
+      if (ev.buttons === 0) { terminar(); return; }
+      const delta = ev.clientX - xInicial.current;
+      onResize(colKey, Math.max(anchoMin, Math.round(anchoInicial.current + delta)));
+    }
 
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', terminar);
+    window.addEventListener('blur', terminar);
   }, [colKey, anchoActual, anchoMin, onResize]);
 
   const handleDoubleClick = useCallback((e) => {

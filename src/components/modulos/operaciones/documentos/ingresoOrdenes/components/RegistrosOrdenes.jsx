@@ -7,7 +7,7 @@ import { useIngresoOrdenesFiltros } from '../hooks/useIngresoOrdenesFiltros';
 import IngresoOrdenesDetalleView from './IngresoOrdenesDetalleView';
 import { useUser } from '../../../../../../context/UserContext';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
-import { ThRedimensionable, ColgroupRedimensionable } from '../../../../../ui/ThRedimensionable';
+import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
 import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
 
 const PATH_VISTA = '/documentos/ingresoOrdenes';
@@ -143,7 +143,7 @@ const RegistrosOrdenes = () => {
                   className="text-left text-[11px] border-collapse"
                   style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
                 >
-                  <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
+                  <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} relleno />
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
                       {COLUMNAS.map(col => (
@@ -151,12 +151,13 @@ const RegistrosOrdenes = () => {
                           {col.label}
                         </ThRedimensionable>
                       ))}
+                      <ThRelleno className="border-b border-slate-200 dark:border-gray-700" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                     {gruposPagina.length === 0 ? (
                       <tr>
-                        <td colSpan={COLUMNAS.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                        <td colSpan={COLUMNAS.length + 1} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           No hay registros para los filtros seleccionados.
                         </td>
                       </tr>
@@ -172,6 +173,7 @@ const RegistrosOrdenes = () => {
                             const valor = col.valor(grupo);
                             return <td key={col.key} className={`${TD} ${col.td || ''}`} title={String(valor)}>{valor}</td>;
                           })}
+                          <TdRelleno className="border-b border-slate-200/60 dark:border-gray-700/70" />
                         </tr>
                       ))
                     )}
