@@ -5,6 +5,10 @@ import PaginacionSimple from '../../../../../ui/PaginacionSimple';
 import { useDocumentosSistemaPeriodo } from '../../hooks/useDocumentosSistemaPeriodo';
 import { useIngresoOrdenesFiltros } from '../hooks/useIngresoOrdenesFiltros';
 import IngresoOrdenesDetalleView from './IngresoOrdenesDetalleView';
+import { useUser } from '../../../../../../context/UserContext';
+import { useColumnResize } from '../../../../../../hooks/useColumnResize';
+import { ThRedimensionable, ColgroupRedimensionable } from '../../../../../ui/ThRedimensionable';
+import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
 
 const PATH_VISTA = '/documentos/ingresoOrdenes';
 
@@ -23,6 +27,20 @@ const formatearFechaCelda = (valor) => {
   return `${dd}-${mm}-${fecha.getFullYear()}`;
 };
 
+const TH = 'px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700';
+const TD = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate';
+
+// Columnas redimensionables (useColumnResize las recuerda por usuario en
+// este navegador).
+const COLUMNAS = [
+  { key: 'admision', label: 'Admisión', ancho: 100, min: 60, td: 'font-semibold text-[#2383C2]', valor: (g) => g.admision || '-' },
+  { key: 'paciente', label: 'Paciente', ancho: 200, min: 60, valor: (g) => g.paciente || '-' },
+  { key: 'medico', label: 'Médico', ancho: 180, min: 60, valor: (g) => g.medico || '-' },
+  { key: 'proveedor', label: 'Empresa', ancho: 200, min: 60, valor: (g) => g.proveedor || '-' },
+  { key: 'fecha_cx', label: 'Fecha Cx', ancho: 100, min: 60, valor: (g) => formatearFechaCelda(g.fecha_cx) },
+  { key: 'totalItems', label: 'N° Ítems', ancho: 80, min: 60, th: 'text-center', td: 'text-center font-semibold', valor: (g) => g.totalItems }
+];
+
 // Pestaña "Registros" de Ingreso de Órdenes: las filas importadas de
 // documentos_sistema por año/mes. Solo se monta (y lee) al abrir la pestaña.
 const RegistrosOrdenes = () => {
@@ -40,6 +58,9 @@ const RegistrosOrdenes = () => {
     gruposPagina, totalFilas,
     pagina, setPagina, totalPaginas
   } = useIngresoOrdenesFiltros(filas);
+  const usuario = useUser()?.userData?.uid;
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla, personalizados } =
+    useColumnResize(COLUMNAS, { clave: 'ingresoOrdenes.registros', usuario });
 
   return (
     <div className="flex-grow flex flex-col min-h-0 overflow-hidden">
@@ -96,6 +117,8 @@ const RegistrosOrdenes = () => {
                   <option key={nombre} value={nombre}>{nombre}</option>
                 ))}
               </select>
+
+              <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className="ml-auto" />
             </div>
           )}
 
@@ -115,22 +138,25 @@ const RegistrosOrdenes = () => {
                   <AlertTriangle size={11} /> Este período tiene muchos registros — puede que no se estén mostrando todos.
                 </div>
               )}
-              <div className="flex-grow min-h-0 overflow-auto">
-                <table className="w-full text-left text-[11px] border-collapse">
+              <div className="flex-grow min-h-0 overflow-auto relative">
+                <table
+                  className="text-left text-[11px] border-collapse"
+                  style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
+                >
+                  <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Médico</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha Cx</th>
-                      <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">N° Ítems</th>
+                      {COLUMNAS.map(col => (
+                        <ThRedimensionable key={col.key} col={col} anchos={anchos} onResize={handleResize} className={`${TH} ${col.th || ''}`} title={col.label}>
+                          {col.label}
+                        </ThRedimensionable>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                     {gruposPagina.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                        <td colSpan={COLUMNAS.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           No hay registros para los filtros seleccionados.
                         </td>
                       </tr>
@@ -142,12 +168,10 @@ const RegistrosOrdenes = () => {
                           className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 cursor-pointer"
                           title="Doble clic para ver el detalle"
                         >
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-semibold text-[#2383C2]">{grupo.admision || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[180px]" title={grupo.paciente}>{grupo.paciente || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={grupo.medico}>{grupo.medico || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[180px]" title={grupo.proveedor}>{grupo.proveedor || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 whitespace-nowrap">{formatearFechaCelda(grupo.fecha_cx)}</td>
-                          <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center font-semibold">{grupo.totalItems}</td>
+                          {COLUMNAS.map(col => {
+                            const valor = col.valor(grupo);
+                            return <td key={col.key} className={`${TD} ${col.td || ''}`} title={String(valor)}>{valor}</td>;
+                          })}
                         </tr>
                       ))
                     )}

@@ -4,6 +4,10 @@ import { useGranularPermission } from '../../../../../hooks/useGranularPermissio
 import PaginacionSimple from '../../../../ui/PaginacionSimple';
 import { useDocumentosSistemaPeriodo } from '../hooks/useDocumentosSistemaPeriodo';
 import { useSeguimientoFiltros } from './hooks/useSeguimientoFiltros';
+import { useUser } from '../../../../../context/UserContext';
+import { useColumnResize } from '../../../../../hooks/useColumnResize';
+import { ThRedimensionable, ColgroupRedimensionable } from '../../../../ui/ThRedimensionable';
+import { BotonRestablecerAnchos } from '../../../../ui/BotonRestablecerAnchos';
 
 const PATH_VISTA = '/documentos/seguimientoFacturasGuias';
 
@@ -44,6 +48,26 @@ const formatearFechaCelda = (valor) => {
   return `${dd}-${mm}-${fecha.getFullYear()}`;
 };
 
+const TH = 'px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700';
+const TD = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate';
+
+// Columnas de la tabla (anchos en px, redimensionables; useColumnResize los
+// recuerda por usuario en este navegador). Facturas y Guías comparten tabla.
+const COLUMNAS = [
+  { key: 'id', label: 'ID', ancho: 90, min: 60, td: 'font-mono text-slate-600 dark:text-gray-400', valor: (i) => i.id },
+  { key: 'admision', label: 'Admisión', ancho: 80, min: 60, td: 'font-semibold text-[#2383C2]', valor: (i) => i.admision },
+  { key: 'paciente', label: 'Paciente', ancho: 160, min: 60, valor: (i) => i.paciente || '-' },
+  { key: 'medico', label: 'Médico', ancho: 140, min: 60, valor: (i) => i.medico || '-' },
+  { key: 'fecha_cx', label: 'Fecha Cx', ancho: 85, min: 60, valor: (i) => formatearFechaCelda(i.fecha_cx) },
+  { key: 'proveedor', label: 'Empresa', ancho: 160, min: 60, valor: (i) => i.proveedor || '-' },
+  { key: 'codigo', label: 'Código', ancho: 85, min: 60, td: 'font-mono text-emerald-600 dark:text-emerald-400', valor: (i) => i.codigo || '-' },
+  { key: 'descripcion', label: 'Descripción', ancho: 200, min: 60, valor: (i) => i.descripcion || '-' },
+  { key: 'cantidad', label: 'Cant.', ancho: 60, min: 60, th: 'text-center', td: 'text-center', valor: (i) => i.cantidad ?? '-' },
+  { key: 'oc', label: 'OC', ancho: 95, min: 60, valor: (i) => i.oc || '-' },
+  { key: 'numero_guia', label: 'N° Guía', ancho: 90, min: 60, valor: (i) => i.numero_guia || '-' },
+  { key: 'numero_factura', label: 'N° Factura', ancho: 90, min: 60, valor: (i) => i.numero_factura || '-' }
+];
+
 const SelectorTipoSeguimiento = ({ onElegir }) => (
   <div className="flex-grow flex flex-col items-center justify-center gap-4 p-6">
     <span className="text-[11px] font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wide">
@@ -81,6 +105,9 @@ const SeguimientoFacturasGuias = () => {
     filasPagina, totalFilas,
     pagina, setPagina, totalPaginas
   } = useSeguimientoFiltros(filas);
+  const usuario = useUser()?.userData?.uid;
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla, personalizados } =
+    useColumnResize(COLUMNAS, { clave: 'seguimientoFacturasGuias', usuario });
 
   return (
     <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden font-sans text-[11px]">
@@ -141,6 +168,8 @@ const SeguimientoFacturasGuias = () => {
                   <option key={nombre} value={nombre}>{nombre}</option>
                 ))}
               </select>
+
+              <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className="ml-auto" />
             </div>
           )}
 
@@ -160,46 +189,35 @@ const SeguimientoFacturasGuias = () => {
                   <AlertTriangle size={11} /> Este período tiene muchos registros — puede que no se estén mostrando todos.
                 </div>
               )}
-              <div className="flex-grow overflow-auto">
-                <table className="w-full text-left text-[11px] border-collapse min-w-[1200px]">
+              <div className="flex-grow min-h-0 overflow-auto relative">
+                <table
+                  className="text-left text-[11px] border-collapse"
+                  style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
+                >
+                  <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">ID</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Médico</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha Cx</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">N° Guía</th>
-                      <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700">N° Factura</th>
+                      {COLUMNAS.map(col => (
+                        <ThRedimensionable key={col.key} col={col} anchos={anchos} onResize={handleResize} className={`${TH} ${col.th || ''}`} title={col.label}>
+                          {col.label}
+                        </ThRedimensionable>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                     {filasPagina.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                        <td colSpan={COLUMNAS.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           {criterio.mensajeVacio}
                         </td>
                       </tr>
                     ) : (
                       filasPagina.map((item) => (
                         <tr key={item.refPath} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150">
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-400">{item.id}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-semibold text-[#2383C2]">{item.admision}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={item.paciente}>{item.paciente || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[140px]" title={item.medico}>{item.medico || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 whitespace-nowrap">{formatearFechaCelda(item.fecha_cx)}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[160px]" title={item.proveedor}>{item.proveedor || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[200px]" title={item.descripcion}>{item.descripcion || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center">{item.cantidad ?? '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.oc || '-'}</td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70">{item.numero_guia || '-'}</td>
-                          <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70">{item.numero_factura || '-'}</td>
+                          {COLUMNAS.map(col => {
+                            const valor = col.valor(item);
+                            return <td key={col.key} className={`${TD} ${col.td || ''}`} title={String(valor)}>{valor}</td>;
+                          })}
                         </tr>
                       ))
                     )}

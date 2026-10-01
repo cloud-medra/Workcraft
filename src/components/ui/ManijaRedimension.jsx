@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { medirAnchoContenidoColumna } from './medirAnchoColumna';
 
 export const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) => {
   const arrastrando = useRef(false);
@@ -33,10 +34,21 @@ export const ManijaRedimension = ({ colKey, anchoActual, anchoMin, onResize }) =
     document.addEventListener('mouseup', handleMouseUp);
   }, [colKey, anchoActual, anchoMin, onResize]);
 
+  const handleDoubleClick = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const ancho = medirAnchoContenidoColumna(e.currentTarget.closest('th'), { anchoMin });
+    if (ancho) onResize(colKey, ancho);
+  }, [colKey, anchoMin, onResize]);
+
   return (
     <div
       onMouseDown={handleMouseDown}
-      title="Arrastra para redimensionar"
+      onDoubleClick={handleDoubleClick}
+      // El clic que cierra un arrastre no debe llegar al <th> (ordenar) ni a
+      // la fila (abrir detalle).
+      onClick={(e) => e.stopPropagation()}
+      title="Arrastra para redimensionar · doble clic para ajustar al contenido"
       className="absolute top-0 right-0 h-full w-2 cursor-col-resize select-none z-20 group/handle flex items-center justify-center"
     >
       <div className="h-3/5 w-[2px] bg-transparent group-hover/handle:bg-[#2383C2] rounded-full transition-colors" />

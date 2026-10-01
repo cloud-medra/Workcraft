@@ -5,12 +5,28 @@ import { ZonaSubidaPdf } from '../../../implantes/shared/documentosAdmision/Zona
 import { useSubirPdfOC } from '../../../shared/ordenesOC/useSubirPdfOC';
 import { TAMANO_MAXIMO_PDF_OC_MB } from '../../../shared/ordenesOC/ordenesOCHelpers';
 import { useOCSinPdf } from '../hooks/useOCSinPdf';
+import { useUser } from '../../../../../../context/UserContext';
+import { useColumnResize } from '../../../../../../hooks/useColumnResize';
+import { ThRedimensionable, ColgroupRedimensionable } from '../../../../../ui/ThRedimensionable';
+import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
 
 const NOMBRES_MESES = {
   '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
   '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
   '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
 };
+
+// Columnas redimensionables (useColumnResize las recuerda por usuario en
+// este navegador). La de PDF tiene el botón de subir.
+const COLUMNAS = [
+  { key: 'oc', label: 'OC', ancho: 110, min: 60 },
+  { key: 'admision', label: 'Admisión', ancho: 110, min: 60 },
+  { key: 'paciente', label: 'Paciente', ancho: 220, min: 60 },
+  { key: 'empresa', label: 'Empresa', ancho: 220, min: 60 },
+  { key: 'fecha', label: 'Fecha', ancho: 110, min: 60 },
+  { key: 'pdf', label: 'PDF', ancho: 90, min: 70, th: 'text-center' }
+];
+const TH = 'px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700';
 
 const fechaCorta = (yyyyMmDd) => {
   const [y, m, d] = String(yyyyMmDd || '').split('-');
@@ -35,21 +51,21 @@ const FilaOC = ({ fila, subiendo, deshabilitado, onArchivos }) => {
     noKeyboard: true,
     disabled: deshabilitado
   });
-  const celda = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70';
+  const celda = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate';
   return (
     <tr
       {...getRootProps()}
       className={`transition ${isDragActive ? 'bg-[#2383C2]/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700/40'}`}
       title={`Suelta aquí el PDF de la OC ${fila.oc}`}
     >
-      <td className={`${celda} font-mono font-semibold text-[#2383C2]`}>
+      <td className={`${celda} font-mono font-semibold text-[#2383C2]`} title={fila.oc}>
         <input {...getInputProps()} />
         {fila.oc}
       </td>
       <td className={celda}><Multi valores={fila.admisiones} /></td>
-      <td className={`${celda} truncate max-w-[200px]`}><Multi valores={fila.pacientes} /></td>
-      <td className={`${celda} truncate max-w-[200px]`}><Multi valores={fila.empresas} /></td>
-      <td className={`${celda} whitespace-nowrap`}><Multi valores={fila.fechas.map(fechaCorta)} /></td>
+      <td className={celda}><Multi valores={fila.pacientes} /></td>
+      <td className={celda}><Multi valores={fila.empresas} /></td>
+      <td className={celda}><Multi valores={fila.fechas.map(fechaCorta)} /></td>
       <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
         {subiendo ? (
           <span className="inline-flex items-center gap-1 text-[#2383C2] text-[10px]"><Loader2 size={11} className="animate-spin" /> {subiendo.porcentaje}%</span>
@@ -98,6 +114,9 @@ const OCSinPdf = () => {
   const d = useOCSinPdf();
   const { subirParaOC, subiendo } = useSubirPdfOC({ registro: d.registro, onRegistrado: d.onRegistrado });
   const ocupado = Boolean(d.progreso) || d.preparando || Boolean(subiendo);
+  const usuario = useUser()?.userData?.uid;
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla, personalizados } =
+    useColumnResize(COLUMNAS, { clave: 'ingresoOrdenes.ocSinPdf', usuario });
 
   const r = d.resumen;
   return (
@@ -180,27 +199,31 @@ const OCSinPdf = () => {
             </button>
           </span>
         )}
+        <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className={d.infoCarga ? '' : 'ml-auto'} />
       </div>
 
       {/* relative: los <input type="file"> de react-dropzone de cada fila van
           con position:absolute; sin un ancestro posicionado se ubican
           respecto del body y estiran la página principal. */}
       <div className="flex-grow min-h-0 overflow-auto relative">
-        <table className="w-full text-left text-[11px] border-collapse">
+        <table
+          className="text-left text-[11px] border-collapse"
+          style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
+        >
+          <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
           <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
             <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
-              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
-              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
-              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
-              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha</th>
-              <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">PDF</th>
+              {COLUMNAS.map(col => (
+                <ThRedimensionable key={col.key} col={col} anchos={anchos} onResize={handleResize} className={`${TH} ${col.th || ''}`} title={col.label}>
+                  {col.label}
+                </ThRedimensionable>
+              ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200">
             {!d.mesSeleccionado || d.cargando || d.error || d.filasPagina.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-slate-400 dark:text-gray-500 text-xs">
+                <td colSpan={COLUMNAS.length} className="px-4 py-8 text-center text-slate-400 dark:text-gray-500 text-xs">
                   {!d.mesSeleccionado ? (
                     <span className="inline-flex flex-col items-center gap-1.5">
                       <CalendarSearch size={22} className="text-slate-300 dark:text-gray-600" />
