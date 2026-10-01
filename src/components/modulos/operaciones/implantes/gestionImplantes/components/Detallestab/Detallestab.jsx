@@ -11,8 +11,11 @@ import { formatearFechaTabla, getEstadoCargaStyle } from '../Cargastab/cargasHel
 import { formatearFecha } from '../../utils/gestionesImportExport';
 import { MESES } from '../../../../../administracion/controlMensual/constants';
 import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
+import { itemRequiereOC } from '../../../../shared/ocIndex/indiceOC';
 
-export const DetallesTab = ({ formData }) => {
+// ocPorItemBloques: [{ itemId: oc }] alineado con formData.bloques (ver
+// GestionesImplantesDetalleView).
+export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
   const bloques = formData?.bloques || [];
 
   // Período/fecha de carga son datos de la ADMISIÓN (no de una empresa en
@@ -115,6 +118,7 @@ export const DetallesTab = ({ formData }) => {
         bloques.map((bloque, idx) => {
           const items = bloque.cotizaciones?.[0]?.items || [];
           const cotizacion = bloque.cotizaciones?.[0];
+          const ocPorItem = ocPorItemBloques[idx] || {};
 
           return (
             <div key={bloque.uniqueKey || idx} className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-lg shadow-xs overflow-hidden">
@@ -165,13 +169,14 @@ export const DetallesTab = ({ formData }) => {
                       <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total Ítem</th>
                       <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Lote</th>
                       <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Vencimiento</th>
+                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
                       <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700">Estado Carga</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={13} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
+                        <td colSpan={14} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
                           Sin ítems registrados en este bloque
                         </td>
                       </tr>
@@ -215,6 +220,11 @@ export const DetallesTab = ({ formData }) => {
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                               {formatearFechaTabla(it.vencimiento)}
+                            </td>
+                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono">
+                              {ocPorItem[it.id]
+                                ? <span className="text-slate-700 dark:text-gray-200 font-semibold">{ocPorItem[it.id]}</span>
+                                : <span className="text-slate-400 dark:text-gray-500 font-sans">{itemRequiereOC(it) ? 'Pendiente' : '—'}</span>}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60">
                               {it.sinCodigo ? (

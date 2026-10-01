@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Calendar, Search, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Calendar, Search, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X, ChevronUp, ChevronDown, Hash, Loader2 } from 'lucide-react';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 import PaginacionSimple from '../../../../ui/PaginacionSimple';
@@ -12,6 +12,8 @@ import { GestionesImplantesTable } from './components/GestionesImplantesTable';
 import GestionesImplantesDetalleView from './components/GestionesImplantesDetalleView';
 import { EstadoFilterDropdown } from './components/EstadoFilterDropdown';
 import { DiaFilterDropdown } from './components/DiaFilterDropdown';
+import { SincronizarOCResumenModal } from './components/SincronizarOCResumenModal';
+import { useSincronizarOC } from './hooks/useSincronizarOC';
 
 const PATH_VISTA = "/implantes/gestionImplantes";
 
@@ -83,6 +85,7 @@ const GestionesImplantes = () => {
     handleDescargarPlantilla,
     handleEjecutarImportacion
   } = useGestionesImplantes();
+  const { sincronizandoOC, handleSincronizarOC, resumenOC, cerrarResumenOC } = useSincronizarOC();
 
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
   const detalleRef = useRef(null);
@@ -215,6 +218,18 @@ const GestionesImplantes = () => {
                 title="Sincronizar datos vinculados desde ReportesInfo"
               >
                 {sincronizando ? "Sincronizando..." : <RefreshCw size={15} />}
+              </button>
+            )}
+
+            {hasPermission(PATH_VISTA, "header", "btn_configuracion") && (
+              <button
+                onClick={handleSincronizarOC}
+                disabled={sincronizandoOC}
+                className="p-1 rounded-md text-gray-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-[#2383C2] hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-wait"
+                title={sincronizandoOC ? "Sincronizando OC..." : "Sincronizar OC desde Importar Detalles OC"}
+                aria-label="Sincronizar OC"
+              >
+                {sincronizandoOC ? <Loader2 size={15} className="animate-spin" /> : <Hash size={15} />}
               </button>
             )}
 
@@ -393,6 +408,8 @@ const GestionesImplantes = () => {
           )}
         </>
       )}
+
+      <SincronizarOCResumenModal resumen={resumenOC} onClose={cerrarResumenOC} />
 
       <DrawersOverlay
         show={showLogDrawer || showConfigDrawer}

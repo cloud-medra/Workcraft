@@ -17,6 +17,8 @@ import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { validarNuevaEmpresaFecha, extraerDatosBase } from '../../../shared/empresaFechaDesdeDetalle';
 import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
 import { nombreParaGuardar } from '../utils/camposPaciente';
+import { ocsDeGestion } from '../../../shared/ocIndex/indiceOC';
+import { OrdenTab } from './Ordentab/OrdenTab';
 
 const MODULO_ACTUAL = 'implantes';
 
@@ -157,6 +159,22 @@ const GestionesImplantesDetalleView = forwardRef(({
   };
 
   const [formData, setFormData] = useState(construirEstadoInicial);
+
+  // OC por ítem (Sincronizar OC): se leen del registro EN VIVO (listener de la
+  // tabla), no de formData, para que una sincronización hecha con el detalle
+  // abierto se vea sin recargar. Alineado por índice con formData.bloques.
+  const ocPorItemPorRegistro = useMemo(
+    () => new Map(registrosDeEstaAdmision.map(r => [r.id, r.ocPorItem || {}])),
+    [registrosDeEstaAdmision]
+  );
+  const ocPorItemBloques = useMemo(
+    () => formData.bloques.map(b => ocPorItemPorRegistro.get(b.idOriginal) || {}),
+    [formData.bloques, ocPorItemPorRegistro]
+  );
+  const ocsPorBloque = useMemo(
+    () => formData.bloques.map((b, i) => ocsDeGestion({ cotizaciones: b.cotizaciones, ocPorItem: ocPorItemBloques[i] })),
+    [formData.bloques, ocPorItemBloques]
+  );
   const snapshotInicialRef = useRef(JSON.stringify(construirEstadoInicial()));
 
   const idsItemsOriginalesRef = useRef(
@@ -697,6 +715,7 @@ const GestionesImplantesDetalleView = forwardRef(({
         {(tabActual?.id === 'informacion' || tabActual?.id === 'cargas' || tabActual?.id === 'orden' || tabActual?.id === 'logs') && (
           <EmpresasFechasPanel
             bloques={formData.bloques}
+            ocsPorBloque={ocsPorBloque}
             bloqueActivoIndex={bloqueActivoIndex}
             setBloqueActivoIndex={setBloqueActivoIndex}
             erroresFecha={erroresFecha}
@@ -731,7 +750,16 @@ const GestionesImplantesDetalleView = forwardRef(({
           )}
 
           {tabActual?.id === 'detalles' && (
-            <DetallesTab formData={formData} />
+            <DetallesTab formData={formData} ocPorItemBloques={ocPorItemBloques} />
+          )}
+
+          {tabActual?.id === 'orden' && (
+            <OrdenTab
+              bloques={formData.bloques}
+              ocsPorBloque={ocsPorBloque}
+              bloqueActivoIndex={bloqueActivoIndex}
+              handleCopiarTexto={handleCopiarTexto}
+            />
           )}
 
           {tabActual?.id === 'cargas' && (

@@ -25,6 +25,7 @@ import { periodoEstaAbierto } from '../components/Cargastab/verificacionPeriodoB
 import { refImputada, construirPayloadImputada } from '../utils/imputadaSync';
 import { registrarLogImplantes } from '../utils/registrarLogImplantes';
 import { existeGestionEnColeccion, extraerDatosBase, MENSAJE_DUPLICADO } from '../../../shared/empresaFechaDesdeDetalle';
+import { calcularOcPendiente, itemsDeGestion } from '../../../shared/ocIndex/indiceOC';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -440,6 +441,9 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
 
     const dataAEnviar = {
       ...dataNormalizada,
+      // Ver "Sincronizar OC": el flag debe existir en todos los registros
+      // (Firestore no puede consultar "campo inexistente").
+      ocPendiente: calcularOcPendiente(itemsDeGestion(dataNormalizada), {}),
       fechaRegistro: new Date(),
       registradoPor: userData?.nombreCompleto || 'Usuario'
     };
@@ -677,6 +681,13 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
         dataNormalizada.fechaInicioCarga = registro.fechaInicioCarga || original?.fechaInicioCarga || null;
         dataNormalizada.fechaCarga = registro.fechaCarga || original?.fechaCarga || null;
 
+        // OC por ítem (Sincronizar OC): se toma del registro EN VIVO (no de la
+        // foto del detalle) para no pisar una sincronización hecha mientras el
+        // detalle estaba abierto. En un update normal ocPorItem no se escribe
+        // (queda intacto); solo se recalcula ocPendiente con los ítems nuevos.
+        const ocPorItemActual = original?.ocPorItem || {};
+        dataNormalizada.ocPendiente = calcularOcPendiente(itemsDeGestion(dataNormalizada), ocPorItemActual);
+
         const rutaCambio = !original || (
           original.fecha !== dataNormalizada.fecha ||
           (original.empresa || '') !== dataNormalizada.empresa ||
@@ -705,6 +716,11 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
             fechaRegistro: original?.fechaRegistro || new Date(),
             registradoPor: original?.registradoPor || userData?.nombreCompleto || 'Usuario'
           };
+          // El documento se mueve de ruta: las OC ya asignadas viajan con él
+          // (solo las de ítems que siguen existiendo).
+          const idsItems = new Set(itemsDeGestion(dataNormalizada).map(it => it.id));
+          const ocPorItemVigente = Object.fromEntries(Object.entries(ocPorItemActual).filter(([id]) => idsItems.has(id)));
+          if (Object.keys(ocPorItemVigente).length > 0) datosGuardados.ocPorItem = ocPorItemVigente;
           batch.set(nuevoDocRef, datosGuardados);
           logsAAgregar.push({ docRef: nuevoDocRef, accion: original ? 'EDICION' : 'CREACION', detalles: dataNormalizada });
 
@@ -714,7 +730,7 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
           }
         }
 
-        registrosGuardados.push({ id: docRefFinal.id, refPath: docRefFinal.path, ...datosGuardados });
+        registrosGuardados.push({ id: docRefFinal.id, refPath: docRefFinal.path, ocPorItem: ocPorItemActual, ...datosGuardados });
 
         const itemsAntes = original?.cotizaciones?.[0]?.items || [];
         const itemsDespues = registro.cotizaciones?.[0]?.items || [];
@@ -999,6 +1015,7 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
             costo: Number(item.costo) || 0,
             solicitud: 'PENDIENTE',
             active: true,
+            ocPendiente: false, // sin ítems todavía: nada que sincronizar
             registradoPor: userData?.nombreCompleto || 'Importación Masiva',
             fechaRegistro: new Date()
           };

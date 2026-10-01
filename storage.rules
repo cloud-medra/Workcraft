@@ -27,6 +27,15 @@ service firebase.storage {
       allow read, write: if request.auth != null && (esAdminODev() || tienePermiso('documentos'));
     }
 
+    // Índice de OC (Importar Detalles OC -> "Sincronizar OC" de Gestión de
+    // Implantes). Lo escribe la importación y lo lee la sincronización solo
+    // cuando cambió ocImport/meta. Contiene nombres de pacientes: mismo nivel
+    // que snapshots/documentos_sistema, más el permiso implantes (lo lee el
+    // botón "Sincronizar OC").
+    match /snapshots/indiceOC/{archivo} {
+      allow read, write: if request.auth != null && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
+    }
+
     // PDFs de cada admisión de Implantes (pestaña Documentos de Gestión
     // Implantes). Solo "create": nunca se sobrescribe ni se borra desde la
     // app; ante un nombre repetido el cliente usa "(2)", "(3)"...

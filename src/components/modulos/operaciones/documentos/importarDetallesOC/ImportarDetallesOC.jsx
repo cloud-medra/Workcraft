@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
   FileSpreadsheet, Upload, X, Loader2, AlertTriangle,
-  PlusCircle, RefreshCw, MinusCircle, Search, CalendarSearch
+  PlusCircle, RefreshCw, MinusCircle, Search, CalendarSearch, Hash, Trash2
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
@@ -70,9 +70,10 @@ const ImportarDetallesOC = () => {
       });
       setResumen(resultado);
       showToast(
-        `Importación completa: ${resultado.nuevas} nueva(s), ${resultado.cambiadas} actualizada(s), ${resultado.sinCambios} sin cambios${resultado.errores.length ? `, ${resultado.errores.length} con error` : ''}`,
+        `Importación completa: ${resultado.nuevas} nueva(s), ${resultado.cambiadas} actualizada(s), ${resultado.sinCambios} sin cambios${resultado.eliminadas ? `, ${resultado.eliminadas} eliminada(s)` : ''}${resultado.errores.length ? `, ${resultado.errores.length} con error` : ''}`,
         resultado.errores.length ? 'info' : 'success'
       );
+      if (!resultado.indiceOC?.ok) showToast(resultado.indiceOC?.error || 'No se actualizó el índice de OC', 'error');
       recargarFilas();
     } catch (err) {
       console.error('Error al importar Detalles OC:', err);
@@ -97,7 +98,9 @@ const ImportarDetallesOC = () => {
     if (progreso.etapa === 'leyendo') return 'Leyendo el archivo Excel...';
     if (progreso.etapa === 'hasheando') return `Calculando cambios... (${progreso.actual}/${progreso.total})`;
     if (progreso.etapa === 'escribiendo') return `Guardando en Firestore... (${progreso.actual}/${progreso.total})`;
+    if (progreso.etapa === 'eliminando') return `Eliminando filas que ya no vienen en el archivo... (${progreso.total})`;
     if (progreso.etapa === 'guardando_snapshot') return 'Guardando snapshot de comparación...';
+    if (progreso.etapa === 'indice_oc') return 'Actualizando índice de OC...';
     return 'Procesando...';
   };
 
@@ -151,13 +154,46 @@ const ImportarDetallesOC = () => {
           <span className="flex items-center gap-1 text-slate-500 dark:text-gray-400">
             <MinusCircle size={12} /> {resumen.sinCambios} sin cambios
           </span>
+          {resumen.eliminadas > 0 && (
+            <span
+              className="flex items-center gap-1 text-rose-700 dark:text-rose-400 font-semibold"
+              title="Filas de importaciones anteriores cuya admisión + fecha + proveedor + código viene en este archivo, pero que ya no están en él"
+            >
+              <Trash2 size={12} /> {resumen.eliminadas} eliminada(s)
+            </span>
+          )}
           {resumen.errores.length > 0 && (
-            <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold" title={resumen.errores.map(e => `${e.id}: ${e.error}`).join('\n')}>
-              <AlertTriangle size={12} /> {resumen.errores.length} con error
+            <details className="text-red-600 dark:text-red-400 w-full order-last">
+              <summary className="cursor-pointer font-semibold inline-flex items-center gap-1">
+                <AlertTriangle size={12} /> {resumen.errores.length} con error (no se guardaron) — ver motivos
+              </summary>
+              <ul className="mt-1 max-h-40 overflow-auto font-mono text-[10px] space-y-0.5">
+                {resumen.errores.slice(0, 50).map((e, i) => (
+                  <li key={`${e.id}_${i}`}>{e.filaExcel ? `Fila ${e.filaExcel}` : 'Sin fila'}{e.id ? ` (ID ${e.id})` : ''}: {e.error}</li>
+                ))}
+                {resumen.errores.length > 50 && <li>… y {resumen.errores.length - 50} más (detalle completo en la consola del navegador)</li>}
+              </ul>
+            </details>
+          )}
+          {resumen.indiceOC?.ok ? (
+            <span
+              className="flex items-center gap-1 text-[#2383C2] font-semibold"
+              title={`Filas con OC: ${resumen.indiceOC.conOC} · sin OC: ${resumen.indiceOC.sinOC} · incompletas (sin admisión/fecha/código/cantidad): ${resumen.indiceOC.incompletas}`}
+            >
+              <Hash size={12} /> Índice OC: {resumen.indiceOC.totalEntradas} fila(s){resumen.indiceOC.publicado ? ' · actualizado' : ' · sin cambios'}
+              {(resumen.indiceOC.sinOC > 0 || resumen.indiceOC.incompletas > 0) && (
+                <span className="font-normal text-slate-500 dark:text-gray-400">
+                  ({resumen.indiceOC.sinOC} sin OC · {resumen.indiceOC.incompletas} incompletas)
+                </span>
+              )}
+            </span>
+          ) : resumen.indiceOC && (
+            <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold">
+              <AlertTriangle size={12} /> {resumen.indiceOC.error}
             </span>
           )}
           <span className="text-slate-400 dark:text-gray-500 ml-auto">
-            Firestore: ~{resumen.lecturasFirestoreEstimadas} lectura(s) · ~{resumen.escriturasFirestoreEstimadas} escritura(s)
+            {resumen.formatoArchivo && <>Archivo: {resumen.formatoArchivo} · </>}Firestore: ~{resumen.lecturasFirestoreEstimadas} lectura(s) · ~{resumen.escriturasFirestoreEstimadas} escritura(s)
           </span>
         </div>
       )}

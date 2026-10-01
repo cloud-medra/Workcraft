@@ -25,6 +25,9 @@ const getEstadoStyle = (estado) => {
 
 export const EmpresasFechasPanel = ({
   bloques = [],
+  // OC distintas de cada bloque (alineado por índice con `bloques`). Sin la
+  // prop no se muestra la línea de OC.
+  ocsPorBloque,
   bloqueActivoIndex,
   setBloqueActivoIndex,
   erroresFecha = {},
@@ -104,6 +107,17 @@ export const EmpresasFechasPanel = ({
                 <span className="text-[9px] font-mono pl-[18px] opacity-80">
                   {bloque.fecha || 'Sin fecha'}
                 </span>
+                {ocsPorBloque && (
+                  <span
+                    className="text-[9px] pl-[18px] break-all"
+                    title={ocsPorBloque[index]?.length ? `OC: ${ocsPorBloque[index].join(', ')}` : 'Sin OC asignada'}
+                  >
+                    <span className="opacity-60">OC: </span>
+                    {ocsPorBloque[index]?.length
+                      ? <span className="font-mono font-semibold">{ocsPorBloque[index].join(', ')}</span>
+                      : <span className="opacity-60">Pendiente</span>}
+                  </span>
+                )}
               </button>
             );
           })}
