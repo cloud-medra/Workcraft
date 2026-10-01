@@ -2,13 +2,16 @@ import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
   FileSpreadsheet, Upload, X, Loader2, AlertTriangle,
-  PlusCircle, RefreshCw, MinusCircle, Search, CalendarSearch, Hash, Trash2
+  Search, CalendarSearch, Database
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 import PaginacionSimple from '../../../../ui/PaginacionSimple';
-import { procesarImportacionDetallesOC } from './utils/procesarImportacionDetallesOC';
+import { procesarImportacionDetallesOC, SnapshotAntiguoError } from './utils/procesarImportacionDetallesOC';
+import { reconstruirSnapshotDetallesOC } from './utils/snapshotStorageDetallesOC';
+import { ResumenImportacion } from './components/ResumenImportacion';
+import { useModal } from '../../../../../context/ModalContext';
 import { useDetallesOCData } from './hooks/useDetallesOCData';
 import { useDetallesOCFiltros, CAMPOS_BUSQUEDA_OC } from './hooks/useDetallesOCFiltros';
 import { useUser } from '../../../../../context/UserContext';
@@ -63,6 +66,13 @@ const ImportarDetallesOC = () => {
   const [procesando, setProcesando] = useState(false);
   const [progreso, setProgreso] = useState(null);
   const [resumen, setResumen] = useState(null);
+  const [snapshotAntiguo, setSnapshotAntiguo] = useState(false);
+  const [reconstruyendo, setReconstruyendo] = useState(false);
+  const [resultadoReconstruccion, setResultadoReconstruccion] = useState(null);
+  const [ultimoArchivo, setUltimoArchivo] = useState(null);
+  const { confirmAction } = useModal();
+  const userData = useUser()?.userData;
+  const esAdminODev = userData?.rol === 'admin' || userData?.rol === 'dev';
 
   const {
     anio, setAnio, anios, cargandoAnios,
@@ -78,40 +88,69 @@ const ImportarDetallesOC = () => {
     filasPagina, totalFilas,
     pagina, setPagina, totalPaginas
   } = useDetallesOCFiltros(filas);
-  const usuario = useUser()?.userData?.uid;
+  const usuario = userData?.uid;
   const { anchos, handleResize, restablecerAnchos, anchoTotalTabla, personalizados } =
     useColumnResize(COLUMNAS, { clave: 'importarDetallesOC', usuario });
 
   const periodoSeleccionado = Boolean(anio && mes);
   const cargando = cargandoFilas;
 
-  const onDrop = useCallback(async (acceptedFiles) => {
-    const file = acceptedFiles[0];
+  const importarArchivo = useCallback(async (file) => {
     if (!file) return;
-
+    setUltimoArchivo(file);
     setProcesando(true);
     setResumen(null);
-    setProgreso({ etapa: 'leyendo' });
+    setProgreso({ etapa: 'verificando' });
 
     try {
-      const resultado = await procesarImportacionDetallesOC(file, {
-        onProgreso: setProgreso
-      });
+      const resultado = await procesarImportacionDetallesOC(file, { onProgreso: setProgreso, usuario: userData });
+      setSnapshotAntiguo(false);
       setResumen(resultado);
       showToast(
-        `Importación completa: ${resultado.nuevas} nueva(s), ${resultado.cambiadas} actualizada(s), ${resultado.sinCambios} sin cambios${resultado.eliminadas ? `, ${resultado.eliminadas} eliminada(s)` : ''}${resultado.errores.length ? `, ${resultado.errores.length} con error` : ''}`,
-        resultado.errores.length ? 'info' : 'success'
+        `Importación completa: ${resultado.nuevas} nueva(s), ${resultado.actualizadas} actualizada(s), ${resultado.sinCambios} sin cambios${resultado.errores.length ? `, ${resultado.errores.length} con error` : ''}`,
+        resultado.errores.length || resultado.pendientes ? 'info' : 'success'
       );
       if (!resultado.indiceOC?.ok) showToast(resultado.indiceOC?.error || 'No se actualizó el índice de OC', 'error');
-      recargarFilas();
+      if (resultado.nuevas + resultado.actualizadas + resultado.fechasCambiadas.length > 0) recargarFilas();
     } catch (err) {
       console.error('Error al importar Detalles OC:', err);
-      showToast('Error al importar: ' + err.message, 'error');
+      if (err instanceof SnapshotAntiguoError) {
+        setSnapshotAntiguo(true);
+        showToast(err.message, 'error');
+      } else {
+        showToast('Error al importar: ' + err.message, 'error');
+      }
     } finally {
       setProcesando(false);
       setProgreso(null);
     }
-  }, [showToast, recargarFilas]);
+  }, [showToast, recargarFilas, userData]);
+
+  const onDrop = useCallback((acceptedFiles) => importarArchivo(acceptedFiles[0]), [importarArchivo]);
+
+  // Acción de una sola vez (admin/dev): snapshot formato 2 leyendo todas las
+  // filas guardadas. Muestra las lecturas usadas.
+  const handleReconstruir = () => {
+    confirmAction(
+      'Reconstruir snapshot',
+      'Se leerán TODAS las filas guardadas de Detalles OC (1 lectura por fila) para armar el snapshot de comparación nuevo. Solo hace falta una vez. ¿Continuar?',
+      async () => {
+        setReconstruyendo(true);
+        try {
+          const r = await reconstruirSnapshotDetallesOC();
+          setResultadoReconstruccion(r);
+          setSnapshotAntiguo(false);
+          showToast(`Snapshot reconstruido: ${r.totalFilas} fila(s), ${r.lecturas} lectura(s).`, 'success');
+        } catch (err) {
+          console.error('Error al reconstruir el snapshot de Detalles OC:', err);
+          showToast('No se pudo reconstruir el snapshot: ' + err.message, 'error');
+        } finally {
+          setReconstruyendo(false);
+        }
+      },
+      { confirmText: 'Reconstruir', type: 'warning' }
+    );
+  };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -124,10 +163,11 @@ const ImportarDetallesOC = () => {
 
   const textoProgreso = () => {
     if (!progreso) return '';
+    if (progreso.etapa === 'verificando') return 'Verificando la versión del snapshot...';
     if (progreso.etapa === 'leyendo') return 'Leyendo el archivo Excel...';
-    if (progreso.etapa === 'hasheando') return `Calculando cambios... (${progreso.actual}/${progreso.total})`;
+    if (progreso.etapa === 'comparando') return `Comparando ${progreso.total ?? ''} fila(s) con lo guardado...`;
     if (progreso.etapa === 'escribiendo') return `Guardando en Firestore... (${progreso.actual}/${progreso.total})`;
-    if (progreso.etapa === 'eliminando') return `Eliminando filas que ya no vienen en el archivo... (${progreso.total})`;
+    if (progreso.etapa === 'gestiones_oc') return 'Marcando gestiones con OC cambiada...';
     if (progreso.etapa === 'guardando_snapshot') return 'Guardando snapshot de comparación...';
     if (progreso.etapa === 'indice_oc') return 'Actualizando índice de OC...';
     return 'Procesando...';
@@ -162,6 +202,18 @@ const ImportarDetallesOC = () => {
           </span>
         </div>
 
+        <div className="flex items-center gap-1.5">
+        {esAdminODev && (
+          <button
+            type="button"
+            onClick={handleReconstruir}
+            disabled={reconstruyendo || procesando}
+            title="Solo admin/dev: rearma el snapshot de comparación leyendo todas las filas guardadas (una vez)"
+            className="px-2 py-1 rounded text-[10px] border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:border-[#2383C2] hover:text-[#2383C2] disabled:opacity-50 flex items-center gap-1"
+          >
+            {reconstruyendo ? <Loader2 size={11} className="animate-spin" /> : <Database size={11} />} Reconstruir snapshot
+          </button>
+        )}
         {hasPermission(PATH_VISTA, 'cabecera_acciones', 'btn_importar') && (
           <button
             onClick={() => setShowModal(true)}
@@ -170,61 +222,43 @@ const ImportarDetallesOC = () => {
             <Upload size={11} /> Importar Excel
           </button>
         )}
+        </div>
       </header>
 
-      {resumen && (
-        <div className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex flex-wrap items-center gap-3 text-[10.5px]">
-          <span className="flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold">
-            <PlusCircle size={12} /> {resumen.nuevas} nueva(s)
+      {snapshotAntiguo && (
+        <div className="shrink-0 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-3 py-2 flex flex-wrap items-center gap-2 text-[10.5px] text-amber-800 dark:text-amber-300">
+          <AlertTriangle size={13} className="shrink-0" />
+          <span className="flex-1 min-w-[200px]">
+            El snapshot de comparación está en el formato antiguo. Antes de importar, un administrador debe ejecutar
+            <strong> "Reconstruir snapshot"</strong> (una sola vez: lee todas las filas guardadas).
           </span>
-          <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 font-semibold">
-            <RefreshCw size={12} /> {resumen.cambiadas} actualizada(s)
-          </span>
-          <span className="flex items-center gap-1 text-slate-500 dark:text-gray-400">
-            <MinusCircle size={12} /> {resumen.sinCambios} sin cambios
-          </span>
-          {resumen.eliminadas > 0 && (
-            <span
-              className="flex items-center gap-1 text-rose-700 dark:text-rose-400 font-semibold"
-              title="Filas de importaciones anteriores cuya admisión + fecha + proveedor + código viene en este archivo, pero que ya no están en él"
+          {esAdminODev && (
+            <button
+              type="button"
+              onClick={handleReconstruir}
+              disabled={reconstruyendo}
+              className="px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white disabled:opacity-50 flex items-center gap-1"
             >
-              <Trash2 size={12} /> {resumen.eliminadas} eliminada(s)
-            </span>
+              {reconstruyendo ? <Loader2 size={11} className="animate-spin" /> : <Database size={11} />} Reconstruir snapshot
+            </button>
           )}
-          {resumen.errores.length > 0 && (
-            <details className="text-red-600 dark:text-red-400 w-full order-last">
-              <summary className="cursor-pointer font-semibold inline-flex items-center gap-1">
-                <AlertTriangle size={12} /> {resumen.errores.length} con error (no se guardaron) — ver motivos
-              </summary>
-              <ul className="mt-1 max-h-40 overflow-auto font-mono text-[10px] space-y-0.5">
-                {resumen.errores.slice(0, 50).map((e, i) => (
-                  <li key={`${e.id}_${i}`}>{e.filaExcel ? `Fila ${e.filaExcel}` : 'Sin fila'}{e.id ? ` (ID ${e.id})` : ''}: {e.error}</li>
-                ))}
-                {resumen.errores.length > 50 && <li>… y {resumen.errores.length - 50} más (detalle completo en la consola del navegador)</li>}
-              </ul>
-            </details>
-          )}
-          {resumen.indiceOC?.ok ? (
-            <span
-              className="flex items-center gap-1 text-[#2383C2] font-semibold"
-              title={`Filas con OC: ${resumen.indiceOC.conOC} · sin OC: ${resumen.indiceOC.sinOC} · incompletas (sin admisión/fecha/código/cantidad): ${resumen.indiceOC.incompletas}`}
-            >
-              <Hash size={12} /> Índice OC: {resumen.indiceOC.totalEntradas} fila(s){resumen.indiceOC.publicado ? ' · actualizado' : ' · sin cambios'}
-              {(resumen.indiceOC.sinOC > 0 || resumen.indiceOC.incompletas > 0) && (
-                <span className="font-normal text-slate-500 dark:text-gray-400">
-                  ({resumen.indiceOC.sinOC} sin OC · {resumen.indiceOC.incompletas} incompletas)
-                </span>
-              )}
-            </span>
-          ) : resumen.indiceOC && (
-            <span className="flex items-center gap-1 text-red-600 dark:text-red-400 font-semibold">
-              <AlertTriangle size={12} /> {resumen.indiceOC.error}
-            </span>
-          )}
-          <span className="text-slate-400 dark:text-gray-500 ml-auto">
-            {resumen.formatoArchivo && <>Archivo: {resumen.formatoArchivo} · </>}Firestore: ~{resumen.lecturasFirestoreEstimadas} lectura(s) · ~{resumen.escriturasFirestoreEstimadas} escritura(s)
-          </span>
         </div>
+      )}
+
+      {resultadoReconstruccion && (
+        <div className="shrink-0 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200 dark:border-emerald-800 px-3 py-1.5 flex items-center gap-2 text-[10.5px] text-emerald-800 dark:text-emerald-300">
+          <Database size={12} /> Snapshot reconstruido: {resultadoReconstruccion.totalFilas} fila(s) · Firestore: {resultadoReconstruccion.lecturas} lectura(s), {resultadoReconstruccion.escrituras} escritura(s). Ya puedes importar.
+          <button type="button" onClick={() => setResultadoReconstruccion(null)} className="ml-auto p-0.5 rounded hover:bg-emerald-100 dark:hover:bg-emerald-900/40"><X size={12} /></button>
+        </div>
+      )}
+
+      {resumen && (
+        <ResumenImportacion
+          resumen={resumen}
+          onCerrar={() => setResumen(null)}
+          onReintentar={ultimoArchivo ? () => importarArchivo(ultimoArchivo) : null}
+          reintentando={procesando}
+        />
       )}
 
       {hasPermission(PATH_VISTA, 'barra_filtros') && (

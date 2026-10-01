@@ -1,11 +1,8 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
 
-vi.mock('../../../../../../firebaseConfig', () => ({ db: {}, storage: {} }));
-vi.mock('../../../shared/ocIndex/indiceOCRemoto', () => ({ descargarIndiceOC: vi.fn(), publicarIndiceOC: vi.fn() }));
-
-const { leerFilasDelExcel } = await import('./procesarImportacionDetallesOC');
+const { leerFilasDelExcel } = await import('./leerFilasDelExcel');
 const { detectarFormato } = await import('./leerHojaArchivo');
 
 const ENCABEZADOS_REALES = ['ID', 'ADMISION', 'PACIENTE', 'MEDICO', 'FECHA_CX', 'PROVEEDOR', 'CODIGO', 'DESCRIPCION', 'CANT', 'PRECIO_U', 'ATRIBUTO', 'OC', 'OC_MONTO', 'ESTADO', 'FECHA_RECEPCION', 'FECHA_CARGO', 'NUMERO_GUIA', 'NUMERO_FACTURA', 'FECHA_EMISION', 'FECHA_INGRESO', 'LOTE', 'FECHA_VENCIMIENTO'];

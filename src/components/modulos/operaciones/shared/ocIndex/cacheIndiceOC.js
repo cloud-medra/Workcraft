@@ -8,7 +8,6 @@ export const NOMBRE_DB_INDICE_OC = 'workcraft_indice_oc';
 const STORE = 'kv';
 const CLAVE = 'indiceOC';
 
-let enMemoria = null;
 
 const abrir = () => new Promise((resolve, reject) => {
   const req = indexedDB.open(NOMBRE_DB_INDICE_OC, 1);
@@ -31,21 +30,30 @@ const operar = async (modo, fn) => {
   }
 };
 
-export const leerCacheIndiceOC = async () => {
-  if (enMemoria) return enMemoria;
+// Caché genérica por clave en la misma base (también la usa el snapshot de
+// Importar Detalles OC). En memoria se guarda la última lectura de cada clave.
+const enMemoriaPorClave = new Map();
+
+export const leerCacheLocal = async (clave) => {
+  if (enMemoriaPorClave.has(clave)) return enMemoriaPorClave.get(clave);
+  let valor = null;
   try {
-    enMemoria = (await operar('readonly', s => s.get(CLAVE))) || null;
+    valor = (await operar('readonly', s => s.get(clave))) || null;
   } catch (err) {
-    console.warn('No se pudo leer la caché local del índice OC:', err);
+    console.warn(`No se pudo leer la caché local (${clave}):`, err);
   }
-  return enMemoria;
+  if (valor) enMemoriaPorClave.set(clave, valor);
+  return valor;
 };
 
-export const guardarCacheIndiceOC = async (valor) => {
-  enMemoria = valor;
+export const guardarCacheLocal = async (clave, valor) => {
+  enMemoriaPorClave.set(clave, valor);
   try {
-    await operar('readwrite', s => s.put(valor, CLAVE));
+    await operar('readwrite', s => s.put(valor, clave));
   } catch (err) {
-    console.warn('No se pudo guardar la caché local del índice OC (queda solo en memoria):', err);
+    console.warn(`No se pudo guardar la caché local (${clave}); queda solo en memoria:`, err);
   }
 };
+
+export const leerCacheIndiceOC = () => leerCacheLocal(CLAVE);
+export const guardarCacheIndiceOC = (valor) => guardarCacheLocal(CLAVE, valor);

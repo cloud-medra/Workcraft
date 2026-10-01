@@ -9,7 +9,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
 import { agruparIndiceOC, cruzarGestionesOC } from './indiceOC';
-import { obtenerIndiceOC, registrarSincronizacionOC } from './indiceOCRemoto';
+import { obtenerIndiceOC, registrarSincronizacionOC, limpiarInvalidacionesPendientes } from './indiceOCRemoto';
+import { invalidarOCGestiones } from './invalidarOCGestiones';
 
 const PREFIJO_IMPLANTES = 'implantes_gestiones/';
 // 2 operaciones por gestión con OC (update + log): 450 ops = 225 gestiones.
@@ -27,6 +28,16 @@ export const prepararSincronizacionOC = async () => {
 
 // Paso 2: consulta pendientes, cruza y escribe.
 export const ejecutarSincronizacionOC = async ({ meta, indice }, { userData } = {}) => {
+  // OC cambiadas por una reimportación que no se pudieron aplicar a las
+  // gestiones (quien importó no tenía permiso de Implantes): se aplican antes
+  // de buscar pendientes, para que esas gestiones entren en esta corrida.
+  let invalidacion = null;
+  const pendientes = meta.ocInvalidacionesPendientes || [];
+  if (pendientes.length > 0) {
+    invalidacion = await invalidarOCGestiones(pendientes, { usuario: userData });
+    if (!invalidacion.error) await limpiarInvalidacionesPendientes();
+  }
+
   const q = query(
     collectionGroup(db, 'detalles'),
     where('ocPendiente', '==', true),
@@ -100,7 +111,8 @@ export const ejecutarSincronizacionOC = async ({ meta, indice }, { userData } = 
     contadores,
     detalle,
     erroresEscritura,
-    lecturasFirestore: 1 + Math.max(1, snap.size),
-    escriturasFirestore: escrituras
+    invalidacion,
+    lecturasFirestore: 1 + Math.max(1, snap.size) + (invalidacion?.lecturas || 0),
+    escriturasFirestore: escrituras + (invalidacion?.escrituras || 0) + (invalidacion && !invalidacion.error ? 1 : 0)
   };
 };

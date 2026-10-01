@@ -5,7 +5,7 @@
 //   - ocImport/meta es un documento chico en Firestore con la versión. Es lo
 //     único que se lee en cada sincronización (1 lectura); el archivo se
 //     descarga solo si la versión cambió respecto de la caché local.
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp, arrayUnion, deleteField } from 'firebase/firestore';
 import { ref, uploadString, getBytes } from 'firebase/storage';
 import { db, storage } from '../../../../../firebaseConfig';
 import { rangoFechasIndiceOC, periodosIndiceOC, FORMATO_INDICE_OC } from './indiceOC';
@@ -31,7 +31,9 @@ export const descargarIndiceOC = async () => {
 // Sube el índice y publica la nueva versión en ocImport/meta (1 escritura).
 // La versión nueva invalida la caché local de todos los clientes. La caché
 // de este cliente queda al día sin volver a descargar.
-export const publicarIndiceOC = async (indice) => {
+// `extraMeta`: campos que se publican en el mismo setDoc del meta (por
+// ejemplo la versión del snapshot de Detalles OC), para no gastar otra escritura.
+export const publicarIndiceOC = async (indice, { extraMeta = {} } = {}) => {
   const version = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   const totalEntradas = Object.keys(indice).length;
   await uploadString(
@@ -45,6 +47,7 @@ export const publicarIndiceOC = async (indice) => {
     totalEntradas,
     ...rangoFechasIndiceOC(indice),
     periodos: periodosIndiceOC(indice),
+    ...extraMeta,
     updatedAt: serverTimestamp()
   }, { merge: true });
   await guardarCacheIndiceOC({ version, indice });
@@ -86,3 +89,11 @@ export const obtenerPeriodosOC = async () => {
 
 export const registrarSincronizacionOC = (version) =>
   updateDoc(refMeta(), { ultimaSyncVersion: version, ultimaSyncEn: serverTimestamp() });
+
+// OC cambiadas pendientes de aplicar en las gestiones (ver
+// invalidarOCGestiones.js y ejecutarSincronizacionOC).
+export const agregarInvalidacionesPendientes = (ocCambiadas) =>
+  setDoc(refMeta(), { ocInvalidacionesPendientes: arrayUnion(...ocCambiadas) }, { merge: true });
+
+export const limpiarInvalidacionesPendientes = () =>
+  updateDoc(refMeta(), { ocInvalidacionesPendientes: deleteField() });

@@ -7,8 +7,9 @@
 // El mismo archivo genera siempre los mismos IDs, y reimportarlo actualiza
 // las filas en vez de duplicarlas.
 //
-// Para los grupos que vienen en el archivo, el archivo manda: un ID de ese
-// grupo que existía antes y ya no viene es "huérfano" (ver idsHuerfanos).
+// Al importar, planificarImportacion.js vuelve a emparejar las filas
+// repetidas contra lo ya guardado (por parecido, no por orden), así que
+// reordenar el archivo no cambia los IDs.
 import { normalizarProveedorId } from './normalizarProveedor';
 import { normalizarCodigo } from '../../../shared/ocIndex/normalizacionOC.js';
 
@@ -36,22 +37,5 @@ export const asignarIdsFilas = (filas) => {
     const n = (apariciones.get(grupo) || 0) + 1;
     apariciones.set(grupo, n);
     return { ...fila, id: `${grupo}_${n}`, _grupo: grupo };
-  });
-};
-
-// IDs de `idsExistentes` (snapshot o índice) que pertenecen a un grupo que
-// viene en `filas` pero que ya no están en el archivo. Nunca toca grupos
-// que no vienen en el archivo.
-export const idsHuerfanos = (idsExistentes, filas) => {
-  const grupos = new Set();
-  const actuales = new Set();
-  filas.forEach((f) => {
-    actuales.add(f.id);
-    if (f._grupo) grupos.add(f._grupo);
-  });
-  return [...idsExistentes].filter((id) => {
-    if (actuales.has(id)) return false;
-    const m = String(id).match(/^(.*)_\d+$/);
-    return Boolean(m && grupos.has(m[1]));
   });
 };
