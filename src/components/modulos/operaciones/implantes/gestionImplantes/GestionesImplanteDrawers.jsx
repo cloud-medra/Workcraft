@@ -7,7 +7,8 @@ import {
   Upload,
   FileSpreadsheet,
   FileDown,
-  Package
+  Package,
+  ListChecks
 } from 'lucide-react';
 import Spinner from '../../../../ui/Spinner';
 
@@ -357,7 +358,8 @@ export const ConfigDrawer = ({
   importFile,
   onSelectFile,
   importing,
-  onEjecutarImportacion
+  onEjecutarImportacion,
+  marcarOcPendiente // solo admin/dev; null para el resto
 }) => {
   return (
     <div
@@ -460,6 +462,7 @@ export const ConfigDrawer = ({
             <span>{importing ? 'Procesando...' : 'Cargar Registro'}</span>
           </button>
         </div>
+        {marcarOcPendiente && <MarcarOcPendienteSeccion {...marcarOcPendiente} />}
       </div>
 
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900 shrink-0">
@@ -473,3 +476,49 @@ export const ConfigDrawer = ({
     </div>
   );
 };
+// Acción de una sola vez (admin/dev) para "Sincronizar OC": ver
+// shared/ocIndex/marcarOcPendiente.js.
+const MarcarOcPendienteSeccion = ({ desde, setDesde, hasta, setHasta, marcando, resultado, handleMarcarOcPendiente }) => (
+  <div className="p-3 border border-amber-200 dark:border-amber-900/60 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 space-y-2">
+    <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
+      <ListChecks size={14} className="text-amber-600 dark:text-amber-400" />
+      <span>Marcar OC pendiente (una sola vez)</span>
+    </div>
+    <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
+      Agrega el campo <code>ocPendiente</code> a las gestiones antiguas para que "Sincronizar OC" las encuentre.
+      Salta las que ya lo tienen. Lee 1 vez cada gestión del rango.
+    </p>
+    <div className="flex items-center gap-2 text-[10px] text-gray-600 dark:text-gray-300">
+      <label className="flex-1">
+        Desde
+        <input type="month" value={desde} onChange={e => setDesde(e.target.value)} disabled={marcando}
+          className="mt-0.5 w-full h-7 px-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-[11px]" />
+      </label>
+      <label className="flex-1">
+        Hasta
+        <input type="month" value={hasta} onChange={e => setHasta(e.target.value)} disabled={marcando}
+          className="mt-0.5 w-full h-7 px-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-[11px]" />
+      </label>
+    </div>
+    <button
+      onClick={handleMarcarOcPendiente}
+      disabled={marcando || !desde || !hasta}
+      className={`w-full h-8 font-bold rounded text-[11px] flex items-center justify-center gap-1.5 transition ${
+        marcando || !desde || !hasta
+          ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+          : 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs cursor-pointer'
+      }`}
+    >
+      {marcando ? <Spinner size="sm" color="#ffffff" /> : <ListChecks size={14} />}
+      <span>{marcando ? 'Marcando...' : 'Marcar gestiones'}</span>
+    </button>
+    {resultado && (
+      <ul className="text-[10px] text-gray-600 dark:text-gray-300 space-y-0.5">
+        <li>Revisadas: {resultado.revisadas} · ya tenían el campo: {resultado.yaTenian}</li>
+        <li>Marcadas con OC pendiente: {resultado.marcadasPendiente} · sin pendiente: {resultado.marcadasSinPendiente}</li>
+        {resultado.errores > 0 && <li className="text-red-600 dark:text-red-400">No se pudieron guardar: {resultado.errores}</li>}
+        <li className="font-semibold">Firestore: {resultado.lecturasFirestore} lectura(s) · {resultado.escriturasFirestore} escritura(s)</li>
+      </ul>
+    )}
+  </div>
+);

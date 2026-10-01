@@ -585,6 +585,11 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
           fechaRegistro: implanteExistente?.fechaRegistro || new Date(),
           registradoPor: implanteExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
+        // Gestión anterior a "Sincronizar OC" sin el flag: se agrega al
+        // editarla (este formulario no toca los ítems ni ocPorItem).
+        if (implanteExistente && typeof implanteExistente.ocPendiente !== 'boolean') {
+          dataAEnviar.ocPendiente = calcularOcPendiente(itemsDeGestion(implanteExistente), implanteExistente.ocPorItem || {});
+        }
 
         await updateDoc(docRef, dataAEnviar);
         await registrarLog(docRef, 'EDICION', { ...dataNormalizada });

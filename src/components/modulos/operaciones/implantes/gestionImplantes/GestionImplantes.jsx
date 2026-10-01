@@ -14,6 +14,8 @@ import { EstadoFilterDropdown } from './components/EstadoFilterDropdown';
 import { DiaFilterDropdown } from './components/DiaFilterDropdown';
 import { SincronizarOCResumenModal } from './components/SincronizarOCResumenModal';
 import { useSincronizarOC } from './hooks/useSincronizarOC';
+import { useMarcarOcPendiente } from './hooks/useMarcarOcPendiente';
+import { useUser } from '../../../../../context/UserContext';
 
 const PATH_VISTA = "/implantes/gestionImplantes";
 
@@ -86,6 +88,9 @@ const GestionesImplantes = () => {
     handleEjecutarImportacion
   } = useGestionesImplantes();
   const { sincronizandoOC, handleSincronizarOC, resumenOC, cerrarResumenOC } = useSincronizarOC();
+  const { userData } = useUser();
+  const esAdminODev = userData?.rol === 'admin' || userData?.rol === 'dev';
+  const marcarOcPendiente = useMarcarOcPendiente({ habilitado: esAdminODev && showConfigDrawer });
 
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
   const detalleRef = useRef(null);
@@ -438,6 +443,7 @@ const GestionesImplantes = () => {
         onSelectFile={setImportFile}
         importing={importing}
         onEjecutarImportacion={handleEjecutarImportacion}
+        marcarOcPendiente={esAdminODev ? marcarOcPendiente : null}
       />
     </div>
   );
