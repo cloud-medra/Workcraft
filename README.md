@@ -17,12 +17,20 @@ If you are developing a production application, we recommend using TypeScript wi
 
 ## Firebase Storage: CORS
 
-Los PDF (Documentos de implantes y órdenes de compra) se abren desde el navegador con `getBlob`, que necesita que el bucket de Storage permita los orígenes de la app. La configuración está en [`cors.json`](cors.json) (solo `GET`, para los dominios de Hosting, `localhost:5173` y el Codespace).
+El dominio principal de la app es **https://workcraft.medra.cl** (también responde en `workcraft-491b7.web.app` y `workcraft-491b7.firebaseapp.com`).
 
-Para aplicarla (o volver a aplicarla después de cambiar `cors.json`, por ejemplo si cambia la URL del Codespace):
+Los PDF (Documentos de implantes y órdenes de compra) se suben y se abren desde el navegador directo contra Storage (`uploadBytesResumable`, `getBlob`), así que el bucket debe permitir esos orígenes. La configuración activa está en [`cors.json`](cors.json): el dominio principal, los dos de Hosting y `http://localhost:5173`. No incluye la URL del Codespace porque cambia.
+
+Para aplicarla después de cambiar `cors.json`:
 
 ```bash
 gcloud storage buckets update gs://workcraft-491b7.firebasestorage.app --cors-file=cors.json
 ```
 
-Requiere `gcloud` autenticado con una cuenta con permisos sobre el bucket. No se aplica con `firebase deploy`.
+Para revisar lo que está aplicado en el bucket:
+
+```bash
+gcloud storage buckets describe gs://workcraft-491b7.firebasestorage.app --format="default(cors_config)"
+```
+
+Requiere `gcloud` autenticado con una cuenta con permisos sobre el bucket (por ejemplo, desde Cloud Shell). No se aplica con `firebase deploy`.

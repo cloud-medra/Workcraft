@@ -1,12 +1,13 @@
 [
   {
     "origin": [
-      "https://ideal-garbanzo-wv57j7jjxwxrc99v6-5173.app.github.dev",
-      "http://localhost:5173",
+      "https://workcraft.medra.cl",
       "https://workcraft-491b7.web.app",
-      "https://workcraft-491b7.firebaseapp.com"
+      "https://workcraft-491b7.firebaseapp.com",
+      "http://localhost:5173"
     ],
-    "method": ["GET"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "x-goog-resumable"],
     "maxAgeSeconds": 3600
   }
 ]
