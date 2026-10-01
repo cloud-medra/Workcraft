@@ -51,6 +51,20 @@ service firebase.storage {
         && (esAdminODev() || tienePermiso('implantes'));
     }
 
+    // PDF de órdenes de compra: UNO por OC (ordenes_oc/OC_{oc}.pdf),
+    // compartido por todas las admisiones/empresas que usan esa OC. Se
+    // permite "update" para reemplazarlo (la app pregunta antes); nunca se
+    // borra. Contienen datos de pacientes: lectura solo con permiso, vía
+    // getBlob (sin URLs públicas). Tope: 15 MB.
+    match /ordenes_oc/{archivo} {
+      allow read: if request.auth != null && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
+      allow create, update: if request.auth != null
+        && request.resource.contentType == 'application/pdf'
+        && archivo.matches('OC_[^/]+\\.pdf')
+        && request.resource.size < 15 * 1024 * 1024
+        && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

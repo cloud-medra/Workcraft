@@ -343,6 +343,13 @@ service cloud.firestore {
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
     }
 
+    // Registro de qué OC tienen PDF (ordenes_oc/ en Storage): un documento
+    // ordenesOC/registroPdf con { pdfs: { [oc]: {subidoEn, subidoPor} } }.
+    match /ordenesOC/{docId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
+    }
+
     match /implantes_gestiones/{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));

@@ -1,10 +1,37 @@
-import { ClipboardList, Building2, Calendar as CalendarIcon, Copy } from 'lucide-react';
+import { ClipboardList, Building2, Calendar as CalendarIcon, Copy, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { formatearFechaTabla } from '../Cargastab/cargasHelpers';
+import { ControlPdfOC } from '../../../../shared/ordenesOC/ControlPdfOC';
+import { useSubirPdfOC } from '../../../../shared/ordenesOC/useSubirPdfOC';
+import { claveOC } from '../../../../shared/ordenesOC/ordenesOCHelpers';
 
 // OC de la admisión (sin duplicados) y su detalle por empresa/fecha. Sale de
-// los datos ya en memoria del detalle (ocsPorBloque): sin lecturas propias.
-export const OrdenTab = ({ bloques = [], ocsPorBloque = [], bloqueActivoIndex, handleCopiarTexto }) => {
+// los datos ya en memoria del detalle (ocsPorBloque). El estado del PDF de
+// cada OC sale de `registroPdf` (ordenesOC/registroPdf, leído por el padre
+// una vez por detalle); el PDF es uno por OC, compartido entre admisiones.
+export const OrdenTab = ({
+  bloques = [], ocsPorBloque = [], bloqueActivoIndex, handleCopiarTexto,
+  registroPdf = null, onRecargarRegistroPdf, onPdfRegistrado
+}) => {
   const ocsAdmision = [...new Set(ocsPorBloque.flat())];
+  const pdfs = registroPdf?.pdfs || {};
+  const cargandoRegistro = registroPdf === null;
+  const { subirParaOC, verPdfOC, subiendo, abriendo } = useSubirPdfOC({ registro: pdfs, onRegistrado: onPdfRegistrado });
+
+  const controlPdf = (oc) => {
+    const clave = claveOC(oc);
+    if (cargandoRegistro) return <Loader2 size={11} className="animate-spin text-slate-400" />;
+    return (
+      <ControlPdfOC
+        oc={clave}
+        tienePdf={Boolean(pdfs[clave])}
+        subiendo={subiendo?.oc === clave ? subiendo : null}
+        abriendo={abriendo === clave}
+        deshabilitado={Boolean(subiendo) || Boolean(registroPdf?.error)}
+        onVer={() => verPdfOC(clave)}
+        onArchivos={(archivos) => subirParaOC(clave, archivos)}
+      />
+    );
+  };
 
   return (
     <div className="p-4 max-w-5xl mx-auto w-full space-y-4">
@@ -21,17 +48,36 @@ export const OrdenTab = ({ bloques = [], ocsPorBloque = [], bloqueActivoIndex, h
               Pendiente — aún no hay OC asignadas a esta admisión (usa "Sincronizar OC" en la barra de Gestión de Implantes).
             </span>
           ) : ocsAdmision.map(oc => (
-            <button
-              key={oc}
-              type="button"
-              onClick={() => handleCopiarTexto?.(oc)}
-              title="Copiar OC"
-              className="flex items-center gap-1 px-2 py-0.5 rounded border border-[#2383C2]/30 bg-[#2383C2]/5 text-[#2383C2] dark:text-blue-400 font-mono font-semibold text-[11px] hover:bg-[#2383C2]/10 transition"
-            >
-              {oc} <Copy size={10} className="opacity-60" />
-            </button>
+            <span key={oc} className="flex items-center gap-1 pr-1 rounded border border-[#2383C2]/30 bg-[#2383C2]/5">
+              <button
+                type="button"
+                onClick={() => handleCopiarTexto?.(oc)}
+                title="Copiar OC"
+                className="flex items-center gap-1 px-2 py-0.5 text-[#2383C2] dark:text-blue-400 font-mono font-semibold text-[11px] hover:bg-[#2383C2]/10 transition rounded-l"
+              >
+                {oc} <Copy size={10} className="opacity-60" />
+              </button>
+              {controlPdf(oc)}
+            </span>
           ))}
         </div>
+        {registroPdf?.error && (
+          <div className="mx-3 mb-3 flex items-center gap-2 text-[10px] text-red-600 dark:text-red-400">
+            <AlertCircle size={12} /> {registroPdf.error}
+            <button
+              type="button"
+              onClick={onRecargarRegistroPdf}
+              className="flex items-center gap-1 px-2 py-0.5 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50"
+            >
+              <RefreshCw size={10} /> Reintentar
+            </button>
+          </div>
+        )}
+        {ocsAdmision.length > 0 && !registroPdf?.error && (
+          <p className="px-3 pb-2 text-[9.5px] text-slate-400 dark:text-gray-500">
+            Un PDF por OC, nombrado OC_número.pdf. Arrástralo sobre la OC o usa el botón de subir.
+          </p>
+        )}
       </div>
 
       {bloques.length > 0 && (
@@ -60,7 +106,16 @@ export const OrdenTab = ({ bloques = [], ocsPorBloque = [], bloqueActivoIndex, h
                     </td>
                     <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 font-mono">
                       {ocs.length
-                        ? <span className="text-slate-700 dark:text-gray-200 font-semibold">{ocs.join(', ')}</span>
+                        ? (
+                          <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                            {ocs.map(oc => (
+                              <span key={oc} className="flex items-center gap-1">
+                                <span className="text-slate-700 dark:text-gray-200 font-semibold">{oc}</span>
+                                {controlPdf(oc)}
+                              </span>
+                            ))}
+                          </span>
+                        )
                         : <span className="text-slate-400 dark:text-gray-500 font-sans">Pendiente</span>}
                     </td>
                   </tr>

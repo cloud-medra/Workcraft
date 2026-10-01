@@ -19,6 +19,7 @@ import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
 import { nombreParaGuardar } from '../utils/camposPaciente';
 import { ocsDeGestion } from '../../../shared/ocIndex/indiceOC';
 import { OrdenTab } from './Ordentab/OrdenTab';
+import { leerRegistroPdfOC } from '../../../shared/ordenesOC/registroPdfOC';
 
 const MODULO_ACTUAL = 'implantes';
 
@@ -648,6 +649,31 @@ const GestionesImplantesDetalleView = forwardRef(({
     cargarDocumentos(idAdmisionDocs);
   };
 
+  // Registro de PDF de OC (ordenesOC/registroPdf): 1 lectura, solo la
+  // primera vez que se abre la pestaña Orden en este detalle. Las subidas lo
+  // actualizan en memoria.
+  const [registroPdfOC, setRegistroPdfOC] = useState(null); // { pdfs, error }
+  const registroPdfSolicitadoRef = useRef(false);
+
+  const cargarRegistroPdfOC = useCallback(() => {
+    registroPdfSolicitadoRef.current = true;
+    leerRegistroPdfOC()
+      .then(pdfs => setRegistroPdfOC({ pdfs, error: null }))
+      .catch(err => {
+        console.error('Error al leer el registro de PDF de OC:', err);
+        setRegistroPdfOC({ pdfs: {}, error: 'No se pudo cargar qué OC tienen PDF.' });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (tabActual?.id !== 'orden' || registroPdfSolicitadoRef.current) return;
+    cargarRegistroPdfOC();
+  }, [tabActual?.id, cargarRegistroPdfOC]);
+
+  const handlePdfOCRegistrado = (oc, entrada) => {
+    setRegistroPdfOC(prev => ({ error: null, pdfs: { ...(prev?.pdfs || {}), [oc]: entrada } }));
+  };
+
   // Al terminar una tanda de subida, DocumentosTab entrega el listado ya
   // armado en memoria (lo previo + lo subido): una sola actualización, sin
   // volver a listar Storage.
@@ -759,6 +785,9 @@ const GestionesImplantesDetalleView = forwardRef(({
               ocsPorBloque={ocsPorBloque}
               bloqueActivoIndex={bloqueActivoIndex}
               handleCopiarTexto={handleCopiarTexto}
+              registroPdf={registroPdfOC}
+              onRecargarRegistroPdf={() => { setRegistroPdfOC(null); cargarRegistroPdfOC(); }}
+              onPdfRegistrado={handlePdfOCRegistrado}
             />
           )}
 

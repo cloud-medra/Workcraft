@@ -8,6 +8,7 @@ const ModalConfirm = ({
   title, 
   message, 
   confirmText = "Confirmar", 
+  cancelText = "Cancelar",
   type = "danger" // 'danger' | 'primary' | 'warning' | 'info'
 }) => {
   if (!isOpen) return null;
@@ -55,7 +56,7 @@ const ModalConfirm = ({
             onClick={onClose}
             className="flex-1 py-2.5 rounded-lg border border-gray-200 dark:border-gray-600 font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
           >
-            Cancelar
+            {cancelText}
           </button>
           <button
             onClick={() => { onConfirm(); onClose(); }}

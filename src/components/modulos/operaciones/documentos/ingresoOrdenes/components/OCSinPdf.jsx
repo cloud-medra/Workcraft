@@ -1,0 +1,208 @@
+import { useDropzone } from 'react-dropzone';
+import { Loader2, AlertCircle, RefreshCw, Search, Upload, CheckCircle2, XCircle, X, FileWarning } from 'lucide-react';
+import PaginacionSimple from '../../../../../ui/PaginacionSimple';
+import { ZonaSubidaPdf } from '../../../implantes/shared/documentosAdmision/ZonaSubidaPdf';
+import { useSubirPdfOC } from '../../../shared/ordenesOC/useSubirPdfOC';
+import { TAMANO_MAXIMO_PDF_OC_MB } from '../../../shared/ordenesOC/ordenesOCHelpers';
+import { useOCSinPdf } from '../hooks/useOCSinPdf';
+
+const NOMBRES_MESES = {
+  '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
+  '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
+  '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
+};
+
+const fechaCorta = (yyyyMmDd) => {
+  const [y, m, d] = String(yyyyMmDd || '').split('-');
+  return y && m && d ? `${d}-${m}-${y}` : '-';
+};
+
+// Varios valores en una celda: el primero y "+n" (todos en el title).
+const Multi = ({ valores, mono = false }) => (
+  <span className={mono ? 'font-mono' : ''} title={valores.join(' · ')}>
+    {valores[0] || '-'}
+    {valores.length > 1 && <span className="ml-1 text-[9.5px] text-slate-400 dark:text-gray-500">+{valores.length - 1}</span>}
+  </span>
+);
+
+// Fila: se puede soltar el PDF encima o elegirlo con "Subir".
+const FilaOC = ({ fila, subiendo, deshabilitado, onArchivos }) => {
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+    onDrop: (aceptados, rechazados) => onArchivos([...aceptados, ...rechazados.map(r => r.file)]),
+    accept: { 'application/pdf': ['.pdf'] },
+    multiple: false,
+    noClick: true,
+    noKeyboard: true,
+    disabled: deshabilitado
+  });
+  const celda = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70';
+  return (
+    <tr
+      {...getRootProps()}
+      className={`transition ${isDragActive ? 'bg-[#2383C2]/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700/40'}`}
+      title={`Suelta aquí el PDF de la OC ${fila.oc}`}
+    >
+      <td className={`${celda} font-mono font-semibold text-[#2383C2]`}>
+        <input {...getInputProps()} />
+        {fila.oc}
+      </td>
+      <td className={celda}><Multi valores={fila.admisiones} /></td>
+      <td className={`${celda} truncate max-w-[200px]`}><Multi valores={fila.pacientes} /></td>
+      <td className={`${celda} truncate max-w-[200px]`}><Multi valores={fila.empresas} /></td>
+      <td className={`${celda} whitespace-nowrap`}><Multi valores={fila.fechas.map(fechaCorta)} /></td>
+      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+        {subiendo ? (
+          <span className="inline-flex items-center gap-1 text-[#2383C2] text-[10px]"><Loader2 size={11} className="animate-spin" /> {subiendo.porcentaje}%</span>
+        ) : (
+          <button
+            type="button"
+            onClick={open}
+            disabled={deshabilitado}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:border-[#2383C2] hover:text-[#2383C2] disabled:opacity-40 disabled:cursor-not-allowed text-[10px]"
+          >
+            <Upload size={11} /> Subir
+          </button>
+        )}
+      </td>
+    </tr>
+  );
+};
+
+const SeccionResumen = ({ titulo, items, tono, Icono }) => {
+  if (!items.length) return null;
+  const tonos = {
+    ok: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300',
+    aviso: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300',
+    error: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+  };
+  return (
+    <details className={`px-3 py-1.5 border rounded-lg ${tonos[tono]}`} open={tono !== 'ok'}>
+      <summary className="cursor-pointer font-semibold inline-flex items-center gap-1.5">
+        <Icono size={12} /> {titulo} ({items.length})
+      </summary>
+      <ul className="mt-1 pl-5 list-disc space-y-0.5 max-h-32 overflow-auto">
+        {items.map((it, i) => (
+          <li key={`${it.nombre}_${i}`} className="break-all">
+            {it.nombre}{it.oc ? <span className="opacity-75"> → OC {it.oc}</span> : null}{it.motivo && tono === 'error' ? <span className="opacity-75">: {it.motivo}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+};
+
+const selectClase = 'h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
+
+// Pestaña "OC sin PDF" de Ingreso de Órdenes.
+const OCSinPdf = () => {
+  const d = useOCSinPdf();
+  const { subirParaOC, subiendo } = useSubirPdfOC({ registro: d.registro, onRegistrado: d.onRegistrado });
+  const ocupado = Boolean(d.progreso) || Boolean(subiendo);
+
+  if (d.cargando) {
+    return (
+      <div className="flex-grow flex items-center justify-center gap-2 text-slate-400 dark:text-gray-500 text-[11px]">
+        <Loader2 size={14} className="animate-spin" /> Cargando OC...
+      </div>
+    );
+  }
+  if (d.error) {
+    return (
+      <div className="flex-grow flex flex-col items-center justify-center gap-2 text-[11px] text-red-600 dark:text-red-400 px-6 text-center">
+        <span className="flex items-center gap-1.5"><AlertCircle size={14} /> {d.error}</span>
+        <button type="button" onClick={d.recargar} className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50">
+          <RefreshCw size={11} /> Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  const r = d.resumen;
+  return (
+    <div className="flex-grow flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 space-y-2">
+        <ZonaSubidaPdf
+          onArchivos={d.subirMasivo}
+          deshabilitada={Boolean(subiendo)}
+          progreso={d.progreso}
+          tamanoMaximoMb={TAMANO_MAXIMO_PDF_OC_MB}
+          textoAyuda="Subida masiva: arrastra aquí los PDF de OC (OC_12345.pdf) o haz clic para elegirlos"
+        />
+        {r && (
+          <div className="space-y-1 text-[10px]">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-600 dark:text-gray-300">Resumen de la subida</span>
+              <button type="button" onClick={d.cerrarResumen} title="Cerrar resumen" className="p-0.5 rounded text-slate-400 hover:text-slate-600"><X size={12} /></button>
+            </div>
+            <SeccionResumen titulo="Subidos" items={r.subidos} tono="ok" Icono={CheckCircle2} />
+            <SeccionResumen titulo="Ya tenían PDF (omitidos)" items={r.yaTenian} tono="aviso" Icono={FileWarning} />
+            <SeccionResumen titulo="OC no encontrada en el índice" items={r.noEncontrada} tono="error" Icono={XCircle} />
+            <SeccionResumen titulo="Nombre no reconocido (se espera OC_número.pdf)" items={r.nombreNoReconocido} tono="error" Icono={XCircle} />
+            <SeccionResumen titulo="No es PDF" items={r.noPdf} tono="error" Icono={XCircle} />
+            <SeccionResumen titulo="Otros errores" items={r.otros} tono="error" Icono={XCircle} />
+          </div>
+        )}
+      </div>
+
+      <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+        <select value={d.anio} onChange={(e) => d.setAnio(e.target.value)} className={selectClase}>
+          <option value="">Año</option>
+          {d.anios.map(a => <option key={a} value={a}>{a}</option>)}
+        </select>
+        <select value={d.mes} onChange={(e) => d.setMes(e.target.value)} disabled={!d.anio} className={selectClase}>
+          <option value="">Mes</option>
+          {d.meses.map(m => <option key={m} value={m}>{NOMBRES_MESES[m] || m}</option>)}
+        </select>
+        <label className="relative">
+          <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={d.busqueda}
+            onChange={(e) => d.setBusqueda(e.target.value)}
+            placeholder="OC, admisión, paciente o empresa"
+            className="h-7 pl-6 pr-2 w-60 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-200 outline-none focus:border-[#2383C2]"
+          />
+        </label>
+        <span className="ml-auto text-[10px] text-slate-500 dark:text-gray-400">
+          {d.totalSinPdf} de {d.totalOC} OC sin PDF
+        </span>
+      </div>
+
+      <div className="flex-grow overflow-auto">
+        <table className="w-full text-left text-[11px] border-collapse">
+          <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
+            <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
+              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
+              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Admisión</th>
+              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Paciente</th>
+              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
+              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Fecha</th>
+              <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">PDF</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800 text-slate-700 dark:text-gray-200">
+            {d.filasPagina.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                  {d.totalSinPdf === 0 ? 'Todas las OC del índice ya tienen PDF.' : 'No hay OC sin PDF para los filtros seleccionados.'}
+                </td>
+              </tr>
+            ) : d.filasPagina.map(fila => (
+              <FilaOC
+                key={fila.oc}
+                fila={fila}
+                subiendo={subiendo?.oc === fila.oc ? subiendo : null}
+                deshabilitado={ocupado}
+                onArchivos={(archivos) => subirParaOC(fila.oc, archivos)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <PaginacionSimple pagina={d.pagina} totalPaginas={d.totalPaginas} totalFilas={d.totalFiltradas} setPagina={d.setPagina} />
+    </div>
+  );
+};
+
+export default OCSinPdf;

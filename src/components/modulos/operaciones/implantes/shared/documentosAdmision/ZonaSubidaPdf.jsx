@@ -12,7 +12,9 @@ export const ZonaSubidaPdf = ({
   onArchivos,
   deshabilitada = false,
   progreso = null, // { actual, total, porcentaje } mientras se sube
-  textoSoltar = 'Suelta los PDF para subirlos'
+  textoSoltar = 'Suelta los PDF para subirlos',
+  tamanoMaximoMb = TAMANO_MAXIMO_MB,
+  textoAyuda = 'Arrastra aquí los PDF o haz clic para seleccionarlos'
 }) => {
   const subiendo = progreso !== null;
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
@@ -47,9 +49,9 @@ export const ZonaSubidaPdf = ({
               ? 'Solo se aceptan archivos PDF'
               : isDragActive
                 ? textoSoltar
-                : 'Arrastra aquí los PDF o haz clic para seleccionarlos'}
+                : textoAyuda}
         </p>
-        {!subiendo && <p className="text-[9px] text-slate-400 dark:text-gray-500">Uno o varios, hasta {TAMANO_MAXIMO_MB} MB cada uno.</p>}
+        {!subiendo && <p className="text-[9px] text-slate-400 dark:text-gray-500">Uno o varios, hasta {tamanoMaximoMb} MB cada uno.</p>}
       </div>
 
       {subiendo && (
