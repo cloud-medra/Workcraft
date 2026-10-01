@@ -140,6 +140,8 @@ export const prepararCacheParaUsuario = (uid) => {
 export const limpiarCacheAlCerrarSesion = async () => {
   await terminarYLimpiar();
   borrarLS(CLAVE_UID_CACHE);
+  // Caché local del índice de OC (cacheIndiceOC.js): trae nombres de pacientes.
+  try { if (indexedDbDisponible()) indexedDB.deleteDatabase('workcraft_indice_oc'); } catch { /* sin IndexedDB */ }
 };
 
 export const storage = getStorage(app);
