@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  claveCruceOC, mezclarIndiceOC, agruparIndiceOC, cruzarCodigoOC, cruzarGestionesOC,
+  claveCruceOC, mezclarIndiceOC, periodosIndiceOC, agruparIndiceOC, cruzarCodigoOC, cruzarGestionesOC,
   calcularOcPendiente, ocsDeGestion, rangoFechasIndiceOC
 } from './indiceOC';
 import {
@@ -66,6 +66,12 @@ describe('mezclarIndiceOC', () => {
     const r = mezclarIndiceOC(indice, [fila()], ['F2', 'NO_EXISTE']);
     expect(Object.keys(r.indice)).toEqual(['F1']);
     expect(r.stats).toMatchObject({ eliminadas: 1, cambios: 1 });
+  });
+
+  it('lista los meses con OC, del más reciente al más antiguo', () => {
+    const { indice } = mezclarIndiceOC({}, [fila(), fila({ id: 'F2', fecha_cx: '2026-01-02' }), fila({ id: 'F3', fecha_cx: '2026-09-30' })]);
+    expect(periodosIndiceOC(indice)).toEqual(['2026-09', '2026-01']);
+    expect(periodosIndiceOC({})).toEqual([]);
   });
 
   it('calcula el rango de fechas', () => {

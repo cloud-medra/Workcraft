@@ -51,7 +51,7 @@ describe('useDetallesOCData', () => {
     mockGetDocs.mockResolvedValueOnce(docsDeIds(['09', '10'])); // meses del año elegido
     await act(async () => { result.current.setAnio('2026'); await Promise.resolve(); });
 
-    expect(result.current.meses).toEqual(['09', '10']);
+    expect(result.current.meses).toEqual(['10', '09']); // del más reciente al más antiguo
     expect(result.current.mes).toBe(''); // elegir año no elige mes automáticamente
     expect(mockGetDocs).toHaveBeenCalledTimes(2); // años + meses, todavía sin filas
   });
@@ -92,7 +92,7 @@ describe('useDetallesOCData', () => {
     expect(result.current.filas).toEqual([]);
   });
 
-  it('recargarFilas() vuelve a consultar el mismo período sin cambiar año/mes', async () => {
+  it('recargarFilas() vuelve a consultar el mismo período (y sus años/meses) sin cambiar año/mes', async () => {
     mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026']));
     const { result } = renderHook(() => useDetallesOCData());
     await act(async () => { await Promise.resolve(); });
@@ -103,11 +103,17 @@ describe('useDetallesOCData', () => {
     await act(async () => { result.current.setMes('09'); await Promise.resolve(); });
 
     const llamadasAntes = mockGetDocs.mock.calls.length;
+    // Tras importar pueden existir períodos nuevos: se releen años y meses
+    // (pocos docs marcador) además de las filas, en ese orden.
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026']));
+    mockGetDocs.mockResolvedValueOnce(docsDeIds(['10', '09']));
     mockGetDocs.mockResolvedValueOnce(docsDeIds(['1001', '1002']));
     await act(async () => { result.current.recargarFilas(); await Promise.resolve(); });
 
-    expect(mockGetDocs.mock.calls.length).toBe(llamadasAntes + 1);
+    expect(mockGetDocs.mock.calls.length).toBe(llamadasAntes + 3);
     expect(result.current.filas).toHaveLength(2);
+    expect(result.current.meses).toEqual(['10', '09']);
+    expect(result.current.mes).toBe('09');
   });
 
   // Reproduce el patrón real de ImportarDetallesOC.jsx (destructurar setAnio/

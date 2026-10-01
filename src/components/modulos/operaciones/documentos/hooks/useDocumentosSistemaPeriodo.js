@@ -63,7 +63,7 @@ export const useDocumentosSistemaPeriodo = (filtroServidor = null) => {
       setCargandoMeses(true);
       try {
         const snap = await getDocs(collection(db, COL_BASE, anio, 'meses'));
-        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => a.localeCompare(b));
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => b.localeCompare(a));
         if (!cancelado) setMeses(lista);
       } catch (err) {
         console.error('Error al cargar meses de documentos_sistema:', err);

@@ -200,6 +200,11 @@ const ImportarDetallesOC = () => {
 
       {hasPermission(PATH_VISTA, 'barra_filtros') && (
         <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
+          {!cargandoAnios && anios.length === 0 ? (
+            <span className="flex items-center gap-1.5 h-7 text-[11px] text-slate-500 dark:text-gray-400">
+              <AlertTriangle size={12} /> No hay detalles importados.
+            </span>
+          ) : (
           <div className="flex items-center gap-1.5">
             <select
               value={anio}
@@ -225,6 +230,7 @@ const ImportarDetallesOC = () => {
               ))}
             </select>
           </div>
+          )}
 
           <div className="relative w-56">
             <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />

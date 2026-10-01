@@ -3,6 +3,25 @@ import { obtenerFechaHoyISO } from '../utils/gestionesImportExport';
 
 export const TAMANO_PAGINA_TABLA = 50;
 
+// Años y meses con gestiones (fecha 'YYYY-MM-DD'), del más reciente al más
+// antiguo; los meses, solo del año elegido. El filtro activo se incluye
+// aunque no tenga datos (por defecto es el mes actual), para que el
+// selector muestre lo que realmente está filtrando.
+export const opcionesPeriodoGestiones = (implantes, { filtroAnio = '', filtroMes = '' } = {}) => {
+  const anios = new Set(filtroAnio ? [filtroAnio] : []);
+  const meses = new Set(filtroMes ? [filtroMes] : []);
+  implantes.forEach(({ fecha }) => {
+    const m = String(fecha || '').match(/^(\d{4})-(\d{2})/);
+    if (!m) return;
+    anios.add(m[1]);
+    if (!filtroAnio || m[1] === filtroAnio) meses.add(m[2]);
+  });
+  return {
+    anios: [...anios].sort().reverse(),
+    meses: [...meses].sort().reverse()
+  };
+};
+
 export const useGestionesImplantesFiltros = (implantes) => {
   const [busqueda, setBusqueda] = useState('');
 
@@ -19,26 +38,13 @@ export const useGestionesImplantesFiltros = (implantes) => {
   // (incluye fechas futuras).
   const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(true);
 
-  // Años/meses disponibles: se derivan de `implantes` completo (sin acotar
-  // por los demás filtros) — fuera del alcance de este cambio, ver nota en
-  // el resumen entregado al usuario.
-  const opcionesFechas = useMemo(() => {
-    const aniosSet = new Set();
-    const mesesSet = new Set();
-
-    implantes.forEach(item => {
-      if (item.fecha && item.fecha.includes('-')) {
-        const [yyyy, mm] = item.fecha.split('-');
-        if (yyyy) aniosSet.add(yyyy);
-        if (mm) mesesSet.add(mm);
-      }
-    });
-
-    return {
-      anios: Array.from(aniosSet).sort((a, b) => b - a),
-      meses: Array.from(mesesSet).sort((a, b) => a - b)
-    };
-  }, [implantes]);
+  // Años/meses disponibles, desde las gestiones ya cargadas (0 lecturas):
+  // solo períodos con datos, del más reciente al más antiguo, y los meses
+  // solo del año elegido. Ver opcionesPeriodoGestiones.
+  const opcionesFechas = useMemo(
+    () => opcionesPeriodoGestiones(implantes, { filtroAnio, filtroMes }),
+    [implantes, filtroAnio, filtroMes]
+  );
 
   // Filtrado en cascada: primero se aplican todos los filtros EXCEPTO
   // "Día" (búsqueda, año, mes, hasta-hoy, estados). Las opciones del

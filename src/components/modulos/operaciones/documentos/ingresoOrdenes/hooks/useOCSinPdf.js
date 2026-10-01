@@ -1,5 +1,6 @@
-// "OC sin PDF" de Ingreso de Órdenes. La pantalla abre VACÍA, sin leer nada.
-// Al elegir año y mes se leen solo las gestiones de ese mes
+// "OC sin PDF" de Ingreso de Órdenes. La pantalla abre con la tabla VACÍA.
+// Los selectores muestran solo los meses que tienen OC importadas
+// (ocImport/meta.periodos: 1 lectura al abrir). Al elegir año y mes se leen solo las gestiones de ese mes
 // (implantes_gestiones/{anio}/mes/{mes}) + el registro de PDF (1 lectura, la
 // primera vez en la sesión). Un mes ya visto sale de la caché en memoria.
 // La subida masiva no necesita mes: busca cada OC en el índice de OC (caché
@@ -7,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
-import { obtenerIndiceOC } from '../../../shared/ocIndex/indiceOCRemoto';
+import { obtenerIndiceOC, obtenerPeriodosOC } from '../../../shared/ocIndex/indiceOCRemoto';
 import { agruparIndicePorOC, clasificarArchivosOC } from '../../../shared/ordenesOC/ordenesOCHelpers';
 import { subirPdfOC, mensajeErrorPdfOC } from '../../../shared/ordenesOC/ordenesOCStorage';
 import { leerRegistroPdfOC, registrarPdfOC } from '../../../shared/ordenesOC/registroPdfOC';
@@ -16,11 +17,12 @@ import { normalizarTexto } from '../../../shared/ocIndex/normalizacionOC';
 
 export const TAMANO_PAGINA_OC_SIN_PDF = 50;
 
-// Años del selector, sin leer Firestore: el actual y los 4 anteriores.
-const CANTIDAD_ANIOS = 5;
-export const aniosSeleccionables = (hoy = new Date()) =>
-  Array.from({ length: CANTIDAD_ANIOS }, (_, i) => String(hoy.getFullYear() - i));
-export const MESES_SELECCIONABLES = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+// Periodos 'YYYY-MM' (del más reciente al más antiguo) -> años y, para el
+// año elegido, sus meses; ambos del más reciente al más antiguo.
+export const aniosDePeriodos = (periodos) => [...new Set(periodos.map(p => p.slice(0, 4)))].sort().reverse();
+export const mesesDePeriodos = (periodos, anio) => (anio
+  ? [...new Set(periodos.filter(p => p.startsWith(`${anio}-`)).map(p => p.slice(5, 7)))].sort().reverse()
+  : []);
 
 export const filtrarOCSinPdf = (filas, busqueda) => {
   const texto = normalizarTexto(busqueda);
@@ -45,6 +47,24 @@ export const useOCSinPdf = () => {
   const [recarga, setRecarga] = useState({ n: 0, forzar: false });
 
   const [indice, setIndice] = useState(null); // solo para la subida masiva
+  // Periodos con OC: { meta, periodos } o null mientras carga.
+  const [periodosOC, setPeriodosOC] = useState(null);
+  const [errorPeriodos, setErrorPeriodos] = useState(null);
+
+  useEffect(() => {
+    let vigente = true;
+    obtenerPeriodosOC()
+      .then(({ meta, periodos, indice: idx }) => {
+        if (!vigente) return;
+        setPeriodosOC({ meta, periodos });
+        if (idx) setIndice(idx); // meta antiguo: ya se cargó el índice para calcularlos
+      })
+      .catch((err) => {
+        console.error('Error al leer los períodos con OC:', err);
+        if (vigente) { setPeriodosOC({ meta: null, periodos: [] }); setErrorPeriodos('No se pudieron cargar los períodos.'); }
+      });
+    return () => { vigente = false; };
+  }, []);
   const [progreso, setProgreso] = useState(null); // { actual, total, porcentaje }
   const [preparando, setPreparando] = useState(false); // leyendo índice/registro antes de subir
   const [resumen, setResumen] = useState(null);
@@ -121,7 +141,8 @@ export const useOCSinPdf = () => {
     setPreparando(true);
     try {
       if (!idx) {
-        const { meta, indice: descargado } = await obtenerIndiceOC();
+        // Si los períodos ya leyeron el meta, no se vuelve a leer.
+        const { meta, indice: descargado } = await obtenerIndiceOC({ metaConocida: periodosOC?.meta || undefined });
         if (!meta) throw new Error('Aún no hay un índice de OC: importa el Excel en Importar Detalles OC.');
         idx = descargado;
         setIndice(idx);
@@ -184,9 +205,13 @@ export const useOCSinPdf = () => {
     );
   };
 
+  const periodos = periodosOC?.periodos || [];
   return {
-    anio, setAnio, anios: aniosSeleccionables(),
-    mes, setMes, meses: MESES_SELECCIONABLES,
+    cargandoPeriodos: periodosOC === null,
+    sinPeriodos: periodosOC !== null && periodos.length === 0,
+    errorPeriodos,
+    anio, setAnio, anios: aniosDePeriodos(periodos),
+    mes, setMes, meses: mesesDePeriodos(periodos, anio),
     busqueda, setBusqueda,
     mesSeleccionado: Boolean(claveMes),
     cargando, error, actualizarMes,

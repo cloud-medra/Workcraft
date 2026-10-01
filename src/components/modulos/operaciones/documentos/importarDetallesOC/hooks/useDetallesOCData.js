@@ -53,7 +53,7 @@ export const useDetallesOCData = () => {
       }
     })();
     return () => { cancelado = true; };
-  }, []);
+  }, [refrescarKey]);
 
   // Meses disponibles del año elegido: mismo criterio (docs marcador de
   // nivel mes bajo ese año), se recargan cada vez que cambia `anio`.
@@ -64,7 +64,7 @@ export const useDetallesOCData = () => {
       setCargandoMeses(true);
       try {
         const snap = await getDocs(collection(db, COL_BASE, anio, 'meses'));
-        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => a.localeCompare(b));
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => b.localeCompare(a));
         if (!cancelado) setMeses(lista);
       } catch (err) {
         console.error('Error al cargar meses de Detalles OC:', err);
@@ -73,7 +73,7 @@ export const useDetallesOCData = () => {
       }
     })();
     return () => { cancelado = true; };
-  }, [anio]);
+  }, [anio, refrescarKey]);
 
   // Filas del período: solo se dispara con año Y mes seleccionados. El
   // rango de documentId() acota el collectionGroup "detalles" al prefijo
@@ -124,7 +124,9 @@ export const useDetallesOCData = () => {
   }, []);
 
   // Fuerza releer el período actual (ej. después de importar un Excel que
-  // pudo haber modificado filas del mes que se está viendo).
+  // pudo haber modificado filas del mes que se está viendo). También relee
+  // los años y meses (pocos docs marcador): la importación pudo crear
+  // períodos nuevos.
   const recargarFilas = useCallback(() => {
     setRefrescarKey(k => k + 1);
   }, []);

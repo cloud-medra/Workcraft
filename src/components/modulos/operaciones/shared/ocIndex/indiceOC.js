@@ -76,6 +76,18 @@ export const rangoFechasIndiceOC = (indice) => {
   return { fechaMin: min, fechaMax: max };
 };
 
+// Meses ('YYYY-MM') que tienen OC en el índice, del más reciente al más
+// antiguo. Se publican en ocImport/meta para armar los selectores de período
+// con 1 lectura, sin descargar el índice.
+export const periodosIndiceOC = (indice) => {
+  const set = new Set();
+  Object.values(indice || {}).forEach(({ k }) => {
+    const m = String(k || '').split('|')[1]?.match(/^(\d{4})-(\d{2})/);
+    if (m) set.add(`${m[1]}-${m[2]}`);
+  });
+  return [...set].sort().reverse();
+};
+
 // Map clave -> [{ e, oc, p }] para búsquedas O(1) durante el cruce.
 export const agruparIndiceOC = (indice) => {
   const mapa = new Map();

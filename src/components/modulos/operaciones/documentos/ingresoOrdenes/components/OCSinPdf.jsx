@@ -129,14 +129,26 @@ const OCSinPdf = () => {
       </div>
 
       <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
-        <select value={d.anio} onChange={(e) => d.setAnio(e.target.value)} disabled={d.cargando} className={selectClase}>
-          <option value="">Año</option>
-          {d.anios.map(a => <option key={a} value={a}>{a}</option>)}
-        </select>
-        <select value={d.mes} onChange={(e) => d.setMes(e.target.value)} disabled={!d.anio || d.cargando} className={selectClase}>
-          <option value="">Mes</option>
-          {d.meses.map(m => <option key={m} value={m}>{NOMBRES_MESES[m] || m}</option>)}
-        </select>
+        {d.cargandoPeriodos ? (
+          <span className="flex items-center gap-1.5 h-7 text-[11px] text-slate-400 dark:text-gray-500">
+            <Loader2 size={12} className="animate-spin" /> Cargando períodos...
+          </span>
+        ) : d.sinPeriodos ? (
+          <span className={`flex items-center gap-1.5 h-7 text-[11px] ${d.errorPeriodos ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-gray-400'}`}>
+            <AlertCircle size={12} /> {d.errorPeriodos || 'No hay órdenes importadas.'}
+          </span>
+        ) : (
+          <>
+            <select value={d.anio} onChange={(e) => d.setAnio(e.target.value)} disabled={d.cargando} className={selectClase}>
+              <option value="">Año</option>
+              {d.anios.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <select value={d.mes} onChange={(e) => d.setMes(e.target.value)} disabled={!d.anio || d.cargando} className={selectClase}>
+              <option value="">Mes</option>
+              {d.meses.map(m => <option key={m} value={m}>{NOMBRES_MESES[m] || m}</option>)}
+            </select>
+          </>
+        )}
         <label className="relative">
           <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -189,7 +201,7 @@ const OCSinPdf = () => {
                   {!d.mesSeleccionado ? (
                     <span className="inline-flex flex-col items-center gap-1.5">
                       <CalendarSearch size={22} className="text-slate-300 dark:text-gray-600" />
-                      Selecciona año y mes para ver las órdenes sin PDF
+                      {d.sinPeriodos ? 'No hay órdenes importadas. Importa el Excel en Importar Detalles OC.' : 'Selecciona año y mes para ver las órdenes sin PDF'}
                     </span>
                   ) : d.cargando ? (
                     <span className="inline-flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> Cargando gestiones del mes...</span>

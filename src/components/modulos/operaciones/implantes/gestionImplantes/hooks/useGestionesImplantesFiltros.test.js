@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { useGestionesImplantesFiltros } from './useGestionesImplantesFiltros';
+import { useGestionesImplantesFiltros, opcionesPeriodoGestiones } from './useGestionesImplantesFiltros';
 
 const implante = (id, fecha, estado) => ({
   id, gestionId: id, agendaId: id, nombre: `Paciente ${id}`, empresa: 'EmpresaX', fecha, estado
@@ -143,5 +143,19 @@ describe('useGestionesImplantesFiltros — cascada del filtro de Día', () => {
 
     act(() => { result.current.limpiarFiltroDias(); });
     expect(result.current.filtrosDias).toEqual([]);
+  });
+});
+
+describe('opcionesPeriodoGestiones', () => {
+  const gestiones = [{ fecha: '2026-09-15' }, { fecha: '2026-03-01' }, { fecha: '2025-12-20' }, { fecha: 'P' }];
+
+  it('solo períodos con datos, del más reciente al más antiguo, meses del año elegido', () => {
+    expect(opcionesPeriodoGestiones(gestiones)).toEqual({ anios: ['2026', '2025'], meses: ['12', '09', '03'] });
+    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2026' }).meses).toEqual(['09', '03']);
+    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2025' }).meses).toEqual(['12']);
+  });
+
+  it('incluye el filtro activo aunque no tenga datos', () => {
+    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2026', filtroMes: '10' }).meses).toEqual(['10', '09', '03']);
   });
 });

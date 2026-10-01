@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('../../../../../../firebaseConfig', () => ({ db: {}, storage: {}, auth: {} }));
-const { filtrarOCSinPdf, aniosSeleccionables } = await import('./useOCSinPdf');
+const { filtrarOCSinPdf, aniosDePeriodos, mesesDePeriodos } = await import('./useOCSinPdf');
 
 const filas = [
   { oc: '4500001', admisiones: ['100001'], pacientes: ['JOSÉ PÉREZ'], empresas: ['MEDTRONIC'], fechas: ['2026-09-15'] },
@@ -16,8 +16,13 @@ describe('filtrarOCSinPdf', () => {
   });
 });
 
-describe('aniosSeleccionables', () => {
-  it('el año actual y los 4 anteriores, sin leer Firestore', () => {
-    expect(aniosSeleccionables(new Date(2026, 9, 1))).toEqual(['2026', '2025', '2024', '2023', '2022']);
+describe('aniosDePeriodos / mesesDePeriodos', () => {
+  it('solo años y meses con OC, del más reciente al más antiguo', () => {
+    const periodos = ['2026-09', '2026-03', '2025-12', '2025-11'];
+    expect(aniosDePeriodos(periodos)).toEqual(['2026', '2025']);
+    expect(mesesDePeriodos(periodos, '2026')).toEqual(['09', '03']);
+    expect(mesesDePeriodos(periodos, '2025')).toEqual(['12', '11']);
+    expect(mesesDePeriodos(periodos, '')).toEqual([]);
+    expect(aniosDePeriodos([])).toEqual([]);
   });
 });

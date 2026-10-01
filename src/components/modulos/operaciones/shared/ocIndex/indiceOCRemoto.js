@@ -8,7 +8,7 @@
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadString, getBytes } from 'firebase/storage';
 import { db, storage } from '../../../../../firebaseConfig';
-import { rangoFechasIndiceOC, FORMATO_INDICE_OC } from './indiceOC';
+import { rangoFechasIndiceOC, periodosIndiceOC, FORMATO_INDICE_OC } from './indiceOC';
 import { leerCacheIndiceOC, guardarCacheIndiceOC } from './cacheIndiceOC';
 
 const RUTA_INDICE = 'snapshots/indiceOC/indiceOC.json';
@@ -44,18 +44,24 @@ export const publicarIndiceOC = async (indice) => {
     version,
     totalEntradas,
     ...rangoFechasIndiceOC(indice),
+    periodos: periodosIndiceOC(indice),
     updatedAt: serverTimestamp()
   }, { merge: true });
   await guardarCacheIndiceOC({ version, indice });
   return version;
 };
 
-// Meta (1 lectura) + índice: desde la caché local si la versión coincide,
-// o descargado de Storage (0 lecturas de Firestore) si cambió.
-export const obtenerIndiceOC = async () => {
+export const leerMetaOC = async () => {
   const snap = await getDoc(refMeta());
-  if (!snap.exists()) return { meta: null, indice: {}, desdeCache: false };
-  const meta = snap.data();
+  return snap.exists() ? snap.data() : null;
+};
+
+// Meta (1 lectura) + índice: desde la caché local si la versión coincide,
+// o descargado de Storage (0 lecturas de Firestore) si cambió. Con
+// `metaConocida` (recién leída) no se vuelve a leer ocImport/meta.
+export const obtenerIndiceOC = async ({ metaConocida } = {}) => {
+  const meta = metaConocida || await leerMetaOC();
+  if (!meta) return { meta: null, indice: {}, desdeCache: false };
 
   const cache = await leerCacheIndiceOC();
   if (cache?.version === meta.version) return { meta, indice: cache.indice, desdeCache: true };
@@ -63,6 +69,19 @@ export const obtenerIndiceOC = async () => {
   const { indice } = await descargarIndiceOC();
   await guardarCacheIndiceOC({ version: meta.version, indice });
   return { meta, indice, desdeCache: false };
+};
+
+// Meses con OC ('YYYY-MM', del más reciente al más antiguo) para los
+// selectores de período: 1 lectura (ocImport/meta). Si el meta es de antes
+// de que existiera `periodos`, se calculan desde el índice (caché local, o
+// descarga de Storage si cambió la versión). Al importar un Excel nuevo
+// cambia el meta, así que la lista siempre sigue a la última versión.
+export const obtenerPeriodosOC = async () => {
+  const meta = await leerMetaOC();
+  if (!meta) return { meta: null, periodos: [] };
+  if (Array.isArray(meta.periodos)) return { meta, periodos: meta.periodos };
+  const { indice } = await obtenerIndiceOC({ metaConocida: meta });
+  return { meta, periodos: periodosIndiceOC(indice), indice };
 };
 
 export const registrarSincronizacionOC = (version) =>
