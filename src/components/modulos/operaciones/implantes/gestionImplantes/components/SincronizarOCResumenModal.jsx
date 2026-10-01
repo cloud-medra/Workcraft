@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Hash, X, CheckCircle2, SearchX, Building2, Scale, GitFork, UserCheck, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Hash, X, CheckCircle2, SearchX, Building2, Scale, GitFork, UserCheck, AlertTriangle, ChevronDown, ChevronUp, ArrowRightLeft } from 'lucide-react';
 import { formatearFechaTabla } from './Cargastab/cargasHelpers';
 
 const TIPOS = {
@@ -29,7 +29,7 @@ const Contador = ({ Icon, valor, label, clase }) => (
 export const SincronizarOCResumenModal = ({ resumen, onClose }) => {
   const [verDetalle, setVerDetalle] = useState(false);
   if (!resumen) return null;
-  const { contadores, detalle, erroresEscritura } = resumen;
+  const { contadores, detalle, erroresEscritura, invalidacion } = resumen;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-[1px] p-4">
@@ -47,6 +47,25 @@ export const SincronizarOCResumenModal = ({ resumen, onClose }) => {
             Se revisaron <strong>{resumen.gestionesRevisadas}</strong> gestión(es) con OC pendiente;
             se guardaron OC en <strong>{resumen.gestionesActualizadas}</strong>.
           </p>
+
+          {invalidacion && (
+            <div className={`flex items-start gap-1.5 rounded px-2.5 py-1.5 border ${invalidacion.error
+              ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40'
+              : 'text-sky-800 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-900/40'}`}>
+              <ArrowRightLeft size={13} className="shrink-0 mt-0.5" />
+              {invalidacion.error ? (
+                <span>
+                  No se pudieron aplicar {invalidacion.correcciones} corrección(es) pendiente(s) de OC cambiadas: {invalidacion.error} Siguen pendientes para la próxima sincronización.
+                </span>
+              ) : (
+                <span>
+                  Se aplicaron <strong>{invalidacion.correcciones}</strong> corrección(es) pendiente(s) de OC cambiadas (de una importación de Detalles OC):
+                  se quitó la OC antigua de <strong>{invalidacion.itemsLiberados}</strong> ítem(s) en <strong>{invalidacion.gestionesActualizadas}</strong> gestión(es),
+                  que entraron en esta sincronización para recibir la OC nueva.
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-2">
             <Contador Icon={CheckCircle2} valor={resumen.itemsActualizados} label="filas actualizadas" clase="text-emerald-700 dark:text-emerald-400" />

@@ -34,7 +34,7 @@ export const ejecutarSincronizacionOC = async ({ meta, indice }, { userData } = 
   let invalidacion = null;
   const pendientes = meta.ocInvalidacionesPendientes || [];
   if (pendientes.length > 0) {
-    invalidacion = await invalidarOCGestiones(pendientes, { usuario: userData });
+    invalidacion = { ...(await invalidarOCGestiones(pendientes, { usuario: userData })), correcciones: pendientes.length };
     if (!invalidacion.error) await limpiarInvalidacionesPendientes();
   }
 
