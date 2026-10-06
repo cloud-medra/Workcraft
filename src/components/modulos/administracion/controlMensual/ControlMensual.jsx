@@ -65,7 +65,7 @@ const ControlMensual = () => {
     });
   });
 
-  // Los módulos se ordenan por grupo (Facturación primero, luego Consumos) en vez
+  // Los módulos se ordenan por grupo (Consumos primero, luego Facturación) en vez
   // de mezclados, para que la matriz se lea agrupada en los dos bloques del consolidado.
   const modulosOrdenadosPorGrupo = GRUPOS.flatMap(grupo => MODULOS.filter(m => grupo.moduloIds.includes(m.id)));
 

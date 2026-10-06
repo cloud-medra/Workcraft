@@ -13,11 +13,13 @@ export const MODULOS = [
 ];
 
 // Agrupación del consolidado según el origen de los datos:
-// Facturación = módulos alimentados por ingreso de factura electrónica.
 // Consumos = módulos alimentados por cargas manuales.
+// Facturación = módulos alimentados por ingreso de factura electrónica.
+// El orden del arreglo es el orden en pantalla (Control Mensual y Período
+// Actual): Consumos primero.
 export const GRUPOS = [
-  { id: 'facturacion', nombre: 'Facturación', moduloIds: ['laboratorio', 'vacunatorio'] },
   { id: 'consumos', nombre: 'Consumos', moduloIds: ['implantes', 'consignacion', 'hemodinamia'] },
+  { id: 'facturacion', nombre: 'Facturación', moduloIds: ['laboratorio', 'vacunatorio'] },
 ];
 
 export const MESES = [

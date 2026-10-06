@@ -71,7 +71,7 @@ const ResumenPeriodoAbierto = () => {
     return null;
   }, [estadosModulos, anioActualStr]);
 
-  // Consolidar totales del período activo, separados por grupo (Facturación / Consumos)
+  // Consolidar totales del período activo, separados por grupo (Consumos / Facturación)
   const resumenPorGrupo = useMemo(() => {
     if (!periodoAbiertoInfo) return null;
 
@@ -195,7 +195,7 @@ const ResumenPeriodoAbierto = () => {
         </div>
       </div>
 
-      {/* Dos bloques consolidados independientes: Facturación y Consumos */}
+      {/* Dos bloques consolidados independientes: Consumos y Facturación */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
         {resumenPorGrupo.map((grupo) => (
           <div
