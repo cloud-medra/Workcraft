@@ -43,14 +43,40 @@ export const mapearDatosVinculados = (datosReporte) => ({
   descripcionPabellon: datosReporte?.['Descripción'] || ''
 });
 
+// Descripción del producto: siempre descriptorAuto (texto completo).
+// descriptorEmpresa es un texto abreviado y solo se usa si el ítem no
+// tiene descriptorAuto.
+export const descripcionDesdeMaestro = (item) =>
+  item?.descriptorAuto || item?.descriptorEmpresa || '';
+
 // Ítem de maestros_codigos -> campos del documento.
 export const mapearItemMaestro = (item) => ({
   referencia: item?.referencia || '',
   codigo: item?.codigo || '',
   costo: item?.precioNeto ?? '',
-  descripcion: item?.descriptorEmpresa || item?.descriptorAuto || '',
+  descripcion: descripcionDesdeMaestro(item),
   empresa: item?.empresa || ''
 });
+
+const normalizarClave = (valor) => String(valor ?? '').trim().toUpperCase();
+
+// Busca en el maestro (ya filtrado por tipo, ver obtenerCodigosCacheados)
+// el ítem con ese Código interno o, si no hay, con esa Referencia exacta
+// (sin distinguir mayúsculas). Devuelve el ítem o null.
+export const buscarItemMaestro = (codigos, { codigo, referencia } = {}) => {
+  const lista = codigos || [];
+  const cod = normalizarClave(codigo);
+  if (cod) {
+    const porCodigo = lista.find((item) => normalizarClave(item.codigo) === cod);
+    if (porCodigo) return porCodigo;
+  }
+  const ref = normalizarClave(referencia);
+  if (ref) {
+    const porReferencia = lista.find((item) => normalizarClave(item.referencia) === ref);
+    if (porReferencia) return porReferencia;
+  }
+  return null;
+};
 
 // Campos obligatorios de un registro. Devuelve { campo: true } por cada
 // campo con problema (vacío si es válido).

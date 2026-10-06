@@ -134,9 +134,12 @@ describe('evaluarFila', () => {
     expect(r.observacion).toBe('');
   });
 
-  it('Detalle: igual que Registro, descriptorEmpresa tiene prioridad sobre descriptorAuto', () => {
-    const r = evaluarFila(valores(), { reporte: REPORTE, item: { ...ITEM, descriptorAuto: 'AUTO' }, tipo: 'CONSIGNACION' });
-    expect(r.vinculados.descripcion).toBe('TORNILLO 3.5');
+  it('Detalle: con descriptorAuto y descriptorEmpresa presentes usa descriptorAuto completo (muestra y guarda)', () => {
+    const item = { ...ITEM, descriptorEmpresa: 'KITBYPASSTCRL2', descriptorAuto: 'BYPASS2 KITBYPASSTCRL2' };
+    const r = evaluarFila(valores(), { reporte: REPORTE, item, tipo: 'CONSIGNACION' });
+    expect(r.vinculados.descripcion).toBe('BYPASS2 KITBYPASSTCRL2');
+    expect(r.payload.descripcion).toBe('BYPASS2 KITBYPASSTCRL2');
+    expect(construirDatosDoc(r.payload).descripcion).toBe('BYPASS2 KITBYPASSTCRL2');
   });
 
   it('Detalle: vacío si el código no está en el maestro', () => {

@@ -8,6 +8,7 @@ import {
   ESTADO_FIJO,
   mapearDatosVinculados,
   mapearItemMaestro,
+  descripcionDesdeMaestro,
   validarRegistroConsignacion
 } from '../../utils/registroConsignacionService';
 
@@ -435,7 +436,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
                       <span className="font-mono text-[8px] text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
                     </div>
                     <div className="text-[9px] text-gray-400 dark:text-gray-500 truncate">
-                      {item.descriptorEmpresa || item.descriptorAuto || 'Sin descripción'} · {item.empresa || 'N/A'}
+                      {descripcionDesdeMaestro(item) || 'Sin descripción'} · {item.empresa || 'N/A'}
                     </div>
                   </button>
                 ))

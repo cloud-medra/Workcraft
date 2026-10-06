@@ -157,7 +157,7 @@ export const construirPayloadFila = (valores, { fecha, cantidad, reporte, item, 
 // Devuelve { estado, observacion, celdasError, celdasAdvertencia, payload, vinculados }.
 // `observacion`: mensajes de error/advertencia de la fila.
 // `vinculados.descripcion`: descripción del producto (columna Detalle), con
-// el mismo mapeo que Registro (descriptorEmpresa || descriptorAuto).
+// el mismo mapeo que Registro (descripcionDesdeMaestro: descriptorAuto).
 export const evaluarFila = (valores, { reporte, item, tipo }) => {
   const { errores, fecha, cantidad } = validarFormatoFila(valores);
   const celdasError = { ...errores };

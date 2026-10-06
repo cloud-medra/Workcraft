@@ -5,11 +5,13 @@ import { db } from '../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
-import { User, Package, UploadCloud, Loader2, AlertCircle, CheckCircle2, Save, Link2, Pencil, Check, X, Lock, Unlock } from 'lucide-react';
+import { User, Package, UploadCloud, Loader2, AlertCircle, CheckCircle2, Save, Link2, Pencil, Check, X, Lock, Unlock, RefreshCw } from 'lucide-react';
 import { resolverGuiaCacheada, resolverMaestroCacheado, resolverMaestrosCacheados, normalizarCodigo } from './cacheDelivery';
 import { useAutocompleteReferenciaConsignacion } from './useAutocompleteReferenciaConsignacion';
 import { periodoEstaAbierto } from './verificacionPeriodoConsignacion';
 import { registrarLogConsignacion } from '../../utils/registrarLogConsignacion';
+import { mapearItemMaestro, buscarItemMaestro } from '../../utils/registroConsignacionService';
+import { obtenerCodigosCacheados } from '../../registroConsignacion/utils/cacheMaestros';
 import { useCatalogo } from '../../../../../../hooks/useCatalogo';
 import { ordenarPor } from '../../../../../../stores/catalogosStore';
 
@@ -625,17 +627,55 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
     }));
   };
 
+  // Campos del borrador que vienen del maestro: mismo mapeo que Registro y
+  // Carga Masiva (descripción = descriptorAuto).
+  const camposMaestroBorrador = (item, prev) => {
+    const m = mapearItemMaestro(item);
+    return {
+      referencia: m.referencia || prev.referencia,
+      codigo: m.codigo,
+      empresa: m.empresa,
+      descripcion: m.descripcion,
+      costo: m.costo === '' ? 0 : m.costo
+    };
+  };
+
+  const tipoMaestroDeItem = (it) => it.atributo || it.tipo || 'CONSIGNACION';
+
+  // Misma búsqueda en el maestro que Registro y Carga Masiva: catálogo
+  // filtrado por tipo (atributo del ítem) y coincidencia exacta por Código
+  // interno o, si no, por Referencia.
+  const buscarEnMaestroParaItem = async (it, { codigo, referencia }) => {
+    const codigos = await obtenerCodigosCacheados(db, tipoMaestroDeItem(it));
+    return buscarItemMaestro(codigos, { codigo, referencia });
+  };
+
   const handleSeleccionarSugerenciaEdicion = (item) => {
     skipNextEdicion.current = true;
-    setBorradorItem(prev => ({
-      ...prev,
-      referencia: item.referencia || prev.referencia,
-      codigo: item.codigo || '',
-      empresa: item.empresa || '',
-      descripcion: item.descriptorEmpresa || item.descriptorAuto || '',
-      costo: item.precioNeto ?? 0
-    }));
+    setBorradorItem(prev => ({ ...prev, ...camposMaestroBorrador(item, prev) }));
     setMostrarSugEdicion(false);
+  };
+
+  // "Actualizar desde maestro": vuelve a traer descripción, código,
+  // empresa y precio sin cambiar la referencia (corrige registros antiguos).
+  const [actualizandoMaestroId, setActualizandoMaestroId] = useState(null);
+  const handleActualizarDesdeMaestro = async (it) => {
+    if (actualizandoMaestroId) return;
+    setActualizandoMaestroId(it.id);
+    try {
+      const item = await buscarEnMaestroParaItem(it, borradorItem);
+      if (!item) {
+        showToast(`"${borradorItem.referencia.trim() || borradorItem.codigo}" no está en el maestro (${tipoMaestroDeItem(it)})`, 'error');
+        return;
+      }
+      setBorradorItem(prev => ({ ...prev, ...camposMaestroBorrador(item, prev) }));
+      showToast('Datos actualizados desde el maestro. Presiona ✓ para guardar.', 'info');
+    } catch (err) {
+      console.error('Error al consultar el maestro:', err);
+      showToast('No se pudo consultar el maestro. Intentá de nuevo.', 'error');
+    } finally {
+      setActualizandoMaestroId(null);
+    }
   };
 
   const guardarEdicionItem = async (it) => {
@@ -643,21 +683,34 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
     if (!borradorItem.referencia.trim() || !borradorItem.cantidad || isNaN(cantidadNum) || cantidadNum <= 0) return;
     if (!it.ref) return;
 
-    const estaSolicitado = (it.estado || '').toUpperCase() === 'SOLICITADO';
-    const costoNum = borradorItem.costo !== '' ? Number(borradorItem.costo) : 0;
-    const camposEditados = {
-      referencia: borradorItem.referencia.trim(),
-      codigo: borradorItem.codigo || '',
-      empresa: borradorItem.empresa || '',
-      descripcion: borradorItem.descripcion || '',
-      costo: costoNum,
-      cantidad: cantidadNum,
-      lote: borradorItem.lote.trim(),
-      vencimiento: borradorItem.vencimiento || ''
-    };
-
     setGuardandoEdicionId(it.id);
     try {
+      // Referencia escrita a mano sin elegir sugerencia: se busca en el
+      // maestro para no guardar el registro sin sus datos.
+      let borrador = borradorItem;
+      const referenciaCambio = borrador.referencia.trim() !== (it.referencia || '').trim();
+      if (referenciaCambio && !borrador.codigo && !borrador.descripcion) {
+        const item = await buscarEnMaestroParaItem(it, { referencia: borrador.referencia });
+        if (!item) {
+          showToast(`La referencia "${borrador.referencia.trim()}" no está en el maestro (${tipoMaestroDeItem(it)}). Selecciónala de la lista.`, 'error');
+          return;
+        }
+        borrador = { ...borrador, ...camposMaestroBorrador(item, borrador) };
+      }
+
+      const estaSolicitado = (it.estado || '').toUpperCase() === 'SOLICITADO';
+      const costoNum = borrador.costo !== '' ? Number(borrador.costo) : 0;
+      const camposEditados = {
+        referencia: borrador.referencia.trim(),
+        codigo: borrador.codigo || '',
+        empresa: borrador.empresa || '',
+        descripcion: borrador.descripcion || '',
+        costo: costoNum,
+        cantidad: cantidadNum,
+        lote: borrador.lote.trim(),
+        vencimiento: borrador.vencimiento || ''
+      };
+
       if (estaSolicitado) {
         // Solo se llega acá con el candado ya desbloqueado (el lápiz está
         // reemplazado por el candado si no) — de todos modos se re-verifica
@@ -695,6 +748,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
         });
       } else {
         await updateDoc(it.ref, camposEditados);
+        await registrarLog(it.ref, 'ITEM_EDITADO', camposEditados);
       }
 
       cancelarEdicionItem();
@@ -1035,6 +1089,15 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                           </td>
                           <td className="px-2 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
                             <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleActualizarDesdeMaestro(it)}
+                                disabled={guardandoEsteItem || actualizandoMaestroId === it.id}
+                                title="Actualizar desde maestro (descripción, código, empresa y precio)"
+                                className="text-blue-600 hover:text-blue-800 transition p-0.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30 disabled:opacity-40"
+                              >
+                                <RefreshCw size={13} className={actualizandoMaestroId === it.id ? 'animate-spin' : ''} />
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => guardarEdicionItem(it)}

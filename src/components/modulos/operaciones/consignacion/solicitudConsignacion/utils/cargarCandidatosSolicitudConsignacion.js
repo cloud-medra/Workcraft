@@ -10,6 +10,7 @@
 import { collectionGroup, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../../firebaseConfig';
 import { codigosPorReferenciaSiDisponible } from '../../../../../../stores/catalogosStore';
+import { descripcionDesdeMaestro } from '../../utils/registroConsignacionService';
 
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_ORIGEN = 'CARGADO';
@@ -70,7 +71,7 @@ const resolverMaestrosCacheados = async (referencias, forzar) => {
     unicas.forEach(r => {
       const data = enMemoria.get(r);
       resultado[r] = data
-        ? { descripcion: data.descriptorEmpresa || data.descriptorAuto || '', tipo: data.tipo || '', empresa: data.empresa || '' }
+        ? { descripcion: descripcionDesdeMaestro(data), tipo: data.tipo || '', empresa: data.empresa || '' }
         : null;
     });
     return resultado;
@@ -89,7 +90,7 @@ const resolverMaestrosCacheados = async (referencias, forzar) => {
           const data = d.data();
           if (data.referencia) {
             cacheMaestrosPorCodigo.set(data.referencia, {
-              descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
+              descripcion: descripcionDesdeMaestro(data),
               tipo: data.tipo || '',
               empresa: data.empresa || ''
             });

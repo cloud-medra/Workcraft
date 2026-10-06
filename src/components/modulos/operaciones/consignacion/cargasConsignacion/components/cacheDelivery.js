@@ -1,5 +1,6 @@
 import { collectionGroup, collection, query, where, getDocs } from 'firebase/firestore';
 import { codigosPorReferenciaSiDisponible } from '../../../../../../stores/catalogosStore';
+import { descripcionDesdeMaestro } from '../../utils/registroConsignacionService';
 
 const NOMBRE_SUBCOL_DETALLES_GUIAS = 'detalles';
 const COL_BASE = 'consignacion_registros';
@@ -76,7 +77,7 @@ export function resolverGuiaCacheada(db, numeroDocumento, forzar = false) {
 const vinculoDesdeMaestro = (data) => (data
   ? {
       codigo: data.codigo || '',
-      descripcion: data.descriptorEmpresa || data.descriptorAuto || '',
+      descripcion: descripcionDesdeMaestro(data),
       tipo: data.tipo || '',
       empresa: data.empresa || ''
     }
