@@ -7,6 +7,7 @@ import {
   mesesDisponiblesPorSondeoImputadas,
   construirQueryAnioImputadas
 } from '../../administracion/cargasConsolidado/hooks/periodoQueryHelpers';
+import { ordenarMeses } from '../../../../utils/ordenarMeses';
 
 export const TODOS_LOS_MESES = 'TODOS';
 
@@ -62,7 +63,7 @@ export const useResumenImputadas = (raiz) => {
     let cancelado = false;
     mesesDisponiblesPorSondeoImputadas(raiz, anio)
       .then(lista => {
-        if (!cancelado) setMeses({ clave: claveMeses, lista: [...lista].sort((a, b) => a.localeCompare(b)) });
+        if (!cancelado) setMeses({ clave: claveMeses, lista: ordenarMeses(lista) });
       })
       .catch(error => {
         console.error(`Error al obtener los meses de ${raiz}/${anio}:`, error);

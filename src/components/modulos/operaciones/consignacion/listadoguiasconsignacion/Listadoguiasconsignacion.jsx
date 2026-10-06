@@ -17,6 +17,7 @@ import {
   Package,
   AlertCircle,
 } from 'lucide-react';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 const NOMBRES_MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -59,7 +60,7 @@ const ListadoGuiasConsignacion = () => {
   );
 
   const mesesDisponibles = useMemo(
-    () => (calendario[año] ? [...calendario[año]].sort((a, b) => a - b) : []),
+    () => (calendario[año] ? ordenarMeses(calendario[año]) : []),
     [calendario, año]
   );
 
@@ -165,7 +166,7 @@ const ListadoGuiasConsignacion = () => {
       setProductos([]);
       return;
     }
-    const meses = calendario[año] ? [...calendario[año]].sort((a, b) => a - b) : [];
+    const meses = calendario[año] ? ordenarMeses(calendario[año]) : [];
     if (mesNumero && !meses.includes(Number(mesNumero))) {
       setMesNumero('');
       return; // este mismo efecto se vuelve a ejecutar con mesNumero=''

@@ -21,6 +21,7 @@ import { buscarReporteInfoPorAdmision } from '../registroConsignacion/utils/busc
 import CargasConsignacionFiltros from './components/CargasConsignacionFiltros';
 import CargasConsignacionTable from './components/CargasConsignacionTable';
 import CargasConsignacionDetalleView from './components/CargasConsignacionDetalleView';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 const obtenerFechaHoyISO = () => {
   const hoy = new Date();
@@ -223,7 +224,7 @@ const CargasConsignacion = () => {
 
     return {
       anios: [...anios].sort((a, b) => b.localeCompare(a)),
-      meses: [...meses].sort((a, b) => a.localeCompare(b)),
+      meses: ordenarMeses(meses),
       dias: [...dias].sort((a, b) => a.localeCompare(b))
     };
   }, [registros, anioActual, mesActual]);

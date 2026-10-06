@@ -35,6 +35,7 @@ import {
 import RegistroConsignacionForm from './components/RegistroConsignacionForm';
 import ConsignacionFiltros from './components/ConsignacionFiltros';
 import ConsignacionTable from './components/ConsignacionTable';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 const TAMANO_PAGINA = 150;
 
@@ -319,7 +320,7 @@ const RegistroConsignacion = () => {
 
     return {
       anios: [...anios].sort((a, b) => b.localeCompare(a)),
-      meses: [...meses].sort((a, b) => a.localeCompare(b)),
+      meses: ordenarMeses(meses),
       dias: [...dias].sort((a, b) => a.localeCompare(b))
     };
   }, [registros]);
