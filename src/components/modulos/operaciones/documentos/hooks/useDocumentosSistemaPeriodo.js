@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { collection, collectionGroup, query, where, orderBy, limit, documentId, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 export const COL_BASE = 'documentos_sistema';
 // Tope defensivo: un mes es chico, pero un año completo sin filtro de estado
@@ -63,8 +64,8 @@ export const useDocumentosSistemaPeriodo = (filtroServidor = null) => {
       setCargandoMeses(true);
       try {
         const snap = await getDocs(collection(db, COL_BASE, anio, 'meses'));
-        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id)).sort((a, b) => b.localeCompare(a));
-        if (!cancelado) setMeses(lista);
+        const lista = snap.docs.map(d => d.id).filter(id => /^\d{2}$/.test(id));
+        if (!cancelado) setMeses(ordenarMeses(lista));
       } catch (err) {
         console.error('Error al cargar meses de documentos_sistema:', err);
       } finally {

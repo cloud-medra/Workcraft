@@ -65,6 +65,21 @@ describe('useDocumentosSistemaPeriodo', () => {
     expect(llamadaWhereMin[2]).toBe('documentos_sistema/2026/meses/09');
   });
 
+  it('los meses del año elegido quedan en orden cronológico', async () => {
+    mockGetDocs.mockImplementation(async (ref) => {
+      if (ref.path === 'documentos_sistema') return docsDeIds(['2026']);
+      if (ref.path === 'documentos_sistema/2026/meses') return docsDeIds(['10', '09', '12', '01']);
+      return docsDeIds([]);
+    });
+    const { result } = renderHook(() => useDocumentosSistemaPeriodo());
+    await flush();
+
+    act(() => { result.current.setAnio('2026'); });
+    await flush();
+
+    expect(result.current.meses).toEqual(['01', '09', '10', '12']);
+  });
+
   it('cuando se pasa filtroServidor, agrega ese where(...) a la consulta', async () => {
     mockGetDocs.mockResolvedValueOnce(docsDeIds(['2026']));
     const filtro = { campo: 'estado', operador: '==', valor: 'Pendiente factura' };

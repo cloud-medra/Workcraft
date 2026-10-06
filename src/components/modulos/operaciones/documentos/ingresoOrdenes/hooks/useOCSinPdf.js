@@ -14,14 +14,16 @@ import { subirPdfOC, mensajeErrorPdfOC } from '../../../shared/ordenesOC/ordenes
 import { leerRegistroPdfOC, registrarPdfOC } from '../../../shared/ordenesOC/registroPdfOC';
 import { leerGestionesConOCDelMes, filasOCSinPdfDesdeGestiones } from '../../../shared/ordenesOC/ocSinPdfPeriodo';
 import { normalizarTexto } from '../../../shared/ocIndex/normalizacionOC';
+import { ordenarMeses } from '../../../../../../utils/ordenarMeses';
 
 export const TAMANO_PAGINA_OC_SIN_PDF = 50;
 
 // Periodos 'YYYY-MM' (del más reciente al más antiguo) -> años y, para el
-// año elegido, sus meses; ambos del más reciente al más antiguo.
+// año elegido, sus meses: años del más reciente al más antiguo, meses en
+// orden cronológico (ordenarMeses).
 export const aniosDePeriodos = (periodos) => [...new Set(periodos.map(p => p.slice(0, 4)))].sort().reverse();
 export const mesesDePeriodos = (periodos, anio) => (anio
-  ? [...new Set(periodos.filter(p => p.startsWith(`${anio}-`)).map(p => p.slice(5, 7)))].sort().reverse()
+  ? ordenarMeses(new Set(periodos.filter(p => p.startsWith(`${anio}-`)).map(p => p.slice(5, 7))))
   : []);
 
 export const filtrarOCSinPdf = (filas, busqueda) => {

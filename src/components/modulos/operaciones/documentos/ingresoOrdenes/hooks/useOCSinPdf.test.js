@@ -17,11 +17,11 @@ describe('filtrarOCSinPdf', () => {
 });
 
 describe('aniosDePeriodos / mesesDePeriodos', () => {
-  it('solo años y meses con OC, del más reciente al más antiguo', () => {
+  it('solo años y meses con OC: años del más reciente al más antiguo, meses cronológicos', () => {
     const periodos = ['2026-09', '2026-03', '2025-12', '2025-11'];
     expect(aniosDePeriodos(periodos)).toEqual(['2026', '2025']);
-    expect(mesesDePeriodos(periodos, '2026')).toEqual(['09', '03']);
-    expect(mesesDePeriodos(periodos, '2025')).toEqual(['12', '11']);
+    expect(mesesDePeriodos(periodos, '2026')).toEqual(['03', '09']);
+    expect(mesesDePeriodos(periodos, '2025')).toEqual(['11', '12']);
     expect(mesesDePeriodos(periodos, '')).toEqual([]);
     expect(aniosDePeriodos([])).toEqual([]);
   });

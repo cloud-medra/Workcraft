@@ -38,6 +38,7 @@ import { ThRedimensionable, ColgroupRedimensionable } from '../../../../ui/ThRed
 import { useColumnResize } from '../../../../../hooks/useColumnResize';
 import { useDebouncedValue } from '../../../../../hooks/useDebouncedValue';
 import { incluyeTexto } from '../../../../../utils/normalizarTexto';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 // Estado de revisión de cada registro. Se guarda en el mismo documento del
 // registro (campo `revisado`); si no existe se considera "Pendiente", así que
@@ -140,7 +141,7 @@ const ReportesInfo = () => {
         const cargarMeses = async () => {
             try {
                 const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-                const meses = snap.docs.map(d => d.id);
+                const meses = ordenarMeses(snap.docs.map(d => d.id));
                 setMesesDisponibles(meses);
             } catch (error) {
                 console.error("Error al cargar meses:", error);
