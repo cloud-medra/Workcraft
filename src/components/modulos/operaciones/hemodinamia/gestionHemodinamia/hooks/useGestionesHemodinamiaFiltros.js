@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { obtenerFechaHoyISO } from '../utils/gestionesImportExport';
+import { ordenarMeses } from '../../../../../../utils/ordenarMeses';
 
 export const useGestionesHemodinamiaFiltros = (implantes) => {
   const [busqueda, setBusqueda] = useState('');
@@ -28,7 +29,7 @@ export const useGestionesHemodinamiaFiltros = (implantes) => {
 
     return {
       anios: Array.from(aniosSet).sort((a, b) => b - a),
-      meses: Array.from(mesesSet).sort((a, b) => a - b),
+      meses: ordenarMeses(mesesSet),
       dias: Array.from(diasSet).sort((a, b) => a - b)
     };
   }, [implantes]);
