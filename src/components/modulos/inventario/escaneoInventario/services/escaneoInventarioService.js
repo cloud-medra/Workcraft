@@ -31,7 +31,7 @@ const logInventario = (accion, detalles, usuario) => ({
 //     (suma la cantidad si ya está el mismo producto/lote/vencimiento);
 //   - caja nueva (nuevaCaja: { nombreCaja, ubicacion }): la crea con la
 //     estructura de Stock General y su log CREACION;
-//   - deja el log INGRESO_ESCANEO con origen "Inventario por escaneo";
+//   - deja el log INGRESO_ESCANEO con origen "Ingreso directo por escaneo";
 //   - crea los vínculos código -> producto (y reasigna los confirmados).
 // Si un código pasó a otro producto desde el escaneo, o la caja ya no
 // existe, no se escribe nada. Devuelve { cajaId, sumado, vinculosEscritos }.

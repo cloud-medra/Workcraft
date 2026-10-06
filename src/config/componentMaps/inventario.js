@@ -246,11 +246,13 @@ export const inventarioComponentMaps = {
     label: 'Escaneo con pistola lectora (EscaneoInventario.jsx) — sin granularidad cableada aún',
     sections: {
       selector_operacion: {
-        label: 'Sección: Selector inicial (Ingresar con guía/factura [próximamente], Ingresar por inventario, Egresar/Traspaso [próximamente])',
+        label: 'Sección: Selector inicial (Ingresar con guía/factura [próximamente], Ingreso directo, Egresar/Traspaso a tránsito, Inventario por cajas [próximamente])',
         elements: {},
       },
+      // La clave se mantiene como 'ingreso_inventario' (nombre anterior de
+      // Ingreso directo) para no perder permisos ya asignados.
       ingreso_inventario: {
-        label: 'Sección: Ingreso por inventario (caja, escaneo, vínculo código de barras -> producto, cantidad/lote/vencimiento)',
+        label: 'Sección: Ingreso directo (caja, escaneo, vínculo código de barras -> producto, cantidad/lote/vencimiento)',
         elements: {
           select_caja: { label: 'Campo: Caja existente o Nueva caja' },
           input_escaneo: { label: 'Campo: Código de barras (pistola o manual)' },

@@ -23,6 +23,7 @@ import { useToast } from '../../../../context/ToastContext';
 import { useUser } from '../../../../context/UserContext';
 import Spinner from '../../../ui/Spinner';
 import GestionTransitoModal from './GestionTransitoModal';
+import { mismosItemsTransito } from '../shared/traspasoTransito';
 
 const COL_TRANSITO = "inventario_transito";
 const COL_GENERAL = "inventario_general";
@@ -129,8 +130,13 @@ const TransitoInventario = () => {
         if (
           !transitoActual ||
           transitoActual.estado !== 'EN_TRANSITO' ||
-          JSON.stringify(transitoActual.items) !== JSON.stringify(docSeleccionado.items)
+          !mismosItemsTransito(transitoActual.items, docSeleccionado.items)
         ) {
+          console.warn('Tránsito: el documento cambió desde que se abrió.', {
+            estado: transitoActual?.estado,
+            itemsActuales: transitoActual?.items,
+            itemsVistos: docSeleccionado.items
+          });
           throw new Error('El documento en tránsito fue procesado o modificado por otro usuario. Vuelve a abrirlo.');
         }
 

@@ -59,3 +59,28 @@ export const siguienteNumeroDocumento = (ultimoNumDoc, fecha = new Date()) => {
   }
   return `${yearPrefix}0001`;
 };
+
+// Forma canónica para comparar contenido de Firestore: claves ordenadas y
+// fechas (Date o Timestamp) como milisegundos. JSON.stringify directo
+// depende del orden de las claves y de cómo llega cada fecha, que pueden
+// variar entre la lectura del listener y la de la transacción aunque el
+// documento no haya cambiado.
+const canonico = (valor) => {
+  if (valor === null || valor === undefined) return null;
+  if (valor instanceof Date) return { $fecha: valor.getTime() };
+  if (typeof valor?.toMillis === 'function') return { $fecha: valor.toMillis() };
+  if (Array.isArray(valor)) return valor.map(canonico);
+  if (typeof valor === 'object') {
+    return Object.keys(valor).sort().reduce((acc, clave) => {
+      acc[clave] = canonico(valor[clave]);
+      return acc;
+    }, {});
+  }
+  return valor;
+};
+
+// Los ítems de un documento en tránsito siguen siendo los que vio el usuario
+// (verificación de concurrencia de Tránsito): mismo contenido, sin importar
+// el orden de las claves ni el tipo de fecha.
+export const mismosItemsTransito = (actuales, vistos) =>
+  JSON.stringify(canonico(actuales || [])) === JSON.stringify(canonico(vistos || []));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ScanBarcode, ArrowDownToLine, ArrowUpFromLine, FileText, ClipboardList, ArrowLeft } from 'lucide-react';
-import IngresoPorInventario from './ingreso/IngresoPorInventario';
+import { ScanBarcode, ArrowDownToLine, ArrowUpFromLine, FileText, ClipboardList, ArrowLeft, Boxes } from 'lucide-react';
+import IngresoDirecto from './ingreso/IngresoDirecto';
 import EgresoPorEscaneo from './egreso/EgresoPorEscaneo';
 
 // Operaciones de Escaneo. `disponible: false` se muestra como "Próximamente".
@@ -11,7 +11,7 @@ const GRUPOS = [
     Icon: ArrowDownToLine,
     operaciones: [
       { id: 'ingresoDocumento', label: 'Con guía o factura', Icon: FileText, disponible: false },
-      { id: 'ingresoInventario', label: 'Por inventario', descripcion: 'Cargar el stock que ya tienes', Icon: ClipboardList, disponible: true }
+      { id: 'ingresoDirecto', label: 'Ingreso directo', descripcion: 'Cargar stock sin guía ni factura', Icon: ClipboardList, disponible: true }
     ]
   },
   {
@@ -21,11 +21,19 @@ const GRUPOS = [
     operaciones: [
       { id: 'egresoTransito', label: 'Egreso / traspaso a tránsito', descripcion: 'Descontar stock y dejarlo en tránsito', Icon: ArrowUpFromLine, disponible: true }
     ]
+  },
+  {
+    id: 'inventario',
+    titulo: 'Inventario',
+    Icon: Boxes,
+    operaciones: [
+      { id: 'inventarioCajas', label: 'Inventario por cajas', descripcion: 'Conteo por caja: faltantes, sobrantes y cuadradas', Icon: Boxes, disponible: false }
+    ]
   }
 ];
 
 const OPERACIONES = Object.fromEntries(GRUPOS.flatMap((g) => g.operaciones).map((o) => [o.id, o]));
-const VISTAS = { ingresoInventario: IngresoPorInventario, egresoTransito: EgresoPorEscaneo };
+const VISTAS = { ingresoDirecto: IngresoDirecto, egresoTransito: EgresoPorEscaneo };
 
 const SelectorOperacion = ({ onElegir }) => (
   <div className="flex-grow flex flex-col items-center justify-center gap-6 p-6">
@@ -79,7 +87,7 @@ const EscaneoInventario = () => {
         )}
         <ScanBarcode size={16} className="text-[#2383C2]" />
         <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">
-          {operacion ? `Escaneo · ${operacion.label === 'Por inventario' ? 'Ingreso por inventario' : operacion.label}` : 'Escaneo'}
+          {operacion ? `Escaneo · ${operacion.label}` : 'Escaneo'}
         </span>
       </header>
       {Vista ? <Vista key={operacionId} onIrA={setOperacionId} /> : <SelectorOperacion onElegir={setOperacionId} />}

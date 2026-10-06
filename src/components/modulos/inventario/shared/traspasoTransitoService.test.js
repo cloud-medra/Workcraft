@@ -26,6 +26,7 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 const { ejecutarTraspasoTransito } = await import('./traspasoTransitoService');
+const { mismosItemsTransito } = await import('./traspasoTransito');
 
 const ITEM = { codigoId: 'P1', codigo: 'C-1', referencia: 'REF-1', tipo: 'TORNILLO', lote: 'L1', vencimiento: '2026-12-31', cantidad: 5 };
 const linea = (cajaId, cantidadRetirar, nombreCaja = `Caja ${cajaId}`) => ({ idTemp: `${cajaId}#0`, cajaId, nombreCaja, ubicacionOrigen: 'E-1', itemIndex: 0, cantidadRetirar, itemOriginal: { ...ITEM } });
@@ -67,5 +68,36 @@ describe('ejecutarTraspasoTransito', () => {
     await ejecutarTraspasoTransito(sinOrigen);
     expect(transitos()[0]).not.toHaveProperty('origen');
     expect(logs('A')[0].detalles).not.toHaveProperty('origen');
+  });
+});
+
+// Lectura "desde el servidor": las claves pueden llegar en otro orden y las
+// fechas como Timestamp (no Date), aunque el documento no haya cambiado.
+const comoTimestamp = (fecha) => ({ toMillis: () => fecha.getTime(), seconds: Math.floor(fecha.getTime() / 1000) });
+const releerDelServidor = (items) => items.map((item) => Object.fromEntries(
+  Object.entries(item).reverse().map(([k, v]) => [k, v instanceof Date ? comoTimestamp(v) : v])
+));
+
+describe('egreso -> devolución desde Tránsito (verificación de concurrencia)', () => {
+  it.each([
+    ['Egreso por escaneo', 'Egreso por escaneo'],
+    ['Egresos (sin origen)', undefined]
+  ])('%s: el documento recién creado se puede devolver sin error', async (_nombre, origen) => {
+    const p = params([linea('A', 2)]);
+    if (!origen) delete p.origen;
+    await ejecutarTraspasoTransito(p);
+    const [docTransito] = transitos();
+    const vistosEnPantalla = docTransito.items;              // listener de Tránsito
+    const leidosEnTransaccion = releerDelServidor(docTransito.items); // tx.get al devolver
+    expect(JSON.stringify(leidosEnTransaccion)).not.toBe(JSON.stringify(vistosEnPantalla)); // lo que antes fallaba
+    expect(mismosItemsTransito(leidosEnTransaccion, vistosEnPantalla)).toBe(true);
+  });
+
+  it('si otro usuario cambió los ítems, la verificación sigue detectándolo', async () => {
+    await ejecutarTraspasoTransito(params([linea('A', 2)]));
+    const [docTransito] = transitos();
+    const modificados = releerDelServidor(docTransito.items).map((it) => ({ ...it, cantidadTraspasada: 1 }));
+    expect(mismosItemsTransito(modificados, docTransito.items)).toBe(false);
+    expect(mismosItemsTransito([], docTransito.items)).toBe(false);
   });
 });

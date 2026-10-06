@@ -114,7 +114,7 @@ const EgresoPorEscaneo = ({ onIrA }) => {
     }
     if (!vinculo?.productoId) {
       setSinVinculo(true);
-      avisar('error', `El código ${lectura.codigo} no está vinculado a ningún producto. Vincúlalo en Ingreso por inventario.`);
+      avisar('error', `El código ${lectura.codigo} no está vinculado a ningún producto. Vincúlalo en Ingreso directo.`);
       return;
     }
     setSinVinculo(false);
@@ -249,8 +249,8 @@ const EgresoPorEscaneo = ({ onIrA }) => {
           />
         </div>
         {sinVinculo && onIrA && (
-          <button type="button" onClick={() => onIrA('ingresoInventario')} className="self-start text-[11px] font-semibold text-[#2383C2] hover:underline flex items-center gap-1">
-            <ClipboardList size={12} /> Ir a Ingreso por inventario para vincular el código
+          <button type="button" onClick={() => onIrA('ingresoDirecto')} className="self-start text-[11px] font-semibold text-[#2383C2] hover:underline flex items-center gap-1">
+            <ClipboardList size={12} /> Ir a Ingreso directo para vincular el código
           </button>
         )}
       </section>

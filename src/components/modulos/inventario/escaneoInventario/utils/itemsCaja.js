@@ -1,7 +1,9 @@
 // Ítems del arreglo `items` de una caja de inventario_general, con la misma
 // estructura que Stock General (GeneralInventario.jsx). Lógica pura.
 
-export const ORIGEN_ESCANEO = 'Inventario por escaneo';
+// Origen de los ingresos de Escaneo. Los registros anteriores al cambio de
+// nombre quedaron con 'Inventario por escaneo'.
+export const ORIGEN_ESCANEO = 'Ingreso directo por escaneo';
 
 // Producto del maestro + cantidad/lote/vencimiento -> ítem de Stock General
 // (mismos campos que seleccionarCodigoCatalogo en GeneralInventario).

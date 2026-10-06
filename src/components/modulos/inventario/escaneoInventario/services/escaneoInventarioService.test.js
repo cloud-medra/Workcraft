@@ -50,7 +50,7 @@ describe('guardarIngresoEscaneo', () => {
     expect(res).toMatchObject({ cajaId: 'CAJA1', sumado: true, vinculosEscritos: 2 });
     expect(datos.get('inventario_general/CAJA1').items).toHaveLength(1);
     expect(datos.get('inventario_general/CAJA1').items[0].cantidad).toBe(7);
-    expect(logs('CAJA1')[0]).toMatchObject({ accion: 'INGRESO_ESCANEO', detalles: { origen: 'Inventario por escaneo', codigosBarra: ['A', 'B'] } });
+    expect(logs('CAJA1')[0]).toMatchObject({ accion: 'INGRESO_ESCANEO', detalles: { origen: 'Ingreso directo por escaneo', codigosBarra: ['A', 'B'] } });
     expect(await leerVinculo('A')).toMatchObject({ productoId: 'P1', referencia: 'REF-1' });
     expect(await leerVinculo('B')).toMatchObject({ productoId: 'P1' });
   });

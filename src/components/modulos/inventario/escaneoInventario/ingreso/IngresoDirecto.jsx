@@ -24,10 +24,10 @@ const fechaCorta = (iso) => {
   return y && m && d ? `${d}-${m}-${y}` : 'S/V';
 };
 
-// Etapa 1 de Escaneo: carga del stock existente. Caja -> escaneo (producto
+// Escaneo · Ingreso directo (sin guía ni factura). Caja -> escaneo (producto
 // por código vinculado, o búsqueda en el maestro si el código es nuevo) ->
 // cantidad/lote/vencimiento (GS1 los completa) -> guardar en la caja.
-const IngresoPorInventario = () => {
+const IngresoDirecto = () => {
   const { cajas } = useInventarioGeneral();
   const { showToast } = useToast();
   const { confirmAction } = useModal();
@@ -399,4 +399,4 @@ const IngresoPorInventario = () => {
   );
 };
 
-export default IngresoPorInventario;
+export default IngresoDirecto;

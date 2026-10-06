@@ -30,15 +30,15 @@ afterEach(cleanup);
 beforeEach(() => leerVinculo.mockReset());
 
 describe('EgresoPorEscaneo', () => {
-  it('código no vinculado: avisa en rojo, no deja seguir y ofrece ir a Ingreso por inventario', async () => {
+  it('código no vinculado: avisa en rojo, no deja seguir y ofrece ir a Ingreso directo', async () => {
     leerVinculo.mockResolvedValue(null);
     const onIrA = vi.fn();
     render(<EgresoPorEscaneo onIrA={onIrA} />);
     escanear('999');
     await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/no está vinculado/));
     expect(screen.queryByText(/Agregar a la lista/)).toBeNull();
-    fireEvent.click(screen.getByText(/Ir a Ingreso por inventario/));
-    expect(onIrA).toHaveBeenCalledWith('ingresoInventario');
+    fireEvent.click(screen.getByText(/Ir a Ingreso directo/));
+    expect(onIrA).toHaveBeenCalledWith('ingresoDirecto');
   });
 
   it('código vinculado: muestra el stock y sugiere FEFO; Enter vacío agrega y reescanear suma 1', async () => {
