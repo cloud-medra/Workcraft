@@ -9,15 +9,20 @@ import { calcularTotalMesDesdeDocumentos, guardarSnapshotMensual, invalidarSnaps
 import { useCierresAnio } from './cierresAnioStore';
 import { obtenerCelda, invalidarResumenAnio, ESTADOS_ABIERTOS } from './resumenImputacionesStore';
 
-// Códigos (del SDK cliente) de los HttpsError que lanza a propósito la Cloud
-// Function cerrarPeriodoImputacion; cualquier otro error muestra el genérico.
-const CODIGOS_ERROR_CIERRE = [
-  'functions/unauthenticated',
-  'functions/invalid-argument',
-  'functions/permission-denied',
-  'functions/failed-precondition'
-];
-export const MENSAJE_ERROR_CIERRE_GENERICO = 'No se pudo cerrar el mes. Revisa tu conexión e intenta nuevamente.';
+// Códigos (del SDK cliente) que sí son fallas de red; solo ahí se sugiere
+// revisar la conexión. Cualquier otro error muestra el mensaje real.
+const CODIGOS_ERROR_RED = ['functions/unavailable', 'functions/deadline-exceeded'];
+export const MENSAJE_ERROR_CIERRE_RED = 'No se pudo cerrar el mes. Revisa tu conexión e intenta nuevamente.';
+
+// Un error no lanzado como HttpsError llega con el código como mensaje
+// ("internal"): en ese caso se agrega contexto para que se entienda.
+export const mensajeErrorCierre = (error) => {
+  if (CODIGOS_ERROR_RED.includes(error?.code)) return MENSAJE_ERROR_CIERRE_RED;
+  const mensaje = String(error?.message || '').trim();
+  const codigo = String(error?.code || '').replace(/^functions\//, '');
+  if (!mensaje || mensaje === codigo) return `No se pudo cerrar el mes (error: ${codigo || 'desconocido'}).`;
+  return mensaje;
+};
 
 // `soloPeriodoAbierto`: Resumen Periodo Abierto solo necesita los totales de
 // los meses abiertos; Control Mensual pide todos los meses con actividad.
@@ -85,45 +90,82 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
   const resumenImputaciones = resumen.datos;
   const cargandoResumen = claveResumen !== null && resumen.clave !== claveResumen;
 
-  const handleAbrirMes = (mesId, modTarget, anioTarget = anioSeleccionado, setAnioSeleccionadoCallback) => {
+  // Períodos ABIERTO/REABIERTO (de cualquier año) que abrir `mesId` cerraría
+  // automáticamente en los módulos indicados.
+  const buscarCierresAutomaticos = async (mesId, modulosAfectados, anioTarget) => {
+    const porModulo = await Promise.all(modulosAfectados.map(async (mod) => {
+      const docId = `${anioTarget}_${mesId}_${mod.id}`;
+      const snap = await getDocs(query(
+        collection(db, COLECCIONES.CIERRES),
+        where("modulo", "==", mod.id),
+        where("estado", "in", ESTADOS_ABIERTOS)
+      ));
+      return snap.docs
+        .filter(d => d.id !== docId)
+        .map(d => {
+          const data = d.data?.() || {};
+          const [anio, mes] = d.id.split('_');
+          return { id: d.id, cerradoPorApertura: docId, modulo: mod, anio: data.anio || anio, mes: data.mes || mes };
+        });
+    }));
+    return porModulo.flat();
+  };
+
+  // El panel de apertura no deja abrir mientras un módulo marcado tenga un mes
+  // abierto en el año, pero el botón "Abrir" de la tabla y un período abierto
+  // de otro año sí llegan acá. El cierre automático se mantiene, pero solo
+  // cierra lo que el usuario vio listado en la confirmación: si al confirmar
+  // aparece otro período abierto, no se hace nada.
+  const handleAbrirMes = async (mesId, modTarget, anioTarget = anioSeleccionado, setAnioSeleccionadoCallback) => {
     const modulosAfectados = Array.isArray(modTarget) 
       ? MODULOS.filter(m => modTarget.includes(m.id))
       : MODULOS.filter(m => m.id === modTarget);
 
     const modulosNombres = modulosAfectados.map(m => m.nombre).join(', ');
 
+    let cierresMostrados;
+    try {
+      cierresMostrados = await buscarCierresAutomaticos(mesId, modulosAfectados, anioTarget);
+    } catch (error) {
+      console.error("Error al revisar los períodos abiertos:", error);
+      showToast("Error al revisar los períodos abiertos", "error");
+      return;
+    }
+    const idsMostrados = new Set(cierresMostrados.map(c => c.id));
+    const avisoCierres = cierresMostrados.length > 0
+      ? ` Atención: esto cerrará automáticamente ${cierresMostrados.map(c =>
+          `${c.modulo.nombre} ${MESES.find(m => m.id === c.mes)?.nombre || c.mes} ${c.anio}`).join(', ')}.`
+      : '';
+
     confirmAction(
       "Abrir Período de Imputación",
-      `¿Deseas abrir ${mesId.toUpperCase()} ${anioTarget} para: [${modulosNombres}]?`,
+      `¿Deseas abrir ${mesId.toUpperCase()} ${anioTarget} para: [${modulosNombres}]?${avisoCierres}`,
       async () => {
         setProcesandoAccion(true);
         try {
+          const cierres = await buscarCierresAutomaticos(mesId, modulosAfectados, anioTarget);
+          if (cierres.some(c => !idsMostrados.has(c.id))) {
+            showToast("Cambiaron los períodos abiertos mientras confirmabas. Revisa y vuelve a intentarlo.", "warning");
+            return;
+          }
+
           const usuario = obtenerUsuarioLog();
           const batch = writeBatch(db);
 
+          cierres.forEach(c => {
+            batch.update(doc(db, COLECCIONES.CIERRES, c.id), {
+              estado: 'CERRADO',
+              fechaCierre: serverTimestamp(),
+              usuarioCierre: usuario,
+              cierreAutomatico: true,
+              // firestore.rules solo permite este cierre desde el cliente
+              // si el período indicado queda ABIERTO en este mismo batch.
+              cerradoPorApertura: c.cerradoPorApertura
+            });
+          });
+
           for (const mod of modulosAfectados) {
             const docId = `${anioTarget}_${mesId}_${mod.id}`;
-            
-            const qAbiertos = query(
-              collection(db, COLECCIONES.CIERRES),
-              where("modulo", "==", mod.id),
-              where("estado", "in", ["ABIERTO", "REABIERTO"])
-            );
-            const snapAbiertos = await getDocs(qAbiertos);
-
-            snapAbiertos.docs.forEach(d => {
-              if (d.id !== docId) {
-                batch.update(doc(db, COLECCIONES.CIERRES, d.id), {
-                  estado: 'CERRADO',
-                  fechaCierre: serverTimestamp(),
-                  usuarioCierre: usuario,
-                  cierreAutomatico: true,
-                  // firestore.rules solo permite este cierre desde el cliente
-                  // si el período indicado queda ABIERTO en este mismo batch.
-                  cerradoPorApertura: docId
-                });
-              }
-            });
 
             const docRef = doc(db, COLECCIONES.CIERRES, docId);
             batch.set(docRef, {
@@ -205,12 +247,7 @@ export const useControlMensualData = (anioSeleccionado, userData, showToast, con
     } catch (error) {
       console.error("Error al cerrar mes:", error);
       setProcesandoAccion(false);
-      // Solo los HttpsError que lanza cerrarPeriodoImputacion traen un mensaje
-      // pensado para el usuario; red, timeout o errores internos no.
-      const mensaje = CODIGOS_ERROR_CIERRE.includes(error?.code) && error?.message
-        ? error.message
-        : MENSAJE_ERROR_CIERRE_GENERICO;
-      return { ok: false, mensaje };
+      return { ok: false, mensaje: mensajeErrorCierre(error) };
     }
 
     // Snapshot único del total del mes cerrado, para no tener que recalcularlo

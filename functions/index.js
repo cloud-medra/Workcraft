@@ -32,3 +32,4 @@ setGlobalOptions({ maxInstances: 10 });
 // });
 
 exports.extraerGuiaDespacho = require("./extraerGuiaDespacho").extraerGuiaDespacho;
+exports.cerrarPeriodoImputacion = require("./cerrarPeriodoImputacion").cerrarPeriodoImputacion;

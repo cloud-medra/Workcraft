@@ -394,10 +394,9 @@ const ControlMensual = () => {
         setMesApertura={setMesApertura}
         modulosSeleccionados={modulosApertura}
         setModulosSeleccionados={setModulosApertura}
-        estadosModulos={estadosModulos}
-        onConfirm={() => {
+        onConfirm={({ mesId, modulos }) => {
           setAnioSeleccionado(anioApertura);
-          handleAbrirMes(mesApertura, modulosApertura, anioApertura, setAnioSeleccionado);
+          handleAbrirMes(mesId, modulos, anioApertura, setAnioSeleccionado);
           setPanelAperturaAbierto(false);
         }}
       />

@@ -34,3 +34,6 @@ export const MESES = [
   { id: 'noviembre', nombre: 'Noviembre', num: 11 },
   { id: 'diciembre', nombre: 'Diciembre', num: 12 }
 ];
+// Etiqueta visible de un mes en selectores: "Enero (01)". Solo para mostrar;
+// lo que se guarda sigue siendo `mes.id`.
+export const etiquetaMes = (mes) => `${mes.nombre} (${String(mes.num).padStart(2, '0')})`;
