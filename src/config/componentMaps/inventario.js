@@ -246,7 +246,7 @@ export const inventarioComponentMaps = {
     label: 'Escaneo con pistola lectora (EscaneoInventario.jsx) — sin granularidad cableada aún',
     sections: {
       selector_operacion: {
-        label: 'Sección: Selector inicial (Ingresar con guía/factura [próximamente], Ingreso directo, Egresar/Traspaso a tránsito, Inventario por cajas [próximamente])',
+        label: 'Sección: Selector inicial (Ingresar con guía/factura [próximamente], Ingreso directo, Egresar/Traspaso a tránsito, Inventario por cajas)',
         elements: {},
       },
       // La clave se mantiene como 'ingreso_inventario' (nombre anterior de
@@ -262,6 +262,15 @@ export const inventarioComponentMaps = {
       },
       lista_sesion: {
         label: 'Sección: Lista de lo ingresado en la sesión',
+        elements: {},
+      },
+      inventario_cajas: {
+        label: 'Sección: Inventario por cajas (iniciar, contar cajas, reabrir, historial)',
+        elements: {},
+      },
+      // Desmarcarla deja al usuario contar pero no finalizar (no ajusta stock).
+      finalizar_inventario: {
+        label: 'Sección: Finalizar inventario por cajas (ajusta el stock de Stock General)',
         elements: {},
       },
     },

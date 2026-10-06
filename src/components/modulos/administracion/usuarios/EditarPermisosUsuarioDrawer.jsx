@@ -88,7 +88,18 @@ const generarAccesoTotalDesdeConfig = (config) => {
 const backfillProcesos = (permisosGranularesGuardados) => {
   const resultado = { ...permisosGranularesGuardados };
   Object.entries(COMPONENT_MAPS).forEach(([path, config]) => {
-    if (!resultado[path] || !config.procesos) return;
+    if (!resultado[path]) return;
+    // Secciones agregadas al componentMap después de asignar la vista (ej.
+    // finalizar_inventario en Escaneo): se completan con acceso total, igual
+    // que hacía useGranularPermission con una sección sin configurar, para
+    // que aparezcan en el drawer y se puedan desmarcar.
+    const faltantes = Object.keys(config.sections || {}).filter((k) => !resultado[path][k]);
+    if (faltantes.length > 0) {
+      const total = generarAccesoTotalDesdeConfig(config) || {};
+      resultado[path] = { ...resultado[path] };
+      faltantes.forEach((k) => { resultado[path][k] = total[k]; });
+    }
+    if (!config.procesos) return;
     Object.entries(config.procesos).forEach(([procesoPath, procesoConfig]) => {
       if (resultado[procesoPath]) return;
       resultado[procesoPath] = generarAccesoTotalDesdeConfig(procesoConfig) || {};

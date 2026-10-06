@@ -99,3 +99,22 @@ export const guardarIngresoEscaneo = async ({ cajaId, nuevaCaja, producto, item,
     return { cajaId: cajaRef.id, sumado, vinculosEscritos: aEscribir.length };
   });
 };
+
+// Vincula códigos a un producto sin guardar stock (Inventario por cajas).
+// Misma verificación que al guardar un ingreso: un código vinculado a otro
+// producto solo se reasigna si viene confirmado. Devuelve cuántos escribió.
+export const vincularCodigos = async ({ codigos, producto, usuario }) => runTransaction(db, async (tx) => {
+  const refs = codigos.map((c) => doc(db, COL_CODIGOS_BARRA, idVinculo(c.clave)));
+  const snaps = await Promise.all(refs.map((r) => tx.get(r)));
+  const actuales = {};
+  codigos.forEach((c, i) => { actuales[c.clave] = snaps[i].exists() ? snaps[i].data() : null; });
+  const aEscribir = planificarVinculos(codigos, producto.id, actuales);
+  aEscribir.forEach((v) => {
+    tx.set(doc(db, COL_CODIGOS_BARRA, idVinculo(v.clave)), {
+      ...construirVinculo(v, producto, usuario),
+      ...(v.reasignadoDe ? { reasignadoDe: v.reasignadoDe } : {}),
+      actualizadoEn: serverTimestamp()
+    });
+  });
+  return aEscribir.length;
+});

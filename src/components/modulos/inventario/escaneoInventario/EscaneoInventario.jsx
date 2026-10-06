@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScanBarcode, ArrowDownToLine, ArrowUpFromLine, FileText, ClipboardList, ArrowLeft, Boxes } from 'lucide-react';
 import IngresoDirecto from './ingreso/IngresoDirecto';
 import EgresoPorEscaneo from './egreso/EgresoPorEscaneo';
+import InventarioPorCajas from './inventarioCajas/InventarioPorCajas';
 
 // Operaciones de Escaneo. `disponible: false` se muestra como "Próximamente".
 const GRUPOS = [
@@ -27,13 +28,13 @@ const GRUPOS = [
     titulo: 'Inventario',
     Icon: Boxes,
     operaciones: [
-      { id: 'inventarioCajas', label: 'Inventario por cajas', descripcion: 'Conteo por caja: faltantes, sobrantes y cuadradas', Icon: Boxes, disponible: false }
+      { id: 'inventarioCajas', label: 'Inventario por cajas', descripcion: 'Conteo por caja: faltantes, sobrantes y cuadradas', Icon: Boxes, disponible: true }
     ]
   }
 ];
 
 const OPERACIONES = Object.fromEntries(GRUPOS.flatMap((g) => g.operaciones).map((o) => [o.id, o]));
-const VISTAS = { ingresoDirecto: IngresoDirecto, egresoTransito: EgresoPorEscaneo };
+const VISTAS = { ingresoDirecto: IngresoDirecto, egresoTransito: EgresoPorEscaneo, inventarioCajas: InventarioPorCajas };
 
 const SelectorOperacion = ({ onElegir }) => (
   <div className="flex-grow flex flex-col items-center justify-center gap-6 p-6">
