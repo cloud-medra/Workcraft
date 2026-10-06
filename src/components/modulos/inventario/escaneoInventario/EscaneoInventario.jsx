@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { ScanBarcode, ArrowDownToLine, ArrowUpFromLine, FileText, ClipboardList, ArrowLeft } from 'lucide-react';
 import IngresoPorInventario from './ingreso/IngresoPorInventario';
+import EgresoPorEscaneo from './egreso/EgresoPorEscaneo';
 
 // Operaciones de Escaneo. `disponible: false` se muestra como "Próximamente".
-// Etapa 2 (egreso / traspaso a tránsito) se agrega aquí como otra operación
-// y reutiliza services/escaneoInventarioService.js y CampoEscaneo.
 const GRUPOS = [
   {
     id: 'ingresar',
@@ -20,13 +19,13 @@ const GRUPOS = [
     titulo: 'Egresar / Traspaso a tránsito',
     Icon: ArrowUpFromLine,
     operaciones: [
-      { id: 'egresoTransito', label: 'Egreso / traspaso a tránsito', Icon: ArrowUpFromLine, disponible: false }
+      { id: 'egresoTransito', label: 'Egreso / traspaso a tránsito', descripcion: 'Descontar stock y dejarlo en tránsito', Icon: ArrowUpFromLine, disponible: true }
     ]
   }
 ];
 
 const OPERACIONES = Object.fromEntries(GRUPOS.flatMap((g) => g.operaciones).map((o) => [o.id, o]));
-const VISTAS = { ingresoInventario: IngresoPorInventario };
+const VISTAS = { ingresoInventario: IngresoPorInventario, egresoTransito: EgresoPorEscaneo };
 
 const SelectorOperacion = ({ onElegir }) => (
   <div className="flex-grow flex flex-col items-center justify-center gap-6 p-6">
@@ -83,7 +82,7 @@ const EscaneoInventario = () => {
           {operacion ? `Escaneo · ${operacion.label === 'Por inventario' ? 'Ingreso por inventario' : operacion.label}` : 'Escaneo'}
         </span>
       </header>
-      {Vista ? <Vista /> : <SelectorOperacion onElegir={setOperacionId} />}
+      {Vista ? <Vista key={operacionId} onIrA={setOperacionId} /> : <SelectorOperacion onElegir={setOperacionId} />}
     </div>
   );
 };

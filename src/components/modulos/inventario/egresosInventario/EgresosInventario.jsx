@@ -1,15 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  collection,
-  doc,
-  query,
-  orderBy,
-  serverTimestamp,
-  runTransaction,
-  getDocs,
-  limit
-} from 'firebase/firestore';
-import { db } from '../../../../firebaseConfig';
 import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
 import { ordenarPor } from '../../../../stores/catalogosStore';
 import { Search, Plus, Trash2, ArrowRightLeft, AlertCircle, ShoppingBag, FileText, UserCheck } from 'lucide-react';
@@ -17,13 +6,8 @@ import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useUser } from '../../../../context/UserContext';
 import Spinner from '../../../ui/Spinner';
-
-const COL_BASE = "inventario_general";
-const COL_TRANSITO = "inventario_transito";
-
-// El ítem en la posición elegida sigue siendo el mismo que vio el usuario.
-const mismoItem = (actual, original) => Boolean(actual) && ['codigo', 'referencia', 'lote', 'vencimiento']
-  .every(campo => (actual[campo] ?? '') === (original?.[campo] ?? ''));
+import { validarDatosTraspaso } from '../shared/traspasoTransito';
+import { ejecutarTraspasoTransito, generarSiguienteNumeroDocumento } from '../shared/traspasoTransitoService';
 
 const EgresosInventario = () => {
   // Cajas desde el listener compartido de inventario_general (ver
@@ -63,36 +47,9 @@ const EgresosInventario = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
 
-  // Función para obtener e incrementar el correlativo automático YYNNNN
+  // Correlativo automático YYNNNN (servicio compartido con Escaneo).
   const generarSiguienteDocumento = async () => {
-    try {
-      const q = query(collection(db, COL_TRANSITO), orderBy("fechaRegistro", "desc"), limit(1));
-      const querySnapshot = await getDocs(q);
-
-      const yearPrefix = new Date().getFullYear().toString().slice(-2);
-
-      if (querySnapshot.empty) {
-        setNumeroDocumento(`${yearPrefix}0001`);
-        return;
-      }
-
-      const ultimoDoc = querySnapshot.docs[0].data();
-      const ultimoNumDoc = ultimoDoc.numeroDocumento;
-
-      if (ultimoNumDoc && ultimoNumDoc.startsWith(yearPrefix)) {
-        const correlativoActual = parseInt(ultimoNumDoc.slice(2), 10);
-        const siguienteCorrelativo = (isNaN(correlativoActual) ? 1 : correlativoActual + 1)
-          .toString()
-          .padStart(4, '0');
-        setNumeroDocumento(`${yearPrefix}${siguienteCorrelativo}`);
-      } else {
-        setNumeroDocumento(`${yearPrefix}0001`);
-      }
-    } catch (error) {
-      console.error("Error al generar correlativo:", error);
-      const yearPrefix = new Date().getFullYear().toString().slice(-2);
-      setNumeroDocumento(`${yearPrefix}0001`);
-    }
+    setNumeroDocumento(await generarSiguienteNumeroDocumento());
   };
 
   // Generar número correlativo inicial al cargar la pantalla
@@ -149,18 +106,8 @@ const EgresosInventario = () => {
 
   // CONFIRMAR TRASPASO COMPLETO
   const handleConfirmarTraspaso = () => {
-    if (listaTraspaso.length === 0) {
-      return showToast("La lista de traspaso está vacía", "error");
-    }
-
-    if (!numeroDocumento.trim()) {
-      return showToast("Esperando generación de número de documento...", "error");
-    }
-
-    // Validación obligatoria del destino
-    if (!tipoDestino) {
-      return showToast("Por favor, selecciona el destino del tránsito (Stock General o Cliente Específico)", "error");
-    }
+    const errorDatos = validarDatosTraspaso({ lineas: listaTraspaso, numeroDocumento, tipoDestino });
+    if (errorDatos) return showToast(errorDatos, "error");
 
     confirmAction(
       "Confirmar Traspaso a Tránsito",
@@ -168,95 +115,17 @@ const EgresosInventario = () => {
       async () => {
         setCargando(true);
         try {
-          const retirosPorCaja = {};
-          listaTraspaso.forEach(linea => {
-            if (!retirosPorCaja[linea.cajaId]) {
-              retirosPorCaja[linea.cajaId] = [];
-            }
-            retirosPorCaja[linea.cajaId].push(linea);
-          });
-
-          // Transacción: cada caja se relee en el momento y el descuento se
-          // calcula sobre sus ítems actuales (antes se escribía el arreglo
-          // `items` calculado desde la copia en pantalla, y dos usuarios que
-          // movían stock de la misma caja podían pisarse). Si la caja o el
-          // ítem cambiaron, o ya no alcanza el stock, se aborta todo.
-          await runTransaction(db, async (tx) => {
-            const cajaIds = Object.keys(retirosPorCaja);
-            const snaps = await Promise.all(cajaIds.map(id => tx.get(doc(db, COL_BASE, id))));
-
-            const actualizaciones = snaps.map((snap, i) => {
-              const cajaId = cajaIds[i];
-              if (!snap.exists()) throw new Error(`La caja ya no existe (${retirosPorCaja[cajaId][0].nombreCaja})`);
-
-              const nuevosItems = structuredClone(snap.data().items || []);
-              const lineasDeEstaCaja = retirosPorCaja[cajaId];
-
-              lineasDeEstaCaja.forEach(linea => {
-                const item = nuevosItems[linea.itemIndex];
-                if (!mismoItem(item, linea.itemOriginal)) {
-                  throw new Error(`La caja ${linea.nombreCaja} cambió mientras preparabas el traspaso. Vuelve a seleccionar los ítems.`);
-                }
-                if (Number(item.cantidad) < linea.cantidadRetirar) {
-                  throw new Error(`Stock insuficiente en ${linea.nombreCaja} (${item.referencia || item.codigo}): quedan ${item.cantidad}.`);
-                }
-                item.cantidad -= linea.cantidadRetirar;
-              });
-              return { cajaId, nuevosItems, lineasDeEstaCaja };
-            });
-
-            // Todas las lecturas van antes que las escrituras.
-            actualizaciones.forEach(({ cajaId, nuevosItems, lineasDeEstaCaja }) => {
-              const cajaRef = doc(db, COL_BASE, cajaId);
-              tx.update(cajaRef, {
-                items: nuevosItems,
-                ultimaModificacion: serverTimestamp()
-              });
-              const logRef = doc(collection(db, COL_BASE, cajaId, "logs"));
-              tx.set(logRef, {
-                accion: 'TRASPASO_TRANSITO',
-                numeroDocumento: numeroDocumento.trim(),
-                detalles: {
-                  motivo,
-                  tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
-                  solicitante: solicitante.trim() || 'No especificado',
-                  observaciones: observaciones.trim(),
-                  itemsTrasladados: lineasDeEstaCaja.map(l => ({
-                    ...l.itemOriginal,
-                    cantidadTraspasada: l.cantidadRetirar
-                  }))
-                },
-                usuario: userData?.nombreCompleto || 'Usuario Desconocido',
-                usuarioEmail: userData?.email || '',
-                fecha: new Date(),
-                timestamp: serverTimestamp()
-              });
-            });
-
-            const transitoRef = doc(collection(db, COL_TRANSITO)); 
-          
-            const itemsFinalesTransito = listaTraspaso.map(linea => ({
-              ...linea.itemOriginal,
-              cajaOrigenId: linea.cajaId,
-              nombreCajaOrigen: linea.nombreCaja,
-              ubicacionOrigen: linea.ubicacionOrigen,
-              cantidadTraspasada: linea.cantidadRetirar,
-              fechaAgregadoLista: new Date()
-            }));
-
-            tx.set(transitoRef, {
-              numeroDocumento: numeroDocumento.trim(),
-              estado: 'EN_TRANSITO',
-              motivo,
-              tipoDestino: tipoDestino === 'stock' ? 'Stock General' : 'Cliente Específico',
-              solicitante: solicitante.trim() || 'No especificado',
-              observaciones: observaciones.trim(),
-              items: itemsFinalesTransito,
-              totalUnidades: listaTraspaso.reduce((acc, i) => acc + i.cantidadRetirar, 0),
-              registradoPor: userData?.nombreCompleto || 'Usuario',
-              usuarioEmail: userData?.email || '',
-              fechaRegistro: serverTimestamp()
-            });
+          // Transacción compartida con Escaneo (ver
+          // ../shared/traspasoTransitoService.js): relee cada caja, valida
+          // el stock y aborta todo si algo cambió.
+          await ejecutarTraspasoTransito({
+            lineas: listaTraspaso,
+            numeroDocumento,
+            motivo,
+            tipoDestino,
+            solicitante,
+            observaciones,
+            usuario: userData
           });
 
           showToast("Traspaso a tránsito realizado con éxito", "success");

@@ -17,7 +17,9 @@ const ESTILOS_MENSAJE = {
 // la pistola cierra la lectura y nunca envía nada. También sirve para
 // escribir el código a mano (Enter o botón "Leer").
 // `ref` (React 19) apunta al input para devolverle el foco.
-const CampoEscaneo = ({ ref, onLectura, senal = null, mensaje = '', deshabilitado = false, placeholder }) => {
+// `onEnterVacio` (opcional): Enter con el campo vacío (p. ej. confirmar el
+// producto pendiente sin sacar el foco del campo).
+const CampoEscaneo = ({ ref, onLectura, onEnterVacio, senal = null, mensaje = '', deshabilitado = false, placeholder }) => {
   const [texto, setTexto] = useState('');
 
   const leer = () => {
@@ -31,6 +33,7 @@ const CampoEscaneo = ({ ref, onLectura, senal = null, mensaje = '', deshabilitad
     // Tab con el campo vacío se deja pasar (navegación normal).
     if (e.key === 'Tab' && !texto.trim()) return;
     e.preventDefault();
+    if (!texto.trim()) { onEnterVacio?.(); return; }
     leer();
   };
 
