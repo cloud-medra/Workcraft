@@ -123,6 +123,27 @@ describe('evaluarFila', () => {
     expect(construirDatosDoc(r.payload)).toMatchObject({ cantidad: 2, costo: 15000, gestionId: '555' });
   });
 
+  it('Detalle: muestra y guarda descriptorAuto en "descripcion" (mismo campo que Registro)', () => {
+    const item = { ...ITEM, descriptorEmpresa: '', descriptorAuto: 'PLACA BLOQUEADA 4 ORIFICIOS' };
+    const r = evaluarFila(valores(), { reporte: REPORTE, item, tipo: 'CONSIGNACION' });
+
+    expect(r.estado).toBe(ESTADOS_FILA.OK);
+    expect(r.vinculados.descripcion).toBe('PLACA BLOQUEADA 4 ORIFICIOS');
+    expect(r.payload.descripcion).toBe('PLACA BLOQUEADA 4 ORIFICIOS');
+    expect(construirDatosDoc(r.payload).descripcion).toBe('PLACA BLOQUEADA 4 ORIFICIOS');
+    expect(r.observacion).toBe('');
+  });
+
+  it('Detalle: igual que Registro, descriptorEmpresa tiene prioridad sobre descriptorAuto', () => {
+    const r = evaluarFila(valores(), { reporte: REPORTE, item: { ...ITEM, descriptorAuto: 'AUTO' }, tipo: 'CONSIGNACION' });
+    expect(r.vinculados.descripcion).toBe('TORNILLO 3.5');
+  });
+
+  it('Detalle: vacío si el código no está en el maestro', () => {
+    const r = evaluarFila(valores(), { reporte: REPORTE, item: undefined, tipo: 'CONSIGNACION' });
+    expect(r.vinculados.descripcion).toBeUndefined();
+  });
+
   it('Paciente ingresado tiene prioridad y se guarda en mayúsculas', () => {
     const r = evaluarFila(valores({ paciente: 'ana díaz' }), { reporte: REPORTE, item: ITEM, tipo: 'CONSIGNACION' });
     expect(r.payload.nombre).toBe('ANA DÍAZ');
@@ -154,11 +175,11 @@ describe('evaluarFila', () => {
     expect(bueno.estado).toBe(ESTADOS_FILA.OK);
   });
 
-  it('Dato inválido incluye el detalle de cada problema', () => {
+  it('Dato inválido incluye en la observación cada problema', () => {
     const r = evaluarFila(valores({ fecha: '32-01-2026', cantidad: '1.5' }), { reporte: REPORTE, item: ITEM, tipo: 'CONSIGNACION' });
     expect(r.estado).toBe(ESTADOS_FILA.DATO_INVALIDO);
-    expect(r.detalle).toMatch(/Fecha cirugía inválida/);
-    expect(r.detalle).toMatch(/Cantidad inválida/);
+    expect(r.observacion).toMatch(/Fecha cirugía inválida/);
+    expect(r.observacion).toMatch(/Cantidad inválida/);
     expect(r.payload).toBeNull();
   });
 

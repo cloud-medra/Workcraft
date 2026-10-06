@@ -27,7 +27,6 @@ const FILAS_INICIALES = 20;
 
 const COLUMNAS_LECTURA = [
   { key: 'referencia', label: 'Referencia', ancho: 'min-w-[120px]' },
-  { key: 'descripcion', label: 'Descripción', ancho: 'min-w-[200px]' },
   { key: 'empresa', label: 'Proveedor (maestro)', ancho: 'min-w-[120px]' },
   { key: 'costo', label: 'Precio', ancho: 'min-w-[80px]', formato: (v) => (v === '' || v === undefined || v === null ? '' : `$${Number(v).toLocaleString('es-CL')}`) },
   { key: 'atributo', label: 'Atributo', ancho: 'min-w-[90px]' },
@@ -222,7 +221,7 @@ const CargaMasivaConsignacion = () => {
         const restantes = prev
           .filter((f) => !guardadas.has(f.id))
           .map((f) => (fallidas.has(f.id)
-            ? { ...f, resultado: { ...f.resultado, detalle: `Error al guardar: ${fallidas.get(f.id)}` } }
+            ? { ...f, resultado: { ...f.resultado, observacion: `Error al guardar: ${fallidas.get(f.id)}` } }
             : f));
         return restantes.length > 0 ? restantes : crearFilasVacias(FILAS_INICIALES);
       });
@@ -377,6 +376,7 @@ const CargaMasivaConsignacion = () => {
               <th className="px-1.5 py-1 border border-gray-200 dark:border-gray-700 w-[28px]" />
               <th className="px-1.5 py-1 border border-gray-200 dark:border-gray-700 font-bold text-left min-w-[130px] bg-gray-200/60 dark:bg-gray-800">Estado</th>
               <th className="px-1.5 py-1 border border-gray-200 dark:border-gray-700 font-bold text-left min-w-[220px] bg-gray-200/60 dark:bg-gray-800">Detalle</th>
+              <th className="px-1.5 py-1 border border-gray-200 dark:border-gray-700 font-bold text-left min-w-[220px] bg-gray-200/60 dark:bg-gray-800">Observación</th>
               {COLUMNAS_LECTURA.map((c) => (
                 <th key={c.key} className={`px-1.5 py-1 border border-gray-200 dark:border-gray-700 font-bold text-left bg-gray-200/60 dark:bg-gray-800 ${c.ancho}`}>
                   {c.label}
@@ -430,8 +430,11 @@ const CargaMasivaConsignacion = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-1.5 border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 text-[10px] text-gray-600 dark:text-gray-300 max-w-[320px] truncate" title={r?.detalle || ''}>
-                    {r?.detalle || ''}
+                  <td className="px-1.5 border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 text-gray-700 dark:text-gray-200 max-w-[260px] truncate" title={r?.vinculados?.descripcion || ''}>
+                    {r?.vinculados?.descripcion || ''}
+                  </td>
+                  <td className="px-1.5 border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-800/60 text-[10px] text-gray-600 dark:text-gray-300 max-w-[320px] truncate" title={r?.observacion || ''}>
+                    {r?.observacion || ''}
                   </td>
                   {COLUMNAS_LECTURA.map((c) => {
                     const valor = r?.vinculados?.[c.key];

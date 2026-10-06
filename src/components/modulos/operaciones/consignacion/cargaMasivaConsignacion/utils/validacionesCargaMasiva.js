@@ -154,7 +154,10 @@ export const construirPayloadFila = (valores, { fecha, cantidad, reporte, item, 
 // Evalúa una fila con los datos ya consultados.
 // `reporte`: registro de ReportesInfo (null si no se encontró).
 // `item`: ítem del maestro (undefined si no se encontró).
-// Devuelve { estado, detalle, celdasError, celdasAdvertencia, payload, vinculados }.
+// Devuelve { estado, observacion, celdasError, celdasAdvertencia, payload, vinculados }.
+// `observacion`: mensajes de error/advertencia de la fila.
+// `vinculados.descripcion`: descripción del producto (columna Detalle), con
+// el mismo mapeo que Registro (descriptorEmpresa || descriptorAuto).
 export const evaluarFila = (valores, { reporte, item, tipo }) => {
   const { errores, fecha, cantidad } = validarFormatoFila(valores);
   const celdasError = { ...errores };
@@ -195,7 +198,7 @@ export const evaluarFila = (valores, { reporte, item, tipo }) => {
   else if (Object.keys(celdasError).length > 0) estado = ESTADOS_FILA.DATO_INVALIDO;
   else if (Object.keys(celdasAdvertencia).length > 0) estado = ESTADOS_FILA.ADMISION_NO_ENCONTRADA;
 
-  const detalle = [
+  const observacion = [
     ...CLAVES_INGRESO.filter((k) => celdasError[k]).map((k) => celdasError[k]),
     ...CLAVES_INGRESO.filter((k) => celdasAdvertencia[k]).map((k) => celdasAdvertencia[k])
   ].join(' · ');
@@ -208,7 +211,7 @@ export const evaluarFila = (valores, { reporte, item, tipo }) => {
     cirujanoReporte: reporte?.['Cirujano'] || ''
   };
 
-  return { estado, detalle, celdasError, celdasAdvertencia, payload, vinculados };
+  return { estado, observacion, celdasError, celdasAdvertencia, payload, vinculados };
 };
 
 // Ejecuta `fn` sobre cada elemento con como máximo `limite` en paralelo.
