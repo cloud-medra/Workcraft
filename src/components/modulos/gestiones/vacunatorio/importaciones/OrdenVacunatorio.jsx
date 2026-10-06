@@ -30,6 +30,7 @@ import { incluyeTexto } from '../../../../../utils/normalizarTexto';
 import { useFacturacionOrden } from '../../shared/useFacturacionOrden';
 import TablaOrdenes from '../../shared/TablaOrdenes';
 import DetalleOrdenTabla from '../../shared/DetalleOrdenTabla';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 const OrdenVacunatorio = () => {
     const [ordenes, setOrdenes] = useState([]);
@@ -70,7 +71,7 @@ const OrdenVacunatorio = () => {
         const cargarMeses = async () => {
             try {
                 const snap = await getDocs(collection(db, COL_BASE, filtroAnio, "meses"));
-                const meses = snap.docs.map(d => d.id);
+                const meses = ordenarMeses(snap.docs.map(d => d.id));
                 setMesesDisponibles(meses);
             } catch (error) {
                 console.error("Error al cargar meses:", error);

@@ -8,6 +8,7 @@ import {
     Tag,
     Loader2
 } from 'lucide-react';
+import { compararMeses } from '../../../../../../../utils/ordenarMeses';
 
 const COL_ORDENES = "vacunatorio_ordenes";
 
@@ -133,7 +134,7 @@ const DrawerSeleccionOC = ({
                             nombre: NOMBRES_MESES[padId] || NOMBRES_MESES[rawId] || `Mes ${rawId}`
                         };
                     })
-                    .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+                    .sort((a, b) => compararMeses(a.id, b.id));
 
                 setMesesDisponibles(meses);
             } catch (error) {

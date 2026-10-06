@@ -24,6 +24,7 @@ import { useGranularPermission } from '../../../../../hooks/useGranularPermissio
 import Spinner from '../../../../ui/Spinner';
 import DetalleFacturaModal from '../vizualizador/XmlDetallesDoc';
 import TablaXmlDocumentos from '../../shared/TablaXmlDocumentos';
+import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 
 const XmlFacturasVacunatorio = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -191,7 +192,7 @@ const XmlFacturasVacunatorio = () => {
         setAniosDisponibles(prev => Array.from(new Set([...prev, ...nuevosAnios])).sort((a, b) => b - a));
       }
       if (nuevosMeses.length > 0) {
-        setMesesDisponibles(prev => Array.from(new Set([...prev, ...nuevosMeses])));
+        setMesesDisponibles(prev => ordenarMeses(new Set([...prev, ...nuevosMeses])));
       }
 
       const mensaje = omitidos > 0
