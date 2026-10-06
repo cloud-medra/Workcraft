@@ -149,13 +149,13 @@ describe('useGestionesImplantesFiltros — cascada del filtro de Día', () => {
 describe('opcionesPeriodoGestiones', () => {
   const gestiones = [{ fecha: '2026-09-15' }, { fecha: '2026-03-01' }, { fecha: '2025-12-20' }, { fecha: 'P' }];
 
-  it('solo períodos con datos, del más reciente al más antiguo, meses del año elegido', () => {
-    expect(opcionesPeriodoGestiones(gestiones)).toEqual({ anios: ['2026', '2025'], meses: ['12', '09', '03'] });
-    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2026' }).meses).toEqual(['09', '03']);
+  it('solo períodos con datos: años del más reciente al más antiguo, meses cronológicos del año elegido', () => {
+    expect(opcionesPeriodoGestiones(gestiones)).toEqual({ anios: ['2026', '2025'], meses: ['03', '09', '12'] });
+    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2026' }).meses).toEqual(['03', '09']);
     expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2025' }).meses).toEqual(['12']);
   });
 
   it('incluye el filtro activo aunque no tenga datos', () => {
-    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2026', filtroMes: '10' }).meses).toEqual(['10', '09', '03']);
+    expect(opcionesPeriodoGestiones(gestiones, { filtroAnio: '2026', filtroMes: '10' }).meses).toEqual(['03', '09', '10']);
   });
 });

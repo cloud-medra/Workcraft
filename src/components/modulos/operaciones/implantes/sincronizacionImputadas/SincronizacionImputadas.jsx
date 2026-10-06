@@ -14,6 +14,7 @@ import {
 import { useSincronizacionImputadasData } from './hooks/useSincronizacionImputadasData';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import { useModal } from '../../../../../context/ModalContext';
+import { ordenarPeriodos } from '../../../../../utils/ordenarMeses';
 
 const VIEW_PATH = '/implantes/sincronizacionImputadas';
 
@@ -97,7 +98,7 @@ const BloqueDiff = ({ admision, bloque, onAplicar, aplicando, puedeAplicar }) =>
   const sobrantes = bloque.gruposPeriodo?.flatMap(g => g.itemsSobrantesEnImputadas.map(it => ({ ...it, anio: g.anio, mes: g.mes }))) || [];
   const bloqueado = bloque.sinItems || bloque.gruposPeriodo?.some(g => g.sinPeriodoResoluble);
   const hayDiferencias = !bloque.sinDiferencias && !bloque.sinItems;
-  const periodos = [...new Set((bloque.gruposPeriodo || []).filter(g => !g.sinPeriodoResoluble).map(g => `${g.mes} ${g.anio}`))];
+  const periodos = [...new Set(ordenarPeriodos((bloque.gruposPeriodo || []).filter(g => !g.sinPeriodoResoluble)).map(g => `${g.mes} ${g.anio}`))];
   const algunPeriodoCerrado = (bloque.gruposPeriodo || []).some(g => !g.sinPeriodoResoluble && g.periodoAbierto === false);
 
   return (

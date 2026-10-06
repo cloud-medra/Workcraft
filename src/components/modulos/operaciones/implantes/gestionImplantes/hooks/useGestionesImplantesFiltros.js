@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { obtenerFechaHoyISO } from '../utils/gestionesImportExport';
+import { ordenarMeses } from '../../../../../../utils/ordenarMeses';
 
 export const TAMANO_PAGINA_TABLA = 50;
 
-// Años y meses con gestiones (fecha 'YYYY-MM-DD'), del más reciente al más
-// antiguo; los meses, solo del año elegido. El filtro activo se incluye
+// Años y meses con gestiones (fecha 'YYYY-MM-DD'): años del más reciente al
+// más antiguo; meses en orden cronológico (ordenarMeses), solo del año
+// elegido. El filtro activo se incluye
 // aunque no tenga datos (por defecto es el mes actual), para que el
 // selector muestre lo que realmente está filtrando.
 export const opcionesPeriodoGestiones = (implantes, { filtroAnio = '', filtroMes = '' } = {}) => {
@@ -18,7 +20,7 @@ export const opcionesPeriodoGestiones = (implantes, { filtroAnio = '', filtroMes
   });
   return {
     anios: [...anios].sort().reverse(),
-    meses: [...meses].sort().reverse()
+    meses: ordenarMeses(meses)
   };
 };
 
@@ -39,8 +41,8 @@ export const useGestionesImplantesFiltros = (implantes) => {
   const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(true);
 
   // Años/meses disponibles, desde las gestiones ya cargadas (0 lecturas):
-  // solo períodos con datos, del más reciente al más antiguo, y los meses
-  // solo del año elegido. Ver opcionesPeriodoGestiones.
+  // solo períodos con datos, años del más reciente al más antiguo y meses
+  // en orden cronológico, solo del año elegido. Ver opcionesPeriodoGestiones.
   const opcionesFechas = useMemo(
     () => opcionesPeriodoGestiones(implantes, { filtroAnio, filtroMes }),
     [implantes, filtroAnio, filtroMes]
