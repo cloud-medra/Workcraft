@@ -1,5 +1,6 @@
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../../../firebaseConfig';
+import { ordenarMeses } from '../../../../utils/ordenarMeses';
 
 // Caché compartida de datos casi estáticos de un módulo de Gestiones
 // (Laboratorio / Vacunatorio) (años/meses de cada colección,
@@ -30,7 +31,9 @@ export const crearStoreDatosGestion = (colCodigos) => {
 
         getMeses: (base, anio, opts) => leer(`meses|${base}|${anio}`, async () => {
             const snap = await getDocs(collection(db, base, String(anio), "meses"));
-            return snap.docs.map(d => d.id);
+            // Los ids de mes son nombres ('agosto', 'septiembre'...): Firestore
+            // los devuelve en orden alfabético, se ordenan por número de mes.
+            return ordenarMeses(snap.docs.map(d => d.id));
         }, opts),
 
         // Devuelve el data() de cada código del catálogo maestro.
