@@ -12,6 +12,7 @@ import { formatearFecha } from '../../utils/gestionesImportExport';
 import { MESES } from '../../../../../administracion/controlMensual/constants';
 import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 import { itemRequiereOC } from '../../../../shared/ocIndex/indiceOC';
+import EstadoBadge from '../../../shared/estadoGestion/EstadoBadge';
 
 // ocPorItemBloques: [{ itemId: oc }] alineado con formData.bloques (ver
 // GestionesImplantesDetalleView).
@@ -67,7 +68,7 @@ export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Estado Operativo</span>
-            <span className="text-slate-700 dark:text-gray-200 font-semibold">{formData?.estado || 'P'}</span>
+            <span><EstadoBadge estado={formData?.estado} texto={formData?.estado || 'P'} ancho={false} /></span>
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="font-bold text-slate-400 dark:text-gray-500 text-[9px] uppercase">Estado Informe</span>

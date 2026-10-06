@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Save, X, Info, Loader2, AlertCircle } from 'lucide-react';
 import EmpresaSelect from './EmpresaSelect';
+import EstadoBadge from '../../shared/estadoGestion/EstadoBadge';
 
 const GestionesImplantesForm = ({
   formData,
@@ -169,9 +170,7 @@ const GestionesImplantesForm = ({
 
         <div className="flex items-center gap-1">
           <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] uppercase">Estado:</span>
-          <span className="font-semibold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 px-1.5 py-0.5 rounded text-[10px]">
-            {formData.estado || 'AGENDANDO'}
-          </span>
+          <EstadoBadge estado={formData.estado || 'AGENDANDO'} ancho={false} />
         </div>
 
         <div className="flex items-center gap-1">

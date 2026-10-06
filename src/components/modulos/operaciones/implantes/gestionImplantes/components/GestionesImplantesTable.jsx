@@ -1,6 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Copy, History, Pencil, Trash2, Eye, RotateCcw } from 'lucide-react';
 import { construirTextoAdmisionNombre } from '../utils/gestionesImportExport';
+import EstadoBadge from '../../shared/estadoGestion/EstadoBadge';
+import { coloresEstadoGestion, normalizarEstadoGestion } from '../../shared/estadoGestion/estadosGestion';
 
 const COLUMNAS = [
   { key: 'estado', label: '•', ancho: 32, min: 24, align: 'center' },
@@ -12,7 +14,7 @@ const COLUMNAS = [
   { key: 'admisionNombre', label: 'Admisión - Nombre', ancho: 230, min: 140 },
   { key: 'centro', label: 'Centro', ancho: 95, min: 60 },
   { key: 'atributo', label: 'Atributo', ancho: 95, min: 60 },
-  { key: 'estadoTexto', label: 'Estado', ancho: 95, min: 60 },
+  { key: 'estadoTexto', label: 'Estado', ancho: 125, min: 60 },
   { key: 'fechaCarga', label: 'Fecha Carga', ancho: 100, min: 70 },
   { key: 'costo', label: 'Costo', ancho: 90, min: 60 },
   { key: 'solicitud', label: 'Solicitud', ancho: 95, min: 60 },
@@ -126,26 +128,13 @@ export const GestionesImplantesTable = ({
     ].some(val => val === 'P' || val === '' || val === null || val === undefined);
 
     if (tieneCamposPendientes) {
-      return { colorClass: 'bg-red-500', textClass: 'text-red-600 dark:text-red-400', label: 'Incompleto (Faltan datos básicos)' };
+      return { colorClass: 'bg-red-500', label: 'Incompleto (Faltan datos básicos)' };
     }
 
-    const estadoClean = (item.estado || '').toUpperCase().trim();
-    switch (estadoClean) {
-      case 'AGENDADO':
-      case 'AGENDANDO':
-        return { colorClass: 'bg-yellow-400', textClass: 'text-yellow-600 dark:text-yellow-400', label: 'Agendado' };
-      case 'PENDIENTE':
-        return { colorClass: 'bg-orange-500', textClass: 'text-orange-600 dark:text-orange-400', label: 'Pendiente' };
-      case 'CARGADO':
-        return { colorClass: 'bg-emerald-500', textClass: 'text-emerald-600 dark:text-emerald-400', label: 'Cargado' };
-      case 'S/COTIZACION':
-      case 'SIN COTIZACION':
-        return { colorClass: 'bg-purple-600', textClass: 'text-purple-600 dark:text-purple-400', label: 'Sin Cotización' };
-      case 'INCOMPLETO':
-        return { colorClass: 'bg-sky-400', textClass: 'text-sky-600 dark:text-sky-400', label: 'Incompleto' };
-      default:
-        return { colorClass: 'bg-gray-400', textClass: 'text-gray-600 dark:text-gray-300', label: estadoClean || 'Sin Estado' };
-    }
+    // Mismo mapa de colores que EstadoBadge y el filtro de estados. Sin
+    // estado se muestra como AGENDANDO (valor inicial de una gestión).
+    const estado = item.estado || 'AGENDANDO';
+    return { colorClass: coloresEstadoGestion(estado).punto, label: normalizarEstadoGestion(estado) || 'Sin Estado' };
   };
 
   const getSolicitudEstilo = (solicitud) => {
@@ -288,7 +277,7 @@ export const GestionesImplantesTable = ({
                 </td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.centro}>{i.centro || 'PABELLON'}</td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300 font-medium`} title={i.atributo}>{i.atributo || 'IMPLANTES'}</td>
-                <td className={`${celdaBase} font-semibold ${status.textClass}`} title={i.estado}>{i.estado || 'AGENDANDO'}</td>
+                <td className={celdaBase} title={i.estado}><EstadoBadge estado={i.estado || 'AGENDANDO'} /></td>
                 <td className={`${celdaBase} text-gray-600 dark:text-gray-300`}>{formatearFechaCarga(i.fechaCarga)}</td>
                 <td className={`${celdaBase} text-emerald-700 dark:text-emerald-400 font-semibold`}>
                   {new Intl.NumberFormat('es-CL').format(i.costo ?? 0)}

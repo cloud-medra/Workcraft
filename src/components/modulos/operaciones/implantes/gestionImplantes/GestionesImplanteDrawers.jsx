@@ -11,6 +11,7 @@ import {
   ListChecks
 } from 'lucide-react';
 import Spinner from '../../../../ui/Spinner';
+import EstadoBadge from '../shared/estadoGestion/EstadoBadge';
 
 export const DrawersOverlay = ({ show, onClick }) => {
   if (!show) return null;
@@ -91,7 +92,7 @@ const DetalleLog = ({ log }) => {
           <p><strong>Nombre:</strong> {d.nombre || '-'}</p>
           <p><strong>Empresa:</strong> {d.empresa || '-'}</p>
           <p><strong>Fecha:</strong> {d.fecha || '-'}</p>
-          <p><strong>Estado:</strong> {d.estado || '-'}</p>
+          <p className="flex items-center gap-1"><strong>Estado:</strong> {d.estado ? <EstadoBadge estado={d.estado} ancho={false} /> : '-'}</p>
         </div>
       );
 
