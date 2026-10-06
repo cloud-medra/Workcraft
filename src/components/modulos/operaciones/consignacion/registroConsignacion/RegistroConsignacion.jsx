@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  collection,
   collectionGroup,
   query,
   orderBy,
@@ -8,7 +7,6 @@ import {
   limit,
   startAfter,
   getDocs,
-  doc,
   writeBatch,
   updateDoc,
   deleteDoc
@@ -21,32 +19,24 @@ import { useUser } from '../../../../../context/UserContext';
 import Spinner from '../../../../ui/Spinner';
 import { buscarReporteInfoPorAdmisionCacheado, invalidarReporteAdmision } from './utils/cacheMaestros';
 import { registrarLogConsignacion } from '../utils/registrarLogConsignacion';
+import {
+  COL_BASE,
+  NOMBRE_SUBCOL_DETALLES,
+  CENTRO_FIJO,
+  descomponerFecha,
+  mapearDatosVinculados,
+  construirDatosDoc,
+  construirNuevoRegistro,
+  agregarCarpetasFecha,
+  nuevaRefDetalle,
+  agregarRegistroNuevoABatch
+} from '../utils/registroConsignacionService';
 
 import RegistroConsignacionForm from './components/RegistroConsignacionForm';
 import ConsignacionFiltros from './components/ConsignacionFiltros';
 import ConsignacionTable from './components/ConsignacionTable';
 
-const COL_BASE = 'consignacion_registros';
-const NOMBRE_SUBCOL_DETALLES = 'detalles';
-const CENTRO_FIJO = 'PABELLON';
 const TAMANO_PAGINA = 150;
-
-const NOMBRES_MESES = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
-];
-
-const descomponerFecha = (fechaStr) => {
-  if (!fechaStr || !fechaStr.includes('-')) return null;
-  const [yyyy, mm, dd] = fechaStr.split('-');
-  if (!yyyy || !mm || !dd) return null;
-
-  const mesIndex = parseInt(mm, 10) - 1;
-  const nombreMes = NOMBRES_MESES[mesIndex];
-  if (!nombreMes) return null;
-
-  return { anio: yyyy, nombreMes, dia: dd };
-};
 
 const obtenerAnioActual = () => String(new Date().getFullYear());
 const obtenerMesActual = () => String(new Date().getMonth() + 1).padStart(2, '0');
@@ -156,27 +146,7 @@ const RegistroConsignacion = () => {
       return;
     }
 
-    const datosDoc = {
-      gestionId: payload.gestionId || '',
-      nombre: payload.nombre || '',
-      medico: payload.medico || '',
-      fecha: payload.fecha || '',
-      codigo: payload.codigo || '',
-      referencia: payload.referencia || '',
-      cantidad: Number(payload.cantidad) || 0,
-      delivery: payload.delivery || '',
-      empresa: payload.empresa || '',
-
-      centro: payload.centro || CENTRO_FIJO,
-      atributo: payload.atributo || payload.tipo || 'CONSIGNACION',
-      estado: payload.estado || 'INGRESADO',
-      costo: payload.costo !== '' ? Number(payload.costo) : 0,
-      convenio: payload.convenio || '',
-      prevision: payload.prevision || '',
-      descripcion: payload.descripcion || '',
-      descripcionPabellon: payload.descripcionPabellon || '',
-      tipo: payload.tipo || 'CONSIGNACION'
-    };
+    const datosDoc = construirDatosDoc(payload);
 
     setCargando(true);
     try {
@@ -195,14 +165,10 @@ const RegistroConsignacion = () => {
           );
           await registrarLogConsignacion(registroEditando.ref, 'EDICION', datosDoc, userData);
         } else {
-          const { anio, nombreMes, dia } = clavesNuevas;
           const batch = writeBatch(db);
+          agregarCarpetasFecha(batch, db, clavesNuevas);
 
-          batch.set(doc(db, COL_BASE, anio), { active: 'true' }, { merge: true });
-          batch.set(doc(db, COL_BASE, anio, 'mes', nombreMes), { active: 'true' }, { merge: true });
-          batch.set(doc(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia), { active: 'true' }, { merge: true });
-
-          const nuevoRef = doc(collection(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia, NOMBRE_SUBCOL_DETALLES));
+          const nuevoRef = nuevaRefDetalle(db, clavesNuevas);
           const nuevoDoc = {
             ...datosDoc,
             guias: registroEditando.guias || '',
@@ -226,29 +192,14 @@ const RegistroConsignacion = () => {
         showToast('Registro actualizado correctamente', 'success');
         setRegistroEditando(null);
       } else {
-        const { anio, nombreMes, dia } = clavesNuevas;
         const batch = writeBatch(db);
-
-        batch.set(doc(db, COL_BASE, anio), { active: 'true' }, { merge: true });
-        batch.set(doc(db, COL_BASE, anio, 'mes', nombreMes), { active: 'true' }, { merge: true });
-        batch.set(doc(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia), { active: 'true' }, { merge: true });
-
-        const detalleRef = doc(collection(db, COL_BASE, anio, 'mes', nombreMes, 'dia', dia, NOMBRE_SUBCOL_DETALLES));
-        const fechaRegistro = new Date();
-        const nuevoDoc = {
-          ...datosDoc,
-          guias: '',
-          orden: '',
-          despachado: 'PENDIENTE',
-          fechaRegistro,
-          registradoPor: userData?.nombreCompleto || 'Usuario'
-        };
-        batch.set(detalleRef, nuevoDoc);
+        agregarCarpetasFecha(batch, db, clavesNuevas);
+        const nuevoDoc = construirNuevoRegistro(datosDoc, userData);
+        const detalleRef = agregarRegistroNuevoABatch(batch, db, clavesNuevas, nuevoDoc, userData);
 
         await batch.commit();
 
         setRegistros((prev) => [{ id: detalleRef.id, ref: detalleRef, ...nuevoDoc }, ...prev]);
-        await registrarLogConsignacion(detalleRef, 'CREACION', nuevoDoc, userData);
 
         showToast('Ítem registrado correctamente', 'success');
       }
@@ -316,11 +267,7 @@ const RegistroConsignacion = () => {
         return;
       }
 
-      const cambios = {
-        prevision: datos['Isapre'] || '',
-        convenio: datos['Convenio'] || '',
-        descripcionPabellon: datos['Descripción'] || ''
-      };
+      const cambios = mapearDatosVinculados(datos);
 
       await updateDoc(registro.ref, cambios);
       setRegistros((prev) =>

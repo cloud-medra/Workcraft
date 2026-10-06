@@ -2,10 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { db } from '../../../../../../firebaseConfig'; 
 import { Plus, Save, X, Eraser, Info, Loader2, AlertCircle, List, RefreshCw } from 'lucide-react';
 import { obtenerMedicosCacheados, obtenerCodigosCacheados, buscarReporteInfoPorAdmisionCacheado } from '../utils/cacheMaestros';
-
-const TIPOS = ['CONSIGNACION', 'COTIZACION'];
-const CENTRO_FIJO = 'PABELLON';
-const ESTADO_FIJO = 'INGRESADO';
+import {
+  TIPOS_CONSIGNACION as TIPOS,
+  CENTRO_FIJO,
+  ESTADO_FIJO,
+  mapearDatosVinculados,
+  mapearItemMaestro,
+  validarRegistroConsignacion
+} from '../../utils/registroConsignacionService';
 
 const ESTADO_INICIAL = {
   gestionId: '',
@@ -79,12 +83,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
       setCargandoVinculacion(true);
       try {
         const datos = await buscarReporteInfoPorAdmisionCacheado(db, idTexto);
-        setFormData(prev => ({
-          ...prev,
-          convenio: datos?.['Convenio'] || '',
-          prevision: datos?.['Isapre'] || '',
-          descripcionPabellon: datos?.['Descripción'] || ''
-        }));
+        setFormData(prev => ({ ...prev, ...mapearDatosVinculados(datos) }));
       } finally {
         setCargandoVinculacion(false);
       }
@@ -209,11 +208,8 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
   const handleSeleccionarDescripcion = (item) => {
     setFormData(prev => ({
       ...prev,
-      referencia: item.referencia || prev.referencia,
-      codigo: item.codigo || '',
-      costo: item.precioNeto ?? '',
-      descripcion: item.descriptorEmpresa || item.descriptorAuto || '',
-      empresa: item.empresa || ''
+      ...mapearItemMaestro(item),
+      referencia: item.referencia || prev.referencia
     }));
     setVerTodosCodigos(false);
     setAbiertoDescripcion(false);
@@ -224,10 +220,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
   const handleRegistrar = (e) => {
     e.preventDefault();
 
-    const err = {};
-    if (!formData.fecha || formData.fecha.trim() === '') err.fecha = true;
-    if (!formData.referencia || formData.referencia.trim() === '') err.referencia = true;
-    if (!formData.cantidad || Number(formData.cantidad) <= 0) err.cantidad = true;
+    const err = validarRegistroConsignacion(formData);
 
     if (Object.keys(err).length > 0) {
       setErrores(err);

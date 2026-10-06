@@ -156,6 +156,38 @@ export const consignacionComponentMaps = {
     },
   },
 
+  '/consignacion/cargaMasivaConsignacion': {
+    label: 'Carga Masiva de Consignación (CargaMasivaConsignacion.jsx) — sin granularidad cableada aún',
+    sections: {
+      header: {
+        label: 'Sección: Encabezado',
+        elements: {
+          selector_tipo: { label: 'Campo: Tipo de código (Consignación/Cotización)' },
+          btn_agregar_filas: { label: 'Acción: Agregar Fila / 10 Filas' },
+          btn_limpiar_todo: { label: 'Acción: Limpiar Todo' },
+          btn_cargar: { label: 'Acción: Cargar (consulta Reportes Info y Maestro)' },
+          btn_guardar: { label: 'Acción: Guardar filas OK (batch)' },
+        },
+      },
+      grilla: {
+        label: 'Sección: Grilla tipo Excel (pegado desde Excel)',
+        elements: {
+          col_admision: { label: 'Columna: Admisión' },
+          col_paciente: { label: 'Columna: Paciente' },
+          col_medico: { label: 'Columna: Médico' },
+          col_fecha: { label: 'Columna: Fecha cirugía' },
+          col_proveedor: { label: 'Columna: Proveedor (se valida contra el maestro)' },
+          col_codigo: { label: 'Columna: Código interno' },
+          col_cantidad: { label: 'Columna: Cantidad' },
+          col_delivery: { label: 'Columna: Delivery' },
+          col_estado: { label: 'Columna: Estado de la fila' },
+          col_vinculados: { label: 'Columnas: Datos del Maestro y Datos Vinculados (solo lectura)' },
+          action_eliminar_fila: { label: 'Operación: Eliminar Fila' },
+        },
+      },
+    },
+  },
+
   // Pantalla con 2 vistas: un listado (filtros + tabla, sin granularidad
   // cableada) y, al abrir un registro, una vista de detalle con 4 pestañas
   // internas controladas por estado de React (no son rutas propias) — se

@@ -126,6 +126,7 @@ export const MODULES = {
       { label: 'Ingresar Guía', path: '/consignacion/ingresarGuiaDespacho', icon: <FileScan size={14} /> },
       { label: 'Listado Guía', path: '/consignacion/listadoguiasconsignacion', icon: <FileText size={14} /> },
       { label: 'Registros', path: '/consignacion/registroConsignacion', icon: <ArrowRightToLine size={14} /> },
+      { label: 'Carga Masiva', path: '/consignacion/cargaMasivaConsignacion', icon: <FileSpreadsheet size={14} /> },
       { label: 'Cargas', path: '/consignacion/cargasConsignacion', icon: <CheckCheck size={14} /> },
       { label: 'Solicitud', path: '/consignacion/solicitudConsignacion', icon: <FilePlus size={14} /> },
       { label: 'Resumen', path: '/consignacion/resumenConsignacion', icon: <BarChart2 size={14} /> },

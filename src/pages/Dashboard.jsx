@@ -80,6 +80,7 @@ import ResumenHemodinamia from '../components/modulos/operaciones/hemodinamia/re
 import IngresarGuiaDespacho from '../components/modulos/operaciones/consignacion/ingresarGuiaDespacho/IngresarGuiaDespacho';
 import Listadoguiasconsignacion from '../components/modulos/operaciones/consignacion/listadoguiasconsignacion/Listadoguiasconsignacion';
 import RegistroConsignacion from '../components/modulos/operaciones/consignacion/registroConsignacion/RegistroConsignacion';
+import CargaMasivaConsignacion from '../components/modulos/operaciones/consignacion/cargaMasivaConsignacion/CargaMasivaConsignacion';
 import CargasConsignacion from '../components/modulos/operaciones/consignacion/cargasConsignacion/CargasConsignacion';
 import SolicitudConsignacion from '../components/modulos/operaciones/consignacion/solicitudConsignacion/SolicitudConsignacion';
 import ResumenConsignacion from '../components/modulos/operaciones/consignacion/resumenConsignacion/ResumenConsignacion';
@@ -223,6 +224,7 @@ const Dashboard = () => {
     '/consignacion/ingresarGuiaDespacho': <IngresarGuiaDespacho />,
     '/consignacion/listadoguiasconsignacion': <Listadoguiasconsignacion />,
     '/consignacion/registroConsignacion': <RegistroConsignacion />,
+    '/consignacion/cargaMasivaConsignacion': <CargaMasivaConsignacion />,
     '/consignacion/cargasConsignacion': <CargasConsignacion />,
     '/consignacion/solicitudConsignacion': <SolicitudConsignacion />,
     '/consignacion/resumenConsignacion': <ResumenConsignacion />,
