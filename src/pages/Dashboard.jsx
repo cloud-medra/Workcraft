@@ -58,6 +58,7 @@ import EgresosInventario from '../components/modulos/inventario/egresosInventari
 import TransitoInventario from '../components/modulos/inventario/transitoInventario/TransitoInventario';
 import HistorialInventario from '../components/modulos/inventario/historialInventario/HistorialInventario';
 import UnidadInventario from '../components/modulos/inventario/unidadInventario/UnidadInventario';
+import EscaneoInventario from '../components/modulos/inventario/escaneoInventario/EscaneoInventario';
 
 // --- DOCUMENTOS ---
 import ReportesInfo from '../components/modulos/operaciones/documentos/reportesInfo/ReportesInfo';
@@ -236,6 +237,7 @@ const Dashboard = () => {
     '/inventario/transitoInventario': <TransitoInventario />,
     '/inventario/historialInventario': <HistorialInventario />,
     '/inventario/unidadInventario': <UnidadInventario />,
+    '/inventario/escaneoInventario': <EscaneoInventario />,
 
     '/documentos/reportesInfo': <ReportesInfo />,
     '/documentos/importarDetallesOC': <ImportarDetallesOC />,

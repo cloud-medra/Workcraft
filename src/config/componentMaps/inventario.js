@@ -241,4 +241,27 @@ export const inventarioComponentMaps = {
       },
     },
   },
+
+  '/inventario/escaneoInventario': {
+    label: 'Escaneo con pistola lectora (EscaneoInventario.jsx) — sin granularidad cableada aún',
+    sections: {
+      selector_operacion: {
+        label: 'Sección: Selector inicial (Ingresar con guía/factura [próximamente], Ingresar por inventario, Egresar/Traspaso [próximamente])',
+        elements: {},
+      },
+      ingreso_inventario: {
+        label: 'Sección: Ingreso por inventario (caja, escaneo, vínculo código de barras -> producto, cantidad/lote/vencimiento)',
+        elements: {
+          select_caja: { label: 'Campo: Caja existente o Nueva caja' },
+          input_escaneo: { label: 'Campo: Código de barras (pistola o manual)' },
+          buscador_producto: { label: 'Campo: Búsqueda en el maestro (Referencia/Código/Descriptor/Empresa)' },
+          btn_guardar: { label: 'Acción: Guardar en la caja' },
+        },
+      },
+      lista_sesion: {
+        label: 'Sección: Lista de lo ingresado en la sesión',
+        elements: {},
+      },
+    },
+  },
 };

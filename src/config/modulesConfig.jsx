@@ -143,6 +143,7 @@ export const MODULES = {
       { label: 'En Tránsito', path: '/inventario/transitoInventario', icon: <Truck size={14} /> },
       { label: 'Historial', path: '/inventario/historialInventario', icon: <History size={14} /> },
       { label: 'Stock Unidad', path: '/inventario/unidadInventario', icon: <Building2 size={14} /> },
+      { label: 'Escaneo', path: '/inventario/escaneoInventario', icon: <ScanBarcode size={14} /> },
     ]
   },
   documentos: {

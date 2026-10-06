@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { Layers, Plus, Save, X, ChevronDown, Trash2 } from 'lucide-react';
+import { filtrarCatalogoCodigos } from '../shared/filtrarCatalogoCodigos';
 
 const InventarioForm = ({
   formDataCaja,
@@ -145,20 +146,7 @@ const FilaItemAutocompletado = ({
     return () => document.removeEventListener("mousedown", handleClickFuera);
   }, [index]);
 
-  const codigosFiltrados = catalogoCodigos.filter(cat => {
-    const queryStr = textoBusqueda.toLowerCase();
-    const referencia = (cat.referencia || '').toLowerCase();
-    const codigo = (cat.codigo || '').toLowerCase();
-    const descriptorAuto = (cat.descriptorAuto || '').toLowerCase();
-    const empresa = (cat.empresa || '').toLowerCase();
-
-    return (
-      referencia.includes(queryStr) ||
-      codigo.includes(queryStr) ||
-      descriptorAuto.includes(queryStr) ||
-      empresa.includes(queryStr)
-    );
-  });
+  const codigosFiltrados = filtrarCatalogoCodigos(catalogoCodigos, textoBusqueda);
 
   return (
     <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 p-1.5 rounded border border-gray-200 dark:border-gray-700 relative">
