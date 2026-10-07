@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, UploadCloud, Eye, Download, Loader2, AlertCircle, RefreshCw, FolderOpen, CheckCircle2, XCircle, HelpCircle, Copy } from 'lucide-react';
+import { FileText, UploadCloud, Eye, Download, Loader2, AlertCircle, RefreshCw, FolderOpen, CheckCircle2, XCircle, HelpCircle, Copy, ChevronUp } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import {
   TIPOS_DOCUMENTO,
@@ -12,6 +12,8 @@ import {
 import { subirTandaAdmision, obtenerBlobDocumento } from '../../../shared/documentosAdmision/documentosStorage';
 import { ZonaSubidaPdf } from '../../../shared/documentosAdmision/ZonaSubidaPdf';
 import { construirTextoAdmisionNombre } from '../../utils/gestionesImportExport';
+import { VisorDocumentoModal } from './VisorDocumentoModal';
+import { IconoArchivo } from './IconoArchivo';
 
 const SIN_TIPO = 'SIN_TIPO';
 
@@ -35,6 +37,8 @@ export const DocumentosTab = ({
   const [progreso, setProgreso] = useState(null); // { actual, total, porcentaje }
   const [resumen, setResumen] = useState(null);   // { subidos: [], rechazados: [] }
   const [abriendoRuta, setAbriendoRuta] = useState(null);
+  const [mostrarSubida, setMostrarSubida] = useState(false);
+  const [visorIndice, setVisorIndice] = useState(null);  // índice en `ordenados`
 
   const sinAdmision = !idAdmision;
   const { lista = [], cargando, error: errorListado } = documentos || {};
@@ -48,6 +52,9 @@ export const DocumentosTab = ({
     });
     return [...porTipo.entries()];
   }, [lista]);
+
+  // Mismo orden que se ve en pantalla (por grupo): lo recorre el visor.
+  const ordenados = useMemo(() => grupos.flatMap(([, docs]) => docs), [grupos]);
 
   // Clic (selector múltiple) y arrastrar/soltar entran por aquí. Lo que
   // react-dropzone rechaza por tipo (`accept`) se suma a lo aceptado para que
@@ -106,8 +113,6 @@ export const DocumentosTab = ({
     }
   };
 
-  const handleVer = (docObj) => conBlob(docObj, (url) => window.open(url, '_blank'));
-
   const handleDescargar = (docObj) => conBlob(docObj, (url) => {
     const a = document.createElement('a');
     a.href = url;
@@ -116,60 +121,95 @@ export const DocumentosTab = ({
   });
 
   const sinTipoSubidos = resumen?.subidos.filter(d => !d.tipo) || [];
+  const listadoListo = !sinAdmision && !cargando && !errorListado;
+  const subidaDeshabilitada = sinAdmision || cargando || Boolean(errorListado);
+  // La zona de subida se despliega con el botón del encabezado; queda
+  // abierta mientras sube y cuando la admisión aún no tiene documentos.
+  const zonaSubidaVisible = !subidaDeshabilitada && (mostrarSubida || Boolean(progreso) || lista.length === 0);
 
   return (
-    <div className="flex-grow overflow-y-auto p-3 space-y-3">
-
-      {/* Mismo encabezado y botón de copiado que CargasTab. */}
-      <div className="flex items-center gap-1.5 px-1">
-        <FolderOpen size={13} className="text-[#2383C2]" />
-        <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
-          Documentos — Admisión #{gestionId || 'N/A'} - {nombre || 'P'}
-        </h3>
-        {handleCopiarTexto && (
-          <button
-            type="button"
-            onClick={() => handleCopiarTexto(construirTextoAdmisionNombre(gestionId, nombre))}
-            title="Copiar Admisión - Nombre"
-            className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition shrink-0"
-          >
-            <Copy size={11} />
-          </button>
-        )}
-      </div>
-
-      {sinAdmision && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-700 dark:text-amber-400">
-          <AlertCircle size={14} className="shrink-0" />
-          Guarda primero el ID de admisión en Información para ver y subir documentos.
-        </div>
-      )}
-
+    <div className="flex-grow overflow-y-auto p-3">
       <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-lg shadow-xs overflow-hidden">
-        <div className="px-3 py-1.5 bg-slate-50/80 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
-          <UploadCloud size={13} className="text-[#2383C2]" />
-          <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
-            Subir Documentos
-          </h3>
+
+        {/* ENCABEZADO */}
+        <div className="px-3 py-2 bg-slate-50/80 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 flex items-center gap-2 flex-wrap">
+          <FolderOpen size={14} className="text-[#2383C2] shrink-0" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
+                Documentos de la Admisión
+              </h3>
+              {listadoListo && (
+                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-gray-700 text-slate-600 dark:text-gray-300">
+                  {lista.length}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-gray-400 min-w-0">
+              <span className="truncate">Admisión #{gestionId || 'N/A'} - {nombre || 'P'}</span>
+              {handleCopiarTexto && (
+                <button
+                  type="button"
+                  onClick={() => handleCopiarTexto(construirTextoAdmisionNombre(gestionId, nombre))}
+                  title="Copiar Admisión - Nombre"
+                  className="p-0.5 rounded text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition shrink-0"
+                >
+                  <Copy size={11} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {!sinAdmision && (
+              <button
+                type="button"
+                onClick={onRecargar}
+                disabled={cargando}
+                title="Actualizar listado"
+                className="h-7 w-7 inline-flex items-center justify-center rounded border border-slate-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-slate-500 dark:text-gray-400 hover:border-[#2383C2] hover:text-[#2383C2] disabled:opacity-40 transition"
+              >
+                <RefreshCw size={12} className={cargando ? 'animate-spin' : ''} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setMostrarSubida(v => !v)}
+              disabled={subidaDeshabilitada}
+              className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded bg-[#2383C2] hover:bg-[#1d6fa5] text-white text-[10.5px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition"
+            >
+              {zonaSubidaVisible && lista.length > 0 && !progreso ? <ChevronUp size={13} /> : <UploadCloud size={13} />}
+              Subir documentos
+            </button>
+          </div>
         </div>
 
-        <div className="p-3 flex flex-col gap-2">
-          <p className="text-[10px] text-slate-500 dark:text-gray-400">
-            PDF ya nombrados, por ejemplo{' '}
-            <strong className="text-slate-700 dark:text-gray-200">{idAdmision || '102030'} - JOSE PEREZ - DP.pdf</strong> o{' '}
-            <strong className="text-slate-700 dark:text-gray-200">{idAdmision || '102030'} - JOSE PEREZ - COT 12345678 - EMPRESA.pdf</strong>.
-            Solo se suben los que comienzan con el id de esta admisión.
-          </p>
+        {sinAdmision && (
+          <div className="m-3 flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] text-amber-700 dark:text-amber-400">
+            <AlertCircle size={14} className="shrink-0" />
+            Guarda primero el ID de admisión en Información para ver y subir documentos.
+          </div>
+        )}
 
-          <ZonaSubidaPdf
-            onArchivos={handleSubir}
-            deshabilitada={sinAdmision || cargando || Boolean(errorListado)}
-            progreso={progreso}
-          />
-        </div>
+        {/* SUBIDA (misma lógica de siempre; solo se despliega desde el encabezado) */}
+        {zonaSubidaVisible && (
+          <div className="p-3 flex flex-col gap-2 border-b border-slate-200 dark:border-gray-700 bg-slate-50/40 dark:bg-gray-900/20">
+            <p className="text-[10px] text-slate-500 dark:text-gray-400">
+              PDF ya nombrados, por ejemplo{' '}
+              <strong className="text-slate-700 dark:text-gray-200">{idAdmision || '102030'} - JOSE PEREZ - DP.pdf</strong> o{' '}
+              <strong className="text-slate-700 dark:text-gray-200">{idAdmision || '102030'} - JOSE PEREZ - COT 12345678 - EMPRESA.pdf</strong>.
+              Solo se suben los que comienzan con el id de esta admisión.
+            </p>
+            <ZonaSubidaPdf
+              onArchivos={handleSubir}
+              deshabilitada={subidaDeshabilitada}
+              progreso={progreso}
+            />
+          </div>
+        )}
 
         {resumen && (resumen.subidos.length > 0 || resumen.rechazados.length > 0) && (
-          <div className="mx-3 mb-3 space-y-2 text-[10px]">
+          <div className="m-3 space-y-2 text-[10px]">
             {resumen.subidos.length > 0 && (
               <div className="px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-300">
                 <div className="flex items-center gap-1.5 font-semibold mb-1">
@@ -213,90 +253,131 @@ export const DocumentosTab = ({
             )}
           </div>
         )}
+
+        {/* LISTADO */}
+        {sinAdmision ? null : cargando ? (
+          <div className="p-3 space-y-2" aria-busy="true" aria-label="Cargando documentos">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="flex items-center gap-2 animate-pulse">
+                <div className="w-7 h-7 rounded bg-slate-100 dark:bg-gray-700" />
+                <div className="h-3 flex-1 max-w-[60%] rounded bg-slate-100 dark:bg-gray-700" />
+                <div className="h-3 w-16 rounded bg-slate-100 dark:bg-gray-700 ml-auto" />
+              </div>
+            ))}
+            <p className="flex items-center gap-1.5 pt-1 text-[10px] text-slate-400 dark:text-gray-500">
+              <Loader2 size={12} className="animate-spin" /> Cargando documentos...
+            </p>
+          </div>
+        ) : errorListado ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-[10.5px] text-red-600 dark:text-red-400">
+            <span className="flex items-center gap-1.5"><AlertCircle size={13} /> {errorListado}</span>
+            <button
+              type="button"
+              onClick={onRecargar}
+              className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50"
+            >
+              <RefreshCw size={11} /> Reintentar
+            </button>
+          </div>
+        ) : lista.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center gap-1.5 py-10 px-4">
+            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-gray-700/60 flex items-center justify-center mb-1">
+              <FileText size={18} className="text-slate-400 dark:text-gray-500" />
+            </div>
+            <p className="text-[11px] font-semibold text-slate-600 dark:text-gray-300">Esta admisión aún no tiene documentos</p>
+            <p className="text-[10px] text-slate-400 dark:text-gray-500">Sube los PDF arrastrándolos a la zona de arriba o con "Subir documentos".</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            {/* Ancho según contenido: solo el nombre se estira (hasta un máximo, con "..."). */}
+            <table className="w-auto max-w-full text-left text-[10.5px] border-collapse">
+              <thead className="bg-slate-50 dark:bg-gray-900/60">
+                <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px] whitespace-nowrap">
+                  <th className="px-3 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Categoría</th>
+                  <th className="pl-3 pr-1 py-1.5 border-b border-r border-slate-200 dark:border-gray-700"><span className="sr-only">Ícono</span></th>
+                  <th className="pl-1 pr-3 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Nombre del documento</th>
+                  <th className="px-3 py-1.5 border-b border-slate-200 dark:border-gray-700 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {grupos.map(([clave, docs]) => {
+                  const tipoInfo = TIPOS_DOCUMENTO.find(t => t.id === clave);
+                  return (
+                    <GrupoDocumentos
+                      key={clave}
+                      titulo={tipoInfo ? `${tipoInfo.id} — ${tipoInfo.label}` : 'Sin tipo'}
+                      docs={docs}
+                      abriendoRuta={abriendoRuta}
+                      onVer={(d) => setVisorIndice(ordenados.indexOf(d))}
+                      onDescargar={handleDescargar}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-lg shadow-xs overflow-hidden">
-        <div className="px-3 py-1.5 bg-slate-50/80 dark:bg-gray-800/80 border-b border-slate-200 dark:border-gray-700 flex items-center gap-1.5">
-          <FolderOpen size={13} className="text-[#2383C2]" />
-          <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
-            Documentos de la Admisión {!sinAdmision && !cargando && !errorListado ? `(${lista.length})` : ''}
-          </h3>
-        </div>
-
-        <div className="p-3">
-          {sinAdmision ? (
-            <p className="text-center py-6 text-gray-400 dark:text-gray-500 text-[10px]">Sin ID de admisión.</p>
-          ) : cargando ? (
-            <div className="flex items-center justify-center gap-2 py-6 text-slate-400 dark:text-gray-500 text-[10px]">
-              <Loader2 size={13} className="animate-spin" /> Cargando documentos...
-            </div>
-          ) : errorListado ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-[10px] text-red-600 dark:text-red-400">
-              <span className="flex items-center gap-1.5"><AlertCircle size={13} /> {errorListado}</span>
-              <button
-                type="button"
-                onClick={onRecargar}
-                className="flex items-center gap-1 px-2 py-1 rounded border border-slate-300 dark:border-gray-600 text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-gray-700/50"
-              >
-                <RefreshCw size={11} /> Reintentar
-              </button>
-            </div>
-          ) : lista.length === 0 ? (
-            <p className="text-center py-6 text-gray-400 dark:text-gray-500 text-[10px]">Esta admisión aún no tiene documentos.</p>
-          ) : (
-            <div className="space-y-3">
-              {grupos.map(([clave, docs]) => {
-                const tipoInfo = TIPOS_DOCUMENTO.find(t => t.id === clave);
-                return (
-                  <div key={clave}>
-                    <h4 className="text-[10px] font-bold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1">
-                      {tipoInfo ? `${tipoInfo.id} — ${tipoInfo.label}` : 'Sin tipo'} ({docs.length})
-                    </h4>
-                    <div className="space-y-1">
-                      {docs.map(d => {
-                        const abriendo = abriendoRuta === d.ruta;
-                        return (
-                          <div
-                            key={d.ruta}
-                            className="flex items-center justify-between gap-2 px-2 py-1 rounded border border-slate-100 dark:border-gray-700/60 hover:bg-slate-50 dark:hover:bg-gray-700/40"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <FileText size={12} className="shrink-0 text-red-500 dark:text-red-400" />
-                              <span className="truncate text-slate-700 dark:text-gray-200" title={d.nombre}>{d.nombre}</span>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleVer(d)}
-                                disabled={abriendo}
-                                title="Ver"
-                                className="p-1 rounded text-slate-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-slate-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                              >
-                                {abriendo ? <Loader2 size={12} className="animate-spin" /> : <Eye size={12} />}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDescargar(d)}
-                                disabled={abriendo}
-                                title="Descargar"
-                                className="p-1 rounded text-slate-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-slate-100 dark:hover:bg-gray-700 disabled:opacity-50"
-                              >
-                                <Download size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
+      {visorIndice !== null && ordenados[visorIndice] && (
+        <VisorDocumentoModal
+          documentos={ordenados}
+          indiceInicial={visorIndice}
+          onCerrar={() => setVisorIndice(null)}
+        />
+      )}
     </div>
   );
 };
+
+const BOTON_ACCION = 'h-6 w-6 inline-flex items-center justify-center rounded text-slate-500 dark:text-gray-400 hover:text-[#2383C2] hover:bg-slate-100 dark:hover:bg-gray-700 disabled:opacity-40 transition';
+
+// Filas de una categoría: la celda "Categoría" (tipo + cantidad) va solo en
+// la primera fila y abarca todas las del grupo (rowSpan).
+const CELDA = 'py-1.5 border-b border-slate-100 dark:border-gray-700/60';
+
+const GrupoDocumentos = ({ titulo, docs, abriendoRuta, onVer, onDescargar }) => (
+  <>
+    {docs.map((d, i) => {
+      const abriendo = abriendoRuta === d.ruta;
+      return (
+        <tr key={d.ruta} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors">
+          {i === 0 && (
+            <td
+              rowSpan={docs.length}
+              className="px-3 py-1.5 align-top whitespace-nowrap border-b border-r border-slate-200 dark:border-gray-700 bg-slate-50/60 dark:bg-gray-900/30"
+            >
+              <span className="text-[10px] font-semibold text-slate-700 dark:text-gray-200">{titulo}</span>
+              <span className="ml-1 text-[10px] text-slate-400 dark:text-gray-500">· {docs.length}</span>
+            </td>
+          )}
+          <td className={`${CELDA} border-r pl-3 pr-1 w-px`}>
+            <IconoArchivo nombre={d.nombre} />
+          </td>
+          <td className={`${CELDA} border-r pl-1 pr-3 max-w-[min(520px,55vw)]`}>
+            <button
+              type="button"
+              onClick={() => onVer(d)}
+              className="block max-w-full truncate text-left text-slate-700 dark:text-gray-200 hover:text-[#2383C2]"
+              title={d.nombre}
+            >
+              {d.nombre}
+            </button>
+          </td>
+          <td className={`${CELDA} px-3 w-px whitespace-nowrap`}>
+            <div className="flex items-center justify-end gap-0.5">
+              <button type="button" onClick={() => onVer(d)} title="Ver" className={BOTON_ACCION}>
+                <Eye size={13} />
+              </button>
+              <button type="button" onClick={() => onDescargar(d)} disabled={abriendo} title="Descargar" className={BOTON_ACCION}>
+                {abriendo ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    })}
+  </>
+);
 
 export default DocumentosTab;
