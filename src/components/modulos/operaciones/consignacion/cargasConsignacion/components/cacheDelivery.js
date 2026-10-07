@@ -1,14 +1,17 @@
 import { collectionGroup, collection, query, where, getDocs } from 'firebase/firestore';
 import { codigosPorReferenciaSiDisponible } from '../../../../../../stores/catalogosStore';
 import { descripcionDesdeMaestro } from '../../utils/registroConsignacionService';
+import { estaExcluidoDeGuia } from '../../utils/exclusionKitsGuia';
 
 const NOMBRE_SUBCOL_DETALLES_GUIAS = 'detalles';
-const COL_BASE = 'consignacion_registros';
+// Las guías las guarda Ingresar Guía en consignacion_guias/{año}/mes/{Mes}/
+// documento/{N°Doc}/detalles; el collectionGroup('detalles') también trae
+// los de otros módulos (y los ítems de consignacion_registros), por eso se
+// filtra por esta ruta.
+const COL_GUIAS = 'consignacion_guias';
 const COL_MAESTROS_CODIGOS = 'maestros_codigos';
-const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
 
 const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
-const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
 
 const trocear = (arr, tamano) => {
   const bloques = [];
@@ -48,13 +51,13 @@ export function resolverGuiaCacheada(db, numeroDocumento, forzar = false) {
       );
       const snap = await getDocs(q);
 
-      const docsConsignacion = snap.docs.filter((d) => d.ref.path.startsWith(`${COL_BASE}/`));
+      const docsConsignacion = snap.docs.filter((d) => d.ref.path.startsWith(`${COL_GUIAS}/`));
 
       if (docsConsignacion.length === 0) return null;
 
       const productos = docsConsignacion
         .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((p) => !estaExcluido(p.codigo));
+        .filter((p) => !estaExcluidoDeGuia(p.codigo));
       const primero = docsConsignacion[0].data();
 
       return {
@@ -152,4 +155,4 @@ export function invalidarCacheGuia(numeroDocumento) {
   if (clave) cacheGuias.delete(clave);
 }
 
-export { estaExcluido, normalizarCodigo };
+export { normalizarCodigo };

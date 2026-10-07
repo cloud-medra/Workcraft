@@ -11,14 +11,11 @@ import { collectionGroup, collection, query, where, orderBy, getDocs } from 'fir
 import { db } from '../../../../../../firebaseConfig';
 import { codigosPorReferenciaSiDisponible } from '../../../../../../stores/catalogosStore';
 import { descripcionDesdeMaestro } from '../../utils/registroConsignacionService';
+import { estaExcluidoDeGuia } from '../../utils/exclusionKitsGuia';
 
 const NOMBRE_SUBCOL_DETALLES = 'detalles';
 const ESTADO_ORIGEN = 'CARGADO';
 const COL_MAESTROS_CODIGOS = 'maestros_codigos';
-
-const CODIGOS_EXCLUIDOS_GUIA = ['KITBYPASSTCRL2'];
-const normalizarCodigo = (c) => (c || '').trim().toUpperCase();
-const estaExcluido = (codigo) => CODIGOS_EXCLUIDOS_GUIA.includes(normalizarCodigo(codigo));
 
 const trocear = (arr, tamano) => {
   const bloques = [];
@@ -50,7 +47,7 @@ const resolverGuiaCacheada = async (deliveryValor, forzar) => {
       return null;
     }
     const numeroGuia = snapGuia.docs[0]?.data()?.numeroGuia || null;
-    const productos = snapGuia.docs.map(d => d.data()).filter(p => !estaExcluido(p.codigo));
+    const productos = snapGuia.docs.map(d => d.data()).filter(p => !estaExcluidoDeGuia(p.codigo));
     const resultado = { numeroGuia, productos };
     cacheGuiasPorDelivery.set(deliveryValor, resultado);
     return resultado;
@@ -110,6 +107,19 @@ const resolverMaestrosCacheados = async (referencias, forzar) => {
   unicas.forEach(r => { resultado[r] = cacheMaestrosPorCodigo.get(r) ?? null; });
   return resultado;
 };
+
+// Lo que se guarda de cada fila "No lleva OC" en consignacion_imputadas
+// (campo filasGuia del doc de la fila principal). Exportada para Resumen.
+export const filaGuiaParaImputar = (f) => ({
+  codigoGuia: f.codigoGuia || '',
+  descripcion: f.descripcion || '-',
+  empresa: f.empresa || '-',
+  atributo: f.atributo || '-',
+  cantidad: f.cantidad ?? 0,
+  lote: f.lote || 'N/A',
+  vencimiento: f.vencimiento || 'N/A',
+  numeroGuia: f.numeroGuia || 0
+});
 
 // Consulta de candidatos (ítems con estado 'CARGADO'). Exportada aparte
 // para que Cargas Consolidado pueda escucharla en vivo con onSnapshot
@@ -211,15 +221,31 @@ export const construirCandidatosSolicitudConsignacion = async (docs, forzarRelec
           fechaRegistro: itemRelacionado?.fechaRegistro || null,
           lote: p.lote || 'N/A',
           vencimiento: p.vencimiento || 'N/A',
-          numeroGuia: 0
+          codigoGuia: p.codigo || '',
+          // N° de guía del propio producto (un mismo delivery puede venir en
+          // más de una guía).
+          numeroGuia: p.numeroGuia || 0
         };
       });
     }));
 
-    const itemsConNumeroGuia = itemsCargados.map(it => ({
-      ...it,
-      numeroGuia: it.numeroGuiaVinculada || numeroGuiaPorDelivery[it.delivery] || 0
-    }));
+    // La fila principal muestra N° de guía 0: el número va en sus filas
+    // "No lleva OC". Al solicitar, esas filas se guardan dentro del doc de
+    // consignacion_imputadas (filasGuia) para que Resumen las muestre igual.
+    // numeroGuiaParaImputar es lo que se guarda como numeroGuia del doc: 0 si
+    // el número quedó en filasGuia; si no hay filas de guía, se conserva el
+    // número de la guía para no perder el dato.
+    const itemsConNumeroGuia = itemsCargados.map(it => {
+      const filasGuia = (filasGuiaPorDelivery[it.delivery] || []).map(filaGuiaParaImputar);
+      return {
+        ...it,
+        numeroGuia: 0,
+        filasGuia,
+        numeroGuiaParaImputar: filasGuia.length > 0
+          ? 0
+          : (it.numeroGuiaVinculada || numeroGuiaPorDelivery[it.delivery] || 0)
+      };
+    });
 
     const deliveriesYaInsertados = new Set();
     const listaFinal = [];

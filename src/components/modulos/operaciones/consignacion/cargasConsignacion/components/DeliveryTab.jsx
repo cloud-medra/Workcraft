@@ -218,7 +218,7 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
           {deliveryValor && !cargandoGuia && !error && !guiaEncontrada && (
             <div className="flex items-center gap-2 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded p-3">
               <AlertCircle size={13} className="shrink-0" />
-              No se encontró ninguna guía con N° Documento <strong>{deliveryValor}</strong>. Aún no ha sido despachada o el número no coincide. Si acabas de ingresarla, presiona el ícono de actualizar de arriba.
+              No se encontró ninguna guía con N° Documento{' '}<strong>{deliveryValor}</strong>. Aún no ha sido despachada o el número no coincide. Si acabas de ingresarla, presiona el ícono de actualizar de arriba.
             </div>
           )}
 

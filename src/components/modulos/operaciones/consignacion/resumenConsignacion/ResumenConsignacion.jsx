@@ -43,6 +43,33 @@ const getAtributoEstilo = (atributo) => {
   return estilos[atributo] || 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300';
 };
 
+const CELDA = 'py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis';
+
+// Fila "No lleva OC" (producto de la guía del delivery), con el mismo
+// criterio que en Solicitud: sin costo y con el N° de guía de su producto.
+const FilaGuiaResumen = ({ d, f }) => (
+  <tr className="border-b border-gray-200 dark:border-gray-700/70 bg-slate-50/60 dark:bg-gray-900/30 text-gray-500 dark:text-gray-400">
+    <td className={CELDA}>{d.gestionId}</td>
+    <td className={CELDA}>{d.nombre}</td>
+    <td className={CELDA}>{d.medico}</td>
+    <td className={CELDA}>{f.empresa}</td>
+    <td className={CELDA}>{formatearFechaTabla(d.fecha)}</td>
+    <td className={`${CELDA} italic`}>No lleva OC</td>
+    <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 truncate max-w-[180px]" title={f.descripcion}>{f.descripcion}</td>
+    <td className={`${CELDA} text-center`}>{f.cantidad}</td>
+    <td className={CELDA}>$0</td>
+    <td className={`${CELDA} text-center`}>-</td>
+    <td className={CELDA}>$0</td>
+    <td className={CELDA}>{f.lote}</td>
+    <td className={CELDA}>{f.vencimiento}</td>
+    <td className={CELDA}>{f.numeroGuia ?? 0}</td>
+    <td className={CELDA}>{f.atributo}</td>
+    <td className="py-1.5 px-2 whitespace-nowrap overflow-hidden text-ellipsis">
+      {(NOMBRES_MESES[d.periodoMes] || d.periodoMes)} {d.periodoAnio}
+    </td>
+  </tr>
+);
+
 const ResumenConsignacion = () => {
   const {
     anio, setAnio,
@@ -52,6 +79,7 @@ const ResumenConsignacion = () => {
     aniosDisponibles,
     mesesDelAnioActual,
     documentosFiltrados,
+    filasGuiaPorDocumento,
     totales,
     cargando,
     actualizar
@@ -279,8 +307,8 @@ const ResumenConsignacion = () => {
                   : (deliveryValor ? 'PAD' : 'Sin fecha');
 
                 return (
+                  <React.Fragment key={d.refPath}>
                   <tr
-                    key={d.refPath}
                     className="border-b border-gray-200 dark:border-gray-700/70 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                   >
                     <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 font-semibold text-[#2383C2] whitespace-nowrap overflow-hidden text-ellipsis">{d.gestionId}</td>
@@ -308,6 +336,10 @@ const ResumenConsignacion = () => {
                       {(NOMBRES_MESES[d.periodoMes] || d.periodoMes)} {d.periodoAnio}
                     </td>
                   </tr>
+                  {(filasGuiaPorDocumento.get(d.refPath) || []).map((f, idx) => (
+                    <FilaGuiaResumen key={`${d.refPath}-guia-${idx}`} d={d} f={f} />
+                  ))}
+                  </React.Fragment>
                 );
               })
             )}

@@ -195,7 +195,8 @@ export const useSolicitudConsignacionData = () => {
             agregarOp(b => b.set(imputadaRef, {
               ...it.datosOriginales,
               estado: ESTADO_DESTINO,
-              numeroGuia: it.numeroGuia,
+              numeroGuia: it.numeroGuiaParaImputar ?? it.numeroGuia,
+              filasGuia: it.filasGuia || [],
               total: it.costoTotal,
               fechaIngreso: fechaIngresoHoy,
               fechaSolicitud: new Date(),

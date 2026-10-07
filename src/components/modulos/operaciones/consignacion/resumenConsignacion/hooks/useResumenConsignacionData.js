@@ -10,6 +10,22 @@ export const NOMBRES_MESES = {
 export const ATRIBUTO_OPTIONS = ['CONSIGNACION', 'COTIZACION'];
 export { TODOS_LOS_MESES };
 
+// Filas "No lleva OC" guardadas al solicitar (filasGuia), por refPath del
+// documento. Igual que en Solicitud, si varios ítems comparten delivery se
+// muestran una sola vez, bajo el primero. No suman en los totales.
+export const agruparFilasGuiaPorDocumento = (documentos) => {
+  const mapa = new Map();
+  const deliveriesVistos = new Set();
+  documentos.forEach(d => {
+    const filas = Array.isArray(d.filasGuia) ? d.filasGuia : [];
+    const delivery = String(d.delivery || '').trim();
+    if (filas.length === 0 || (delivery && deliveriesVistos.has(delivery))) return;
+    if (delivery) deliveriesVistos.add(delivery);
+    mapa.set(d.refPath, filas);
+  });
+  return mapa;
+};
+
 export const useResumenConsignacionData = () => {
   // Años/meses por sondeo y documentos con lectura única al elegir el mes
   // (antes: listener sobre todas las imputadas de todos los años).
@@ -47,6 +63,11 @@ export const useResumenConsignacionData = () => {
     return [...lista].sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
   }, [documentos, busqueda, filtroAtributo]);
 
+  const filasGuiaPorDocumento = useMemo(
+    () => agruparFilasGuiaPorDocumento(documentosFiltrados),
+    [documentosFiltrados]
+  );
+
   const totales = useMemo(() => {
     const totalVenta = documentosFiltrados.reduce((acc, d) => acc + (Number(d.venta) || 0), 0);
     const totalCantidad = documentosFiltrados.reduce((acc, d) => acc + (Number(d.cantidad) || 0), 0);
@@ -61,6 +82,7 @@ export const useResumenConsignacionData = () => {
     aniosDisponibles,
     mesesDelAnioActual,
     documentosFiltrados,
+    filasGuiaPorDocumento,
     totales,
     cargando,
     actualizar

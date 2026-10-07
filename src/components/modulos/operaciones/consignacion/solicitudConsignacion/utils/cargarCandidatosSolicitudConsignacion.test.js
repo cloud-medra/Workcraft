@@ -92,4 +92,57 @@ describe('cargarCandidatosSolicitudConsignacion', () => {
     expect(filaDesglose.cantidad).toBe(3);
     expect(filaDesglose.ref).toBeNull();
   });
+
+  it('el N° de guía va en cada fila "No lleva OC" (el de su propio producto) y la fila principal queda en 0', async () => {
+    const { getDocs } = await import('firebase/firestore');
+    const { cargarCandidatosSolicitudConsignacion } = await import('./cargarCandidatosSolicitudConsignacion');
+
+    const item = docFake('item-2', {
+      estado: 'CARGADO', gestionId: '600', costo: 500, cantidad: 2, delivery: 'GUIA-002'
+    }, 'consignacion_registros/.../detalles/item-2');
+
+    getDocs.mockResolvedValueOnce({ docs: [item] });
+    getDocs.mockResolvedValueOnce({
+      empty: false,
+      docs: [
+        { data: () => ({ numeroGuia: '111', codigo: 'PROD-A', cantidad: 1 }) },
+        { data: () => ({ numeroGuia: '222', codigo: 'PROD-B', cantidad: 1 }) },
+        { data: () => ({ numeroGuia: '111', codigo: 'KIT MANGA CRL', cantidad: 1 }) }
+      ]
+    });
+    getDocs.mockResolvedValueOnce({ docs: [] });
+
+    const resultado = await cargarCandidatosSolicitudConsignacion(true);
+
+    const principal = resultado.find(f => !f.esFilaGuia);
+    expect(principal.numeroGuia).toBe(0);
+    expect(principal.costoTotal).toBe(1000);
+    expect(resultado.filter(f => f.esFilaGuia).map(f => f.numeroGuia)).toEqual(['111', '222']);
+
+    // Lo que se guarda en consignacion_imputadas: 0 en la principal y el
+    // número de cada producto en filasGuia.
+    expect(principal.numeroGuiaParaImputar).toBe(0);
+    expect(principal.filasGuia).toEqual([
+      { codigoGuia: 'PROD-A', descripcion: '-', empresa: '-', atributo: '-', cantidad: 1, lote: 'N/A', vencimiento: 'N/A', numeroGuia: '111' },
+      { codigoGuia: 'PROD-B', descripcion: '-', empresa: '-', atributo: '-', cantidad: 1, lote: 'N/A', vencimiento: 'N/A', numeroGuia: '222' }
+    ]);
+  });
+
+  it('sin filas de guía, se sigue guardando el N° de guía vinculado en la fila principal', async () => {
+    const { getDocs } = await import('firebase/firestore');
+    const { cargarCandidatosSolicitudConsignacion } = await import('./cargarCandidatosSolicitudConsignacion');
+
+    const item = docFake('item-3', {
+      estado: 'CARGADO', gestionId: '700', costo: 10, cantidad: 1, delivery: 'GUIA-003', numeroGuiaVinculada: '333'
+    }, 'consignacion_registros/.../detalles/item-3');
+
+    getDocs.mockResolvedValueOnce({ docs: [item] });
+    getDocs.mockResolvedValueOnce({ empty: true, docs: [] });
+
+    const [principal] = await cargarCandidatosSolicitudConsignacion(true);
+
+    expect(principal.numeroGuia).toBe(0);
+    expect(principal.filasGuia).toEqual([]);
+    expect(principal.numeroGuiaParaImputar).toBe('333');
+  });
 });

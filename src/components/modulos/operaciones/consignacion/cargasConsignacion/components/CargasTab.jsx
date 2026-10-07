@@ -235,7 +235,7 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
     return (
       <tr>
         <td colSpan={colSpanTotal} className="px-3 py-2 text-[9px] text-amber-700 dark:text-amber-400 bg-amber-50/60 dark:bg-amber-950/10 border-b border-slate-100 dark:border-gray-700/60">
-          <span className="flex items-center gap-1.5"><AlertCircle size={11} /> No se encontró ninguna guía con N° Documento <strong>{deliveryValor}</strong>.</span>
+          <span className="flex items-center gap-1.5"><AlertCircle size={11} /> No se encontró ninguna guía con N° Documento{' '}<strong>{deliveryValor}</strong>.</span>
         </td>
       </tr>
     );

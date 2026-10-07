@@ -460,9 +460,11 @@ export const useSolicitudesUnificadasData = () => {
               'documentos', it.id
             );
             // eslint-disable-next-line no-unused-vars
-            const { ref: _ref, refPath: _refPath, ...datosItemLimpios } = it;
+            const { ref: _ref, refPath: _refPath, numeroGuiaParaImputar, ...datosItemLimpios } = it;
             agregarEscritura({ origen: 'Consignación', tipo: 'set', ref: imputadaRef, datos: {
               ...datosItemLimpios,
+              numeroGuia: numeroGuiaParaImputar ?? it.numeroGuia,
+              filasGuia: it.filasGuia || [],
               estado: 'SOLICITADO',
               total: (Number(it.costo) || 0) * (Number(it.cantidad) || 1),
               fechaIngreso: fechaHoyFormato,
