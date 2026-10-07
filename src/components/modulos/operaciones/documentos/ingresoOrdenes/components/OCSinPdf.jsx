@@ -30,7 +30,7 @@ const fechaCorta = (yyyyMmDd) => {
 
 // Varios valores en una celda: el primero y "+n" (todos en el title).
 const Multi = ({ valores, mono = false }) => (
-  <span className={mono ? 'font-mono' : ''} title={valores.join(' · ')}>
+  <span className={mono ? 'font-num' : ''} title={valores.join(' · ')}>
     {valores[0] || '-'}
     {valores.length > 1 && <span className="ml-1 text-[9.5px] text-slate-400 dark:text-gray-500">+{valores.length - 1}</span>}
   </span>
@@ -53,7 +53,7 @@ const FilaOC = ({ fila, subiendo, deshabilitado, onArchivos }) => {
       className={`transition ${isDragActive ? 'bg-[#2383C2]/10' : 'hover:bg-slate-50 dark:hover:bg-gray-700/40'}`}
       title={`Suelta aquí el PDF de la OC ${fila.oc}`}
     >
-      <td className={`${celda} font-mono font-semibold text-[#2383C2]`} title={fila.oc}>
+      <td className={`${celda} font-num font-semibold text-[#2383C2]`} title={fila.oc}>
         <input {...getInputProps()} />
         {fila.oc}
       </td>

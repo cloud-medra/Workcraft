@@ -769,7 +769,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
                           >
                             <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{item.referencia}</div>
                             <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
-                              <span className="font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
+                              <span className="font-num text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
                               <span>·</span>
                               <span className="truncate">{item.descriptorAuto || item.empresa}</span>
                             </div>
@@ -1016,7 +1016,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
             <span className="flex items-center gap-1">
               <span className="font-bold text-gray-500 dark:text-gray-400 text-[9px] uppercase">Código:</span>
               {buscando ? <Loader2 size={10} className="animate-spin text-[#2383C2]" /> : (
-                <span className={`font-mono font-semibold ${nuevoItem.codigo ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-500'}`}>
+                <span className={`font-num font-semibold ${nuevoItem.codigo ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-500'}`}>
                   {nuevoItem.codigo || (nuevoItem.referencia.trim() ? 'NO ENCONTRADO' : 'P')}
                 </span>
               )}

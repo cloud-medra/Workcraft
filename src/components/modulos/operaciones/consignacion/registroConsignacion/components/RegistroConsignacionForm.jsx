@@ -433,7 +433,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
                   >
                     <div className="text-[10px] font-semibold text-gray-700 dark:text-gray-200 truncate flex items-center gap-1.5">
                       {item.referencia}
-                      <span className="font-mono text-[8px] text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
+                      <span className="font-num text-[8px] text-emerald-600 dark:text-emerald-400">{item.codigo || 'S/C'}</span>
                     </div>
                     <div className="text-[9px] text-gray-400 dark:text-gray-500 truncate">
                       {descripcionDesdeMaestro(item) || 'Sin descripción'} · {item.empresa || 'N/A'}
@@ -529,7 +529,7 @@ const RegistroConsignacionForm = ({ onRegistrar, valoresIniciales = null, onCanc
 
         <div className="flex items-center gap-1">
           <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] uppercase">Código:</span>
-          <span className="font-mono font-semibold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
+          <span className="font-num font-semibold text-gray-700 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[10px]">
             {renderValorVinculado(formData.codigo)}
           </span>
         </div>

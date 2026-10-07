@@ -82,7 +82,7 @@ const ConfigPrivacidad = () => {
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-gray-700 dark:text-gray-200">{label}</p>
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                    {descripcion}: <span className="font-mono">{dato || 'sin dato — se usará el siguiente disponible'}</span>
+                    {descripcion}: <span className="font-num">{dato || 'sin dato — se usará el siguiente disponible'}</span>
                   </p>
                 </div>
               </label>

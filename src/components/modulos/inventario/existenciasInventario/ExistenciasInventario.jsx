@@ -287,7 +287,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                         </td>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "col_codigo") && (
-                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono text-gray-600 dark:text-gray-400 text-[10px]">
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-num text-gray-600 dark:text-gray-400 text-[10px]">
                           {item.codigo}
                         </td>
                       )}
@@ -306,7 +306,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                               {estado.label}
                             </span>
                             {item.fechaVencimientoProxima && (
-                              <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono">
+                              <span className="text-[9px] text-gray-500 dark:text-gray-400 font-num">
                                 {item.fechaVencimientoProxima}
                               </span>
                             )}
@@ -331,7 +331,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                         </td>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "col_precio") && (
-                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right text-gray-600 dark:text-gray-300 font-mono">
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right text-gray-600 dark:text-gray-300 font-num">
                           ${item.precioUnitario.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                         </td>
                       )}
@@ -341,7 +341,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                         </td>
                       )}
                       {hasPermission(PATH_VISTA, "tabla_datos", "col_total") && (
-                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right font-bold text-blue-600 dark:text-blue-400 font-mono">
+                        <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right font-bold text-blue-600 dark:text-blue-400 font-num">
                           ${item.valorTotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                         </td>
                       )}
@@ -377,7 +377,7 @@ const ExistenciasInventario = ({ cajas: cajasProp }) => {
                   <td className="py-1.5 px-2 text-right text-emerald-600 dark:text-emerald-400 text-[11px]">
                     {totalGeneralPiezas.toLocaleString('es-ES')} Ud.
                   </td>
-                  <td className="py-1.5 px-2 text-right text-blue-600 dark:text-blue-400 text-[11px] font-mono">
+                  <td className="py-1.5 px-2 text-right text-blue-600 dark:text-blue-400 text-[11px] font-num">
                     ${totalValorizadoGeneral.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                   </td>
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_acciones") && (

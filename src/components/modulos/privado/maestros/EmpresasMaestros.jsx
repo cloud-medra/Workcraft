@@ -380,7 +380,7 @@ const EmpresasMaestros = () => {
                   }`}>
                     {log.accion}
                   </span>
-                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
+                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-num">
                     {formatearFecha(log.fecha)}
                   </span>
                 </div>

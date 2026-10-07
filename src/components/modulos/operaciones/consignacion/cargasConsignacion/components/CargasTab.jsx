@@ -171,7 +171,7 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
               <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-sans font-normal text-slate-500 dark:text-gray-400">
                 No lleva OC
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
                 <span className="flex items-center gap-1">
                   {esCoincidente && <CheckCircle2 size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                   {p.codigo || 'N/A'}
@@ -265,7 +265,7 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
             <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-sans font-normal text-slate-500 dark:text-gray-400">
               No lleva OC
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
               <span className="flex items-center gap-1">
                 {esCoincidente && <CheckCircle2 size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                 {p.codigo || 'N/A'}
@@ -894,7 +894,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-semibold text-[#2383C2]">
                         {registro?.gestionId || 'N/A'}
                       </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
+                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
                         {it.codigo || 'S/C'}
                       </td>
                       <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold">
@@ -986,7 +986,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                     if (enEdicion) {
                       return (
                         <tr key={it.id} className="bg-blue-50/60 dark:bg-blue-950/20">
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-[9px]">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-[9px]">
                             {borradorItem.codigo || <span className="text-red-500 font-bold">S/C</span>}
                           </td>
                           <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRefEdicion}>
@@ -1018,7 +1018,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                                       >
                                         <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{sug.referencia}</div>
                                         <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
-                                          <span className="font-mono text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
+                                          <span className="font-num text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
                                           <span>·</span>
                                           <span className="truncate">{sug.empresa}</span>
                                         </div>
@@ -1125,7 +1125,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                     return (
                       <React.Fragment key={it.id}>
                         <tr className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
                             {it.codigo || 'S/C'}
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={it.referencia}>

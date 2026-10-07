@@ -75,7 +75,7 @@ const ActualizacionPreciosMaestros = () => {
         <h1 className="text-[11px] font-bold text-slate-900 dark:text-gray-100 tracking-tight">
           Actualización de Precios por Importación
         </h1>
-        <span className="text-[8.5px] bg-slate-100 dark:bg-gray-700 font-mono text-slate-600 dark:text-gray-300 px-1.5 py-0.2 rounded border border-slate-200 dark:border-gray-600 font-medium">
+        <span className="text-[8.5px] bg-slate-100 dark:bg-gray-700 font-num text-slate-600 dark:text-gray-300 px-1.5 py-0.2 rounded border border-slate-200 dark:border-gray-600 font-medium">
           MAESTROS / PRECIOS
         </span>
       </div>

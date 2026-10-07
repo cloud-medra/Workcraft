@@ -104,7 +104,7 @@ export const EmpresasFechasPanel = ({
                   <span className="font-semibold truncate">{bloque.empresa || 'SIN EMPRESA'}</span>
                   {conError && !activo && <AlertCircle size={11} className="text-red-500 shrink-0 ml-auto" />}
                 </span>
-                <span className="text-[9px] font-mono pl-[18px] opacity-80">
+                <span className="text-[9px] font-num pl-[18px] opacity-80">
                   {bloque.fecha || 'Sin fecha'}
                 </span>
                 {ocsPorBloque && (
@@ -114,7 +114,7 @@ export const EmpresasFechasPanel = ({
                   >
                     <span className="opacity-60">OC: </span>
                     {ocsPorBloque[index]?.length
-                      ? <span className="font-mono font-semibold">{ocsPorBloque[index].join(', ')}</span>
+                      ? <span className="font-num font-semibold">{ocsPorBloque[index].join(', ')}</span>
                       : <span className="opacity-60">Pendiente</span>}
                   </span>
                 )}

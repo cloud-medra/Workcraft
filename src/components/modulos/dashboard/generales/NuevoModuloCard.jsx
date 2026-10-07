@@ -97,7 +97,7 @@ const NuevoModuloCard = () => {
                 </p>
               )}
 
-              <div className="flex items-center justify-between border-t border-gray-200/40 dark:border-gray-700/40 pt-1 mt-0.5 text-[8.5px] text-gray-400 dark:text-gray-500 font-mono">
+              <div className="flex items-center justify-between border-t border-gray-200/40 dark:border-gray-700/40 pt-1 mt-0.5 text-[8.5px] text-gray-400 dark:text-gray-500 font-num">
                 {nota.fecha?.seconds && (
                   <span>
                     {new Date(nota.fecha.seconds * 1000).toLocaleDateString('es-ES', {

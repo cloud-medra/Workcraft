@@ -189,7 +189,7 @@ export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={it.referencia}>
                               {it.referencia}
                             </td>
-                            <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono ${it.sinCodigo ? 'text-red-600 dark:text-red-400 font-bold' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num ${it.sinCodigo ? 'text-red-600 dark:text-red-400 font-bold' : 'text-emerald-600 dark:text-emerald-400'}`}>
                               {it.codigo || 'S/C'}
                             </td>
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[160px]" title={it.descriptorAuto}>
@@ -222,7 +222,7 @@ export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
                             <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                               {formatearFechaTabla(it.vencimiento)}
                             </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono">
+                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num">
                               {ocPorItem[it.id]
                                 ? <span className="text-slate-700 dark:text-gray-200 font-semibold">{ocPorItem[it.id]}</span>
                                 : <span className="text-slate-400 dark:text-gray-500 font-sans">{itemRequiereOC(it) ? 'Pendiente' : '—'}</span>}

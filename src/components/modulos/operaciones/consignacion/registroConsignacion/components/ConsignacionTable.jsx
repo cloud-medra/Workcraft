@@ -215,7 +215,7 @@ export const ConsignacionTable = ({ registros, numeroInicial = 0, onEliminar, on
                   <td className={`${celdaBase} text-gray-700 dark:text-gray-200 font-medium`} title={r.nombre}>{r.nombre || '-'}</td>
                   <td className={`${celdaBase} text-gray-600 dark:text-gray-300`} title={r.medico}>{r.medico || '-'}</td>
                   <td className={`${celdaBase} text-gray-600 dark:text-gray-300`}>{formatearFechaTabla(r.fecha)}</td>
-                  <td className={`${celdaBase} font-mono text-emerald-600 dark:text-emerald-400`} title={r.codigo}>{r.codigo || 'S/C'}</td>
+                  <td className={`${celdaBase} font-num text-emerald-600 dark:text-emerald-400`} title={r.codigo}>{r.codigo || 'S/C'}</td>
                   <td className={`${celdaBase} text-gray-500 dark:text-gray-400`} title={r.descripcion}>{r.descripcion || '-'}</td>
                   <td className={`${celdaBase} text-center font-semibold text-gray-700 dark:text-gray-200`}>{r.cantidad ?? 0}</td>
                   <td className={`${celdaBase} text-emerald-700 dark:text-emerald-400 font-semibold`}>

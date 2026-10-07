@@ -555,7 +555,7 @@ export const CotizacionCard = ({
                                       >
                                         <div className="text-[10px] font-semibold text-slate-700 dark:text-gray-200 truncate">{sug.referencia}</div>
                                         <div className="text-[9px] text-slate-400 dark:text-gray-500 flex items-center gap-1.5">
-                                          <span className="font-mono text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
+                                          <span className="font-num text-emerald-600 dark:text-emerald-400">{sug.codigo || 'S/C'}</span>
                                           <span>·</span>
                                           <span className="truncate">{sug.empresa}</span>
                                         </div>

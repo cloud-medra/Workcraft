@@ -41,7 +41,7 @@ const TablaDetallePaciente = ({ registrosDetalle, cargandoDetalle, hasPermission
               {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_precios') && <td className="p-3 text-gray-600 dark:text-gray-300">${reg.PRECIO_U?.toLocaleString()}</td>}
               {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_precios') && <td className="p-3 text-gray-700 dark:text-gray-100 font-bold">${reg.OC_MONTO?.toLocaleString()}</td>}
 
-              <td className="p-3 text-[#2383C2] dark:text-[#369BCE] font-mono font-bold">{reg.OC}</td>
+              <td className="p-3 text-[#2383C2] dark:text-[#369BCE] font-num font-bold">{reg.OC}</td>
               <td className="p-3">
                 <span className={`px-2 py-0.5 rounded-full font-bold text-[9px] ${
                   reg.ESTADO === 'COMPLETO' 
@@ -52,11 +52,11 @@ const TablaDetallePaciente = ({ registrosDetalle, cargandoDetalle, hasPermission
                 </span>
               </td>
 
-              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-600 dark:text-gray-300 font-mono">{reg.NUMERO_FACTURA || '-'}</td>}
+              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-600 dark:text-gray-300 font-num">{reg.NUMERO_FACTURA || '-'}</td>}
               {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-500 dark:text-gray-400">{reg.FECHA_EMISION || '-'}</td>}
-              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-600 dark:text-gray-300 font-mono">{reg.NUMERO_GUIA || '-'}</td>}
-              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-500 dark:text-gray-400 font-mono">{reg.LOTE || '-'}</td>}
-              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-500 dark:text-gray-400 font-mono">{reg.FECHA_VENCIMIENTO || '-'}</td>}
+              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-600 dark:text-gray-300 font-num">{reg.NUMERO_GUIA || '-'}</td>}
+              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-500 dark:text-gray-400 font-num">{reg.LOTE || '-'}</td>}
+              {hasPermission(RUTA, 'tabla_detalle_paciente', 'cargaDatos_detalle_logistica') && <td className="p-3 text-gray-500 dark:text-gray-400 font-num">{reg.FECHA_VENCIMIENTO || '-'}</td>}
             </tr>
           ))}
           {registrosDetalle.length === 0 && !cargandoDetalle && (

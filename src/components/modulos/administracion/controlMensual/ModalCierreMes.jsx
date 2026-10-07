@@ -10,7 +10,7 @@ import { validarCierreMes } from './validarCierreMes';
 // así cada cierre empieza desde el paso 1 con los campos vacíos.
 const PASO = { CONFIRMAR: 'confirmar', ESCRIBIR: 'escribir', PROCESANDO: 'procesando', EXITO: 'exito', ERROR: 'error' };
 
-const claseInput = 'w-full p-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 text-[12px] font-mono outline-none focus:border-[#2383C2] disabled:opacity-50';
+const claseInput = 'w-full p-1.5 border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 text-[12px] font-num outline-none focus:border-[#2383C2] disabled:opacity-50';
 const claseBtnSecundario = 'px-3 py-1 bg-slate-200 dark:bg-gray-700 text-slate-700 dark:text-gray-300 rounded text-[10px] font-bold hover:bg-slate-300 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 const claseBtnPrimario = 'px-3 py-1 bg-[#2383C2] hover:bg-blue-600 text-white rounded text-[10px] font-bold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed';
 

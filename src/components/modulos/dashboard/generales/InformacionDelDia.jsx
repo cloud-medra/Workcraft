@@ -50,7 +50,7 @@ const InformacionDelDia = ({ fecha }) => {
         <div>
           <div className="flex items-center justify-between text-[9.5px] text-gray-500 dark:text-gray-400 mb-1">
             <span>Día {diaDelAnio} de {totalDias}</span>
-            <span className="font-mono font-bold text-gray-600 dark:text-gray-300">{porcentaje.toFixed(1)}%</span>
+            <span className="font-num font-bold text-gray-600 dark:text-gray-300">{porcentaje.toFixed(1)}%</span>
           </div>
           <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div

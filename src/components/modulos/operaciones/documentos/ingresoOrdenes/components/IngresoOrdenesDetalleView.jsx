@@ -114,8 +114,8 @@ const IngresoOrdenesDetalleView = ({ grupo }) => {
               <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                 {grupo.items.map((item) => (
                   <tr key={item.refPath} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150">
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-400">{item.id}</td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-mono text-emerald-600 dark:text-emerald-400">{item.codigo || '-'}</td>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-400">{item.id}</td>
+                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-num text-emerald-600 dark:text-emerald-400">{item.codigo || '-'}</td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate max-w-[220px]" title={item.descripcion}>{item.descripcion || '-'}</td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center">{item.cantidad ?? '-'}</td>
                     <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-right">{item.precio_u ?? '-'}</td>

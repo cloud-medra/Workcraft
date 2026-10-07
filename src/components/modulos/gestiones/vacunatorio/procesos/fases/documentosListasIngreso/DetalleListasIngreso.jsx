@@ -236,7 +236,7 @@ const DetalleListasIngreso = ({
           <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-gray-500 flex items-center gap-1">
             <Tag size={11} className="text-[#2383C2]" /> Ref. (OC)
           </span>
-          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 font-mono">
+          <span className="text-[11px] font-bold text-slate-800 dark:text-gray-100 truncate mt-0.5 font-num">
             {documento.folioRef || 'Sin Referencia'}
           </span>
         </div>
@@ -337,16 +337,16 @@ const DetalleListasIngreso = ({
                 detalles.map((item, idx) => (
                   <tr key={item.id || item.codigo || idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40">
                     <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">{idx + 1}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-500">{item.codigo || '-'}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-500">{item.codigo || '-'}</td>
                     <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">{item.nombre || item.descripcion}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono">{item.cantidad}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono">{formatearMoneda(item.precio)}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-num">{item.cantidad}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-num">{formatearMoneda(item.precio)}</td>
                     <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">{formatearMoneda(item.monto || item.precio * item.cantidad)}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.codigoMaestro || '-'}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.codigoMaestro || '-'}</td>
                     <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">{item.descripcionMaestro || '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-mono text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.articuloOC || '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.cantidadOC ?? '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-mono bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.precioOC !== undefined ? formatearMoneda(item.precioOC) : '-'}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.articuloOC || '-'}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-num bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.cantidadOC ?? '-'}</td>
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-num bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.precioOC !== undefined ? formatearMoneda(item.precioOC) : '-'}</td>
                     <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
                       <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-300">
                         {item.vincuOCTexto || item.estadoItem || 'Registrado'}

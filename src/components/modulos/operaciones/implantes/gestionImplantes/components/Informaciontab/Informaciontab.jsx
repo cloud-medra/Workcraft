@@ -243,7 +243,7 @@ export const InformacionTab = forwardRef(({
                 <Building2 size={13} />
                 Empresa y Fecha vinculadas a esta Admisión
               </span>
-              <span className="text-[9px] bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200/50 px-2 py-0.5 rounded font-mono font-semibold">
+              <span className="text-[9px] bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200/50 px-2 py-0.5 rounded font-num font-semibold">
                 Bloque {bloqueActivoIndex + 1} de {formData.bloques.length}
               </span>
             </div>

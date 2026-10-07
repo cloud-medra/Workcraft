@@ -85,7 +85,7 @@ const AgendaCalendar = ({
             <button 
               key={dia} 
               onClick={() => setSelectedDate(new Date(year, month, dia))} 
-              className={`h-5.5 w-5.5 rounded flex items-center justify-center font-mono text-[10px] transition-all ${estilosEstado}`}
+              className={`h-5.5 w-5.5 rounded flex items-center justify-center font-num text-[10px] transition-all ${estilosEstado}`}
             >
               {dia}
             </button>
@@ -95,7 +95,7 @@ const AgendaCalendar = ({
 
       <div className="pt-1.5 border-t border-gray-100 dark:border-gray-700 text-[9.5px] text-gray-400 flex items-center justify-between px-0.5">
         <span>Selección:</span>
-        <span className="font-mono font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 px-1.5 py-0.2 rounded border border-gray-200 dark:border-gray-700">
+        <span className="font-num font-bold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 px-1.5 py-0.2 rounded border border-gray-200 dark:border-gray-700">
           {selectedDate.toLocaleDateString('es-CL')}
         </span>
       </div>

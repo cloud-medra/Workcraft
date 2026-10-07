@@ -375,7 +375,7 @@ const CargaConsigna = () => {
                     
                     {/* --- BLOQUE DESTACADO CENTRAL --- */}
                     <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-blue-50/40 dark:bg-blue-950/10 font-bold text-gray-800 dark:text-gray-100"><TruncCell value={s.admision} /></td>
-                    <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-blue-50/40 dark:bg-blue-950/10 font-mono"><TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400 font-bold" /></td>
+                    <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-blue-50/40 dark:bg-blue-950/10 font-num"><TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400 font-bold" /></td>
                     <td style={tdStyle('cantidad')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-blue-50/40 dark:bg-blue-950/10 text-center font-bold text-gray-800 dark:text-gray-200"><TruncCell value={s.cantidad?.toString()} /></td>
                     
                     <td style={tdStyle('venta')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-blue-50/40 dark:bg-blue-950/10 font-bold text-emerald-600 dark:text-emerald-400 text-right">

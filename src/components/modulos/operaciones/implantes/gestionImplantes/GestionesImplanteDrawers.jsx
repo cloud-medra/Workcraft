@@ -121,7 +121,7 @@ const DetalleLog = ({ log }) => {
         <div className="space-y-1.5">
           <p>
             Se registró la referencia{' '}
-            <span className="font-mono font-bold text-[#2383C2]">{d.referencia || '-'}</span>
+            <span className="font-num font-bold text-[#2383C2]">{d.referencia || '-'}</span>
             {' '}(cantidad: <strong>{d.cantidad ?? '-'}</strong>)
             {d.paciente ? <> para <strong>{d.paciente}</strong></> : null}
             {d.admision ? <> — Admisión #{d.admision}</> : null}
@@ -175,7 +175,7 @@ const DetalleLog = ({ log }) => {
             <FilaCambio etiqueta="Estado de Carga" anterior={d.estadoCargaAnterior} nuevo={d.estadoCarga} />
           )}
           <li className="text-gray-400 text-[9px] italic pt-1.5 border-t border-gray-100 dark:border-gray-700/60">
-            Referencia: <span className="font-mono">{d.referencia || '-'}</span>
+            Referencia: <span className="font-num">{d.referencia || '-'}</span>
             {d.paciente ? <> · Paciente: {d.paciente}</> : null}
           </li>
         </ul>
@@ -184,7 +184,7 @@ const DetalleLog = ({ log }) => {
     case 'ITEM_ELIMINADO':
       return (
         <p className="text-red-500 font-medium">
-          Se eliminó la referencia <span className="font-mono">{d.referencia || '-'}</span>{' '}
+          Se eliminó la referencia <span className="font-num">{d.referencia || '-'}</span>{' '}
           (cantidad: {d.cantidad ?? '-'}){d.paciente ? <> de <strong>{d.paciente}</strong></> : null}
         </p>
       );
@@ -207,7 +207,7 @@ const DetalleLog = ({ log }) => {
               <ul className="pl-3 list-disc text-gray-500 dark:text-gray-400">
                 {noSincronizados.map((it, idx) => (
                   <li key={idx}>
-                    <span className="font-mono">{it.referencia || it.itemId}</span>
+                    <span className="font-num">{it.referencia || it.itemId}</span>
                     {' — '}
                     {it.motivo === 'PERIODO_CERRADO' ? 'período ya cerrado' : 'sin período asociado'}
                   </li>
@@ -445,7 +445,7 @@ export const ConfigDrawer = ({
 
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
             <strong>Formato de columnas requerido:</strong>
-            <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400">
+            <div className="font-num mt-0.5 text-blue-600 dark:text-blue-400">
               NOMBRE | RUT | ESTADO
             </div>
           </div>

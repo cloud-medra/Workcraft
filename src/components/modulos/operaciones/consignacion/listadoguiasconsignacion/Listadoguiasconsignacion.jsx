@@ -418,7 +418,7 @@ const ListadoGuiasConsignacion = () => {
                             <tbody>
                               {guia.productos.map((p) => (
                                 <tr key={p.id} className="border-t border-gray-100 dark:border-gray-800">
-                                  <td className="py-1 px-2 pl-9 text-gray-700 dark:text-gray-200 font-mono text-[10.5px]">
+                                  <td className="py-1 px-2 pl-9 text-gray-700 dark:text-gray-200 font-num text-[10.5px]">
                                     {p.codigo || 'N/A'}
                                   </td>
                                   <td className="py-1 px-2 text-gray-600 dark:text-gray-300">

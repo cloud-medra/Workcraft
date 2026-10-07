@@ -27,7 +27,7 @@ const Seccion = ({ titulo, items, Icono, tono = 'aviso', ayuda, render }) => {
         <Icono size={12} /> {titulo} ({items.length})
       </summary>
       {ayuda && <p className="mt-0.5 text-[10px] text-slate-500 dark:text-gray-400">{ayuda}</p>}
-      <ul className="mt-1 max-h-40 overflow-auto font-mono text-[10px] space-y-0.5 text-slate-700 dark:text-gray-300 select-text">
+      <ul className="mt-1 max-h-40 overflow-auto font-num text-[10px] space-y-0.5 text-slate-700 dark:text-gray-300 select-text">
         {items.slice(0, 200).map((it, i) => <li key={i}>{render(it)}</li>)}
         {items.length > 200 && <li>… y {items.length - 200} más</li>}
       </ul>

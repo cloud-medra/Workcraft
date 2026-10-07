@@ -106,7 +106,7 @@ const ElegantInfoCard = ({ icon: Icon, label, value, isCapitalized, isCode }) =>
       </div>
       <div className="flex-1">
         <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest mb-0.5">{label}</p>
-        <p className={`text-[14px] font-semibold text-gray-800 dark:text-gray-200 ${isCapitalized ? 'capitalize' : ''} ${isCode ? 'font-mono text-[13px] bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 rounded border border-transparent dark:border-gray-700' : ''}`}>
+        <p className={`text-[14px] font-semibold text-gray-800 dark:text-gray-200 ${isCapitalized ? 'capitalize' : ''} ${isCode ? 'font-num text-[13px] bg-gray-50 dark:bg-gray-900 px-1.5 py-0.5 rounded border border-transparent dark:border-gray-700' : ''}`}>
           {value || 'No disponible'}
         </p>
       </div>

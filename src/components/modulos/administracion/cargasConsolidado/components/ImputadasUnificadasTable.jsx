@@ -74,7 +74,7 @@ const ImputadasUnificadasTable = ({ filas }) => {
                   <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.medico}</td>
                   <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">{formatearFechaTabla(fila.fecha)}</td>
                   <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">{fila.empresa}</td>
-                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400 truncate">{fila.codigo}</td>
+                  <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400 truncate">{fila.codigo}</td>
                   <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate">{fila.referencia}</td>
                   <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200">{fila.cantidad}</td>
                   <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">${Number(fila.costoUnitario).toLocaleString('es-CL')}</td>

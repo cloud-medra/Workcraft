@@ -484,14 +484,14 @@ const Dashboard = () => {
                   <span className="truncate">Términos de Servicio</span>
                 </button>
               </div>
-              <div className="flex justify-between items-center text-[9px] text-white/40 font-mono px-0.5">
+              <div className="flex justify-between items-center text-[9px] text-white/40 font-num px-0.5">
                 <span>Versión</span>
                 <span>v1.0.0</span>
               </div>
             </div>
           ) : (
             <div
-              className="flex justify-center items-center text-[9px] text-white/40 font-mono py-1 cursor-help opacity-100 transition-all duration-300"
+              className="flex justify-center items-center text-[9px] text-white/40 font-num py-1 cursor-help opacity-100 transition-all duration-300"
               title="Versión 1.0.0 — Políticas disponibles en menú expandido"
             >
               <span>v1.0</span>

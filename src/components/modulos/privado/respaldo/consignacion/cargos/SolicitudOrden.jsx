@@ -564,7 +564,7 @@ const SolicitudOrden = () => {
                       <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.medico} /></td>
                       <td style={tdStyle('fecha')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.fecha || s.fechaCx} /></td>
 
-                      <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-mono text-amber-600 dark:text-amber-400 font-bold">
+                      <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-num text-amber-600 dark:text-amber-400 font-bold">
                         <TruncCell value={limpiarCodigo(s.codigo)} />
                       </td>
 
@@ -576,7 +576,7 @@ const SolicitudOrden = () => {
                       <td style={tdStyle('precioCosto')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-700 dark:text-gray-200 text-right"><TruncCell value={formatMoneda(s.precioCosto)} /></td>
                       <td style={tdStyle('atributo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.atributo} /></td>
 
-                      <td style={tdStyle('lote')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-mono font-bold text-gray-700 dark:text-gray-200"><TruncCell value={s.lote} /></td>
+                      <td style={tdStyle('lote')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 font-num font-bold text-gray-700 dark:text-gray-200"><TruncCell value={s.lote} /></td>
                       <td style={tdStyle('fechaVencimiento')} className="p-3 border-b border-r border-gray-300 dark:border-gray-600 bg-amber-50/10 dark:bg-amber-950/5 text-center font-semibold text-gray-700 dark:text-gray-200"><TruncCell value={s.fechaVencimiento} /></td>
 
                       <td style={tdStyle('delivery')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-amber-600 dark:text-amber-400"><TruncCell value={s.delivery} /></td>
@@ -606,7 +606,7 @@ const SolicitudOrden = () => {
                             className="bg-blue-50/20 dark:bg-blue-950/5 border-l-4 border-blue-400 dark:border-blue-500/60 transition-colors hover:bg-blue-50/40 dark:hover:bg-blue-950/10 text-gray-500 dark:text-gray-400 opacity-75"
                           >
                             <td style={tdStyle('select')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40"></td>
-                            <td style={tdStyle('num')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 text-center text-blue-500 dark:text-blue-400 font-mono text-[10px]">
+                            <td style={tdStyle('num')} className="p-2 border-b border-r border-gray-100 dark:border-gray-700/40 text-center text-blue-500 dark:text-blue-400 font-num text-[10px]">
                               {detIdx === 0 && <PackageOpen size={12} className="inline-block mx-auto" />}
                             </td>
 
@@ -641,7 +641,7 @@ const SolicitudOrden = () => {
                               <TruncCell value={s.atributo} />
                             </td>
 
-                            <td style={tdStyle('lote')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 font-mono text-gray-700 dark:text-gray-200 bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
+                            <td style={tdStyle('lote')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 font-num text-gray-700 dark:text-gray-200 bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
                               <TruncCell value={det.dscItem} />
                             </td>
                             <td style={tdStyle('fechaVencimiento')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 text-center text-gray-700 dark:text-gray-200 bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
@@ -655,7 +655,7 @@ const SolicitudOrden = () => {
                               <TruncCell value={guiaAsociada ? guiaAsociada.folio : 'No Encontrada'} />
                             </td>
 
-                            <td style={tdStyle('referencia')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 font-mono text-blue-600 dark:text-blue-400 font-bold bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
+                            <td style={tdStyle('referencia')} className="p-2 border-b border-r border-blue-200/50 dark:border-blue-900/30 font-num text-blue-600 dark:text-blue-400 font-bold bg-blue-50/10 dark:bg-blue-950/5 opacity-100">
                               <TruncCell value={limpiarCodigo(det.codigo)} />
                             </td>
                           </tr>

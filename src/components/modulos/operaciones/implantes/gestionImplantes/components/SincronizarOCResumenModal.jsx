@@ -117,11 +117,11 @@ export const SincronizarOCResumenModal = ({ resumen, onClose }) => {
                     <tbody>
                       {detalle.map((fila, i) => (
                         <tr key={`${fila.refPath}_${fila.codigo}_${i}`} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/40">
-                          <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 font-mono">{fila.admision}</td>
+                          <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 font-num">{fila.admision}</td>
                           <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60">{fila.nombre}</td>
                           <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60">{formatearFechaTabla(fila.fecha)}</td>
                           <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60">{fila.empresa}</td>
-                          <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 font-mono">{fila.codigo}</td>
+                          <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 font-num">{fila.codigo}</td>
                           <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 text-center">{fila.cantidad}</td>
                           <td className={`px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 font-semibold ${TIPOS[fila.tipo]?.clase || ''}`}>{TIPOS[fila.tipo]?.label || fila.tipo}</td>
                           <td className="px-2 py-1 border-b border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400">{observacion(fila)}</td>

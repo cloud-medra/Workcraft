@@ -59,18 +59,18 @@ const MonthRow = ({
           <span className="uppercase tracking-wider text-[11px] font-bold text-slate-900 dark:text-gray-100">
             {mes.nombre}
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">/{anioSeleccionado}</span>
+          <span className="text-[10px] text-slate-400 font-num">/{anioSeleccionado}</span>
         </td>
 
         <td className="py-3 px-4">
           <BadgeEstado estado={estadoConsolidado} />
         </td>
 
-        <td className="py-3 px-4 font-mono text-[11px] text-right font-medium text-slate-600 dark:text-gray-300">
+        <td className="py-3 px-4 font-num text-[11px] text-right font-medium text-slate-600 dark:text-gray-300">
           {metricasConsolidadas.cantidad.toLocaleString('es-CL')} docs
         </td>
 
-        <td className="py-3 px-4 font-mono text-xs text-right font-bold text-slate-800 dark:text-gray-100">
+        <td className="py-3 px-4 font-num text-xs text-right font-bold text-slate-800 dark:text-gray-100">
           ${Math.round(metricasConsolidadas.montoTotal).toLocaleString('es-CL')}
         </td>
 
@@ -131,10 +131,10 @@ const MonthRow = ({
                         <td className="py-1.5 px-3">
                           <BadgeEstado estado={estMod} />
                         </td>
-                        <td className="py-1.5 px-3 font-mono text-right text-slate-600 dark:text-gray-400">
+                        <td className="py-1.5 px-3 font-num text-right text-slate-600 dark:text-gray-400">
                           {resMod.cantidad} docs
                         </td>
-                        <td className="py-1.5 px-3 font-mono text-right text-slate-700 dark:text-gray-300 font-semibold">
+                        <td className="py-1.5 px-3 font-num text-right text-slate-700 dark:text-gray-300 font-semibold">
                           ${Math.round(resMod.montoTotal).toLocaleString('es-CL')}
                         </td>
                         <td className="py-1.5 px-3 text-right">

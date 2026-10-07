@@ -49,13 +49,13 @@ const TD = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700
 // Columnas de la tabla (anchos en px, redimensionables; useColumnResize los
 // recuerda por usuario en este navegador). Facturas y Guías comparten tabla.
 const COLUMNAS = [
-  { key: 'id', label: 'ID', ancho: 90, min: 60, td: 'font-mono text-slate-600 dark:text-gray-400', valor: (i) => i.id },
+  { key: 'id', label: 'ID', ancho: 90, min: 60, td: 'font-num text-slate-600 dark:text-gray-400', valor: (i) => i.id },
   { key: 'admision', label: 'Admisión', ancho: 80, min: 60, td: 'font-semibold text-[#2383C2]', valor: (i) => i.admision },
   { key: 'paciente', label: 'Paciente', ancho: 160, min: 60, valor: (i) => i.paciente || '-' },
   { key: 'medico', label: 'Médico', ancho: 140, min: 60, valor: (i) => i.medico || '-' },
   { key: 'fecha_cx', label: 'Fecha Cx', ancho: 85, min: 60, valor: (i) => formatearFechaCelda(i.fecha_cx) },
   { key: 'proveedor', label: 'Empresa', ancho: 160, min: 60, valor: (i) => i.proveedor || '-' },
-  { key: 'codigo', label: 'Código', ancho: 85, min: 60, td: 'font-mono text-emerald-600 dark:text-emerald-400', valor: (i) => i.codigo || '-' },
+  { key: 'codigo', label: 'Código', ancho: 85, min: 60, td: 'font-num text-emerald-600 dark:text-emerald-400', valor: (i) => i.codigo || '-' },
   { key: 'descripcion', label: 'Descripción', ancho: 200, min: 60, valor: (i) => i.descripcion || '-' },
   { key: 'cantidad', label: 'Cant.', ancho: 60, min: 60, th: 'text-center', td: 'text-center', valor: (i) => i.cantidad ?? '-' },
   { key: 'oc', label: 'OC', ancho: 95, min: 60, valor: (i) => i.oc || '-' },

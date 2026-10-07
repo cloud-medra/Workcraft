@@ -173,7 +173,7 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
 
           <div className="flex items-center gap-1.5 text-[9px]">
             <span className="font-bold text-slate-400 dark:text-gray-500 uppercase">N° Delivery / Documento:</span>
-            <span className="font-mono font-semibold text-slate-700 dark:text-gray-200 bg-slate-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+            <span className="font-num font-semibold text-slate-700 dark:text-gray-200 bg-slate-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
               {deliveryValor || 'Sin asignar'}
             </span>
             {deliveryEsHeredado && deliveryValor && (
@@ -326,7 +326,7 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
                             className={`border-t border-slate-100 dark:border-gray-800 ${esElDeEsteRegistro ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}
                             title={esElDeEsteRegistro ? 'Este es el producto que corresponde a este registro' : ''}
                           >
-                            <td className="px-2.5 py-1.5 border-r border-slate-100 dark:border-gray-700/60 font-mono text-emerald-600 dark:text-emerald-400">
+                            <td className="px-2.5 py-1.5 border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
                               <span className="flex items-center gap-1">
                                 {esElDeEsteRegistro && <CheckCircle2 size={11} className="text-blue-600 dark:text-blue-400 shrink-0" />}
                                 {p.codigo || 'N/A'}
@@ -345,7 +345,7 @@ const DeliveryTab = ({ registro, vinculoData, onVincular, deliveryEsHeredado = f
                               {p.cantidad ?? 'N/A'}
                             </td>
 
-                            <td className="px-2.5 py-1.5 border-r border-slate-100 dark:border-gray-700/60 bg-blue-50/30 dark:bg-blue-950/10 font-mono text-blue-700 dark:text-blue-400 font-semibold">
+                            <td className="px-2.5 py-1.5 border-r border-slate-100 dark:border-gray-700/60 bg-blue-50/30 dark:bg-blue-950/10 font-num text-blue-700 dark:text-blue-400 font-semibold">
                               {cargandoVinculos ? '...' : (vinculo?.codigo || (
                                 <span className="text-amber-600 dark:text-amber-400 font-sans font-normal">Sin vincular</span>
                               ))}

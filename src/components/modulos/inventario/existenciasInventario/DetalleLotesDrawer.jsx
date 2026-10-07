@@ -79,7 +79,7 @@ const DetalleLotesDrawer = ({ isOpen, onClose, producto, cajas = [] }) => {
         <div className="p-3 bg-blue-50/50 dark:bg-sky-950/20 border-b border-gray-200 dark:border-gray-700/60 grid grid-cols-3 gap-2 text-[10px]">
           <div className="flex flex-col">
             <span className="text-gray-500 dark:text-gray-400 font-semibold">Código:</span>
-            <span className="font-mono text-gray-700 dark:text-gray-200 font-bold">{producto.codigo || 'S/C'}</span>
+            <span className="font-num text-gray-700 dark:text-gray-200 font-bold">{producto.codigo || 'S/C'}</span>
           </div>
           <div className="flex flex-col">
             <span className="text-gray-500 dark:text-gray-400 font-semibold">Total Stock:</span>
@@ -107,7 +107,7 @@ const DetalleLotesDrawer = ({ isOpen, onClose, producto, cajas = [] }) => {
                 <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-1">
                   <span className="font-bold text-gray-800 dark:text-gray-100 flex items-center gap-1">
                     <Tag size={12} className="text-[#2383C2]" />
-                    Lote: <span className="font-mono text-blue-600 dark:text-sky-400">{det.lote}</span>
+                    Lote: <span className="font-num text-blue-600 dark:text-sky-400">{det.lote}</span>
                   </span>
                   <span className="px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold rounded text-[9.5px]">
                     {det.cantidad.toLocaleString('es-ES')} Ud.

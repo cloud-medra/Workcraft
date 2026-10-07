@@ -201,7 +201,7 @@ export const LogDrawer = ({
                       Anterior: <span className="font-semibold">${formatearPrecioLog(log.detalles?.precioNetoAnterior)}</span> → Nuevo: <span className="font-bold text-emerald-600">${formatearPrecioLog(log.detalles?.precioNetoNuevo)}</span>
                     </p>
                     <p className="text-gray-500 dark:text-gray-400 mt-0.5">
-                      Archivo: {log.detalles?.archivo || 'N/A'} · Importación: <span className="font-mono">{log.importacionId || 'N/A'}</span>
+                      Archivo: {log.detalles?.archivo || 'N/A'} · Importación: <span className="font-num">{log.importacionId || 'N/A'}</span>
                     </p>
                   </div>
                 )}
@@ -248,7 +248,7 @@ const BarraProgreso = ({ progreso }) => {
           )}
           {activo ? 'Importando...' : 'Importación finalizada'}
         </span>
-        <span className="text-gray-500 dark:text-gray-400 font-mono">
+        <span className="text-gray-500 dark:text-gray-400 font-num">
           {procesadas} / {total}
         </span>
       </div>
@@ -385,7 +385,7 @@ export const ConfigDrawer = ({
 
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
             <strong>Formato de columnas requerido (separadas por punto y coma ";"):</strong>
-            <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400 leading-relaxed">
+            <div className="font-num mt-0.5 text-blue-600 dark:text-blue-400 leading-relaxed">
               CODIGO;REFERENCIA;DESCRIPTOR_EMPRESA;EMPRESA;TIPO;SEGMENTO;CLASE;DESCRIPTOR_AUTO;PRECIO_NETO;CX;OBSERVACION
             </div>
           </div>

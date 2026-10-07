@@ -462,7 +462,7 @@ const SolicitudIngresos = () => {
 
             {formData.codigo ? (
               <div className="flex flex-wrap flex-grow justify-end gap-x-6 gap-y-1 py-1.5 px-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded text-[11px] text-gray-600 dark:text-gray-300 max-w-full md:max-w-max">
-                <span><strong>Código:</strong> <span className="font-mono">{formData.codigo}</span></span>
+                <span><strong>Código:</strong> <span className="font-num">{formData.codigo}</span></span>
                 <span><strong>Precio Costo:</strong> ${formData.precioCosto}</span>
                 <span><strong>Tipo:</strong> {formData.tipo}</span>
                 <span><strong>Atributo:</strong> {formData.atributo}</span>
@@ -524,11 +524,11 @@ const SolicitudIngresos = () => {
                   <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.paciente} className="text-gray-600 dark:text-gray-300" /></td>
                   <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.medico} className="text-gray-600 dark:text-gray-300" /></td>
 
-                  <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono font-medium">
+                  <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-num font-medium">
                     {asignandoCodigoId === s.id ? (
                       <span className="text-gray-400 text-[10px] italic">Auto-asignando</span>
                     ) : s.codigo ? (
-                      <TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400 font-mono" />
+                      <TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400 font-num" />
                     ) : (
                       <span className="text-amber-600 dark:text-amber-400 font-sans italic text-[11px]">S/C (Pendiente)</span>
                     )}
@@ -676,7 +676,7 @@ const SolicitudIngresos = () => {
                   <span className="font-medium text-gray-800 dark:text-gray-200 block bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-200/50 dark:border-gray-700/30">{selectedRow.descripcion}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className="text-gray-400 block text-[10px]">Código</label><span className="font-mono text-[#2383C2] dark:text-[#369BCE] font-bold">{selectedRow.codigo || 'S/C'}</span></div>
+                  <div><label className="text-gray-400 block text-[10px]">Código</label><span className="font-num text-[#2383C2] dark:text-[#369BCE] font-bold">{selectedRow.codigo || 'S/C'}</span></div>
                   <div><label className="text-gray-400 block text-[10px]">Cantidad</label><span className="font-medium text-gray-800 dark:text-gray-200">{selectedRow.cantidad}</span></div>
                   <div><label className="text-gray-400 block text-[10px]">Precio Costo</label><span className="font-medium text-gray-800 dark:text-gray-200">${selectedRow.precioCosto || 0}</span></div>
                   <div><label className="text-gray-400 block text-[10px]">Empresa</label><span className="font-medium text-gray-800 dark:text-gray-200 truncate block">{selectedRow.empresa || 'N/A'}</span></div>

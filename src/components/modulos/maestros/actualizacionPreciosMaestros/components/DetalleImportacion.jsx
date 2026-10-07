@@ -28,7 +28,7 @@ const TablaActualizar = ({ filas }) => (
       {filas.map(f => (
         <tr key={`${f.fila}-${f.id || f.referencia}`} className="border-b border-slate-100 dark:border-gray-700/60">
           <td className={`${claseTd} text-center text-slate-400`}>{f.fila}</td>
-          <td className={`${claseTd} font-mono font-bold text-slate-800 dark:text-gray-200`}>{f.referencia}</td>
+          <td className={`${claseTd} font-num font-bold text-slate-800 dark:text-gray-200`}>{f.referencia}</td>
           <td className={`${claseTd} text-slate-600 dark:text-gray-400`}>{f.descripcion}</td>
           <td className={`${claseTd} text-right text-slate-500`}>{formatearPrecio(f.precioAnterior)}</td>
           <td className={`${claseTd} text-right font-bold text-emerald-600 dark:text-emerald-400`}>{formatearPrecio(f.precioNuevo)}</td>
@@ -51,7 +51,7 @@ const TablaMotivo = ({ filas, claseMotivo }) => (
       {filas.map(f => (
         <tr key={`${f.fila}-${f.motivo}`} className="border-b border-slate-100 dark:border-gray-700/60">
           <td className={`${claseTd} text-center text-slate-400`}>{f.fila}</td>
-          <td className={`${claseTd} font-mono font-bold text-slate-800 dark:text-gray-200`}>{f.referencia || '—'}</td>
+          <td className={`${claseTd} font-num font-bold text-slate-800 dark:text-gray-200`}>{f.referencia || '—'}</td>
           <td className={`${claseTd} ${claseMotivo}`}>{f.motivo}</td>
         </tr>
       ))}
@@ -91,7 +91,7 @@ const DetalleImportacion = ({
           <h3 className="text-[10px] font-bold uppercase tracking-wide text-slate-800 dark:text-gray-200">
             {esPreview ? 'Vista previa de la importación' : 'Resumen de la importación'}
           </h3>
-          <p className="text-[8.5px] text-slate-500 font-mono truncate max-w-[340px]">{archivo}</p>
+          <p className="text-[8.5px] text-slate-500 font-num truncate max-w-[340px]">{archivo}</p>
         </div>
         {errores.length > 0 && (
           <button

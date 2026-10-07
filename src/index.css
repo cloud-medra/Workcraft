@@ -42,3 +42,8 @@
     @apply transition-colors duration-300;
   }
 }
+/* Números y códigos: misma fuente del sistema, alineados en columnas y sin cero con barra. */
+@utility font-num {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}

@@ -30,7 +30,7 @@ const SelectorEmpresa = ({ empresas, cargando, empresa, onSeleccionar, bloqueado
           </div>
           <div className="min-w-0">
             <div className="font-bold text-[10.5px] text-slate-900 dark:text-gray-100 truncate">{empresa.nombre}</div>
-            <div className="text-[9px] text-slate-500 dark:text-gray-400 font-mono">RUT: {empresa.rut || 'S/R'}</div>
+            <div className="text-[9px] text-slate-500 dark:text-gray-400 font-num">RUT: {empresa.rut || 'S/R'}</div>
           </div>
         </div>
         <button
@@ -79,7 +79,7 @@ const SelectorEmpresa = ({ empresas, cargando, empresa, onSeleccionar, bloqueado
                 className="px-2 py-1 border-b border-slate-100 dark:border-gray-700 last:border-0 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer flex items-center justify-between gap-2"
               >
                 <span className="text-[9.5px] font-semibold text-slate-800 dark:text-gray-200 truncate">{e.nombre}</span>
-                <span className="shrink-0 text-[8.5px] text-slate-400 font-mono">
+                <span className="shrink-0 text-[8.5px] text-slate-400 font-num">
                   {e.rut || 'S/R'}{e.estado === 'INACTIVO' ? ' · INACTIVA' : ''}
                 </span>
               </div>

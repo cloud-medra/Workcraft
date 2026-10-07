@@ -387,7 +387,7 @@ const EditorDocumentos = ({ documento, filtroAnio, filtroMes, onClose }) => {
                         type="text"
                         value={item.codigo}
                         onChange={(e) => handleItemChange(idx, 'codigo', e.target.value)}
-                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 font-mono outline-none"
+                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 font-num outline-none"
                         placeholder="Sin cód."
                       />
                     </td>

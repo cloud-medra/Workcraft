@@ -279,7 +279,7 @@ export const ConfigDrawer = ({
 
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
             <strong>Formato de columnas requerido:</strong>
-            <div className="font-mono mt-0.5 text-blue-600 dark:text-blue-400">
+            <div className="font-num mt-0.5 text-blue-600 dark:text-blue-400">
               REFERENCIA | CODIGO | PRECIO | DESCRIPCION
             </div>
           </div>

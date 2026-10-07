@@ -74,7 +74,7 @@ const CodigosMaestros = () => {
         <p className="text-xs text-slate-500 dark:text-gray-400 max-w-sm mb-3">
           Su perfil de usuario no cuenta con privilegios habilitados para navegar en las funciones de Códigos Maestros.
         </p>
-        <span className="text-[10px] font-mono text-slate-400 dark:text-gray-500 uppercase tracking-widest bg-slate-100 dark:bg-gray-900 px-2.5 py-0.5 rounded border border-slate-200/50 dark:border-gray-800">
+        <span className="text-[10px] font-num text-slate-400 dark:text-gray-500 uppercase tracking-widest bg-slate-100 dark:bg-gray-900 px-2.5 py-0.5 rounded border border-slate-200/50 dark:border-gray-800">
           ERR_PERM_DENIED_PATH
         </span>
       </div>
@@ -184,11 +184,11 @@ const CodigosMaestros = () => {
             <div className="w-full max-w-xs grid grid-cols-2 gap-2 text-left bg-slate-50 dark:bg-gray-900/60 p-2.5 rounded-md border border-slate-200/60 dark:border-gray-700/60 text-[10px]">
               <div>
                 <span className="block text-slate-400 dark:text-gray-500">RUTA ASIGNADA</span>
-                <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{PATH_VISTA}</span>
+                <span className="font-num text-slate-700 dark:text-gray-300 font-medium truncate block">{PATH_VISTA}</span>
               </div>
               <div>
                 <span className="block text-slate-400 dark:text-gray-500">PATH DE LA PESTAÑA</span>
-                <span className="font-mono text-slate-700 dark:text-gray-300 font-medium truncate block">{currentTabObj.path}</span>
+                <span className="font-num text-slate-700 dark:text-gray-300 font-medium truncate block">{currentTabObj.path}</span>
               </div>
             </div>
           </div>

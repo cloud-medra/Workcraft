@@ -442,7 +442,7 @@ const PadMaestros = () => {
               <h1 className="text-[11px] font-bold text-slate-900 dark:text-gray-100 tracking-tight">
                 Gestión de PADs
               </h1>
-              <span className="text-[8.5px] bg-slate-100 dark:bg-gray-700 font-mono text-slate-600 dark:text-gray-300 px-1.5 py-0.2 rounded border border-slate-200 dark:border-gray-600 font-medium">
+              <span className="text-[8.5px] bg-slate-100 dark:bg-gray-700 font-num text-slate-600 dark:text-gray-300 px-1.5 py-0.2 rounded border border-slate-200 dark:border-gray-600 font-medium">
                 MAESTROS / PAD
               </span>
             </div>
@@ -526,7 +526,7 @@ const PadMaestros = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[9.5px]">
+                      <span className="font-num font-bold text-emerald-600 dark:text-emerald-400 text-[9.5px]">
                         {pad.codigo || pad.id}
                       </span>
                       <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-gray-300 uppercase">
@@ -580,7 +580,7 @@ const PadMaestros = () => {
                     placeholder="Ej: PAD-ROD-01"
                     value={nuevoPadForm.codigo}
                     onChange={(e) => setNuevoPadForm({ ...nuevoPadForm, codigo: e.target.value })}
-                    className="w-full h-6 px-1.5 bg-slate-50 dark:bg-gray-900 border border-slate-300 dark:border-gray-600 rounded text-[9.5px] font-mono font-bold outline-none focus:border-[#2383C2]"
+                    className="w-full h-6 px-1.5 bg-slate-50 dark:bg-gray-900 border border-slate-300 dark:border-gray-600 rounded text-[9.5px] font-num font-bold outline-none focus:border-[#2383C2]"
                   />
                 </div>
 
@@ -612,7 +612,7 @@ const PadMaestros = () => {
                             className="px-2 py-1 border-b border-slate-100 dark:border-gray-700 last:border-0 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[8.5px]">
+                              <span className="font-num font-bold text-emerald-600 dark:text-emerald-400 text-[8.5px]">
                                 {item.codigo || 'S/C'}
                               </span>
                               <span className="text-[8px] text-slate-400">
@@ -687,7 +687,7 @@ const PadMaestros = () => {
                     className="text-[10.5px] font-bold text-slate-900 dark:text-gray-100 bg-transparent border-b border-dashed border-slate-300 hover:border-[#2383C2] focus:border-[#2383C2] outline-none w-80"
                   />
                 </div>
-                <span className="font-mono text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="font-num text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
                   ID: {padSeleccionado.codigo || padSeleccionado.id}
                 </span>
               </div>
@@ -793,7 +793,7 @@ const PadMaestros = () => {
                             className="px-2 py-1 border-b border-slate-100 dark:border-gray-700 last:border-0 hover:bg-blue-50 dark:hover:bg-blue-950/40 cursor-pointer"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-[8.5px]">
+                              <span className="font-num font-bold text-emerald-600 dark:text-emerald-400 text-[8.5px]">
                                 {comp.codigo || 'S/C'}
                               </span>
                               <span className="text-[8px] text-slate-400">
@@ -902,7 +902,7 @@ const PadMaestros = () => {
                                 {item.clase}
                               </span>
                             </td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-mono font-bold text-emerald-600 dark:text-emerald-400">{item.codigo}</td>
+                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-num font-bold text-emerald-600 dark:text-emerald-400">{item.codigo}</td>
                             <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-semibold text-slate-800 dark:text-gray-200">
                               {item.descriptorEmpresa}
                             </td>

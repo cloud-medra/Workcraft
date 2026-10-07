@@ -383,7 +383,7 @@ const SolicitudConsignacion = () => {
                     <td className={cc('empresa', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 truncate max-w-[160px]')} title={tt('empresa', it.empresa)}>
                       {it.empresa}
                     </td>
-                    <td className={cc('codigo', `py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis ${it.esFilaGuia ? 'text-slate-500 dark:text-gray-400 italic' : 'font-mono text-emerald-600 dark:text-emerald-400'}`)} title={tt('codigo')}>
+                    <td className={cc('codigo', `py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis ${it.esFilaGuia ? 'text-slate-500 dark:text-gray-400 italic' : 'font-num text-emerald-600 dark:text-emerald-400'}`)} title={tt('codigo')}>
                       {it.codigo}
                     </td>
                     <td className={cc('descripcion', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 truncate max-w-[180px]')} title={tt('descripcion', it.descripcion)}>

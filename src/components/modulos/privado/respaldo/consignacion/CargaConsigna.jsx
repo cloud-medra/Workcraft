@@ -181,8 +181,8 @@ const CargaConsigna = () => {
                   <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.admision} className="text-gray-600 dark:text-gray-300" /></td>
                   <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.paciente} className="text-gray-600 dark:text-gray-300" /></td>
                   <td style={tdStyle('medico')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.medico} className="text-gray-600 dark:text-gray-300" /></td>
-                  <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono font-medium">
-                    <TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400 font-mono" />
+                  <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-num font-medium">
+                    <TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400 font-num" />
                   </td>
                   <td style={tdStyle('descripcion')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.descripcion} /></td>
                   <td style={tdStyle('cant')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70"><TruncCell value={s.cantidad?.toString()} className="text-gray-600 dark:text-gray-300" /></td>

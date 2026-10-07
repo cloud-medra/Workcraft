@@ -49,7 +49,7 @@ const AvanceInventario = () => {
             className="flex items-center justify-between gap-2 p-1.5 bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/50 rounded"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 font-mono">
+              <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 font-num">
                 {item.id}.
               </span>
               <span className="text-[10.5px] text-gray-600 dark:text-gray-300 font-medium truncate">

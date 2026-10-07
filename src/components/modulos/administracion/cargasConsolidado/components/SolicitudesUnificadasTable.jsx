@@ -220,7 +220,7 @@ const SolicitudesUnificadasTable = () => {
                     <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">
                       {fila.empresa}
                     </td>
-                    <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 whitespace-nowrap overflow-hidden text-ellipsis ${fila.esFilaGuia ? 'text-slate-500 dark:text-gray-400 italic' : 'font-mono text-emerald-600 dark:text-emerald-400'}`}>
+                    <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 whitespace-nowrap overflow-hidden text-ellipsis ${fila.esFilaGuia ? 'text-slate-500 dark:text-gray-400 italic' : 'font-num text-emerald-600 dark:text-emerald-400'}`}>
                       {fila.codigo}
                     </td>
                     <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 truncate" title={fila.descripcion}>

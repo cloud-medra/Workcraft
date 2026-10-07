@@ -302,7 +302,7 @@ const ResumenImplantes = () => {
                   <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">{d.medico}</td>
                   <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">{d.empresa}</td>
                   <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">{formatearFechaTabla(d.fecha)}</td>
-                  <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 font-mono text-emerald-600 dark:text-emerald-400 whitespace-nowrap overflow-hidden text-ellipsis">{d.codigo || 'S/C'}</td>
+                  <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 font-num text-emerald-600 dark:text-emerald-400 whitespace-nowrap overflow-hidden text-ellipsis">{d.codigo || 'S/C'}</td>
                   <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 truncate max-w-[180px]" title={d.descriptorAuto}>{d.descriptorAuto}</td>
                   <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">{d.cantidad}</td>
                   <td className="py-1.5 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis">${Number(d.precio || 0).toLocaleString('es-CL')}</td>

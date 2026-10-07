@@ -58,7 +58,7 @@ const HistorialImportaciones = ({ historial, cargando }) => {
                       className="border-b border-slate-100 dark:border-gray-700/60 hover:bg-slate-50 dark:hover:bg-gray-700/30 cursor-pointer"
                     >
                       <td className="py-1 px-1.5 text-slate-400">{abierta ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</td>
-                      <td className="py-1 px-1.5 font-mono whitespace-nowrap">{formatearFecha(imp.fechaIso)}</td>
+                      <td className="py-1 px-1.5 font-num whitespace-nowrap">{formatearFecha(imp.fechaIso)}</td>
                       <td className="py-1 px-1.5">{imp.usuario}</td>
                       <td className="py-1 px-1.5 text-slate-500 truncate max-w-[200px]" title={imp.archivo}>{imp.archivo}</td>
                       <td className="py-1 px-1.5 text-center font-bold text-emerald-600 dark:text-emerald-400">{imp.totalActualizados}</td>
@@ -72,7 +72,7 @@ const HistorialImportaciones = ({ historial, cargando }) => {
                           <ul className="space-y-0.5 max-h-40 overflow-auto">
                             {(imp.cambios || []).map(c => (
                               <li key={c.id}>
-                                <span className="font-mono font-bold">{c.referencia}</span>: {formatearPrecio(c.precioAnterior)} → <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatearPrecio(c.precioNuevo)}</span>
+                                <span className="font-num font-bold">{c.referencia}</span>: {formatearPrecio(c.precioAnterior)} → <span className="font-bold text-emerald-600 dark:text-emerald-400">{formatearPrecio(c.precioNuevo)}</span>
                               </li>
                             ))}
                           </ul>

@@ -323,7 +323,7 @@ const IngresoPorDocumento = () => {
           ) : (
             <ul className="flex flex-wrap gap-1.5">
               {codigos.map((c) => (
-                <li key={c.clave} className={`inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded-full border text-[11px] font-mono ${
+                <li key={c.clave} className={`inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded-full border text-[11px] font-num ${
                   c.reasignar ? 'border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300'
                     : c.vinculoProductoId ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
                       : 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'}`}

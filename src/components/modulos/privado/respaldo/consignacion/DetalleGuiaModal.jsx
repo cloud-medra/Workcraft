@@ -144,7 +144,7 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
               </div>
               <div>
                 <p className="text-slate-400 dark:text-gray-400 uppercase font-bold text-[10px] tracking-wider">Folio Referencia</p>
-                <p className="font-mono font-bold text-slate-700 dark:text-gray-200 text-[14px] mt-0.5">
+                <p className="font-num font-bold text-slate-700 dark:text-gray-200 text-[14px] mt-0.5">
                   {guia.folioRef || "N/A"}
                 </p>
               </div>
@@ -194,7 +194,7 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
                     <td className="p-3.5 font-semibold text-slate-700 dark:text-gray-200 max-w-xs truncate" title={item.nombre}>
                       {item.nombre}
                     </td>
-                    <td className="p-3.5 font-mono text-slate-500 dark:text-gray-400 font-medium">{item.codigo}</td>
+                    <td className="p-3.5 font-num text-slate-500 dark:text-gray-400 font-medium">{item.codigo}</td>
                     <td className="p-3.5 font-bold text-[#0E5B6D] dark:text-[#369BCE]">{item.dscItem || "-"}</td>
                     <td className="p-3.5 text-center">
                       <span className="inline-block bg-slate-100 dark:bg-gray-900 text-slate-800 dark:text-gray-200 px-2.5 py-1 rounded-md font-bold text-[12px] min-w-[36px]">
@@ -221,7 +221,7 @@ const DetalleGuiaModal = ({ guia, onClose }) => {
           <div>Consignación Control Center v2.1</div>
           <div className="flex items-center gap-1">
             <span>ID Registro:</span>
-            <span className="font-mono bg-slate-100 dark:bg-gray-900 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-bold">{guia.id || 'N/A'}</span>
+            <span className="font-num bg-slate-100 dark:bg-gray-900 text-slate-500 dark:text-gray-400 px-1.5 py-0.5 rounded font-bold">{guia.id || 'N/A'}</span>
           </div>
         </div>
 

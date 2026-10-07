@@ -249,7 +249,7 @@ const EnlazarDatos = () => {
                   <td style={tdStyle('fechaCx')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-medium text-gray-700 dark:text-gray-200"><TruncCell value={s.fechaCx} /></td>
                   <td style={tdStyle('admision')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold"><TruncCell value={s.admision} /></td>
                   <td style={tdStyle('paciente')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.paciente} /></td>
-                  <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-mono"><TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400" /></td>
+                  <td style={tdStyle('codigo')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 font-num"><TruncCell value={s.codigo} className="text-blue-600 dark:text-blue-400" /></td>
                   <td style={tdStyle('descripcion')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.descripcion} /></td>
                   <td style={tdStyle('empresa')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300"><TruncCell value={s.empresa} /></td>
                   <td style={tdStyle('estado')} className="p-3 border-b border-r border-gray-200 dark:border-gray-700/70">

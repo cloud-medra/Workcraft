@@ -180,7 +180,7 @@ const HistorialDocumentos = ({
                   <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${getAccionBadgeClass(log.accion)}`}>
                     {log.accion}
                   </span>
-                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-mono">
+                  <span className="text-gray-400 dark:text-gray-500 text-[9px] font-num">
                     {formatearFechaLog(log)}
                   </span>
                 </div>
@@ -204,7 +204,7 @@ const HistorialDocumentos = ({
 
                   {(log.ocVinculadaId || log.estadoResultante) && (
                     <div className="text-[9px] text-slate-500 dark:text-gray-400 pt-1 flex gap-3 flex-wrap">
-                      {log.ocVinculadaId && <span>OC vinculada: <strong className="text-slate-700 dark:text-gray-300 font-mono">{log.ocVinculadaId}</strong></span>}
+                      {log.ocVinculadaId && <span>OC vinculada: <strong className="text-slate-700 dark:text-gray-300 font-num">{log.ocVinculadaId}</strong></span>}
                       {log.estadoResultante && <span>Resultado: <strong className="text-slate-700 dark:text-gray-300">{log.estadoResultante}</strong></span>}
                     </div>
                   )}

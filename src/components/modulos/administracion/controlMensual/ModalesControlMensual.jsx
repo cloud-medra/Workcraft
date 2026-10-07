@@ -91,7 +91,7 @@ export const ModalHistorial = ({ modalHistorial, setModalHistorial }) => {
             <div key={i} className="p-2 border border-slate-200 dark:border-gray-700 rounded bg-slate-50 dark:bg-gray-900/50 text-[10px]">
               <div className="flex justify-between font-semibold text-slate-700 dark:text-gray-300 mb-1">
                 <span>Usuario: {formatearNombreUsuario(h.usuario)}</span>
-                <span className="font-mono text-slate-400">
+                <span className="font-num text-slate-400">
                   {h.fecha ? new Date(h.fecha).toLocaleString('es-CL') : 'N/A'}
                 </span>
               </div>

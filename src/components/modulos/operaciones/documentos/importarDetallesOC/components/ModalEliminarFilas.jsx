@@ -31,7 +31,7 @@ export const ModalEliminarFilas = ({ filas, eliminando, progreso, onConfirmar, o
             <code className="mx-1">detallesOCEliminados</code> (solo admin/dev la pueden ver). Si la fila vuelve a venir en un Excel, se importa como nueva.
           </p>
 
-          <ul className="max-h-48 overflow-auto font-mono text-[10px] border border-slate-200 dark:border-gray-700 rounded px-2 py-1 space-y-0.5 select-text">
+          <ul className="max-h-48 overflow-auto font-num text-[10px] border border-slate-200 dark:border-gray-700 rounded px-2 py-1 space-y-0.5 select-text">
             {filas.slice(0, MAX_LISTA).map(f => (
               <li key={f.refPath} className="truncate" title={f.id}>
                 Adm. {f.admision} · {fechaCorta(f.fecha_cx)} · {f.proveedor} · {f.codigo}{f.oc ? ` · OC ${f.oc}` : ''}

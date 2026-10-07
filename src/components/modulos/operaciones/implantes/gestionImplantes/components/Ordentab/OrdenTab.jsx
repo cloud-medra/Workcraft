@@ -53,7 +53,7 @@ export const OrdenTab = ({
                 type="button"
                 onClick={() => handleCopiarTexto?.(oc)}
                 title="Copiar OC"
-                className="flex items-center gap-1 px-2 py-0.5 text-[#2383C2] dark:text-blue-400 font-mono font-semibold text-[11px] hover:bg-[#2383C2]/10 transition rounded-l"
+                className="flex items-center gap-1 px-2 py-0.5 text-[#2383C2] dark:text-blue-400 font-num font-semibold text-[11px] hover:bg-[#2383C2]/10 transition rounded-l"
               >
                 {oc} <Copy size={10} className="opacity-60" />
               </button>
@@ -104,7 +104,7 @@ export const OrdenTab = ({
                     <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
                       <span className="flex items-center gap-1.5"><CalendarIcon size={11} className="text-[#2383C2]" />{formatearFechaTabla(bloque.fecha)}</span>
                     </td>
-                    <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 font-mono">
+                    <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 font-num">
                       {ocs.length
                         ? (
                           <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
