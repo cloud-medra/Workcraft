@@ -100,6 +100,8 @@ import AjusteTema from '../components/modulos/general/settings/ajusteTema/Ajuste
 import ConfigPrivacidad from '../components/modulos/general/settings/configPrivacidad/ConfigPrivacidad';
 import ModulosVisibles from '../components/modulos/general/settings/modulosVisibles/ModulosVisibles';
 import OrdenModulos from '../components/modulos/general/settings/ordenModulos/OrdenModulos';
+import AtajosDashboard from '../components/modulos/general/settings/atajosDashboard/AtajosDashboard';
+import { puedeConfigurarAtajos } from '../config/atajosDashboard';
 
 // import PreferenciasGenerales from '../components/modulos/ajustes/PreferenciasGenerales';
 
@@ -146,6 +148,14 @@ const Dashboard = () => {
     setIsMenuOpen(false);
   };
 
+  // Abre una pantalla de un módulo igual que el menú: deja el módulo
+  // expandido en el sidebar y el ítem activo. Lo usan los Accesos rápidos.
+  const abrirVistaDeModulo = (moduleKey, path) => {
+    setIsAjustesMode(false);
+    setActiveModule(moduleKey);
+    setActiveView(path);
+  };
+
   const salirDeAjustes = () => {
     setIsAjustesMode(false);
     setActiveView('dashboard');
@@ -180,7 +190,7 @@ const Dashboard = () => {
   const breadcrumb = getBreadcrumb();
 
   const VIEW_MAP = {
-    'dashboard': <ResumenGeneral userData={userData} />,
+    'dashboard': <ResumenGeneral userData={userData} onAbrirAtajo={abrirVistaDeModulo} />,
     '/administracion/controlMensual': <ControlMensual />,
     '/administracion/ResumenPeriodoAbierto': <ResumenPeriodoAbierto />,
     '/administracion/notasAdmin': <NotasAdmin />,
@@ -263,6 +273,7 @@ const Dashboard = () => {
     '/ajustes/configPrivacidad': <ConfigPrivacidad />,
     '/settings/modulosVisibles': <ModulosVisibles userData={userData} />,
     '/settings/ordenModulos': ( <OrdenModulos userData={userData} onOrderSaved={(cambios) => setUserData(prev => ({ ...prev, ...cambios }))} /> ),
+    '/settings/atajosDashboard': <AtajosDashboard userData={userData} />,
     
     // '/ajustes/preferenciasGenerales': <PreferenciasGenerales />,
   };
@@ -370,7 +381,7 @@ const Dashboard = () => {
               </div>
 
               <div className="space-y-1">
-                {AJUSTES_ITEMS.map((item) => (
+                {AJUSTES_ITEMS.filter((item) => !item.soloAdminODev || puedeConfigurarAtajos(userData)).map((item) => (
                   <button
                     key={item.path}
                     onClick={() => setActiveView(item.path)}

@@ -61,7 +61,8 @@ import {
   HelpCircle,
   Home,
   FileText,
-  FolderUp
+  FolderUp,
+  Zap
 } from "lucide-react";
 
 export const MODULES = {
@@ -190,6 +191,8 @@ export const AJUSTES_ITEMS = [
   { path: '/ajustes/configPrivacidad', label: 'Config. Privacidad', icon: <Lock size={15} /> },
   { path: '/settings/modulosVisibles', label: 'Módulos Visibles', icon: <Eye size={15} /> },
   { path: '/settings/ordenModulos', label: 'Orden de Módulos', icon: <ArrowUpDown size={15} /> },
+  // soloAdminODev: solo se muestra a los roles admin/dev (configuración global).
+  { path: '/settings/atajosDashboard', label: 'Atajos', icon: <Zap size={15} />, soloAdminODev: true },
   { path: '/ajustes/preferenciasGenerales', label: 'Preferencias Generales', icon: <Sliders size={15} /> },
   { path: '/ajustes/ayudaSoporte', label: 'Ayuda y Soporte', icon: <HelpCircle size={15} /> },
 ];
@@ -206,6 +209,7 @@ export const SPECIAL_VIEWS = {
   '/ajustes/configPrivacidad': { label: 'Configuración de Privacidad', icon: <Lock size={13} /> },
   '/settings/modulosVisibles': { label: 'Módulos Visibles', icon: <Eye size={13} /> },
   '/settings/ordenModulos': { label: 'Orden de Módulos', icon: <ArrowUpDown size={13} /> },
+  '/settings/atajosDashboard': { label: 'Atajos del Dashboard', icon: <Zap size={13} /> },
   '/ajustes/preferenciasGenerales': { label: 'Preferencias Generales', icon: <Sliders size={13} /> },
   '/ajustes/ayudaSoporte': { label: 'Centro de Ayuda', icon: <HelpCircle size={13} /> },
 };

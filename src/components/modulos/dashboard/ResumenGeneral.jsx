@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Construction } from 'lucide-react';
+import { LayoutDashboard } from 'lucide-react';
 
 import BienvenidaCard from './generales/BienvenidaCard';
 import BrandingCard from './generales/BrandingCard';
 import NuevoModuloCard from './generales/NuevoModuloCard';
 import AgendaCarrusel from './generales/AgendaCarrusel';
+import AtajosCard from './generales/AtajosCard';
 // AvanceInventario.jsx queda fuera de circulación a propósito (sin
-// eliminar el archivo): el widget que va acá todavía no está definido.
-// Mientras tanto se muestra un placeholder "Próximamente" más abajo, con
-// el mismo `flex-grow` que tenía este componente, para no dejar un hueco
-// raro en la columna derecha. Reactivar es solo descomentar este import y
-// el <AvanceInventario /> de más abajo.
+// eliminar el archivo); en su lugar va el widget de Accesos rápidos.
 // import AvanceInventario from './generales/AvanceInventario';
 
-const ResumenGeneral = ({ userData }) => {
+const ResumenGeneral = ({ userData, onAbrirAtajo }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -74,11 +71,7 @@ const ResumenGeneral = ({ userData }) => {
           />
 
           {/* <AvanceInventario /> */}
-          <div className="bg-white dark:bg-gray-800 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-3 flex flex-col items-center justify-center gap-1.5 flex-grow text-center">
-            <Construction size={16} className="text-gray-300 dark:text-gray-600" />
-            <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide">Próximamente</span>
-            <span className="text-[9.5px] text-gray-400 dark:text-gray-600">Widget en definición</span>
-          </div>
+          <AtajosCard permisos={userData?.permisos} onAbrir={onAbrirAtajo} />
         </div>
 
       </div>
