@@ -35,7 +35,7 @@ const { pathToFileURL } = require('node:url');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-const PROYECTO = 'workspace-cloud-15d85';
+const PROYECTO = 'workcraft-491b7';
 const RAIZ = 'consignacion_imputadas';
 const COL_GUIAS = 'consignacion_guias';
 const COL_MAESTROS = 'maestros_codigos';
