@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ScanBarcode, CornerDownLeft } from 'lucide-react';
-import { esTeclaFinEscaneo } from '../utils/escaneo';
+import { esTeclaFinEscaneo } from './escaneo';
 
 const ESTILOS = {
   ok: 'border-emerald-500 ring-2 ring-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 dark:ring-emerald-800',

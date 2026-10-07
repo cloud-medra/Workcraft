@@ -283,12 +283,24 @@ service cloud.firestore {
 
     // Escaneo: vínculos código de barras -> producto del maestro. El id del
     // documento es el código (un código apunta a un solo producto).
+    // Documentos (empresa + guía/factura + OC) ya ingresados: equivalente a
+    // un índice único. Se crea con cada ingreso con guía o factura; solo se
+    // puede reescribir si el ingreso al que apunta ya no existe (se eliminó
+    // de Stock General).
+    match /inventario_ingresos_documentos/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && (esAdminODev() || tienePermiso('inventario'));
+      allow update: if request.auth != null && (esAdminODev() || tienePermiso('inventario'))
+        && !exists(/databases/$(database)/documents/inventario_general/$(resource.data.ingresoId));
+      allow delete: if request.auth != null && esAdminODev();
+    }
+
     match /inventario_codigos_barra/{codigo} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('inventario'));
     }
 
-    // Escaneo · Inventario por cajas: inventarios_fisicos/{id} (+ subcolección
+    // Inventario por cajas: inventarios_fisicos/{id} (+ subcolección
     // cajas) y el documento _control con el inventario en curso.
     match /inventarios_fisicos/{document=**} {
       allow read: if request.auth != null;

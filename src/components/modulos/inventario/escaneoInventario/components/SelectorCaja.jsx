@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Package } from 'lucide-react';
-import { etiquetaCaja } from '../utils/itemsCaja';
+import { etiquetaCaja } from '../../shared/escaneo/itemsCaja';
 
 export const NUEVA_CAJA = '__nueva__';
 

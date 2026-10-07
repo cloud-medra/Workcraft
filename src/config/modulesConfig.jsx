@@ -14,6 +14,7 @@ import {
   Calculator,
   CheckCheck,
   ClipboardList,
+  ClipboardCheck,
   Database,
   Factory,
   FileScan,
@@ -144,6 +145,7 @@ export const MODULES = {
       { label: 'Historial', path: '/inventario/historialInventario', icon: <History size={14} /> },
       { label: 'Stock Unidad', path: '/inventario/unidadInventario', icon: <Building2 size={14} /> },
       { label: 'Escaneo', path: '/inventario/escaneoInventario', icon: <ScanBarcode size={14} /> },
+      { label: 'Inventario por cajas', path: '/inventario/inventarioCajas', icon: <ClipboardCheck size={14} /> },
     ]
   },
   documentos: {

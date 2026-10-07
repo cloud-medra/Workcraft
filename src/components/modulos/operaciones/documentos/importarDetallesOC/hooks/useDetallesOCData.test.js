@@ -51,7 +51,7 @@ describe('useDetallesOCData', () => {
     mockGetDocs.mockResolvedValueOnce(docsDeIds(['09', '10'])); // meses del año elegido
     await act(async () => { result.current.setAnio('2026'); await Promise.resolve(); });
 
-    expect(result.current.meses).toEqual(['10', '09']); // del más reciente al más antiguo
+    expect(result.current.meses).toEqual(['09', '10']); // orden cronológico
     expect(result.current.mes).toBe(''); // elegir año no elige mes automáticamente
     expect(mockGetDocs).toHaveBeenCalledTimes(2); // años + meses, todavía sin filas
   });
@@ -112,7 +112,7 @@ describe('useDetallesOCData', () => {
 
     expect(mockGetDocs.mock.calls.length).toBe(llamadasAntes + 3);
     expect(result.current.filas).toHaveLength(2);
-    expect(result.current.meses).toEqual(['10', '09']);
+    expect(result.current.meses).toEqual(['09', '10']);
     expect(result.current.mes).toBe('09');
   });
 

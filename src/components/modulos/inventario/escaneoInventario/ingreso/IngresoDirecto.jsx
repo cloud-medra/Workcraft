@@ -1,23 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Save, Search, Trash2, Loader2, PackageCheck, Barcode, Eraser } from 'lucide-react';
 import { useInventarioGeneral } from '../../../../../hooks/useInventarioGeneral';
 import { cargarCatalogo } from '../../../../../stores/catalogosStore';
 import { useToast } from '../../../../../context/ToastContext';
-import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
-import CampoEscaneo from '../components/CampoEscaneo';
+import CampoEscaneo from '../../shared/escaneo/CampoEscaneo';
 import SelectorCaja, { NUEVA_CAJA } from '../components/SelectorCaja';
-import BuscadorProductoMaestro from '../components/BuscadorProductoMaestro';
-import { interpretarLectura } from '../utils/escaneo';
-import { evaluarVinculo, agregarCodigoALista, quitarCodigoDeLista, ajustarListaAProducto } from '../utils/vinculosCodigoBarra';
-import { construirItemDesdeProducto, validarItem, etiquetaCaja } from '../utils/itemsCaja';
-import { reproducirSonidoEscaneo } from '../utils/sonidoEscaneo';
-import { leerVinculo, guardarIngresoEscaneo } from '../services/escaneoInventarioService';
+import BuscadorProductoMaestro from '../../shared/escaneo/BuscadorProductoMaestro';
+import { useProductoEscaneado, nombreProducto } from '../../shared/escaneo/useProductoEscaneado';
+import { construirItemDesdeProducto, validarItem, etiquetaCaja } from '../../shared/escaneo/itemsCaja';
+import { guardarIngresoEscaneo } from '../../shared/escaneo/escaneoInventarioService';
 
 const CLASE_INPUT = 'w-full h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 disabled:opacity-50';
 const CLASE_LABEL = 'block text-[9px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-0.5';
-
-const nombreProducto = (p) => [p?.referencia, p?.descriptorAuto].filter(Boolean).join(' — ') || p?.codigo || 'producto';
 
 const fechaCorta = (iso) => {
   const [y, m, d] = String(iso || '').split('-');
@@ -30,35 +25,18 @@ const fechaCorta = (iso) => {
 const IngresoDirecto = () => {
   const { cajas } = useInventarioGeneral();
   const { showToast } = useToast();
-  const { confirmAction } = useModal();
   const { userData } = useUser();
 
   const [catalogo, setCatalogo] = useState([]);
   const [cajaValor, setCajaValor] = useState('');
   const [nuevaCaja, setNuevaCaja] = useState({ nombreCaja: '', ubicacion: '' });
 
-  const [producto, setProductoEstado] = useState(null);
-  const [codigos, setCodigosEstado] = useState([]);
-  const [buscador, setBuscadorEstado] = useState(null); // { aviso } | null
   const [cantidad, setCantidad] = useState('1');
   const [lote, setLote] = useState('');
   const [vencimiento, setVencimiento] = useState('');
 
-  const [senal, setSenal] = useState({ tipo: null, mensaje: 'Elige la caja y escanea el primer código.' });
   const [guardando, setGuardando] = useState(false);
   const [sesion, setSesion] = useState([]);
-
-  const campoRef = useRef(null);
-  // Copias al día para las lecturas encoladas (la pistola puede leer otro
-  // código antes de que React vuelva a renderizar).
-  const productoRef = useRef(null);
-  const codigosRef = useRef([]);
-  const colaRef = useRef(Promise.resolve());
-  const buscadorAbiertoRef = useRef(false);
-
-  const setProducto = (p) => { productoRef.current = p; setProductoEstado(p); };
-  const setCodigos = (lista) => { codigosRef.current = lista; setCodigosEstado(lista); };
-  const setBuscador = (valor) => { buscadorAbiertoRef.current = Boolean(valor); setBuscadorEstado(valor); };
 
   useEffect(() => {
     cargarCatalogo('codigos')
@@ -69,130 +47,27 @@ const IngresoDirecto = () => {
       });
   }, [showToast]);
 
-  const enfocarCampo = () => setTimeout(() => campoRef.current?.focus(), 0);
-  useEffect(() => { campoRef.current?.focus(); }, []);
-
-  const avisar = (tipo, mensaje, { sonido = true } = {}) => {
-    setSenal({ tipo, mensaje });
-    if (sonido) reproducirSonidoEscaneo(tipo);
-  };
-
   const cajaLista = cajaValor === NUEVA_CAJA ? Boolean(nuevaCaja.nombreCaja.trim()) : Boolean(cajaValor);
 
-  const agregarCodigo = (entrada) => {
-    const lista = agregarCodigoALista(codigosRef.current, entrada);
-    const repetido = lista === codigosRef.current;
-    setCodigos(lista);
-    return !repetido;
-  };
-
-  const procesarLectura = async (texto) => {
-    if (!cajaLista) {
-      avisar('error', cajaValor === NUEVA_CAJA ? 'Escribe el nombre de la nueva caja antes de escanear.' : 'Elige la caja antes de escanear.');
-      return;
+  const {
+    campoRef, senal, avisar, enfocarCampo,
+    producto, codigos, buscador, setBuscador,
+    handleLectura, handleSeleccionarProducto, handleQuitarCodigo, limpiarProducto: limpiarEscaneo, handleBlurCampo
+  } = useProductoEscaneado({
+    catalogo,
+    mensajeInicial: 'Elige la caja y escanea el primer código.',
+    validarAntes: () => (cajaLista ? '' : cajaValor === NUEVA_CAJA ? 'Escribe el nombre de la nueva caja antes de escanear.' : 'Elige la caja antes de escanear.'),
+    onGS1: (gs1) => {
+      if (gs1.lote) setLote(gs1.lote);
+      if (gs1.vencimiento) setVencimiento(gs1.vencimiento);
     }
-    const lectura = interpretarLectura(texto);
-    if (!lectura) return;
-
-    let vinculo;
-    try {
-      vinculo = await leerVinculo(lectura.clave);
-    } catch (err) {
-      console.error('Error al leer el vínculo del código:', err);
-      avisar('error', `No se pudo consultar el código ${lectura.codigo}.`);
-      return;
-    }
-
-    if (lectura.gs1.esGS1) {
-      if (lectura.gs1.lote) setLote(lectura.gs1.lote);
-      if (lectura.gs1.vencimiento) setVencimiento(lectura.gs1.vencimiento);
-    }
-    const sufijoGS1 = lectura.gs1.esGS1 ? ` (GS1 · GTIN ${lectura.gs1.gtin})` : '';
-    const actual = productoRef.current;
-    const entrada = { clave: lectura.clave, codigo: lectura.codigo };
-
-    switch (evaluarVinculo(vinculo, actual?.id)) {
-      case 'sinProducto': {
-        const prod = catalogo.find((c) => c.id === vinculo.productoId);
-        if (!prod) {
-          avisar('error', `El código ${lectura.codigo} está vinculado a un producto que ya no está en el maestro.`);
-          return;
-        }
-        setProducto(prod);
-        agregarCodigo({ ...entrada, vinculoProductoId: prod.id });
-        setBuscador(null);
-        avisar('ok', `Producto reconocido: ${nombreProducto(prod)}${sufijoGS1}`);
-        return;
-      }
-      case 'mismo': {
-        const nuevo = agregarCodigo({ ...entrada, vinculoProductoId: actual.id });
-        avisar('ok', nuevo ? `Código ${lectura.codigo} ya vinculado a este producto.` : `El código ${lectura.codigo} ya está en la lista.`);
-        return;
-      }
-      case 'nuevo': {
-        const nuevo = agregarCodigo(entrada);
-        if (!actual) {
-          setBuscador({ aviso: `Código nuevo ${lectura.codigo}${sufijoGS1}: elige el producto para vincularlo.` });
-          avisar('nuevo', `Código nuevo ${lectura.codigo}: elige el producto en la búsqueda.`);
-        } else {
-          avisar('nuevo', nuevo
-            ? `Código nuevo ${lectura.codigo}: quedará vinculado a ${nombreProducto(actual)} al guardar.`
-            : `El código ${lectura.codigo} ya está en la lista.`);
-        }
-        return;
-      }
-      case 'otro': {
-        const otro = [vinculo.referencia, vinculo.descriptorAuto].filter(Boolean).join(' — ') || vinculo.codigo || vinculo.productoId;
-        avisar('error', `El código ${lectura.codigo} está vinculado a otro producto: ${otro}.`);
-        await new Promise((resolve) => {
-          confirmAction(
-            'Código vinculado a otro producto',
-            `El código ${lectura.codigo} está vinculado a "${otro}". ¿Reasignarlo a "${nombreProducto(actual)}"? El cambio se aplica al guardar.`,
-            () => {
-              agregarCodigo({ ...entrada, vinculoProductoId: vinculo.productoId, reasignar: true });
-              avisar('nuevo', `El código ${lectura.codigo} se reasignará a ${nombreProducto(actual)} al guardar.`);
-              resolve();
-            },
-            { confirmText: 'Reasignar', cancelText: 'No cambiar', type: 'warning', onCancel: resolve }
-          );
-        });
-        return;
-      }
-      default:
-    }
-  };
-
-  // Las lecturas se procesan en orden, una a la vez.
-  const handleLectura = (texto) => {
-    colaRef.current = colaRef.current
-      .then(() => procesarLectura(texto))
-      .catch((err) => console.error('Error al procesar la lectura:', err))
-      .finally(() => { if (!buscadorAbiertoRef.current) enfocarCampo(); });
-  };
-  const handleSeleccionarProducto = (prod) => {
-    const { lista, quitados } = ajustarListaAProducto(codigosRef.current, prod.id);
-    setCodigos(lista);
-    setProducto(prod);
-    setBuscador(null);
-    const extra = quitados.length > 0 ? ` Se quitaron ${quitados.length} código(s) vinculados a otro producto.` : '';
-    avisar('ok', `Producto elegido: ${nombreProducto(prod)}.${extra}`);
-    enfocarCampo();
-  };
-
-  const handleQuitarCodigo = (clave) => {
-    setCodigos(quitarCodigoDeLista(codigosRef.current, clave));
-    enfocarCampo();
-  };
+  });
 
   const limpiarProducto = ({ mensaje } = {}) => {
-    setProducto(null);
-    setCodigos([]);
-    setBuscador(null);
     setCantidad('1');
     setLote('');
     setVencimiento('');
-    if (mensaje) setSenal({ tipo: null, mensaje });
-    enfocarCampo();
+    limpiarEscaneo({ mensaje });
   };
 
   const handleCambiarCaja = (valor) => {
@@ -245,11 +120,6 @@ const IngresoDirecto = () => {
     } finally {
       setGuardando(false);
     }
-  };
-
-  // Clic en un espacio sin campo: el foco vuelve al campo de escaneo.
-  const handleBlurCampo = (e) => {
-    if (!e.relatedTarget && !buscadorAbiertoRef.current) enfocarCampo();
   };
 
   const totalSesion = useMemo(() => sesion.reduce((acc, s) => acc + s.cantidad, 0), [sesion]);

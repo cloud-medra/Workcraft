@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numeroDeMes, compararMeses, ordenarMeses, ordenarPeriodos } from './ordenarMeses';
+import { numeroDeMes, nombreDeMes, compararMeses, ordenarMeses, ordenarPeriodos } from './ordenarMeses';
 
 describe('numeroDeMes', () => {
   it.each([
@@ -60,5 +60,18 @@ describe('ordenarPeriodos', () => {
   it('acepta una función para extraer año y mes', () => {
     const items = [{ p: { anio: 2026, mes: 3 } }, { p: { anio: 2026, mes: 1 } }];
     expect(ordenarPeriodos(items, (x) => x.p).map((x) => x.p.mes)).toEqual([1, 3]);
+  });
+});
+
+describe('nombreDeMes', () => {
+  it('muestra el nombre con mayúscula inicial para cualquier formato de mes', () => {
+    expect(nombreDeMes('01')).toBe('Enero');
+    expect(nombreDeMes(9)).toBe('Septiembre');
+    expect(nombreDeMes('diciembre')).toBe('Diciembre');
+  });
+
+  it('devuelve el valor tal cual si no es un mes', () => {
+    expect(nombreDeMes('13')).toBe('13');
+    expect(nombreDeMes(undefined)).toBe('');
   });
 });

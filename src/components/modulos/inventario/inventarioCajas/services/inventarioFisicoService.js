@@ -2,8 +2,8 @@ import {
   collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query,
   runTransaction, serverTimestamp, updateDoc
 } from 'firebase/firestore';
-import { db } from '../../../../../../firebaseConfig';
-import { mismosItemsTransito as mismosItems } from '../../../shared/traspasoTransito';
+import { db } from '../../../../../firebaseConfig';
+import { mismosItemsTransito as mismosItems } from '../../shared/traspasoTransito';
 import {
   ESTADOS_INVENTARIO, ESTADOS_CAJA, ESTADOS_AJUSTE,
   esperadoDeItems, compararConteo, ajustarItemsCaja, sumarTotales

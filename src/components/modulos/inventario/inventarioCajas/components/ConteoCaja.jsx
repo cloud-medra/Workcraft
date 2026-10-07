@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Trash2, Plus, X, AlertTriangle, RefreshCw, Loader2, RotateCcw, Lock } from 'lucide-react';
-import { useToast } from '../../../../../../context/ToastContext';
-import { useModal } from '../../../../../../context/ModalContext';
-import CampoEscaneo from '../../components/CampoEscaneo';
-import BuscadorProductoMaestro from '../../components/BuscadorProductoMaestro';
-import { interpretarLectura } from '../../utils/escaneo';
-import { reproducirSonidoEscaneo } from '../../utils/sonidoEscaneo';
-import { leerVinculo, vincularCodigos } from '../../services/escaneoInventarioService';
+import { useToast } from '../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import CampoEscaneo from '../../shared/escaneo/CampoEscaneo';
+import BuscadorProductoMaestro from '../../shared/escaneo/BuscadorProductoMaestro';
+import { interpretarLectura } from '../../shared/escaneo/escaneo';
+import { reproducirSonidoEscaneo } from '../../shared/escaneo/sonidoEscaneo';
+import { leerVinculo, vincularCodigos } from '../../shared/escaneo/escaneoInventarioService';
 import {
   ESTADOS_CAJA, lotesEsperadosDeProducto, lineaDeConteo, sumarAlConteo,
   fijarCantidadConteo, quitarDelConteo, compararConteo, normalizarLote, fechaCorta

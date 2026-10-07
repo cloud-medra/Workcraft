@@ -3,7 +3,7 @@
 // Todo se compara por producto + lote + vencimiento ("clave"). El producto
 // es el codigoId del maestro; los ítems antiguos sin codigoId usan el código
 // interno y la referencia.
-import { itemEsDelProducto } from '../../utils/stockProducto';
+import { itemEsDelProducto } from '../../shared/escaneo/stockProducto';
 
 export const ESTADOS_INVENTARIO = { EN_CURSO: 'EN_CURSO', FINALIZADO: 'FINALIZADO' };
 export const ESTADOS_CAJA = { PENDIENTE: 'PENDIENTE', EN_CONTEO: 'EN_CONTEO', FINALIZADA: 'FINALIZADA' };

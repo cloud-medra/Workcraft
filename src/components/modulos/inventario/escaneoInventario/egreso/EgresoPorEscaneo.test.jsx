@@ -14,9 +14,9 @@ vi.mock('../../../../../stores/catalogosStore', () => ({ cargarCatalogo: async (
 vi.mock('../../../../../context/ToastContext', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
 vi.mock('../../../../../context/ModalContext', () => ({ useModal: () => ({ confirmAction: vi.fn() }) }));
 vi.mock('../../../../../context/UserContext', () => ({ useUser: () => ({ userData: { nombreCompleto: 'Ana' } }) }));
-vi.mock('../services/escaneoInventarioService', () => ({ leerVinculo: (...a) => leerVinculo(...a) }));
+vi.mock('../../shared/escaneo/escaneoInventarioService', () => ({ leerVinculo: (...a) => leerVinculo(...a) }));
 vi.mock('../../shared/traspasoTransitoService', () => ({ generarSiguienteNumeroDocumento: async () => '260001', ejecutarTraspasoTransito: vi.fn() }));
-vi.mock('../utils/sonidoEscaneo', () => ({ reproducirSonidoEscaneo: vi.fn() }));
+vi.mock('../../shared/escaneo/sonidoEscaneo', () => ({ reproducirSonidoEscaneo: vi.fn() }));
 
 const { default: EgresoPorEscaneo } = await import('./EgresoPorEscaneo');
 

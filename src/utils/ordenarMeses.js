@@ -26,6 +26,15 @@ export const numeroDeMes = (mes) => {
   return indice >= 0 ? indice + 1 : null;
 };
 
+// Nombre del mes para mostrar ('01', 1 o 'enero' -> 'Enero'). Si no se
+// reconoce, devuelve el valor tal cual.
+export const nombreDeMes = (mes) => {
+  const n = numeroDeMes(mes);
+  if (!n) return String(mes ?? '');
+  const nombre = NOMBRES_MESES[n - 1];
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1);
+};
+
 // Comparador para Array.sort: por número de mes; los no reconocidos van al
 // final, entre ellos por texto.
 export const compararMeses = (a, b) => {

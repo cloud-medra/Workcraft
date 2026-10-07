@@ -8,7 +8,7 @@ const ref = (path) => ({ path, id: path.split('/').pop() });
 const snap = (r) => ({ id: r.id, exists: () => datos.has(r.path), data: () => datos.get(r.path) });
 const hijosDirectos = (col) => [...datos.keys()].filter((k) => k.startsWith(`${col}/`) && k.split('/').length === col.split('/').length + 1);
 
-vi.mock('../../../../../../firebaseConfig', () => ({ db: {} }));
+vi.mock('../../../../../firebaseConfig', () => ({ db: {} }));
 vi.mock('firebase/firestore', () => ({
   collection: (_db, ...seg) => ({ path: seg.join('/') }),
   doc: (base, ...seg) => (base && base.path !== undefined && seg.length === 0 ? ref(`${base.path}/auto${++autoId}`) : ref(seg.join('/'))),

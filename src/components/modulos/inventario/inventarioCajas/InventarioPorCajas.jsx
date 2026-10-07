@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Boxes, Play, History, Flag, Loader2, CheckCircle2, Clock, Circle } from 'lucide-react';
-import { useInventarioGeneral } from '../../../../../hooks/useInventarioGeneral';
-import { cargarCatalogo } from '../../../../../stores/catalogosStore';
-import { useToast } from '../../../../../context/ToastContext';
-import { useModal } from '../../../../../context/ModalContext';
-import { useUser } from '../../../../../context/UserContext';
-import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
-import { etiquetaCaja } from '../utils/itemsCaja';
+import { useInventarioGeneral } from '../../../../hooks/useInventarioGeneral';
+import { cargarCatalogo } from '../../../../stores/catalogosStore';
+import { useToast } from '../../../../context/ToastContext';
+import { useModal } from '../../../../context/ModalContext';
+import { useUser } from '../../../../context/UserContext';
+import { useGranularPermission } from '../../../../hooks/useGranularPermission';
+import { etiquetaCaja } from '../shared/escaneo/itemsCaja';
 import { ESTADOS_CAJA, ESTADOS_INVENTARIO, estadoDeCaja, avanceInventario } from './utils/inventarioFisico';
 import {
   escucharInventarioEnCurso, escucharInventario, escucharCajasInventario, iniciarInventario, iniciarOTomarCaja
@@ -16,9 +16,9 @@ import FinalizarInventario from './components/FinalizarInventario';
 import HistorialInventarios from './components/HistorialInventarios';
 import { TotalesCategorias } from './components/ResumenComparacion';
 
-// Sección del mapa de permisos de Escaneo que habilita "Finalizar inventario"
-// (ajusta el stock). Admin y dev siempre pueden.
-const PATH_ESCANEO = '/inventario/escaneoInventario';
+// Sección del mapa de permisos de Inventario por cajas que habilita
+// "Finalizar inventario" (ajusta el stock). Admin y dev siempre pueden.
+const PATH_VISTA = '/inventario/inventarioCajas';
 const SECCION_FINALIZAR = 'finalizar_inventario';
 
 const INPUT = 'h-8 px-2 border border-gray-300 dark:border-gray-600 rounded text-[12px] outline-none focus:border-[#2383C2] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100';
@@ -34,7 +34,7 @@ const ESTILO_ESTADO = {
   [ESTADOS_CAJA.FINALIZADA]: { Icon: CheckCircle2, clase: 'text-emerald-800 bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300', texto: 'Finalizada' }
 };
 
-// Escaneo · Inventario por cajas: conteo físico caja por caja, guardado en
+// Inventario por cajas: conteo físico caja por caja, guardado en
 // inventarios_fisicos a medida que se avanza. El stock solo se ajusta al
 // finalizar el inventario completo.
 const InventarioPorCajas = () => {
@@ -43,7 +43,7 @@ const InventarioPorCajas = () => {
   const { confirmAction } = useModal();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
-  const puedeFinalizar = hasPermission(PATH_ESCANEO, SECCION_FINALIZAR);
+  const puedeFinalizar = hasPermission(PATH_VISTA, SECCION_FINALIZAR);
 
   const [sesion] = useState(nuevaSesion);
   const [catalogo, setCatalogo] = useState([]);
@@ -118,7 +118,15 @@ const InventarioPorCajas = () => {
     await tomar();
   };
 
-  const contenedor = (contenido) => <div className="flex-grow min-h-0 flex flex-col">{contenido}</div>;
+  const contenedor = (contenido) => (
+    <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden font-sans text-[11px]">
+      <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center gap-2">
+        <Boxes size={16} className="text-[#2383C2]" />
+        <span className="text-[12px] font-normal text-slate-800 dark:text-gray-100 tracking-wide uppercase">Inventario por cajas</span>
+      </header>
+      <div className="flex-grow min-h-0 flex flex-col">{contenido}</div>
+    </div>
+  );
 
   if (idEnCurso === undefined) {
     return contenedor(<div className="flex-grow flex items-center justify-center gap-2 text-gray-400"><Loader2 size={14} className="animate-spin" /> Cargando...</div>);

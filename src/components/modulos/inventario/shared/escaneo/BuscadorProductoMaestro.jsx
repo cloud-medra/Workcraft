@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Layers, Search, X } from 'lucide-react';
-import { filtrarCatalogoCodigos } from '../../shared/filtrarCatalogoCodigos';
+import { filtrarCatalogoCodigos } from '../filtrarCatalogoCodigos';
 
 const MAX_RESULTADOS = 60;
 

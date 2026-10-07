@@ -1,7 +1,7 @@
 import { collection, doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../../../firebaseConfig';
-import { COL_CODIGOS_BARRA, idVinculo, planificarVinculos, construirVinculo } from '../utils/vinculosCodigoBarra';
-import { agregarItemACaja, validarItem, ORIGEN_ESCANEO } from '../utils/itemsCaja';
+import { COL_CODIGOS_BARRA, idVinculo, planificarVinculos, construirVinculo } from './vinculosCodigoBarra';
+import { agregarItemACaja, validarItem, ORIGEN_ESCANEO } from './itemsCaja';
 
 // Escrituras de Escaneo sobre inventario_general (misma colección y
 // estructura que Stock General) e inventario_codigos_barra. Separado de la

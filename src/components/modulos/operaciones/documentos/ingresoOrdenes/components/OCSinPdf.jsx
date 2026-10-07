@@ -9,12 +9,7 @@ import { useUser } from '../../../../../../context/UserContext';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
 import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
 import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
-
-const NOMBRES_MESES = {
-  '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
-  '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
-  '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
-};
+import { nombreDeMes } from '../../../../../../utils/ordenarMeses';
 
 // Columnas redimensionables (useColumnResize las recuerda por usuario en
 // este navegador). La de PDF tiene el botón de subir.
@@ -165,7 +160,7 @@ const OCSinPdf = () => {
             </select>
             <select value={d.mes} onChange={(e) => d.setMes(e.target.value)} disabled={!d.anio || d.cargando} className={selectClase}>
               <option value="">Mes</option>
-              {d.meses.map(m => <option key={m} value={m}>{NOMBRES_MESES[m] || m}</option>)}
+              {d.meses.map(m => <option key={m} value={m}>{nombreDeMes(m)}</option>)}
             </select>
           </>
         )}

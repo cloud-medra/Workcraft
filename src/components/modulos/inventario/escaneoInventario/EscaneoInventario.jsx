@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { ScanBarcode, ArrowDownToLine, ArrowUpFromLine, FileText, ClipboardList, ArrowLeft, Boxes } from 'lucide-react';
+import { ScanBarcode, ArrowDownToLine, ArrowUpFromLine, FileText, ClipboardList, ArrowLeft } from 'lucide-react';
 import IngresoDirecto from './ingreso/IngresoDirecto';
 import EgresoPorEscaneo from './egreso/EgresoPorEscaneo';
-import InventarioPorCajas from './inventarioCajas/InventarioPorCajas';
+import IngresoPorDocumento from './ingresoDocumento/IngresoPorDocumento';
+import { useUser } from '../../../../context/UserContext';
 
 // Operaciones de Escaneo. `disponible: false` se muestra como "Próximamente".
+// `requiere`: ruta de menú que además debe tener el usuario (mismos permisos
+// que esa vista).
 const GRUPOS = [
   {
     id: 'ingresar',
     titulo: 'Ingresar',
     Icon: ArrowDownToLine,
     operaciones: [
-      { id: 'ingresoDocumento', label: 'Con guía o factura', Icon: FileText, disponible: false },
+      { id: 'ingresoDocumento', label: 'Con guía o factura', descripcion: 'Igual que Ingresos, escaneando los productos', Icon: FileText, disponible: true, requiere: '/inventario/ingresosInventario' },
       { id: 'ingresoDirecto', label: 'Ingreso directo', descripcion: 'Cargar stock sin guía ni factura', Icon: ClipboardList, disponible: true }
     ]
   },
@@ -22,21 +25,17 @@ const GRUPOS = [
     operaciones: [
       { id: 'egresoTransito', label: 'Egreso / traspaso a tránsito', descripcion: 'Descontar stock y dejarlo en tránsito', Icon: ArrowUpFromLine, disponible: true }
     ]
-  },
-  {
-    id: 'inventario',
-    titulo: 'Inventario',
-    Icon: Boxes,
-    operaciones: [
-      { id: 'inventarioCajas', label: 'Inventario por cajas', descripcion: 'Conteo por caja: faltantes, sobrantes y cuadradas', Icon: Boxes, disponible: true }
-    ]
   }
 ];
 
 const OPERACIONES = Object.fromEntries(GRUPOS.flatMap((g) => g.operaciones).map((o) => [o.id, o]));
-const VISTAS = { ingresoDirecto: IngresoDirecto, egresoTransito: EgresoPorEscaneo, inventarioCajas: InventarioPorCajas };
+const VISTAS = { ingresoDocumento: IngresoPorDocumento, ingresoDirecto: IngresoDirecto, egresoTransito: EgresoPorEscaneo };
 
-const SelectorOperacion = ({ onElegir }) => (
+const tieneAcceso = (userData, ruta) => !ruta
+  || userData?.rol === 'admin' || userData?.rol === 'dev'
+  || (userData?.permisos?.inventario || []).includes(ruta);
+
+const SelectorOperacion = ({ onElegir, permitido }) => (
   <div className="flex-grow flex flex-col items-center justify-center gap-6 p-6">
     <span className="text-[11px] font-medium text-slate-500 dark:text-gray-400 uppercase tracking-wide">¿Qué vas a hacer?</span>
     <div className="flex flex-wrap items-start justify-center gap-6">
@@ -50,12 +49,13 @@ const SelectorOperacion = ({ onElegir }) => (
               <button
                 key={op.id}
                 type="button"
-                onClick={() => op.disponible && onElegir(op.id)}
-                disabled={!op.disponible}
+                onClick={() => op.disponible && permitido(op) && onElegir(op.id)}
+                disabled={!op.disponible || !permitido(op)}
+                title={op.disponible && !permitido(op) ? 'Requiere permiso de Ingresos' : undefined}
                 className="relative w-52 flex flex-col items-center gap-2 px-5 py-6 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 rounded-lg shadow-sm hover:border-[#2383C2] hover:shadow-md transition disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:shadow-sm"
               >
-                {!op.disponible && (
-                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">Próximamente</span>
+                {(!op.disponible || !permitido(op)) && (
+                  <span className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300">{op.disponible ? 'Sin permiso' : 'Próximamente'}</span>
                 )}
                 <op.Icon size={24} className="text-[#2383C2]" />
                 <span className="text-[12px] font-semibold text-slate-700 dark:text-gray-100">{op.label}</span>
@@ -70,6 +70,8 @@ const SelectorOperacion = ({ onElegir }) => (
 );
 
 const EscaneoInventario = () => {
+  const { userData } = useUser();
+  const permitido = (op) => tieneAcceso(userData, op.requiere);
   const [operacionId, setOperacionId] = useState(null);
   const operacion = operacionId ? OPERACIONES[operacionId] : null;
   const Vista = operacionId ? VISTAS[operacionId] : null;
@@ -91,7 +93,7 @@ const EscaneoInventario = () => {
           {operacion ? `Escaneo · ${operacion.label}` : 'Escaneo'}
         </span>
       </header>
-      {Vista ? <Vista key={operacionId} onIrA={setOperacionId} /> : <SelectorOperacion onElegir={setOperacionId} />}
+      {Vista ? <Vista key={operacionId} onIrA={setOperacionId} /> : <SelectorOperacion onElegir={setOperacionId} permitido={permitido} />}
     </div>
   );
 };

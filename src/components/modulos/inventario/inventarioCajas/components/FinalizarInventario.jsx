@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, AlertTriangle, Loader2, Flag, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
-import { useModal } from '../../../../../../context/ModalContext';
-import { useToast } from '../../../../../../context/ToastContext';
+import { useModal } from '../../../../../context/ModalContext';
+import { useToast } from '../../../../../context/ToastContext';
 import { ESTADOS_CAJA, ESTADOS_AJUSTE, sumarTotales } from '../utils/inventarioFisico';
 import { finalizarInventario } from '../services/inventarioFisicoService';
 import ResumenComparacion, { TotalesCategorias } from './ResumenComparacion';

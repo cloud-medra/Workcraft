@@ -5,14 +5,14 @@ import { cargarCatalogo } from '../../../../../stores/catalogosStore';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
-import CampoEscaneo from '../components/CampoEscaneo';
-import { interpretarLectura } from '../utils/escaneo';
-import { reproducirSonidoEscaneo } from '../utils/sonidoEscaneo';
-import { leerVinculo } from '../services/escaneoInventarioService';
+import CampoEscaneo from '../../shared/escaneo/CampoEscaneo';
+import { interpretarLectura } from '../../shared/escaneo/escaneo';
+import { reproducirSonidoEscaneo } from '../../shared/escaneo/sonidoEscaneo';
+import { leerVinculo } from '../../shared/escaneo/escaneoInventarioService';
 import {
   lotesDelProducto, sugerirLote, agregarALista, sumarUnoPorReescaneo,
   cambiarCantidadLinea, quitarLinea, validarCantidadEgreso, stockActualDeLinea
-} from '../utils/stockProducto';
+} from '../../shared/escaneo/stockProducto';
 import { validarDatosTraspaso, MOTIVO_TRASPASO, DESTINOS_TRANSITO } from '../../shared/traspasoTransito';
 import { ejecutarTraspasoTransito, generarSiguienteNumeroDocumento } from '../../shared/traspasoTransitoService';
 

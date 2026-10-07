@@ -246,7 +246,7 @@ export const inventarioComponentMaps = {
     label: 'Escaneo con pistola lectora (EscaneoInventario.jsx) — sin granularidad cableada aún',
     sections: {
       selector_operacion: {
-        label: 'Sección: Selector inicial (Ingresar con guía/factura [próximamente], Ingreso directo, Egresar/Traspaso a tránsito, Inventario por cajas)',
+        label: 'Sección: Selector inicial (Con guía o factura [requiere además permiso de Ingresos], Ingreso directo, Egresar/Traspaso a tránsito)',
         elements: {},
       },
       // La clave se mantiene como 'ingreso_inventario' (nombre anterior de
@@ -264,6 +264,15 @@ export const inventarioComponentMaps = {
         label: 'Sección: Lista de lo ingresado en la sesión',
         elements: {},
       },
+    },
+  },
+
+  // Antes era una operación dentro de Escaneo: las claves de sección se
+  // mantienen para que la migración copie los permisos ya asignados
+  // (functions/scripts/migrarPermisoInventarioCajas.js).
+  '/inventario/inventarioCajas': {
+    label: 'Inventario por cajas (InventarioPorCajas.jsx) — conteo físico y ajuste de stock',
+    sections: {
       inventario_cajas: {
         label: 'Sección: Inventario por cajas (iniciar, contar cajas, reabrir, historial)',
         elements: {},

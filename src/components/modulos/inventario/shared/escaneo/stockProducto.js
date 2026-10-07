@@ -6,7 +6,7 @@
 //   { idTemp, cajaId, nombreCaja, ubicacionOrigen, itemIndex,
 //     cantidadRetirar, itemOriginal, productoId }
 
-import { mismoItem } from '../../shared/traspasoTransito';
+import { mismoItem } from '../traspasoTransito';
 
 const normalizarLote = (lote) => String(lote ?? '').trim().toUpperCase();
 

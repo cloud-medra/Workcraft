@@ -9,14 +9,9 @@ import { useUser } from '../../../../../../context/UserContext';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
 import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
 import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
+import { nombreDeMes } from '../../../../../../utils/ordenarMeses';
 
 const PATH_VISTA = '/documentos/ingresoOrdenes';
-
-const NOMBRES_MESES = {
-  '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
-  '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
-  '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
-};
 
 const formatearFechaCelda = (valor) => {
   if (!valor) return '-';
@@ -102,7 +97,7 @@ const RegistrosOrdenes = () => {
               >
                 <option value="">{cargandoMeses ? 'Cargando meses...' : 'Mes'}</option>
                 {meses.map((mm) => (
-                  <option key={mm} value={mm}>{NOMBRES_MESES[mm] || mm}</option>
+                  <option key={mm} value={mm}>{nombreDeMes(mm)}</option>
                 ))}
               </select>
 

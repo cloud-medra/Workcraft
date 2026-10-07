@@ -20,14 +20,9 @@ import { useUser } from '../../../../../context/UserContext';
 import { useColumnResize } from '../../../../../hooks/useColumnResize';
 import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../../ui/ThRedimensionable';
 import { BotonRestablecerAnchos } from '../../../../ui/BotonRestablecerAnchos';
+import { nombreDeMes } from '../../../../../utils/ordenarMeses';
 
 const PATH_VISTA = '/documentos/importarDetallesOC';
-
-const NOMBRES_MESES = {
-  '01': 'Enero', '02': 'Febrero', '03': 'Marzo', '04': 'Abril',
-  '05': 'Mayo', '06': 'Junio', '07': 'Julio', '08': 'Agosto',
-  '09': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
-};
 
 const TH = 'px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700';
 const TD = 'px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate';
@@ -363,7 +358,7 @@ const ImportarDetallesOC = () => {
             >
               <option value="">{cargandoMeses ? 'Cargando meses...' : 'Mes'}</option>
               {meses.map((mm) => (
-                <option key={mm} value={mm}>{NOMBRES_MESES[mm] || mm}</option>
+                <option key={mm} value={mm}>{nombreDeMes(mm)}</option>
               ))}
             </select>
           </div>
