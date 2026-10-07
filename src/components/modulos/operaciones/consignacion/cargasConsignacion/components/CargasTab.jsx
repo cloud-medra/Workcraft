@@ -14,6 +14,9 @@ import { mapearItemMaestro, buscarItemMaestro } from '../../utils/registroConsig
 import { obtenerCodigosCacheados } from '../../registroConsignacion/utils/cacheMaestros';
 import { useCatalogo } from '../../../../../../hooks/useCatalogo';
 import { ordenarPor } from '../../../../../../stores/catalogosStore';
+import { useColumnResize } from '../../../../../../hooks/useColumnResize';
+import { ThRedimensionable, ColgroupRedimensionable, ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
+import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
 
 const VIEW_PATH_CARGAS = '/consignacion/cargasConsignacion/cargas';
 
@@ -24,6 +27,26 @@ const formatearFechaTabla = (fechaString) => {
   const [yyyy, mm, dd] = partes;
   return `${dd}-${mm}-${yyyy}`;
 };
+
+// Columnas de "Ítems Registrados" (redimensionables; ancho y mínimo en px).
+const COLUMNAS_ITEMS = [
+  { key: 'codigo', label: 'Código', ancho: 95, min: 60 },
+  { key: 'referencia', label: 'Referencia', ancho: 140, min: 80 },
+  { key: 'descripcion', label: 'Descripción', ancho: 200, min: 90 },
+  { key: 'empresa', label: 'Empresa', ancho: 180, min: 80 },
+  { key: 'cantidad', label: 'Cant.', ancho: 60, min: 50, extra: 'text-center' },
+  { key: 'costo', label: 'Costo', ancho: 85, min: 60 },
+  { key: 'lote', label: 'Lote', ancho: 95, min: 60 },
+  { key: 'vencimiento', label: 'Vencimiento', ancho: 115, min: 105 },
+  { key: 'total', label: 'Total', ancho: 95, min: 60 },
+  { key: 'delivery', label: 'Delivery', ancho: 105, min: 65 },
+  { key: 'numGuia', label: 'N° Guía', ancho: 95, min: 60 },
+  { key: 'atributo', label: 'Atributo', ancho: 110, min: 65 },
+  { key: 'estadoCarga', label: 'Estado Carga', ancho: 125, min: 110 },
+  { key: 'acciones', label: 'Acciones', ancho: 85, min: 75, extra: 'text-center' }
+];
+// +1 por la columna de relleno (ColgroupRedimensionable con `relleno`).
+const COLSPAN_ITEMS = COLUMNAS_ITEMS.length + 1;
 
 const renderP = (valor) => (valor === '' || valor === undefined || valor === null ? 'P' : valor);
 
@@ -168,42 +191,44 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
               className={`text-[10px] ${esCoincidente ? 'bg-blue-100/60 dark:bg-blue-900/30' : 'bg-blue-50/30 dark:bg-blue-950/10'}`}
               title={esCoincidente ? 'Este es el producto que corresponde a este ítem' : ''}
             >
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-sans font-normal text-slate-500 dark:text-gray-400">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-sans font-normal text-slate-500 dark:text-gray-400 truncate" title="No lleva OC">
                 No lleva OC
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
-                <span className="flex items-center gap-1">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400 truncate" title={p.codigo || 'N/A'}>
+                <span className="flex items-center gap-1 min-w-0">
                   {esCoincidente && <CheckCircle2 size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />}
-                  {p.codigo || 'N/A'}
+                  <span className="truncate">{p.codigo || 'N/A'}</span>
                 </span>
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate max-w-[180px]">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.descripcion || '-'}>
                 {p.descripcion || '-'}
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate max-w-[160px]">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.empresa || '-'}>
                 {p.empresa || '-'}
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold truncate" title={p.cantidad ?? 'N/A'}>
                 {p.cantidad ?? 'N/A'}
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 truncate">
                 $0
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.lote || 'N/A'}>
                 {p.lote || 'N/A'}
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.vencimiento || 'N/A'}>
                 {p.vencimiento || 'N/A'}
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500" />
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500" />
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate">
                 0
               </td>
-              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200">
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.tipo || '-'}>
                 {p.tipo || '-'}
               </td>
-              <td className="px-2.5 py-1 border-b border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500" />
+              <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+              <td className="px-2.5 py-1 border-b border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+              <TdRelleno className="border-b border-slate-100 dark:border-gray-700/60" />
             </tr>
           );
         })}
@@ -262,42 +287,44 @@ const DesgloseGuia = ({ deliveryValor, referenciaDestacada, colSpanTotal, produc
             className={`text-[10px] ${esCoincidente ? 'bg-blue-100/60 dark:bg-blue-900/30' : 'bg-blue-50/30 dark:bg-blue-950/10'}`}
             title={esCoincidente ? 'Este es el producto que corresponde a este ítem' : ''}
           >
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-sans font-normal text-slate-500 dark:text-gray-400">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-sans font-normal text-slate-500 dark:text-gray-400 truncate" title="No lleva OC">
               No lleva OC
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
-              <span className="flex items-center gap-1">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400 truncate" title={p.codigo || 'N/A'}>
+              <span className="flex items-center gap-1 min-w-0">
                 {esCoincidente && <CheckCircle2 size={10} className="text-blue-600 dark:text-blue-400 shrink-0" />}
-                {p.codigo || 'N/A'}
+                <span className="truncate">{p.codigo || 'N/A'}</span>
               </span>
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate max-w-[180px]">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={cargandoVinculos ? undefined : (vinculo?.descripcion || '-')}>
               {cargandoVinculos ? '...' : (vinculo?.descripcion || '-')}
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate max-w-[160px]">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={cargandoVinculos ? undefined : (vinculo?.empresa || '-')}>
               {cargandoVinculos ? '...' : (vinculo?.empresa || '-')}
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold truncate" title={p.cantidad ?? 'N/A'}>
               {p.cantidad ?? 'N/A'}
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 truncate">
               $0
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.lote || 'N/A'}>
               {p.lote || 'N/A'}
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={p.vencimiento || 'N/A'}>
               {p.vencimiento || 'N/A'}
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500" />
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500" />
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate">
               0
             </td>
-            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200">
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 truncate" title={cargandoVinculos ? undefined : (vinculo?.tipo || '-')}>
               {cargandoVinculos ? '...' : (vinculo?.tipo || '-')}
             </td>
-            <td className="px-2.5 py-1 border-b border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500" />
+            <td className="px-2.5 py-1 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+            <td className="px-2.5 py-1 border-b border-slate-100 dark:border-gray-700/60 text-slate-400 dark:text-gray-500 truncate" />
+            <TdRelleno className="border-b border-slate-100 dark:border-gray-700/60" />
           </tr>
         );
       })}
@@ -350,6 +377,8 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
 
   const { showToast } = useToast();
   const { userData } = useUser();
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla, personalizados } =
+    useColumnResize(COLUMNAS_ITEMS, { clave: 'cargasConsignacion.itemsRegistrados', usuario: userData?.uid });
   const { hasPermission } = useGranularPermission();
 
   const registrarLog = (docRef, accion, detalles) => registrarLogConsignacion(docRef, accion, detalles, userData);
@@ -933,32 +962,35 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
           <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
             Ítems Registrados
           </h3>
+          <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className="ml-auto h-6" />
         </div>
 
         <div className="overflow-auto">
-          <table className="w-full text-left text-[10px] border-collapse">
+          <table
+            className="text-left text-[10px] border-collapse"
+            style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
+          >
+            <ColgroupRedimensionable columnas={COLUMNAS_ITEMS} anchos={anchos} relleno />
             <thead className="bg-slate-50 dark:bg-gray-900/60">
               <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Costo</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Lote</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Vencimiento</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Delivery</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">N° Guía</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Atributo</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Estado Carga</th>
-                <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700 text-center">Acciones</th>
+                {COLUMNAS_ITEMS.map((col) => (
+                  <ThRedimensionable
+                    key={col.key}
+                    col={col}
+                    anchos={anchos}
+                    onResize={handleResize}
+                    className={`px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 ${col.extra || ''}`}
+                  >
+                    {col.label}
+                  </ThRedimensionable>
+                ))}
+                <ThRelleno className="border-b border-slate-200 dark:border-gray-700" />
               </tr>
             </thead>
             <tbody>
               {items.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
+                  <td colSpan={COLSPAN_ITEMS} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
                     Sin ítems registrados para esta admisión
                   </td>
                 </tr>
@@ -986,10 +1018,10 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                     if (enEdicion) {
                       return (
                         <tr key={it.id} className="bg-blue-50/60 dark:bg-blue-950/20">
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-[9px]">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-[9px] truncate">
                             {borradorItem.codigo || <span className="text-red-500 font-bold">S/C</span>}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative" ref={containerRefEdicion}>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 relative truncate" ref={containerRefEdicion}>
                             <input
                               type="text"
                               value={borradorItem.referencia}
@@ -1029,13 +1061,13 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               </DropdownReferenciaPortal>
                             )}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400 truncate max-w-[140px]" title={borradorItem.descripcion}>
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-500 dark:text-gray-400 truncate" title={borradorItem.descripcion}>
                             {borradorItem.descripcion || '-'}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300 truncate" title={renderP(borradorItem.empresa)}>
                             {renderP(borradorItem.empresa)}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center truncate">
                             <input
                               type="number"
                               value={borradorItem.cantidad}
@@ -1043,10 +1075,10 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               className="w-14 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none text-center"
                             />
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-emerald-700 dark:text-emerald-400 truncate">
                             {borradorItem.costo !== '' ? `$${Number(borradorItem.costo).toLocaleString('es-CL')}` : '-'}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 truncate">
                             <input
                               type="text"
                               value={borradorItem.lote}
@@ -1055,7 +1087,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               className="w-20 h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
                             />
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 truncate">
                             <input
                               type="date"
                               value={borradorItem.vencimiento}
@@ -1063,19 +1095,19 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               className="h-6.5 px-1 text-[10px] border border-blue-300 dark:border-blue-700 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 outline-none"
                             />
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-400 dark:text-gray-500">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-400 dark:text-gray-500 truncate">
                             —
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300 truncate" title={it.delivery || '-'}>
                             {it.delivery || '-'}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300 truncate">
                             <NumeroGuiaCell it={it} pendiente={pendiente} />
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-[9px] text-slate-600 dark:text-gray-300 truncate" title={it.atributo || '-'}>
                             {it.atributo || '-'}
                           </td>
-                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                          <td className="px-2 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 whitespace-nowrap">
                             <select
                               value={estadoCargaValor}
                               disabled={actualizandoEstado}
@@ -1087,7 +1119,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               ))}
                             </select>
                           </td>
-                          <td className="px-2 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
+                          <td className="px-2 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1">
                               <button
                                 type="button"
@@ -1118,6 +1150,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               </button>
                             </div>
                           </td>
+                          <TdRelleno className="border-b border-slate-100 dark:border-gray-700/60" />
                         </tr>
                       );
                     }
@@ -1125,45 +1158,45 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                     return (
                       <React.Fragment key={it.id}>
                         <tr className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400 truncate" title={it.codigo || 'S/C'}>
                             {it.codigo || 'S/C'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={it.referencia}>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate" title={it.referencia}>
                             {it.referencia || '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[180px]" title={it.descripcion}>
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate" title={it.descripcion}>
                             {it.descripcion || '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate" title={renderP(it.empresa)}>
                             {renderP(it.empresa)}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold truncate" title={it.cantidad ?? 0}>
                             {it.cantidad ?? 0}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 truncate" title={it.costo ? `$${Number(it.costo).toLocaleString('es-CL')}` : '-'}>
                             {it.costo ? `$${Number(it.costo).toLocaleString('es-CL')}` : '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate" title={it.lote || (deliveryValor ? 'PAD' : 'Sin lote')}>
                             {it.lote || (deliveryValor ? 'PAD' : 'Sin lote')}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate" title={it.vencimiento ? formatearFechaTabla(it.vencimiento) : (deliveryValor ? 'PAD' : 'Sin fecha')}>
                             {it.vencimiento
                               ? formatearFechaTabla(it.vencimiento)
                               : (deliveryValor ? 'PAD' : 'Sin fecha')}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold truncate" title={total ? `$${Math.round(total).toLocaleString('es-CL')}` : '-'}>
                             {total ? `$${Math.round(total).toLocaleString('es-CL')}` : '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate" title={it.delivery || '-'}>
                             {it.delivery || '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate">
                             <NumeroGuiaCell it={it} pendiente={pendiente} />
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300 truncate" title={it.atributo || '-'}>
                             {it.atributo || '-'}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60">
+                          <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 whitespace-nowrap">
                             {candadoBloqueado ? (
                               <span
                                 title="Bloqueado: ya fue solicitado/imputado"
@@ -1184,7 +1217,7 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               </select>
                             )}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
+                          <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center whitespace-nowrap">
                             {candadoBloqueado ? (
                               puedeDesbloquearCandado ? (
                                 <button
@@ -1212,13 +1245,14 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
                               </button>
                             )}
                           </td>
+                          <TdRelleno className="border-b border-slate-100 dark:border-gray-700/60" />
                         </tr>
 
                         {mostrarDesglose && (
                           <DesgloseGuia
                             deliveryValor={deliveryValor}
                             referenciaDestacada={it.referencia}
-                            colSpanTotal={14}
+                            colSpanTotal={COLSPAN_ITEMS}
                             productosGuardados={it.productosGuiaVinculados}
                             productosPendientes={pendiente?.productosGuiaVinculados}
                           />
@@ -1232,13 +1266,13 @@ const CargasTab = ({ registro, items = [], formData, onChange, setCargando }) =>
             {items.length > 0 && (
               <tfoot>
                 <tr className="bg-slate-50 dark:bg-gray-900/60 font-bold">
-                  <td colSpan={8} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right">
+                  <td colSpan={8} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right whitespace-nowrap">
                     Total de la admisión:
                   </td>
-                  <td className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-emerald-700 dark:text-emerald-400">
+                  <td className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                     ${Math.round(sumaCostos).toLocaleString('es-CL')}
                   </td>
-                  <td colSpan={5} className="border-t border-slate-200 dark:border-gray-700"></td>
+                  <td colSpan={6} className="border-t border-slate-200 dark:border-gray-700"></td>
                 </tr>
               </tfoot>
             )}
