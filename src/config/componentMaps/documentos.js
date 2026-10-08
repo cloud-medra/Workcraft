@@ -1,3 +1,27 @@
+import { columnas } from './columnas.js';
+
+// Reportes Info se monta en Documentos y en Implantes (ReportesInfo.jsx
+// recibe la ruta del menú en `pathVista`): cada ruta tiene su entrada.
+export const mapaReportesInfo = {
+  label: 'Reportes Info (ReportesInfo.jsx)',
+  sections: {
+    cabecera_acciones: {
+      label: 'Sección: Encabezado',
+      elements: {
+        btn_importar: { label: 'Acción: Importar reporte' },
+      },
+    },
+    tabla_registros: {
+      label: 'Sección: Tabla de Registros',
+      elements: columnas([
+        ['fecha', 'Fecha'], ['admision', 'Admisión'], ['paciente', 'Paciente'], ['edad', 'Edad'],
+        ['codArt', 'Cod.Art.'], ['descripcion', 'Descripción'], ['arancel', 'Arancel'],
+        ['prevision', 'Previsión / Isapre'], ['cirujano', 'Cirujano'], ['cantidad', 'Cant.'], ['revisado', 'Revisado'],
+      ]),
+    },
+  },
+};
+
 export const documentosComponentMaps = {
   // '/documentos/reportesInfo': { label: '...', sections: { ... } },
 
@@ -52,4 +76,6 @@ export const documentosComponentMaps = {
       },
     },
   },
+
+  '/documentos/reportesInfo': mapaReportesInfo,
 };

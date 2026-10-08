@@ -14,6 +14,7 @@ import { useToast } from '../../../../../../context/ToastContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { useCollectionCache } from '../../../../../../hooks/useCollectionCache';
+import { useColumnasPermitidas } from '../../../../../../hooks/useColumnasPermitidas';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
 import { ManijaRedimension } from '../../../../../ui/ManijaRedimension';
 import { ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
@@ -31,6 +32,8 @@ const CAMPOS_BUSQUEDA = [
   { value: 'descriptorAuto', label: 'Descripción' }
 ];
 
+// Granularidad por columna: `col_<key>` en la sección 'tabla_datos' del mapa de
+// permisos (ver useColumnasPermitidas).
 const COLUMNAS = [
   { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
   { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
@@ -71,10 +74,14 @@ const TabVistaGeneral = () => {
   const { hasPermission } = useGranularPermission();
 
   const PATH_VISTA = "/maestros/codigosMaestros/vistaGeneral";
+  const puedeModificar = hasPermission(PATH_VISTA, "tabla_datos", "action_modificar");
+  const puedeVerLogs = hasPermission(PATH_VISTA, "tabla_datos", "action_log");
 
   const { allDocs, loading: cargando, reload } = useCollectionCache(COL_BASE);
 
-  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(COLUMNAS);
+  const { columnasVisibles, ver } = useColumnasPermitidas(PATH_VISTA, 'tabla_datos', COLUMNAS);
+
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(columnasVisibles);
 
   const listaEmpresas = useMemo(
     () => [...new Set(allDocs.map(d => d.empresa).filter(Boolean))].sort(),
@@ -161,6 +168,7 @@ const TabVistaGeneral = () => {
   };
 
   const abrirModificarRegistro = (item) => {
+    if (!puedeModificar) return;
     setItemSeleccionado(item);
     setShowModificarDrawer(true);
   };
@@ -337,14 +345,14 @@ const TabVistaGeneral = () => {
           style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
         >
           <colgroup>
-            {COLUMNAS.map(col => (
+            {columnasVisibles.map(col => (
               <col key={col.key} style={{ width: anchos[col.key] }} />
             ))}
             <col />
           </colgroup>
           <thead className="bg-gray-100 dark:bg-gray-900 sticky top-[22px] z-10">
             <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-              {COLUMNAS.map(col => (
+              {columnasVisibles.map(col => (
                 <th
                   key={col.key}
                   className={`relative py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 overflow-hidden ${col.align === 'center' ? 'text-center' : ''}`}
@@ -365,49 +373,79 @@ const TabVistaGeneral = () => {
           <tbody>
             {!cargando && registros.length === 0 ? (
               <tr>
-                <td colSpan={COLUMNAS.length + 1} className="text-center py-12 text-gray-400 text-[11px]">
+                <td colSpan={columnasVisibles.length + 1} className="text-center py-12 text-gray-400 text-[11px]">
                   No se encontraron registros con los filtros seleccionados.
                 </td>
               </tr>
             ) : (
               registros.map((item, index) => (
                 <tr key={item.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/45 transition-colors">
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 font-bold text-center overflow-hidden text-ellipsis whitespace-nowrap">{pageIndex * PAGE_SIZE + index + 1}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400 overflow-hidden text-ellipsis whitespace-nowrap">{item.codigo || 'S/C'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={item.referencia}>{item.referencia}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorAuto}>{item.descriptorAuto || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-800 dark:text-gray-100 overflow-hidden text-ellipsis whitespace-nowrap" title={item.empresa}>{item.empresa}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.tipo || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.segmento || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.clase || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center overflow-hidden">
-                    <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${item.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
-                      {item.estado || 'ACTIVO'}
-                    </span>
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 font-bold overflow-hidden text-ellipsis whitespace-nowrap">
-                    ${new Intl.NumberFormat('es-ES').format(item.precioNeto || 0)}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.registradoPor}>{item.registradoPor || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap">{formatearFecha(item.fechaRegistro)}</td>
-                  <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center overflow-hidden">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => abrirModificarRegistro(item)}
-                        title="Modificar registro o precio"
-                        className="text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
-                      >
-                        <Edit3 size={13} />
-                      </button>
-                      <button
-                        onClick={() => abrirHistorialLogs(item)}
-                        title="Ver Historial / Logs"
-                        className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition cursor-pointer"
-                      >
-                        <History size={13} />
-                      </button>
-                    </div>
-                  </td>
+                  {ver('numero') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 font-bold text-center overflow-hidden text-ellipsis whitespace-nowrap">{pageIndex * PAGE_SIZE + index + 1}</td>
+                  )}
+                  {ver('codigo') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400 overflow-hidden text-ellipsis whitespace-nowrap">{item.codigo || 'S/C'}</td>
+                  )}
+                  {ver('referencia') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={item.referencia}>{item.referencia}</td>
+                  )}
+                  {ver('descEmpresa') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorAuto}>{item.descriptorAuto || 'N/A'}</td>
+                  )}
+                  {ver('empresa') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-semibold text-gray-800 dark:text-gray-100 overflow-hidden text-ellipsis whitespace-nowrap" title={item.empresa}>{item.empresa}</td>
+                  )}
+                  {ver('tipo') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.tipo || 'N/A'}</td>
+                  )}
+                  {ver('segmento') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.segmento || 'N/A'}</td>
+                  )}
+                  {ver('clase') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.clase || 'N/A'}</td>
+                  )}
+                  {ver('estado') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center overflow-hidden">
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-bold uppercase ${item.estado === 'INACTIVO' ? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400'}`}>
+                        {item.estado || 'ACTIVO'}
+                      </span>
+                    </td>
+                  )}
+                  {ver('precioNeto') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 font-bold overflow-hidden text-ellipsis whitespace-nowrap">
+                      ${new Intl.NumberFormat('es-ES').format(item.precioNeto || 0)}
+                    </td>
+                  )}
+                  {ver('registradoPor') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.registradoPor}>{item.registradoPor || 'N/A'}</td>
+                  )}
+                  {ver('fecha') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap">{formatearFecha(item.fechaRegistro)}</td>
+                  )}
+                  {ver('acciones') && (
+                    <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center overflow-hidden">
+                      <div className="flex items-center justify-center gap-2">
+                        {puedeModificar && (
+                        <button
+                          onClick={() => abrirModificarRegistro(item)}
+                          title="Modificar registro o precio"
+                          className="text-gray-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition cursor-pointer"
+                        >
+                          <Edit3 size={13} />
+                        </button>
+                        )}
+                        {puedeVerLogs && (
+                        <button
+                          onClick={() => abrirHistorialLogs(item)}
+                          title="Ver Historial / Logs"
+                          className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition cursor-pointer"
+                        >
+                          <History size={13} />
+                        </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   <TdRelleno className="border-b border-gray-200 dark:border-gray-700/70" />
                 </tr>
               ))

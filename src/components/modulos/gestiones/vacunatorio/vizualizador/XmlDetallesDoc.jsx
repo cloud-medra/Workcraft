@@ -1,7 +1,21 @@
 import React from 'react';
 import { X, FileText, Calendar, Hash, Building2, Tag, DollarSign } from 'lucide-react';
+import { useColumnasPermitidas } from '../../../../../hooks/useColumnasPermitidas';
 
-const DetalleFacturaModal = ({ documento, onClose }) => {
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'detalle_documento' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: '#' },
+  { key: 'codigo', label: 'Cód.' },
+  { key: 'descripcion', label: 'Descripción' },
+  { key: 'cantidad', label: 'Cant.' },
+  { key: 'unidad', label: 'Unidad' },
+  { key: 'precioUnitario', label: 'P. Unitario' },
+  { key: 'totalLinea', label: 'Total Línea' }
+];
+
+const DetalleFacturaModal = ({ pathVista, documento, onClose }) => {
+  const { ver: verColumna } = useColumnasPermitidas(pathVista, 'detalle_documento', COLUMNAS_TABLA);
   if (!documento) return null;
 
   return (
@@ -60,13 +74,27 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
           <table className="w-full text-left border-collapse text-[11px]">
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-20 shadow-sm">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-10 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28">Cód.</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Cant.</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Unidad</th>
-                <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28 text-right">P. Unitario</th>
-                <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 w-32 text-right">Total Línea</th>
+                {verColumna('linea') && (
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-10 text-center">#</th>
+                )}
+                {verColumna('codigo') && (
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28">Cód.</th>
+                )}
+                {verColumna('descripcion') && (
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción</th>
+                )}
+                {verColumna('cantidad') && (
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Cant.</th>
+                )}
+                {verColumna('unidad') && (
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Unidad</th>
+                )}
+                {verColumna('precioUnitario') && (
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28 text-right">P. Unitario</th>
+                )}
+                {verColumna('totalLinea') && (
+                  <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 w-32 text-right">Total Línea</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
@@ -75,27 +103,41 @@ const DetalleFacturaModal = ({ documento, onClose }) => {
                   key={idx} 
                   className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                 >
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
-                    {idx + 1}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 truncate">
-                    {item.codigo || '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-800 dark:text-gray-200 font-medium">
-                    {item.nombre}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-600 dark:text-gray-300 font-medium">
-                    {item.cantidad}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-500 dark:text-gray-400 uppercase text-[10px]">
-                    {item.unidad || '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right text-gray-600 dark:text-gray-300">
-                    ${parseInt(item.precio || 0).toLocaleString('es-CL')}
-                  </td>
-                  <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-right font-bold text-gray-800 dark:text-gray-100">
-                    ${parseInt(item.monto || 0).toLocaleString('es-CL')}
-                  </td>
+                  {verColumna('linea') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
+                      {idx + 1}
+                    </td>
+                  )}
+                  {verColumna('codigo') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 truncate">
+                      {item.codigo || '-'}
+                    </td>
+                  )}
+                  {verColumna('descripcion') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-800 dark:text-gray-200 font-medium">
+                      {item.nombre}
+                    </td>
+                  )}
+                  {verColumna('cantidad') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-600 dark:text-gray-300 font-medium">
+                      {item.cantidad}
+                    </td>
+                  )}
+                  {verColumna('unidad') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center text-gray-500 dark:text-gray-400 uppercase text-[10px]">
+                      {item.unidad || '-'}
+                    </td>
+                  )}
+                  {verColumna('precioUnitario') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-right text-gray-600 dark:text-gray-300">
+                      ${parseInt(item.precio || 0).toLocaleString('es-CL')}
+                    </td>
+                  )}
+                  {verColumna('totalLinea') && (
+                    <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-right font-bold text-gray-800 dark:text-gray-100">
+                      ${parseInt(item.monto || 0).toLocaleString('es-CL')}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

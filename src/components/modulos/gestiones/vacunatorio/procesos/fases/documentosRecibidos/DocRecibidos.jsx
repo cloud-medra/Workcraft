@@ -11,6 +11,23 @@ import HistorialDocumentos from './HistorialDocumentos';
 import { useVacunatorioData } from '../../../VacunatorioDataContext';
 import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
 import CeldasDatosIngreso from '../../../../shared/CeldasDatosIngreso';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_documentos' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'folio', label: 'Folio' },
+  { key: 'emision', label: 'Emisión' },
+  { key: 'ref', label: 'Ref.' },
+  { key: 'razonSocial', label: 'Razón Social' },
+  { key: 'total', label: 'Total (Neto)' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'orden', label: 'Orden' },
+  { key: 'acta', label: 'Acta' },
+  { key: 'salida', label: 'Salida' },
+  { key: 'mesImputado', label: 'Mes imputado' },
+  { key: 'acciones', label: 'Acciones' }
+];
 
 const DocumentosRecibidos = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -35,7 +52,8 @@ const DocumentosRecibidos = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/vacunatorio/archivosControlVacunatorio";
+  const PATH_VISTA = "/vacunatorio/archivosControlVacunatorio/documentosRecibidos"; // permisos propios de esta pestaña
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_documentos', COLUMNAS_TABLA);
   const COL_BASE = "vacunatorio_documentos";
 
   const formatearFechaEmision = (fechaStr) => {
@@ -171,23 +189,45 @@ const DocumentosRecibidos = () => {
           <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
             <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Folio</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Emisión</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Ref.</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[22%]">Razón Social</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%] text-right">Total (Neto)</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Estado</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Orden</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Acta</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Salida</th>
-                <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%] text-center">Mes imputado</th>
-                <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
+                {verColumna('folio') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Folio</th>
+                )}
+                {verColumna('emision') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Emisión</th>
+                )}
+                {verColumna('ref') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%]">Ref.</th>
+                )}
+                {verColumna('razonSocial') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[22%]">Razón Social</th>
+                )}
+                {verColumna('total') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%] text-right">Total (Neto)</th>
+                )}
+                {verColumna('estado') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Estado</th>
+                )}
+                {verColumna('orden') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Orden</th>
+                )}
+                {verColumna('acta') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Acta</th>
+                )}
+                {verColumna('salida') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[7%] text-center">Salida</th>
+                )}
+                {verColumna('mesImputado') && (
+                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[9%] text-center">Mes imputado</th>
+                )}
+                {verColumna('acciones') && (
+                  <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
               {documentosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-8 text-center text-slate-400 dark:text-gray-500 text-[11px]">
+                  <td colSpan={columnasTabla.length} className="py-8 text-center text-slate-400 dark:text-gray-500 text-[11px]">
                     {!filtroAnio || !filtroMes ? "Selecciona un año y mes para cargar registros." : "No se encontraron documentos con los criterios seleccionados."}
                   </td>
                 </tr>
@@ -197,67 +237,81 @@ const DocumentosRecibidos = () => {
                     key={docItem.id}
                     className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors"
                   >
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                      {docItem.folio || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                      {formatearFechaEmision(docItem.fchEmis)}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                      {docItem.folioRef || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
-                      {docItem.rznSoc || '-'}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                      ${Math.round(Number(docItem.total) || 0).toLocaleString('es-CL')}
-                    </td>
-                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(docItem.estado)}`}>
-                        {docItem.estado || "Iniciar Ingreso"}
-                      </span>
-                    </td>
-                    <CeldasDatosIngreso documento={docItem} />
-                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
-                      <div className="flex justify-center gap-1.5">
-                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_log") && (
-                          <button
-                            onClick={() => abrirHistorialLogs(docItem)}
-                            className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Ver Historial / Logs"
-                          >
-                            <History size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
-                          <button
-                            onClick={() => setDocumentoSeleccionado(docItem)}
-                            className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Ver Detalle"
-                          >
-                            <Eye size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_configurar") && (
-                          <button
-                            onClick={() => setDocumentoParaConfigurar(docItem)}
-                            className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Configurar"
-                          >
-                            <Settings size={13} />
-                          </button>
-                        )}
-                        {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
-                          <button
-                            onClick={() => handleDelete(docItem.id)}
-                            className="text-slate-400 hover:text-red-500 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    {verColumna('folio') && (
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
+                        {docItem.folio || '-'}
+                      </td>
+                    )}
+                    {verColumna('emision') && (
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                        {formatearFechaEmision(docItem.fchEmis)}
+                      </td>
+                    )}
+                    {verColumna('ref') && (
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                        {docItem.folioRef || '-'}
+                      </td>
+                    )}
+                    {verColumna('razonSocial') && (
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docItem.rznSoc}>
+                        {docItem.rznSoc || '-'}
+                      </td>
+                    )}
+                    {verColumna('total') && (
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                        ${Math.round(Number(docItem.total) || 0).toLocaleString('es-CL')}
+                      </td>
+                    )}
+                    {verColumna('estado') && (
+                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getEstadoProcesoClase(docItem.estado)}`}>
+                          {docItem.estado || "Iniciar Ingreso"}
+                        </span>
+                      </td>
+                    )}
+                    <CeldasDatosIngreso documento={docItem} ver={verColumna} />
+                    {verColumna('acciones') && (
+                      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700 text-center">
+                        <div className="flex justify-center gap-1.5">
+                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_log") && (
+                            <button
+                              onClick={() => abrirHistorialLogs(docItem)}
+                              className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                              title="Ver Historial / Logs"
+                            >
+                              <History size={13} />
+                            </button>
+                          )}
+                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver") && (
+                            <button
+                              onClick={() => setDocumentoSeleccionado(docItem)}
+                              className="text-slate-400 hover:text-[#2383C2] transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                              title="Ver Detalle"
+                            >
+                              <Eye size={13} />
+                            </button>
+                          )}
+                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_configurar") && (
+                            <button
+                              onClick={() => setDocumentoParaConfigurar(docItem)}
+                              className="text-slate-400 hover:text-amber-600 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                              title="Configurar"
+                            >
+                              <Settings size={13} />
+                            </button>
+                          )}
+                          {hasPermission(PATH_VISTA, "tabla_documentos", "btn_eliminar") && (
+                            <button
+                              onClick={() => handleDelete(docItem.id)}
+                              className="text-slate-400 hover:text-red-500 transition inline-flex items-center justify-center p-0.5 rounded hover:bg-slate-100 dark:hover:bg-gray-700"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -268,6 +322,7 @@ const DocumentosRecibidos = () => {
 
       {documentoSeleccionado && (
         <DetalleFacturaModal
+          pathVista={PATH_VISTA}
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />

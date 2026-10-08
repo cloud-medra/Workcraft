@@ -12,6 +12,25 @@ import {
   Link as LinkIcon,
   Loader2
 } from 'lucide-react';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+const PATH_VISTA = '/vacunatorio/archivosControlVacunatorio/vinculacionCodigos';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_detalle' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: '#' },
+  { key: 'codigoDoc', label: 'Cód. Documento' },
+  { key: 'descripcion', label: 'Descripción' },
+  { key: 'cantidad', label: 'Cant.' },
+  { key: 'unidad', label: 'Unidad' },
+  { key: 'precioUnitario', label: 'P. Unitario' },
+  { key: 'totalLinea', label: 'Total Línea' },
+  { key: 'codigoMaestro', label: 'Cód. Maestro' },
+  { key: 'descripcionMaestro', label: 'Descripción Maestro' },
+  { key: 'precioMaestro', label: 'Precio Maestro' },
+  { key: 'estadoItem', label: 'Estado Ítem' }
+];
 
 const DetalleDocumento = ({
   documento,
@@ -22,6 +41,7 @@ const DetalleDocumento = ({
   onVolver,
   onVincular
 }) => {
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_detalle', COLUMNAS_TABLA);
   return (
     <div className="flex flex-col h-full w-full bg-white dark:bg-gray-800">
 
@@ -150,23 +170,45 @@ const DetalleDocumento = ({
         <table className="w-full text-left text-[11px] border-collapse min-w-[1200px]">
           <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
             <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant.</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Unidad</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 text-right">P. Unitario</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 text-right">Total Línea</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-32 bg-slate-200/60 dark:bg-gray-800/80 text-slate-800 dark:text-gray-200">Cód. Maestro</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-slate-200/60 dark:bg-gray-800/80 text-slate-800 dark:text-gray-200">Descripción Maestro</th>
-              <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-slate-200/60 dark:bg-gray-800/80 text-right text-slate-800 dark:text-gray-200">Precio Maestro</th>
-              <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-32 bg-slate-200/60 dark:bg-gray-800/80 text-center text-slate-800 dark:text-gray-200">Estado Ítem</th>
+              {verColumna('linea') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
+              )}
+              {verColumna('codigoDoc') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
+              )}
+              {verColumna('descripcion') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
+              )}
+              {verColumna('cantidad') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant.</th>
+              )}
+              {verColumna('unidad') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Unidad</th>
+              )}
+              {verColumna('precioUnitario') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 text-right">P. Unitario</th>
+              )}
+              {verColumna('totalLinea') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 text-right">Total Línea</th>
+              )}
+              {verColumna('codigoMaestro') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-32 bg-slate-200/60 dark:bg-gray-800/80 text-slate-800 dark:text-gray-200">Cód. Maestro</th>
+              )}
+              {verColumna('descripcionMaestro') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-slate-200/60 dark:bg-gray-800/80 text-slate-800 dark:text-gray-200">Descripción Maestro</th>
+              )}
+              {verColumna('precioMaestro') && (
+                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-slate-200/60 dark:bg-gray-800/80 text-right text-slate-800 dark:text-gray-200">Precio Maestro</th>
+              )}
+              {verColumna('estadoItem') && (
+                <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-32 bg-slate-200/60 dark:bg-gray-800/80 text-center text-slate-800 dark:text-gray-200">Estado Ítem</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
             {documento.detalles?.length === 0 || !documento.detalles ? (
               <tr>
-                <td colSpan="11" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                <td colSpan={columnasTabla.length} className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                   Este documento no posee ítems cargados.
                 </td>
               </tr>
@@ -176,49 +218,71 @@ const DetalleDocumento = ({
                   key={idx}
                   className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-colors"
                 >
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 dark:text-gray-400 font-bold text-center">
-                    {idx + 1}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 dark:text-gray-400 truncate">
-                    {item.codigo || '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
-                    {item.nombre}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center text-slate-600 dark:text-gray-300 font-medium">
-                    {item.cantidad}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center text-slate-500 dark:text-gray-400 uppercase text-[10px]">
-                    {item.unidad || '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right text-slate-600 dark:text-gray-300">
-                    ${Math.round(Number(item.precio || 0)).toLocaleString('es-CL')}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold text-slate-800 dark:text-gray-100">
-                    ${Math.round(Number(item.monto || 0)).toLocaleString('es-CL')}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
-                    {item.codigoMaestro || '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 font-medium bg-slate-50/50 dark:bg-gray-900/30 truncate" title={item.descripcionMaestro}>
-                    {item.descripcionMaestro || '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
-                    {item.precioMaestro !== undefined ? `$${Math.round(Number(item.precioMaestro || 0)).toLocaleString('es-CL')}` : '-'}
-                  </td>
-                  <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center bg-slate-50/50 dark:bg-gray-900/30">
-                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
-                      item.estadoItem === 'Sin Diferencias' || item.estadoItem === 'Vinculado'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50'
-                        : item.estadoItem === 'Con Diferencias'
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50'
-                        : item.estadoItem === 'No Vinculado' || item.estadoItem === 'No encontrado'
-                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50'
-                        : 'bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300 border border-slate-200 dark:border-gray-600'
-                    }`}>
-                      {item.estadoItem === 'Vinculado' ? 'Sin Diferencias' : (item.estadoItem || 'Pendiente')}
-                    </span>
-                  </td>
+                  {verColumna('linea') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 dark:text-gray-400 font-bold text-center">
+                      {idx + 1}
+                    </td>
+                  )}
+                  {verColumna('codigoDoc') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 dark:text-gray-400 truncate">
+                      {item.codigo || '-'}
+                    </td>
+                  )}
+                  {verColumna('descripcion') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
+                      {item.nombre}
+                    </td>
+                  )}
+                  {verColumna('cantidad') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center text-slate-600 dark:text-gray-300 font-medium">
+                      {item.cantidad}
+                    </td>
+                  )}
+                  {verColumna('unidad') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center text-slate-500 dark:text-gray-400 uppercase text-[10px]">
+                      {item.unidad || '-'}
+                    </td>
+                  )}
+                  {verColumna('precioUnitario') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right text-slate-600 dark:text-gray-300">
+                      ${Math.round(Number(item.precio || 0)).toLocaleString('es-CL')}
+                    </td>
+                  )}
+                  {verColumna('totalLinea') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold text-slate-800 dark:text-gray-100">
+                      ${Math.round(Number(item.monto || 0)).toLocaleString('es-CL')}
+                    </td>
+                  )}
+                  {verColumna('codigoMaestro') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
+                      {item.codigoMaestro || '-'}
+                    </td>
+                  )}
+                  {verColumna('descripcionMaestro') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 font-medium bg-slate-50/50 dark:bg-gray-900/30 truncate" title={item.descripcionMaestro}>
+                      {item.descripcionMaestro || '-'}
+                    </td>
+                  )}
+                  {verColumna('precioMaestro') && (
+                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right text-slate-700 dark:text-gray-300 font-semibold bg-slate-50/50 dark:bg-gray-900/30">
+                      {item.precioMaestro !== undefined ? `$${Math.round(Number(item.precioMaestro || 0)).toLocaleString('es-CL')}` : '-'}
+                    </td>
+                  )}
+                  {verColumna('estadoItem') && (
+                    <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center bg-slate-50/50 dark:bg-gray-900/30">
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        item.estadoItem === 'Sin Diferencias' || item.estadoItem === 'Vinculado'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50'
+                          : item.estadoItem === 'Con Diferencias'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50'
+                          : item.estadoItem === 'No Vinculado' || item.estadoItem === 'No encontrado'
+                          ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50'
+                          : 'bg-slate-100 text-slate-800 dark:bg-gray-700 dark:text-gray-300 border border-slate-200 dark:border-gray-600'
+                      }`}>
+                        {item.estadoItem === 'Vinculado' ? 'Sin Diferencias' : (item.estadoItem || 'Pendiente')}
+                      </span>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

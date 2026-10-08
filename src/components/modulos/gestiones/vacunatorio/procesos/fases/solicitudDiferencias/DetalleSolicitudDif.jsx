@@ -16,14 +16,38 @@ import {
 } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
+import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
+import { useColumnasPermitidas, filtrarFilasExport } from '../../../../../../../hooks/useColumnasPermitidas';
+
+const PATH_VISTA = '/vacunatorio/archivosControlVacunatorio/solicitudDiferencias';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_detalle' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: '#' },
+  { key: 'codigoDoc', label: 'Cód. Documento' },
+  { key: 'descripcionDoc', label: 'Descripción Documento' },
+  { key: 'cantidadDoc', label: 'Cant. Documento' },
+  { key: 'precioDoc', label: 'Precio Documento' },
+  { key: 'totalLinea', label: 'Total Línea' },
+  { key: 'codigoMaestro', label: 'Cód. Maestro' },
+  { key: 'descripcionMaestro', label: 'Descripción Maestro' },
+  { key: 'articuloOC', label: 'Artículo OC' },
+  { key: 'cantidadOC', label: 'Cant. OC' },
+  { key: 'precioOC', label: 'Precio OC' },
+  { key: 'estadoDiscrepancia', label: 'Estado Discrepancia' }
+];
 
 const DetalleSolicitudDif = ({
   documento,
   onVolver,
   formatearFechaEmision,
   renderBadgeEstadoGeneral,
-  onExportarExcel
+  onExportarExcel,
+  puedeExportar = true
 }) => {
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_detalle', COLUMNAS_TABLA);
+  const { hasPermission } = useGranularPermission();
   const { showToast } = useToast();
 
   if (!documento) return null;
@@ -47,6 +71,7 @@ const DetalleSolicitudDif = ({
   };
 
   const handleExportarExcelLocal = () => {
+    if (!puedeExportar) return;
     if (onExportarExcel) {
       onExportarExcel(documento);
       return;
@@ -76,20 +101,29 @@ const DetalleSolicitudDif = ({
       };
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(datosExcel);
+    // Solo las columnas que el usuario ve: las del documento según la tabla de
 
-    worksheet['!cols'] = [
-      { wch: 12 }, 
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 32 },
-      { wch: 18 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 24 }
-    ];
+    // la lista y las de ítems según la tabla del detalle (permisos col_*).
+
+    const columnaDoc = { 'Folio': 'folio', 'Ref. (OC)': 'ref' };
+
+    const columnaDet = { 'Cód. Maestro': 'codigoMaestro', 'Descripción Maestro': 'descripcionMaestro', 'Artículo OC': 'articuloOC', 'Cant. Documento': 'cantidadDoc', 'Precio Documento': 'precioDoc', 'Cant. OC': 'cantidadOC', 'Precio OC': 'precioOC', 'Estado Discrepancia': 'estadoDiscrepancia' };
+
+    const filasPermitidas = filtrarFilasExport(
+
+      filtrarFilasExport(datosExcel, columnaDoc, (k) => hasPermission(PATH_VISTA, 'tabla_documentos', `col_${k}`)),
+
+      columnaDet, (k) => hasPermission(PATH_VISTA, 'tabla_detalle', `col_${k}`)
+
+    );
+
+    const worksheet = XLSX.utils.json_to_sheet(filasPermitidas);
+
+    // Anchos por encabezado (la hoja puede omitir columnas sin permiso).
+
+    const anchosPorEncabezado = { 'Folio': 12, 'Ref. (OC)': 16, 'Cód. Maestro': 16, 'Descripción Maestro': 32, 'Artículo OC': 18, 'Cant. Documento': 16, 'Precio Documento': 16, 'Cant. OC': 12, 'Precio OC': 12, 'Estado Discrepancia': 24 };
+
+    worksheet['!cols'] = Object.keys(filasPermitidas[0] || {}).map((h) => ({ wch: anchosPorEncabezado[h] || 14 }));
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias');
@@ -195,8 +229,9 @@ const DetalleSolicitudDif = ({
           <button
             type="button"
             onClick={handleExportarExcelLocal}
-            className="mt-0.5 w-full flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer truncate"
-            title="Generar o descargar solicitud en Excel"
+            disabled={!puedeExportar}
+            className="mt-0.5 w-full flex items-center justify-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-xs cursor-pointer truncate disabled:opacity-40 disabled:cursor-not-allowed"
+            title={puedeExportar ? 'Generar o descargar solicitud en Excel' : 'No tienes permiso para exportar la solicitud'}
           >
             <FileSpreadsheet size={11} />
             <span className="truncate">Solicitud Excel</span>
@@ -268,24 +303,48 @@ const DetalleSolicitudDif = ({
           <table className="w-full text-left text-[11px] border-collapse min-w-[1400px]">
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
-                <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Discrepancia</th>
+                {verColumna('linea') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
+                )}
+                {verColumna('codigoDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
+                )}
+                {verColumna('descripcionDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Documento</th>
+                )}
+                {verColumna('cantidadDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Documento</th>
+                )}
+                {verColumna('precioDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Documento</th>
+                )}
+                {verColumna('totalLinea') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
+                )}
+                {verColumna('codigoMaestro') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
+                )}
+                {verColumna('descripcionMaestro') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
+                )}
+                {verColumna('articuloOC') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
+                )}
+                {verColumna('cantidadOC') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
+                )}
+                {verColumna('precioOC') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
+                )}
+                {verColumna('estadoDiscrepancia') && (
+                  <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Discrepancia</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
               {detalles.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                  <td colSpan={columnasTabla.length} className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                     Este documento no posee ítems cargados.
                   </td>
                 </tr>
@@ -298,52 +357,76 @@ const DetalleSolicitudDif = ({
 
                   return (
                     <tr key={item.id || item.codigo || idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40">
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">
-                        {idx + 1}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500">
-                        {item.codigo || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
-                        {item.nombre || item.descripcion}
-                      </td>
-                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center ${tieneDifCant ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
-                        {item.cantidad}
-                      </td>
-                      <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right ${tieneDifPrecio ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
-                        {formatearMoneda(item.precio)}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">
-                        {formatearMoneda(item.monto || item.precio * item.cantidad)}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
-                        {item.codigoMaestro || item.codigo_maestro || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">
-                        {item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
-                        {item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
-                        {item.cantidadOC !== undefined && item.cantidadOC !== null ? item.cantidadOC : '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
-                        {item.precioOC !== undefined && item.precioOC !== null ? formatearMoneda(item.precioOC) : '-'}
-                      </td>
-                      <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${
-                            tagEstado === 'Sin diferencias'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : tagEstado.includes('Diferencia')
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-400'
-                          }`}
-                        >
-                          {tagEstado}
-                        </span>
-                      </td>
+                      {verColumna('linea') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">
+                          {idx + 1}
+                        </td>
+                      )}
+                      {verColumna('codigoDoc') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500">
+                          {item.codigo || '-'}
+                        </td>
+                      )}
+                      {verColumna('descripcionDoc') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">
+                          {item.nombre || item.descripcion}
+                        </td>
+                      )}
+                      {verColumna('cantidadDoc') && (
+                        <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center ${tieneDifCant ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
+                          {item.cantidad}
+                        </td>
+                      )}
+                      {verColumna('precioDoc') && (
+                        <td className={`py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right ${tieneDifPrecio ? 'font-bold text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30' : ''}`}>
+                          {formatearMoneda(item.precio)}
+                        </td>
+                      )}
+                      {verColumna('totalLinea') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">
+                          {formatearMoneda(item.monto || item.precio * item.cantidad)}
+                        </td>
+                      )}
+                      {verColumna('codigoMaestro') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                          {item.codigoMaestro || item.codigo_maestro || '-'}
+                        </td>
+                      )}
+                      {verColumna('descripcionMaestro') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">
+                          {item.descripcionMaestro || item.nombreMaestro || item.descripcion_maestro || '-'}
+                        </td>
+                      )}
+                      {verColumna('articuloOC') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">
+                          {item.articuloOC || item.articulo_oc || item.codigoOC || item.codigo_oc || '-'}
+                        </td>
+                      )}
+                      {verColumna('cantidadOC') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                          {item.cantidadOC !== undefined && item.cantidadOC !== null ? item.cantidadOC : '-'}
+                        </td>
+                      )}
+                      {verColumna('precioOC') && (
+                        <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">
+                          {item.precioOC !== undefined && item.precioOC !== null ? formatearMoneda(item.precioOC) : '-'}
+                        </td>
+                      )}
+                      {verColumna('estadoDiscrepancia') && (
+                        <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
+                          <span
+                            className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${
+                              tagEstado === 'Sin diferencias'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : tagEstado.includes('Diferencia')
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                                : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-400'
+                            }`}
+                          >
+                            {tagEstado}
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   );
                 })

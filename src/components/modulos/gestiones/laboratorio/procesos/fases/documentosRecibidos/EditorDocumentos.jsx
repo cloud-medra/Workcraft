@@ -3,6 +3,7 @@ import { X, Settings, Calendar, Hash, Building2, Save, Trash2, Plus, Tag, Dollar
 import { doc, updateDoc, collection, addDoc, serverTimestamp, deleteField } from 'firebase/firestore';
 import { db, auth } from '../../../../../../../firebaseConfig';
 import { useToast } from '../../../../../../../context/ToastContext';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
 
 const formatToDDMMYYYY = (dateStr) => {
   if (!dateStr) return '';
@@ -18,7 +19,23 @@ const formatToYYYYMMDD = (dateStr) => {
   return (year && month && day) ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}` : '';
 };
 
+const PATH_VISTA = '/laboratorio/archivosControlLaboratorio/documentosRecibidos';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_edicion' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: '#' },
+  { key: 'codigo', label: 'Código' },
+  { key: 'descripcion', label: 'Descripción / Nombre' },
+  { key: 'cantidad', label: 'Cant.' },
+  { key: 'unidad', label: 'Unidad' },
+  { key: 'precioUnitario', label: 'P. Unitario' },
+  { key: 'totalLinea', label: 'Total Línea' },
+  { key: 'accion', label: 'Acción' }
+];
+
 const EditorDocumentos = ({ documento, filtroAnio, filtroMes, onClose }) => {
+  const { ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_edicion', COLUMNAS_TABLA);
   if (!documento) return null;
 
   const { showToast } = useToast();
@@ -366,79 +383,111 @@ const EditorDocumentos = ({ documento, filtroAnio, filtroMes, onClose }) => {
             <table className="w-full text-left border-collapse text-[11px]">
               <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-20 shadow-xs">
                 <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-10 text-center">#</th>
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28">Código</th>
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción / Nombre</th>
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Cant.</th>
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Unidad</th>
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28 text-right">P. Unitario</th>
-                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-32 text-right">Total Línea</th>
-                  <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 w-12 text-center">Acción</th>
+                  {verColumna('linea') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-10 text-center">#</th>
+                  )}
+                  {verColumna('codigo') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28">Código</th>
+                  )}
+                  {verColumna('descripcion') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Descripción / Nombre</th>
+                  )}
+                  {verColumna('cantidad') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Cant.</th>
+                  )}
+                  {verColumna('unidad') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-20 text-center">Unidad</th>
+                  )}
+                  {verColumna('precioUnitario') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-28 text-right">P. Unitario</th>
+                  )}
+                  {verColumna('totalLinea') && (
+                    <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-32 text-right">Total Línea</th>
+                  )}
+                  {verColumna('accion') && (
+                    <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 w-12 text-center">Acción</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
                 {detalles.map((item, idx) => (
                   <tr key={idx} className="hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-400 font-bold text-center">
-                      {idx + 1}
-                    </td>
-                    <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <input
-                        type="text"
-                        value={item.codigo}
-                        onChange={(e) => handleItemChange(idx, 'codigo', e.target.value)}
-                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 font-num outline-none"
-                        placeholder="Sin cód."
-                      />
-                    </td>
-                    <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <input
-                        type="text"
-                        value={item.nombre}
-                        onChange={(e) => handleItemChange(idx, 'nombre', e.target.value)}
-                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 font-medium outline-none"
-                        placeholder="Descripción del producto o servicio"
-                      />
-                    </td>
-                    <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.cantidad}
-                        onChange={(e) => handleItemChange(idx, 'cantidad', e.target.value)}
-                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 text-center font-medium outline-none"
-                      />
-                    </td>
-                    <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <input
-                        type="text"
-                        value={item.unidad}
-                        onChange={(e) => handleItemChange(idx, 'unidad', e.target.value)}
-                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 text-center uppercase outline-none text-[10px]"
-                      />
-                    </td>
-                    <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.precio}
-                        onChange={(e) => handleItemChange(idx, 'precio', e.target.value)}
-                        className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 text-right outline-none"
-                      />
-                    </td>
-                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-right font-bold text-gray-800 dark:text-gray-100">
-                      ${(Number(item.monto) || 0).toLocaleString('es-CL')}
-                    </td>
-                    <td className="py-1 px-1 border-b border-gray-200 dark:border-gray-700 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRow(idx)}
-                        className="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                        title="Eliminar fila"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </td>
+                    {verColumna('linea') && (
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-400 font-bold text-center">
+                        {idx + 1}
+                      </td>
+                    )}
+                    {verColumna('codigo') && (
+                      <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        <input
+                          type="text"
+                          value={item.codigo}
+                          onChange={(e) => handleItemChange(idx, 'codigo', e.target.value)}
+                          className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 font-num outline-none"
+                          placeholder="Sin cód."
+                        />
+                      </td>
+                    )}
+                    {verColumna('descripcion') && (
+                      <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        <input
+                          type="text"
+                          value={item.nombre}
+                          onChange={(e) => handleItemChange(idx, 'nombre', e.target.value)}
+                          className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 font-medium outline-none"
+                          placeholder="Descripción del producto o servicio"
+                        />
+                      </td>
+                    )}
+                    {verColumna('cantidad') && (
+                      <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.cantidad}
+                          onChange={(e) => handleItemChange(idx, 'cantidad', e.target.value)}
+                          className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 text-center font-medium outline-none"
+                        />
+                      </td>
+                    )}
+                    {verColumna('unidad') && (
+                      <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        <input
+                          type="text"
+                          value={item.unidad}
+                          onChange={(e) => handleItemChange(idx, 'unidad', e.target.value)}
+                          className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 text-center uppercase outline-none text-[10px]"
+                        />
+                      </td>
+                    )}
+                    {verColumna('precioUnitario') && (
+                      <td className="py-1 px-1 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.precio}
+                          onChange={(e) => handleItemChange(idx, 'precio', e.target.value)}
+                          className="w-full h-6 px-1 border border-transparent hover:border-gray-300 focus:border-[#2383C2] rounded bg-transparent text-gray-800 dark:text-gray-100 text-right outline-none"
+                        />
+                      </td>
+                    )}
+                    {verColumna('totalLinea') && (
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700 text-right font-bold text-gray-800 dark:text-gray-100">
+                        ${(Number(item.monto) || 0).toLocaleString('es-CL')}
+                      </td>
+                    )}
+                    {verColumna('accion') && (
+                      <td className="py-1 px-1 border-b border-gray-200 dark:border-gray-700 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRow(idx)}
+                          className="text-gray-400 hover:text-red-500 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="Eliminar fila"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

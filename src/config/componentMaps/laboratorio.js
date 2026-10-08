@@ -1,3 +1,6 @@
+import { mapaCodigos, mapaOrdenes, mapaXml } from './gestionesCompartidas.js';
+import { construirProcesosControl } from './controlProcesos.js';
+
 export const laboratorioComponentMaps = {
   '/laboratorio/empresasLaboratorio': {
     label: 'Registro de Laboratorios (EmpresasLaboratorio.jsx)',
@@ -50,49 +53,15 @@ export const laboratorioComponentMaps = {
     },
   },
 
-  // Gemelo estructural de "/vacunatorio/archivosControlVacunatorio" — mismo
-  // orquestador de 8 fases, mismas claves de sección/elemento compartidas
-  // para el CONTENIDO (filtros_busqueda, tabla_documentos), y la
-  // visibilidad de cada pestaña como `proceso` independiente, chequeada
-  // por existencia con hasAccesoProceso(path). Ver nota en
-  // useGranularPermission.js.
-  '/laboratorio/archivosControlLaboratorio': {
-    label: 'Control de Procesos de Documentos (ArchivosControlLaboratorio.jsx) — orquestador de 8 fases con permisos de contenido compartidos',
-    sections: {
-      filtros_busqueda: {
-        label: 'Sección: Filtros y Búsqueda (compartida por las 8 fases)',
-        elements: {
-          input_busqueda: { label: 'Campo: Búsqueda de Texto' },
-          select_anio: { label: 'Campo: Filtro por Año' },
-          select_mes: { label: 'Campo: Filtro por Mes (usado por Documentos Recibidos, Imputados y Edición)' },
-        },
-      },
-      tabla_documentos: {
-        label: 'Sección: Tabla de Documentos (compartida por las 8 fases; el toggle general aplica a todas)',
-        elements: {
-          btn_configurar: { label: 'Operación: Configurar (usado por Documentos Recibidos, Imputados y Edición)' },
-          btn_eliminar: { label: 'Operación: Eliminar (usado por Documentos Recibidos, Imputados y Edición)' },
-          btn_log: { label: 'Operación: Ver Historial / Logs (usado por Documentos Recibidos, Imputados y Edición)' },
-          btn_ver: { label: 'Operación: Ver Detalle (usado por Documentos Recibidos, Imputados y Edición)' },
-        },
-      },
-      acciones_detalle: {
-        label: 'Sección: Acciones de Detalle (usada solo por Vinculación de Códigos)',
-        elements: {
-          btn_vincular: { label: 'Acción: Vincular Código' },
-        },
-      },
-    },
-    procesos: {
-      '/laboratorio/archivosControlLaboratorio/documentosRecibidos': { label: 'Pestaña: Documentos Recibidos', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/iniciarProcesos': { label: 'Pestaña: Ingreso de Folios', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/vinculacionCodigos': { label: 'Pestaña: Vinculación de Códigos', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/vinculacionOrdenes': { label: 'Pestaña: Vinculación de Órdenes', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/solicitudDiferencias': { label: 'Pestaña: Solicitud Diferencias', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/documentosListos': { label: 'Pestaña: Documentos Listos', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/documentosImputados': { label: 'Pestaña: Documentos Imputados', sections: {} },
-      '/laboratorio/archivosControlLaboratorio/documentosEdicion': { label: 'Pestaña: Edición', sections: {} },
-    },
-  },
+  '/laboratorio/codigoLaboratorio': mapaCodigos('Laboratorio'),
+  '/laboratorio/ordenLaboratorio': mapaOrdenes('Laboratorio'),
+  '/laboratorio/xmlDocLaboratorio': mapaXml('Laboratorio'),
 
+  // Orquestador "Control de Procesos": cada una de las 8 pestañas es un
+  // `proceso` con sus propias secciones (ver controlProcesos.js).
+  '/laboratorio/archivosControlLaboratorio': {
+    label: 'Control de Procesos de Documentos (ArchivosControlLaboratorio.jsx) — permisos por pestaña',
+    sections: {},
+    procesos: construirProcesosControl('/laboratorio/archivosControlLaboratorio'),
+  },
 };

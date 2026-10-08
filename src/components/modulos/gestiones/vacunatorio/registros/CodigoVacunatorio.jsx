@@ -19,6 +19,7 @@ import * as XLSX from 'xlsx';
 import { useToast } from '../../../../../context/ToastContext';
 import { useModal } from '../../../../../context/ModalContext';
 import { useUser } from '../../../../../context/UserContext';
+import { filtrarFilasExport } from '../../../../../hooks/useColumnasPermitidas';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
 import Spinner from '../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CodigoVacunatorioDrawers';
@@ -221,7 +222,10 @@ const CodigoVacunatorio = () => {
       DESCRIPCION: c.descripcion || ''
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataExportar);
+    // Solo las columnas que el usuario ve en la tabla (permisos col_*).
+    const verColumna = (key) => hasPermission(PATH_VISTA, "tabla", `col_${key}`);
+    const columnaDe = { REFERENCIA: 'referencia', CODIGO: 'codigo', PRECIO: 'precio', DESCRIPCION: 'descripcion' };
+    const worksheet = XLSX.utils.json_to_sheet(filtrarFilasExport(dataExportar, columnaDe, verColumna));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Codigos");
     XLSX.writeFile(workbook, `codigos_vacunatorio_${new Date().toISOString().slice(0,10)}.xlsx`);

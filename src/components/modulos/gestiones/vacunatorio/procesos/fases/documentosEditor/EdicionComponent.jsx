@@ -1,8 +1,28 @@
 import React, { useState } from 'react';
 import { X, FileText, Package, User, Building2, Briefcase, Save } from 'lucide-react';
 import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+const PATH_VISTA = '/vacunatorio/archivosControlVacunatorio/documentosEdicion';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_edicion' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: 'Lin.' },
+  { key: 'codigoDoc', label: 'Código Doc.' },
+  { key: 'codigoMaestro', label: 'Cód. Maestro' },
+  { key: 'nombreItem', label: 'Nombre Ítem' },
+  { key: 'cantidadDoc', label: 'Cant. Doc.' },
+  { key: 'cantidadOC', label: 'Cant. OC' },
+  { key: 'montoDoc', label: 'Monto Doc. ($)' },
+  { key: 'precioOC', label: 'Precio OC ($)' },
+  { key: 'difCantidad', label: 'Dif. Cant.' },
+  { key: 'difPrecio', label: 'Dif. Precio' },
+  { key: 'estadoItem', label: 'Estado Ítem' }
+];
 
 const EdicionComponent = ({ documento, onClose, onGuardar }) => {
+  const { ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_edicion', COLUMNAS_TABLA);
   if (!documento) return null;
 
   const [formData, setFormData] = useState({
@@ -251,116 +271,160 @@ const EdicionComponent = ({ documento, onClose, onGuardar }) => {
               <table className="w-full text-left text-[10px] whitespace-nowrap">
                 <thead className="bg-slate-100 dark:bg-gray-900 text-slate-600 dark:text-gray-400 uppercase font-normal text-[9px]">
                   <tr>
-                    <th className="p-1.5 text-center w-8">Lin.</th>
-                    <th className="p-1.5">Código Doc.</th>
-                    <th className="p-1.5">Cód. Maestro</th>
-                    <th className="p-1.5">Nombre Ítem</th>
-                    <th className="p-1.5">Cant. Doc.</th>
-                    <th className="p-1.5">Cant. OC</th>
-                    <th className="p-1.5">Monto Doc. ($)</th>
-                    <th className="p-1.5">Precio OC ($)</th>
-                    <th className="p-1.5 text-center">Dif. Cant.</th>
-                    <th className="p-1.5 text-center">Dif. Precio</th>
-                    <th className="p-1.5 text-center">Estado Ítem</th>
+                    {verColumna('linea') && (
+                      <th className="p-1.5 text-center w-8">Lin.</th>
+                    )}
+                    {verColumna('codigoDoc') && (
+                      <th className="p-1.5">Código Doc.</th>
+                    )}
+                    {verColumna('codigoMaestro') && (
+                      <th className="p-1.5">Cód. Maestro</th>
+                    )}
+                    {verColumna('nombreItem') && (
+                      <th className="p-1.5">Nombre Ítem</th>
+                    )}
+                    {verColumna('cantidadDoc') && (
+                      <th className="p-1.5">Cant. Doc.</th>
+                    )}
+                    {verColumna('cantidadOC') && (
+                      <th className="p-1.5">Cant. OC</th>
+                    )}
+                    {verColumna('montoDoc') && (
+                      <th className="p-1.5">Monto Doc. ($)</th>
+                    )}
+                    {verColumna('precioOC') && (
+                      <th className="p-1.5">Precio OC ($)</th>
+                    )}
+                    {verColumna('difCantidad') && (
+                      <th className="p-1.5 text-center">Dif. Cant.</th>
+                    )}
+                    {verColumna('difPrecio') && (
+                      <th className="p-1.5 text-center">Dif. Precio</th>
+                    )}
+                    {verColumna('estadoItem') && (
+                      <th className="p-1.5 text-center">Estado Ítem</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
                   {formData.detalles?.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition">
-                      <td className="p-1.5 text-center text-slate-500">{item.nroLin || idx + 1}</td>
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.codigo || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'codigo', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-600 dark:text-gray-300 w-20 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.codigoMaestro || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'codigoMaestro', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-[#2383C2] w-20 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.nombre || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'nombre', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 w-36 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
+                      {verColumna('linea') && (
+                        <td className="p-1.5 text-center text-slate-500">{item.nroLin || idx + 1}</td>
+                      )}
+                      {verColumna('codigoDoc') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.codigo || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'codigo', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-600 dark:text-gray-300 w-20 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
+                      {verColumna('codigoMaestro') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.codigoMaestro || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'codigoMaestro', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-[#2383C2] w-20 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
+                      {verColumna('nombreItem') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.nombre || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'nombre', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 w-36 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
                       {/* Cantidad Doc */}
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.cantidad || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'cantidad', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-14 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
+                      {verColumna('cantidadDoc') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.cantidad || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'cantidad', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-14 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
                       {/* Cantidad OC */}
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.cantidadOC || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'cantidadOC', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-14 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
+                      {verColumna('cantidadOC') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.cantidadOC || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'cantidadOC', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-14 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
                       {/* Monto Doc */}
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.monto || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'monto', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-20 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
+                      {verColumna('montoDoc') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.monto || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'monto', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-20 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
                       {/* Precio OC */}
-                      <td className="p-1.5">
-                        <input 
-                          type="text" 
-                          value={item.precioOC || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'precioOC', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-20 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        />
-                      </td>
+                      {verColumna('precioOC') && (
+                        <td className="p-1.5">
+                          <input 
+                            type="text" 
+                            value={item.precioOC || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'precioOC', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-20 text-right focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          />
+                        </td>
+                      )}
                       {/* Diferencia Cantidad (Boolean) */}
-                      <td className="p-1.5 text-center">
-                        <select
-                          value={item.diferenciaCantidad !== undefined ? String(item.diferenciaCantidad) : 'false'}
-                          onChange={(e) => handleDetalleChange(idx, 'diferenciaCantidad', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-medium text-slate-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        >
-                          <option value="true">True</option>
-                          <option value="false">False</option>
-                        </select>
-                      </td>
+                      {verColumna('difCantidad') && (
+                        <td className="p-1.5 text-center">
+                          <select
+                            value={item.diferenciaCantidad !== undefined ? String(item.diferenciaCantidad) : 'false'}
+                            onChange={(e) => handleDetalleChange(idx, 'diferenciaCantidad', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-medium text-slate-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          >
+                            <option value="true">True</option>
+                            <option value="false">False</option>
+                          </select>
+                        </td>
+                      )}
                       {/* Diferencia Precio (Boolean) */}
-                      <td className="p-1.5 text-center">
-                        <select
-                          value={item.diferenciaPrecio !== undefined ? String(item.diferenciaPrecio) : 'false'}
-                          onChange={(e) => handleDetalleChange(idx, 'diferenciaPrecio', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-medium text-slate-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        >
-                          <option value="true">True</option>
-                          <option value="false">False</option>
-                        </select>
-                      </td>
+                      {verColumna('difPrecio') && (
+                        <td className="p-1.5 text-center">
+                          <select
+                            value={item.diferenciaPrecio !== undefined ? String(item.diferenciaPrecio) : 'false'}
+                            onChange={(e) => handleDetalleChange(idx, 'diferenciaPrecio', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-medium text-slate-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          >
+                            <option value="true">True</option>
+                            <option value="false">False</option>
+                          </select>
+                        </td>
+                      )}
                       {/* Estado Item (Vinculado / Diferencia) */}
-                      <td className="p-1.5 text-center">
-                        <select
-                          value={item.estadoItem || 'Vinculado'}
-                          onChange={(e) => handleDetalleChange(idx, 'estadoItem', e.target.value)}
-                          className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-semibold text-emerald-700 dark:text-emerald-300 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
-                        >
-                          <option value="Vinculado">Vinculado</option>
-                          <option value="Diferencia">Diferencia</option>
-                        </select>
-                      </td>
+                      {verColumna('estadoItem') && (
+                        <td className="p-1.5 text-center">
+                          <select
+                            value={item.estadoItem || 'Vinculado'}
+                            onChange={(e) => handleDetalleChange(idx, 'estadoItem', e.target.value)}
+                            className="p-1 rounded text-[10px] border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center font-semibold text-emerald-700 dark:text-emerald-300 focus:outline-none focus:border-[#2383C2] focus:ring-1 focus:ring-[#2383C2] transition-colors"
+                          >
+                            <option value="Vinculado">Vinculado</option>
+                            <option value="Diferencia">Diferencia</option>
+                          </select>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

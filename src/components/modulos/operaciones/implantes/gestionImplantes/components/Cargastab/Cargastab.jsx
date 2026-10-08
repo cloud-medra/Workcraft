@@ -71,6 +71,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   const [verificandoCandado, setVerificandoCandado] = useState(false);
   const [errorCandado, setErrorCandado] = useState('');
   const { hasPermission } = useGranularPermission();
+  const puedeAgregarContenidoPad = hasPermission(PATH_VISTA, 'tabla_cotizaciones', 'formulario_contenido_pad');
 
   const bloqueSolicitado = (bloqueActivo?.solicitud || '').toUpperCase() === 'SOLICITADO';
   const bloqueado = bloqueSolicitado && !desbloqueadoLocal;
@@ -241,6 +242,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   };
 
   const handleRegistrarContenido = () => {
+    if (!puedeAgregarContenidoPad) return;
     const err = {};
     if (!draftContenido.referencia.trim()) err.referencia = true;
     if (!draftContenido.cantidad || Number(draftContenido.cantidad) <= 0) err.cantidad = true;
@@ -727,7 +729,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
             </div>
           )}
 
-          {esPad && (
+          {esPad && puedeAgregarContenidoPad && (
             <div className="border border-fuchsia-200 dark:border-fuchsia-900 bg-fuchsia-50/40 dark:bg-fuchsia-950/10 rounded-lg p-2.5 space-y-2.5">
               <span className="text-[10px] font-bold text-fuchsia-700 dark:text-fuchsia-400 uppercase flex items-center gap-1">
                 <Package size={12} /> Contenido del PAD <span className="text-[9px] font-normal normal-case text-fuchsia-500 dark:text-fuchsia-500">(opcional, puedes completarlo ahora o más adelante)</span>
@@ -1098,6 +1100,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               defaultOpen={idx === cotizaciones.length - 1}
               periodoAbierto={periodoAbierto}
               soloLectura={bloqueado}
+              puedeAgregarContenidoPad={puedeAgregarContenidoPad}
               onAgregarItem={(itemData) => onAgregarItem(bloqueActivoIndex, itemData)}
               onEliminarItem={(itemId) => onEliminarItem(bloqueActivoIndex, cot.id, itemId)}
               onEliminarCotizacion={() => onEliminarCotizacion(bloqueActivoIndex, cot.id)}

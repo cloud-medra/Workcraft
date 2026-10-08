@@ -307,6 +307,7 @@ const XmlFacturasVacunatorio = () => {
       {hasPermission(PATH_VISTA, "tabla_documentos") && (
         <div className="flex-grow overflow-auto">
           <TablaXmlDocumentos
+            pathVista={PATH_VISTA}
             documentos={documentosFiltrados}
             mensajeVacio={!filtroAnio || !filtroMes
               ? "Selecciona un año y un mes para visualizar los documentos."
@@ -321,6 +322,7 @@ const XmlFacturasVacunatorio = () => {
 
       {documentoSeleccionado && (
         <DetalleFacturaModal
+          pathVista={PATH_VISTA}
           documento={documentoSeleccionado}
           onClose={() => setDocumentoSeleccionado(null)}
         />

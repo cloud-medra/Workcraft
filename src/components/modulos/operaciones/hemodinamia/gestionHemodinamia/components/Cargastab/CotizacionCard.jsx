@@ -108,7 +108,9 @@ export const CotizacionCard = ({
   onActualizarEstadoItem,
   onEditarItem,
   defaultOpen = false,
-  soloLectura = false
+  soloLectura = false,
+  // Permiso "Agregar Contenido de PAD" (tabla_cotizaciones.formulario_contenido_pad).
+  puedeAgregarContenidoPad = true
 }) => {
   const [abierto, setAbierto] = useState(defaultOpen);
   const [anchos, setAnchos] = useState(anchosItemsPorDefecto);
@@ -310,6 +312,7 @@ export const CotizacionCard = ({
   };
 
   const abrirFormularioContenido = (padPadreId) => {
+    if (!puedeAgregarContenidoPad) return;
     setAgregandoContenidoDePadId(padPadreId);
     setFilasNuevoContenido([crearFilaContenidoPadVacia()]);
   };
@@ -320,7 +323,7 @@ export const CotizacionCard = ({
   };
 
   const guardarNuevoContenido = (itPadre) => {
-    if (!periodoAbierto) return;
+    if (!periodoAbierto || !puedeAgregarContenidoPad) return;
     const filasValidas = filasNuevoContenido.filter(f => f.referencia.trim() && Number(f.cantidad) > 0);
     if (filasValidas.length === 0) return;
 
@@ -775,7 +778,7 @@ export const CotizacionCard = ({
                           </td>
                           <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              {esPrincipalPad && (
+                              {esPrincipalPad && puedeAgregarContenidoPad && (
                                 <button
                                   type="button"
                                   onClick={() => mostrandoFormularioContenido ? cerrarFormularioContenido() : abrirFormularioContenido(it.id)}

@@ -20,14 +20,36 @@ import { db, auth } from '../../../../../../../firebaseConfig';
 import { normalizarNumerosDocumento } from '../../../../shared/numerosDocumento';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
 import { usePeriodoAbierto, obtenerPeriodoAbierto, formatearPeriodo } from '../../../../shared/periodoImputacion';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+const PATH_VISTA = '/vacunatorio/archivosControlVacunatorio/documentosListos';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_detalle' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: '#' },
+  { key: 'codigoDoc', label: 'Cód. Documento' },
+  { key: 'descripcionDoc', label: 'Descripción Documento' },
+  { key: 'cantidadDoc', label: 'Cant. Documento' },
+  { key: 'precioDoc', label: 'Precio Documento' },
+  { key: 'totalLinea', label: 'Total Línea' },
+  { key: 'codigoMaestro', label: 'Cód. Maestro' },
+  { key: 'descripcionMaestro', label: 'Descripción Maestro' },
+  { key: 'articuloOC', label: 'Artículo OC' },
+  { key: 'cantidadOC', label: 'Cant. OC' },
+  { key: 'precioOC', label: 'Precio OC' },
+  { key: 'estadoItem', label: 'Estado Ítem' }
+];
 
 const DetalleListasIngreso = ({
   documento,
   onVolver,
   formatearFechaEmision,
   renderBadgeEstadoGeneral,
-  onActualizarDocumento
+  onActualizarDocumento,
+  puedeFinalizarActa = true
 }) => {
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_detalle', COLUMNAS_TABLA);
   const { showToast } = useToast();
   const { periodo: periodoAbierto, cargando: cargandoPeriodo } = usePeriodoAbierto('vacunatorio');
 
@@ -80,6 +102,7 @@ const DetalleListasIngreso = ({
   const detalles = documento.detalles || [];
 
   const handleFinalizarActa = async () => {
+    if (!puedeFinalizarActa) return;
     if (!numeroOrden.trim() && !numeroActa.trim() && !numeroSalida.trim()) {
       showToast('Debe ingresar al menos el Número de Orden, Acta o Salida', 'warning');
       return;
@@ -270,8 +293,9 @@ const DetalleListasIngreso = ({
           <button
             type="button"
             onClick={() => setPanelActaAbierto(true)}
-            className="mt-0.5 w-full py-1 px-2 bg-[#2383C2] hover:bg-[#1b6b9f] text-white rounded border border-[#1b6b9f] text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs"
-            title="Añadir Acta"
+            disabled={!puedeFinalizarActa}
+            className="mt-0.5 w-full py-1 px-2 bg-[#2383C2] hover:bg-[#1b6b9f] text-white rounded border border-[#1b6b9f] text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
+            title={puedeFinalizarActa ? 'Añadir Acta' : 'No tienes permiso para finalizar el acta'}
           >
             <FileCheck size={11} />
             <span>Añadir Acta</span>
@@ -312,46 +336,94 @@ const DetalleListasIngreso = ({
           <table className="w-full text-left text-[11px] border-collapse min-w-[1400px]">
             <thead className="bg-slate-100 dark:bg-gray-900 sticky top-0 z-10 shadow-xs">
               <tr className="text-slate-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Documento</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
-                <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
-                <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Item</th>
+                {verColumna('linea') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-10 text-center">#</th>
+                )}
+                {verColumna('codigoDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28">Cód. Documento</th>
+                )}
+                {verColumna('descripcionDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700">Descripción Documento</th>
+                )}
+                {verColumna('cantidadDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 text-center">Cant. Documento</th>
+                )}
+                {verColumna('precioDoc') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Precio Documento</th>
+                )}
+                {verColumna('totalLinea') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 text-right">Total Línea</th>
+                )}
+                {verColumna('codigoMaestro') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Cód. Maestro</th>
+                )}
+                {verColumna('descripcionMaestro') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Descripción Maestro</th>
+                )}
+                {verColumna('articuloOC') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-28 bg-blue-100/70 dark:bg-blue-950/60 text-slate-900 dark:text-blue-200">Artículo OC</th>
+                )}
+                {verColumna('cantidadOC') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-20 bg-blue-100/70 dark:bg-blue-950/60 text-center text-blue-900 dark:text-blue-200">Cant. OC</th>
+                )}
+                {verColumna('precioOC') && (
+                  <th className="py-1.5 px-2 border-b border-r border-slate-200 dark:border-gray-700 w-24 bg-blue-100/70 dark:bg-blue-950/60 text-right text-blue-900 dark:text-blue-200">Precio OC</th>
+                )}
+                {verColumna('estadoItem') && (
+                  <th className="py-1.5 px-2 border-b border-slate-200 dark:border-gray-700 w-36 text-center">Estado Item</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-gray-700/60 bg-white dark:bg-gray-800">
               {detalles.length === 0 ? (
                 <tr>
-                  <td colSpan="12" className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                  <td colSpan={columnasTabla.length} className="py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                     Este documento no posee ítems cargados.
                   </td>
                 </tr>
               ) : (
                 detalles.map((item, idx) => (
                   <tr key={item.id || item.codigo || idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40">
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">{idx + 1}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-500">{item.codigo || '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">{item.nombre || item.descripcion}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-num">{item.cantidad}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-num">{formatearMoneda(item.precio)}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">{formatearMoneda(item.monto || item.precio * item.cantidad)}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.codigoMaestro || '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">{item.descripcionMaestro || '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.articuloOC || '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-num bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.cantidadOC ?? '-'}</td>
-                    <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-num bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.precioOC !== undefined ? formatearMoneda(item.precioOC) : '-'}</td>
-                    <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
-                      <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-300">
-                        {item.vincuOCTexto || item.estadoItem || 'Registrado'}
-                      </span>
-                    </td>
+                    {verColumna('linea') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-500 text-center font-bold">{idx + 1}</td>
+                    )}
+                    {verColumna('codigoDoc') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-500">{item.codigo || '-'}</td>
+                    )}
+                    {verColumna('descripcionDoc') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 font-medium">{item.nombre || item.descripcion}</td>
+                    )}
+                    {verColumna('cantidadDoc') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-num">{item.cantidad}</td>
+                    )}
+                    {verColumna('precioDoc') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-num">{formatearMoneda(item.precio)}</td>
+                    )}
+                    {verColumna('totalLinea') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-bold">{formatearMoneda(item.monto || item.precio * item.cantidad)}</td>
+                    )}
+                    {verColumna('codigoMaestro') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.codigoMaestro || '-'}</td>
+                    )}
+                    {verColumna('descripcionMaestro') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-slate-800 dark:text-gray-200 bg-blue-50/30 dark:bg-blue-950/20 font-medium">{item.descripcionMaestro || '-'}</td>
+                    )}
+                    {verColumna('articuloOC') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 font-num text-slate-600 dark:text-gray-300 bg-blue-50/30 dark:bg-blue-950/20">{item.articuloOC || '-'}</td>
+                    )}
+                    {verColumna('cantidadOC') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-center font-num bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.cantidadOC ?? '-'}</td>
+                    )}
+                    {verColumna('precioOC') && (
+                      <td className="py-1 px-2 border-b border-r border-slate-200 dark:border-gray-700/70 text-right font-num bg-blue-50/30 dark:bg-blue-950/20 text-blue-900 dark:text-blue-300">{item.precioOC !== undefined ? formatearMoneda(item.precioOC) : '-'}</td>
+                    )}
+                    {verColumna('estadoItem') && (
+                      <td className="py-1 px-2 border-b border-slate-200 dark:border-gray-700 text-center">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-300">
+                          {item.vincuOCTexto || item.estadoItem || 'Registrado'}
+                        </span>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}

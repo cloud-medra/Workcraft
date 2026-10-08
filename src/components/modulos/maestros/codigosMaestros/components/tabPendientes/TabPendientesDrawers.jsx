@@ -210,6 +210,7 @@ export const LogDrawer = ({
   );
 };
 
+// Sin permiso, el handler llega undefined y su bloque no se muestra.
 export const ConfigDrawer = ({
   show,
   onClose,
@@ -248,6 +249,7 @@ export const ConfigDrawer = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        {onExportar && (
         <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2">
           <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
             <Download size={14} className="text-emerald-600 dark:text-emerald-400" />
@@ -265,7 +267,9 @@ export const ConfigDrawer = ({
             <span>Exportar a Excel / CSV</span>
           </button>
         </div>
+        )}
 
+        {(onDescargarPlantilla || onEjecutarImportacion) && (
         <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50/50 dark:bg-gray-900/30 space-y-2.5">
           <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-bold text-[11px]">
             <Upload size={14} className="text-[#2383C2]" />
@@ -275,6 +279,7 @@ export const ConfigDrawer = ({
             Carga masivamente nuevos registros pendientes seleccionando un
             archivo formateado en Excel o CSV.
           </p>
+          {onDescargarPlantilla && (
           <button
             onClick={onDescargarPlantilla}
             type="button"
@@ -283,7 +288,9 @@ export const ConfigDrawer = ({
             <FileDown size={13} className="text-[#2383C2]" />
             <span>Descargar Plantilla CSV</span>
           </button>
+          )}
 
+          {onEjecutarImportacion && (<>
           <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-3 text-center bg-white dark:bg-gray-900 hover:border-[#2383C2] transition-colors cursor-pointer relative">
             <input
               type="file"
@@ -321,7 +328,9 @@ export const ConfigDrawer = ({
             {importing ? <Spinner size="sm" color="#ffffff" /> : <Upload size={14} />}
             <span>{importing ? 'Procesando...' : 'Cargar Registro'}</span>
           </button>
+          </>)}
         </div>
+        )}
       </div>
 
       <div className="px-3 py-2 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-900 shrink-0">

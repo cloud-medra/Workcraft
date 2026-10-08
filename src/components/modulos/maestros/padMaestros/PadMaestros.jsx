@@ -31,6 +31,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { claseBadgeCodigo } from '../codigosMaestros/clasesCodigo';
+import { useColumnasPermitidas } from '../../../../hooks/useColumnasPermitidas';
 
 const COL_PADS = "maestros_pad";
 const PATH_VISTA = "/maestros/padMaestros";
@@ -44,12 +45,35 @@ const MAX_RESULTADOS_COMPONENTES = 50;
 const normalizarTexto = (valor) =>
   String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
 
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'receta_items' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: '#' },
+  { key: 'clase', label: 'Clase' },
+  { key: 'codigoRef', label: 'Código Ref' },
+  { key: 'descripcion', label: 'Descripción' },
+  { key: 'referencia', label: 'Referencia' },
+  { key: 'precioUnitario', label: 'Precio Un.' },
+  { key: 'cantidad', label: 'Cant.' },
+  { key: 'subtotal', label: 'Subtotal' },
+  { key: 'borrar', label: 'Borrar' }
+];
+
 const PadMaestros = () => {
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'receta_items', COLUMNAS_TABLA);
   const { showToast } = useToast();
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
   const tieneAcceso = hasPermission(PATH_VISTA, "navegacion", "ver_pad_maestros");
+  // Acciones sobre el PAD y su receta de ítems (claves en componentMaps/maestros.js).
+  const puede = {
+    registrarNuevo: hasPermission(PATH_VISTA, "acciones_pad", "btn_registrar_nuevo"),
+    guardar: hasPermission(PATH_VISTA, "acciones_pad", "btn_guardar"),
+    agregarItem: hasPermission(PATH_VISTA, "receta_items", "btn_agregar_item"),
+    cambiarCantidad: hasPermission(PATH_VISTA, "receta_items", "input_cantidad"),
+    quitarItem: hasPermission(PATH_VISTA, "receta_items", "btn_quitar_item"),
+  };
 
   const [modo, setModo] = useState('VER_EXISTENTES');
   const [cargandoPads, setCargandoPads] = useState(false);
@@ -197,6 +221,7 @@ const PadMaestros = () => {
   };
 
   const handleIniciarNuevoPad = () => {
+    if (!puede.registrarNuevo) return;
     setModo('REGISTRAR_NUEVO');
     setSelectedPadId('');
     setPadSeleccionado(null);
@@ -275,6 +300,7 @@ const PadMaestros = () => {
   };
 
   const handleAgregarItemAReceta = () => {
+    if (!puede.agregarItem) return;
     if (!selectedComponentId) {
       showToast("Seleccione un Insumo o Implante del catálogo", "warning");
       return;
@@ -318,6 +344,7 @@ const PadMaestros = () => {
   };
 
   const handleCambiarCantidad = (index, nuevaCantidad) => {
+    if (!puede.cambiarCantidad) return;
     const cant = Number(nuevaCantidad);
     if (isNaN(cant) || cant <= 0) return;
 
@@ -328,6 +355,7 @@ const PadMaestros = () => {
   };
 
   const handleRemoverItem = (index) => {
+    if (!puede.quitarItem) return;
     setItemsPad(prev => prev.filter((_, idx) => idx !== index));
   };
 
@@ -336,6 +364,7 @@ const PadMaestros = () => {
 
   // 3. GUARDAR EN LA COLECCIÓN 'maestros_pad'
   const handleGuardarPadCompleto = async () => {
+    if (!puede.guardar) return;
     if (modo === 'REGISTRAR_NUEVO') {
       if (!nuevoPadForm.codigo.trim()) {
         showToast("El Código del PAD es obligatorio", "warning");
@@ -458,7 +487,7 @@ const PadMaestros = () => {
               <XCircle size={12} />
               <span>Cancelar</span>
             </button>
-          ) : (
+          ) : puede.registrarNuevo && (
             <button
               onClick={handleIniciarNuevoPad}
               className="flex items-center gap-1 px-2.5 py-1 rounded text-[9.5px] font-bold transition cursor-pointer bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100"
@@ -734,7 +763,7 @@ const PadMaestros = () => {
           )}
 
           {/* VINCULAR DETALLES */}
-          {(modo === 'REGISTRAR_NUEVO' || padSeleccionado) && (
+          {(modo === 'REGISTRAR_NUEVO' || padSeleccionado) && puede.agregarItem && (
             <div className="bg-white dark:bg-gray-800 rounded border border-slate-200 dark:border-gray-700 p-2 shadow-2xs space-y-1">
               <span className="block text-[9.5px] font-bold text-slate-800 dark:text-gray-200 uppercase tracking-wider">
                 Añadir componentes al PAD
@@ -874,21 +903,39 @@ const PadMaestros = () => {
                   <table className="w-full text-left text-[9px] border-collapse">
                     <thead className="bg-slate-100/70 dark:bg-gray-900 text-slate-600 dark:text-gray-400 uppercase font-bold text-[8.5px] sticky top-0">
                       <tr>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-5 text-center">#</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Clase</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código Ref</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-right">Precio Un.</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center w-14">Cant.</th>
-                        <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-right">Subtotal</th>
-                        <th className="py-1 px-1.5 border-b border-slate-200 dark:border-gray-700 text-center w-8">Borrar</th>
+                        {verColumna('linea') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-5 text-center">#</th>
+                        )}
+                        {verColumna('clase') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Clase</th>
+                        )}
+                        {verColumna('codigoRef') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código Ref</th>
+                        )}
+                        {verColumna('descripcion') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
+                        )}
+                        {verColumna('referencia') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
+                        )}
+                        {verColumna('precioUnitario') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-right">Precio Un.</th>
+                        )}
+                        {verColumna('cantidad') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center w-14">Cant.</th>
+                        )}
+                        {verColumna('subtotal') && (
+                          <th className="py-1 px-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-right">Subtotal</th>
+                        )}
+                        {verColumna('borrar') && (
+                          <th className="py-1 px-1.5 border-b border-slate-200 dark:border-gray-700 text-center w-8">Borrar</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {itemsPad.length === 0 ? (
                         <tr>
-                          <td colSpan="9" className="text-center py-5 text-slate-400">
+                          <td colSpan={columnasTabla.length} className="text-center py-5 text-slate-400">
                             <Info size={15} className="mx-auto mb-0.5 opacity-40" />
                             Sin componentes vinculados en este PAD.
                           </td>
@@ -896,43 +943,64 @@ const PadMaestros = () => {
                       ) : (
                         itemsPad.map((item, idx) => (
                           <tr key={idx} className="border-b border-slate-100 dark:border-gray-700/60 hover:bg-slate-50/80 dark:hover:bg-gray-700/30 transition">
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-center text-slate-400 font-bold">{idx + 1}</td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700">
-                              <span className={`px-1 py-0.2 rounded text-[7.5px] font-bold ${claseBadgeCodigo(item.clase)}`}>
-                                {item.clase}
-                              </span>
-                            </td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-num font-bold text-emerald-600 dark:text-emerald-400">{item.codigo}</td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-semibold text-slate-800 dark:text-gray-200">
-                              {item.descriptorEmpresa}
-                            </td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-400">
-                              {item.referencia}
-                            </td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-right font-medium">
-                              ${item.precioNeto.toLocaleString('es-ES')}
-                            </td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-center">
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.cantidad}
-                                onChange={(e) => handleCambiarCantidad(idx, e.target.value)}
-                                className="w-10 h-4 px-0.5 text-center bg-white dark:bg-gray-900 border border-slate-300 dark:border-gray-600 rounded font-bold outline-none focus:border-[#2383C2] text-[9px]"
-                              />
-                            </td>
-                            <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-right font-bold text-slate-900 dark:text-gray-100">
-                              ${item.subtotalNeto.toLocaleString('es-ES')}
-                            </td>
-                            <td className="py-1 px-1.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoverItem(idx)}
-                                className="text-slate-400 hover:text-red-600 transition cursor-pointer"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </td>
+                            {verColumna('linea') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-center text-slate-400 font-bold">{idx + 1}</td>
+                            )}
+                            {verColumna('clase') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700">
+                                <span className={`px-1 py-0.2 rounded text-[7.5px] font-bold ${claseBadgeCodigo(item.clase)}`}>
+                                  {item.clase}
+                                </span>
+                              </td>
+                            )}
+                            {verColumna('codigoRef') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-num font-bold text-emerald-600 dark:text-emerald-400">{item.codigo}</td>
+                            )}
+                            {verColumna('descripcion') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 font-semibold text-slate-800 dark:text-gray-200">
+                                {item.descriptorEmpresa}
+                              </td>
+                            )}
+                            {verColumna('referencia') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-400">
+                                {item.referencia}
+                              </td>
+                            )}
+                            {verColumna('precioUnitario') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-right font-medium">
+                                ${item.precioNeto.toLocaleString('es-ES')}
+                              </td>
+                            )}
+                            {verColumna('cantidad') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-center">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={item.cantidad}
+                                  onChange={(e) => handleCambiarCantidad(idx, e.target.value)}
+                                  disabled={!puede.cambiarCantidad}
+                                  className="disabled:opacity-60 w-10 h-4 px-0.5 text-center bg-white dark:bg-gray-900 border border-slate-300 dark:border-gray-600 rounded font-bold outline-none focus:border-[#2383C2] text-[9px]"
+                                />
+                              </td>
+                            )}
+                            {verColumna('subtotal') && (
+                              <td className="py-1 px-1.5 border-r border-slate-200 dark:border-gray-700 text-right font-bold text-slate-900 dark:text-gray-100">
+                                ${item.subtotalNeto.toLocaleString('es-ES')}
+                              </td>
+                            )}
+                            {verColumna('borrar') && (
+                              <td className="py-1 px-1.5 text-center">
+                                {puede.quitarItem && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoverItem(idx)}
+                                    className="text-slate-400 hover:text-red-600 transition cursor-pointer"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -956,6 +1024,7 @@ const PadMaestros = () => {
                       <span>Cancelar</span>
                     </button>
                   )}
+                  {puede.guardar && (
                   <button
                     type="button"
                     onClick={handleGuardarPadCompleto}
@@ -965,6 +1034,7 @@ const PadMaestros = () => {
                     {guardando ? <Spinner size="xs" color="#ffffff" /> : <Save size={12} />}
                     <span>{modo === 'REGISTRAR_NUEVO' ? 'Guardar PAD' : 'Actualizar PAD'}</span>
                   </button>
+                  )}
                 </div>
               </div>
             </div>

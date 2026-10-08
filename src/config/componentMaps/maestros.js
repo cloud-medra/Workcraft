@@ -1,3 +1,5 @@
+import { columnas } from './columnas.js';
+
 export const maestrosComponentMaps = {
   '/maestros/empresasMaestros': {
     label: 'Registro de Empresas (EmpresasMaestros.jsx)',
@@ -330,12 +332,30 @@ export const maestrosComponentMaps = {
   },
 
   '/maestros/padMaestros': {
-    label: 'Gestión de PADs (PadMaestros.jsx) — solo gate de página completa',
+    label: 'Gestión de PADs (PadMaestros.jsx)',
     sections: {
       navegacion: {
         label: 'Sección: Acceso a la Vista',
         elements: {
           ver_pad_maestros: { label: 'Permiso: Ver / Acceder a Gestión de PADs' },
+        },
+      },
+      acciones_pad: {
+        label: 'Sección: Acciones del PAD',
+        elements: {
+          btn_registrar_nuevo: { label: 'Acción: Registrar Nuevo PAD' },
+          btn_guardar: { label: 'Acción: Guardar / Actualizar PAD' },
+        },
+      },
+      receta_items: {
+        label: 'Sección: Ítems del PAD (receta de componentes)',
+        elements: {
+          btn_agregar_item: { label: 'Acción: Agregar componente al PAD' },
+          input_cantidad: { label: 'Campo: Cambiar cantidad de un componente' },
+          btn_quitar_item: { label: 'Acción: Quitar componente del PAD' },
+          ...columnas([
+            ['linea', '#'], ['clase', 'Clase'], ['codigoRef', 'Código Ref'], ['descripcion', 'Descripción'], ['referencia', 'Referencia'], ['precioUnitario', 'Precio Un.'], ['cantidad', 'Cant.'], ['subtotal', 'Subtotal'], ['borrar', 'Borrar'],
+          ]),
         },
       },
     },
@@ -370,7 +390,7 @@ export const maestrosComponentMaps = {
   // vez de como entrada plana de COMPONENT_MAPS, para no aparecer como
   // ítems de menú independientes (no son rutas, son pestañas internas
   // controladas por estado de React en CodigosMaestros.jsx). El editor de
-  // permisos (CrearUsuario.jsx / EditarPermisosUsuarioDrawer.jsx) expande
+  // permisos (EditorPermisos.jsx, en Crear y Editar usuario) expande
   // `procesos` automáticamente como sub-ítems configurables cuando se
   // selecciona esta pantalla.
   //
@@ -385,28 +405,80 @@ export const maestrosComponentMaps = {
       '/maestros/codigosMaestros/pendientes': {
         label: 'Pestaña: Sin Código / Pendientes (TabPendientes.jsx)',
         sections: {
-          btn_configuracion: { label: 'Sección: Botón Configuración (Importar/Exportar)', elements: {} },
-          formulario_registro: { label: 'Sección: Formulario de Registro Manual', elements: {} },
+          btn_configuracion: {
+            label: 'Sección: Configuración (Importar/Exportar)',
+            elements: {
+              btn_exportar: { label: 'Acción: Exportar a Excel/CSV' },
+              btn_descargar_plantilla: { label: 'Acción: Descargar Plantilla CSV' },
+              btn_importar: { label: 'Acción: Importación masiva (Cargar Registro)' },
+            },
+          },
+          formulario_registro: {
+            label: 'Sección: Formulario de Registro Manual',
+            elements: {
+              btn_registrar: { label: 'Acción: Registrar' },
+            },
+          },
           barra_busqueda: { label: 'Sección: Barra de Búsqueda', elements: {} },
-          tabla_datos: { label: 'Sección: Tabla de Pendientes', elements: {} },
+          tabla_datos: {
+            label: 'Sección: Tabla de Pendientes (las columnas también filtran la exportación)',
+            elements: {
+              action_asignar_codigo: { label: 'Operación: Asignar Código Definitivo' },
+              action_eliminar: { label: 'Operación: Eliminar' },
+              ...columnas([
+                ['numero', '#'], ['referencia', 'Referencia'], ['descEmpresa', 'Desc. Empresa'], ['empresa', 'Empresa'], ['tipo', 'Tipo'], ['segmento', 'Segmento'], ['clase', 'Clase'], ['descAuto', 'Desc. Auto'], ['precioNeto', 'Precio Neto'], ['estado', 'Estado'], ['registradoPor', 'Registrado por'], ['fecha', 'Fecha'], ['acciones', 'Acciones'],
+              ]),
+            },
+          },
           btn_log: { label: 'Sección: Botón Ver Historial / Logs (por fila)', elements: {} },
         },
       },
       '/maestros/codigosMaestros/conCodigo': {
         label: 'Pestaña: Con Código (TabConCodigo.jsx)',
         sections: {
-          btn_configuracion: { label: 'Sección: Botón Configuración (Importar/Exportar)', elements: {} },
-          formulario_registro: { label: 'Sección: Formulario de Registro/Edición', elements: {} },
+          btn_configuracion: {
+            label: 'Sección: Configuración (Importar/Exportar)',
+            elements: {
+              btn_exportar: { label: 'Acción: Exportar a Excel/CSV' },
+              btn_descargar_plantilla: { label: 'Acción: Descargar Plantilla CSV' },
+              btn_importar: { label: 'Acción: Importación masiva (Cargar Registro)' },
+            },
+          },
+          formulario_registro: {
+            label: 'Sección: Formulario de Registro/Edición',
+            elements: {
+              btn_registrar: { label: 'Acción: Registrar' },
+              btn_actualizar: { label: 'Acción: Actualizar (guardar edición)' },
+            },
+          },
           barra_busqueda: { label: 'Sección: Barra de Búsqueda (con selector de campo)', elements: {} },
-          tabla_datos: { label: 'Sección: Tabla de Resultados y Paginación', elements: {} },
+          tabla_datos: {
+            label: 'Sección: Tabla de Resultados y Paginación (las columnas también filtran la exportación)',
+            elements: {
+              action_editar: { label: 'Operación: Editar' },
+              action_eliminar: { label: 'Operación: Eliminar' },
+              ...columnas([
+                ['numero', '#'], ['codigo', 'Código'], ['referencia', 'Referencia'], ['descEmpresa', 'Desc. Empresa'], ['empresa', 'Empresa'], ['tipo', 'Tipo'], ['segmento', 'Segmento'], ['clase', 'Clase'], ['descriptorMaestro', 'Descriptor Maestro'], ['precioNeto', 'Precio Neto'], ['estado', 'Estado'], ['registradoPor', 'Registrado por'], ['fecha', 'Fecha'], ['acciones', 'Acciones'],
+              ]),
+            },
+          },
           btn_log: { label: 'Sección: Botón Ver Historial / Logs (por fila)', elements: {} },
         },
       },
-      // TabVistaGeneral.jsx declara `hasPermission` pero no lo invoca en
-      // ningún elemento todavía — sin granularidad cableada aún.
       '/maestros/codigosMaestros/vistaGeneral': {
-        label: 'Pestaña: Vista General (TabVistaGeneral.jsx) — sin granularidad cableada aún',
-        sections: {},
+        label: 'Pestaña: Vista General (TabVistaGeneral.jsx)',
+        sections: {
+          tabla_datos: {
+            label: 'Sección: Tabla',
+            elements: {
+              action_modificar: { label: 'Operación: Modificar registro o precio' },
+              action_log: { label: 'Operación: Ver Historial / Logs' },
+              ...columnas([
+                ['numero', '#'], ['codigo', 'Código'], ['referencia', 'Referencia'], ['descEmpresa', 'Desc. Maestro'], ['empresa', 'Empresa'], ['tipo', 'Tipo'], ['segmento', 'Segmento'], ['clase', 'Clase'], ['estado', 'Estado'], ['precioNeto', 'Precio Neto'], ['registradoPor', 'Registrado por'], ['fecha', 'Fecha'], ['acciones', 'Acciones'],
+              ]),
+            },
+          },
+        },
       },
     },
   },

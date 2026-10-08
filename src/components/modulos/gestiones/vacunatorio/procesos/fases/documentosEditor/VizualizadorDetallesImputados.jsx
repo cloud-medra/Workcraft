@@ -1,8 +1,25 @@
 import React from 'react';
 import { X, FileText, Package, User, Building2, Briefcase } from 'lucide-react';
 import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+const PATH_VISTA = '/vacunatorio/archivosControlVacunatorio/documentosEdicion';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_detalle' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: 'Lin.' },
+  { key: 'codigoDoc', label: 'Código Doc.' },
+  { key: 'codigoMaestro', label: 'Cód. Maestro' },
+  { key: 'nombreItem', label: 'Nombre Ítem' },
+  { key: 'descripcionMaestro', label: 'Descripción Maestro' },
+  { key: 'cantidad', label: 'Cant.' },
+  { key: 'monto', label: 'Monto' },
+  { key: 'estado', label: 'Estado' }
+];
 
 const VizualizadorDetallesImputados = ({ documento, onClose }) => {
+  const { ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_detalle', COLUMNAS_TABLA);
   if (!documento) return null;
 
   const formatearFechaConHora = (fecha) => {
@@ -145,31 +162,63 @@ const VizualizadorDetallesImputados = ({ documento, onClose }) => {
               <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead className="bg-slate-100 dark:bg-gray-900 text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px]">
                   <tr>
-                    <th className="p-2 text-center w-12">Lin.</th>
-                    <th className="p-2">Código Doc.</th>
-                    <th className="p-2">Cód. Maestro</th>
-                    <th className="p-2">Nombre Ítem</th>
-                    <th className="p-2">Descripción Maestro</th>
-                    <th className="p-2 text-right">Cant.</th>
-                    <th className="p-2 text-right">Monto</th>
-                    <th className="p-2 text-center">Estado</th>
+                    {verColumna('linea') && (
+                      <th className="p-2 text-center w-12">Lin.</th>
+                    )}
+                    {verColumna('codigoDoc') && (
+                      <th className="p-2">Código Doc.</th>
+                    )}
+                    {verColumna('codigoMaestro') && (
+                      <th className="p-2">Cód. Maestro</th>
+                    )}
+                    {verColumna('nombreItem') && (
+                      <th className="p-2">Nombre Ítem</th>
+                    )}
+                    {verColumna('descripcionMaestro') && (
+                      <th className="p-2">Descripción Maestro</th>
+                    )}
+                    {verColumna('cantidad') && (
+                      <th className="p-2 text-right">Cant.</th>
+                    )}
+                    {verColumna('monto') && (
+                      <th className="p-2 text-right">Monto</th>
+                    )}
+                    {verColumna('estado') && (
+                      <th className="p-2 text-center">Estado</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
                   {documento.detalles?.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition">
-                      <td className="p-2 text-center text-slate-500">{item.nroLin || idx + 1}</td>
-                      <td className="p-2 text-slate-600 dark:text-gray-300">{item.codigo || '-'}</td>
-                      <td className="p-2 font-semibold text-[#2383C2]">{item.codigoMaestro || '-'}</td>
-                      <td className="p-2 text-slate-700 dark:text-gray-200" title={item.nombre}>{item.nombre || '-'}</td>
-                      <td className="p-2 text-slate-600 dark:text-gray-400" title={item.descripcionMaestro}>{item.descripcionMaestro || '-'}</td>
-                      <td className="p-2 text-right font-medium text-slate-700 dark:text-gray-200">{item.cantidad || '0'}</td>
-                      <td className="p-2 text-right font-semibold text-slate-800 dark:text-gray-100">${Number(item.monto || 0).toLocaleString('es-CL')}</td>
-                      <td className="p-2 text-center">
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                          {item.estadoItem || 'Vinculado'}
-                        </span>
-                      </td>
+                      {verColumna('linea') && (
+                        <td className="p-2 text-center text-slate-500">{item.nroLin || idx + 1}</td>
+                      )}
+                      {verColumna('codigoDoc') && (
+                        <td className="p-2 text-slate-600 dark:text-gray-300">{item.codigo || '-'}</td>
+                      )}
+                      {verColumna('codigoMaestro') && (
+                        <td className="p-2 font-semibold text-[#2383C2]">{item.codigoMaestro || '-'}</td>
+                      )}
+                      {verColumna('nombreItem') && (
+                        <td className="p-2 text-slate-700 dark:text-gray-200" title={item.nombre}>{item.nombre || '-'}</td>
+                      )}
+                      {verColumna('descripcionMaestro') && (
+                        <td className="p-2 text-slate-600 dark:text-gray-400" title={item.descripcionMaestro}>{item.descripcionMaestro || '-'}</td>
+                      )}
+                      {verColumna('cantidad') && (
+                        <td className="p-2 text-right font-medium text-slate-700 dark:text-gray-200">{item.cantidad || '0'}</td>
+                      )}
+                      {verColumna('monto') && (
+                        <td className="p-2 text-right font-semibold text-slate-800 dark:text-gray-100">${Number(item.monto || 0).toLocaleString('es-CL')}</td>
+                      )}
+                      {verColumna('estado') && (
+                        <td className="p-2 text-center">
+                          <span className="inline-block px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                            {item.estadoItem || 'Vinculado'}
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

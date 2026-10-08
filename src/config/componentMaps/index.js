@@ -1,12 +1,12 @@
-import { administracionComponentMaps } from './administracion';
-import { laboratorioComponentMaps } from './laboratorio';
-import { vacunatorioComponentMaps } from './vacunatorio';
-import { maestrosComponentMaps } from './maestros';
-import { consignacionComponentMaps } from './consignacion';
-import { inventarioComponentMaps } from './inventario';
-import { documentosComponentMaps } from './documentos';
-import { implantesComponentMaps } from './implantes';
-import { hemodinamiaComponentMaps } from './hemodinamia';
+import { administracionComponentMaps } from './administracion.js';
+import { laboratorioComponentMaps } from './laboratorio.js';
+import { vacunatorioComponentMaps } from './vacunatorio.js';
+import { maestrosComponentMaps } from './maestros.js';
+import { consignacionComponentMaps } from './consignacion.js';
+import { inventarioComponentMaps } from './inventario.js';
+import { documentosComponentMaps } from './documentos.js';
+import { implantesComponentMaps } from './implantes.js';
+import { hemodinamiaComponentMaps } from './hemodinamia.js';
 
 export const COMPONENT_MAPS = {
   ...administracionComponentMaps,

@@ -8,6 +8,19 @@ import { useUser } from '../../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_documentos' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'sel', label: 'Selección', fija: true },
+  { key: 'folio', label: 'Folio' },
+  { key: 'emision', label: 'Emisión' },
+  { key: 'ref', label: 'Ref.' },
+  { key: 'razonSocial', label: 'Razón Social' },
+  { key: 'total', label: 'Total (Neto)' },
+  { key: 'estado', label: 'Estado' }
+];
 
 const IniciarProceso = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -29,7 +42,8 @@ const IniciarProceso = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
+  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio/iniciarProcesos"; // permisos propios de esta pestaña
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_documentos', COLUMNAS_TABLA);
   const COL_BASE = "laboratorio_documentos";
 
   const formatearFechaEmision = (fechaStr) => {
@@ -120,8 +134,10 @@ const IniciarProceso = () => {
     }
   };
 
+  const puedeIniciarProceso = hasPermission(PATH_VISTA, "acciones_proceso", "btn_iniciar_proceso");
+
   const handleAbrirModalIniciar = () => {
-    if (seleccionadas.length === 0) return;
+    if (seleccionadas.length === 0 || !puedeIniciarProceso) return;
 
 
     setShowModalIniciar(true);
@@ -237,6 +253,7 @@ const IniciarProceso = () => {
           )}
         </div>
 
+        {puedeIniciarProceso && (
         <button
           onClick={handleAbrirModalIniciar}
           disabled={seleccionadas.length === 0}
@@ -249,6 +266,7 @@ const IniciarProceso = () => {
           <PlayCircle size={13} />
           <span>Iniciar Proceso ({seleccionadas.length})</span>
         </button>
+        )}
       </div>
 
       {hasPermission(PATH_VISTA, "tabla_documentos") && (
@@ -275,18 +293,30 @@ const IniciarProceso = () => {
                       )}
                     </button>
                   </th>
-                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Folio</th>
-                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Emisión</th>
-                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Ref.</th>
-                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[34%]">Razón Social</th>
-                  <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[13%] text-right">Total (Neto)</th>
-                  <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[13%] text-center">Estado</th>
+                  {verColumna('folio') && (
+                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Folio</th>
+                  )}
+                  {verColumna('emision') && (
+                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Emisión</th>
+                  )}
+                  {verColumna('ref') && (
+                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Ref.</th>
+                  )}
+                  {verColumna('razonSocial') && (
+                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[34%]">Razón Social</th>
+                  )}
+                  {verColumna('total') && (
+                    <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[13%] text-right">Total (Neto)</th>
+                  )}
+                  {verColumna('estado') && (
+                    <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[13%] text-center">Estado</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                 {documentosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                    <td colSpan={columnasTabla.length} className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                       {filtroAnio
                         ? "No hay documentos pendientes en estado 'Iniciar Ingreso' para este año."
                         : "Seleccione un año para visualizar los documentos pendientes."}
@@ -314,24 +344,36 @@ const IniciarProceso = () => {
                             className="rounded border-slate-300 text-[#2383C2] focus:ring-0 cursor-pointer"
                           />
                         </td>
-                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                          {docu.folio}
-                        </td>
-                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                          {formatearFechaEmision(docu.fchEmis)}
-                        </td>
-                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                          {docu.folioRef}
-                        </td>
-                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docu.rznSoc}>
-                          {docu.rznSoc}
-                        </td>
-                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                          ${parseInt(docu.total || 0).toLocaleString('es-CL')}
-                        </td>
-                        <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                          <EstadoProcesoBadge estado={docu.estado} />
-                        </td>
+                        {verColumna('folio') && (
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
+                            {docu.folio}
+                          </td>
+                        )}
+                        {verColumna('emision') && (
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                            {formatearFechaEmision(docu.fchEmis)}
+                          </td>
+                        )}
+                        {verColumna('ref') && (
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                            {docu.folioRef}
+                          </td>
+                        )}
+                        {verColumna('razonSocial') && (
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={docu.rznSoc}>
+                            {docu.rznSoc}
+                          </td>
+                        )}
+                        {verColumna('total') && (
+                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                            ${parseInt(docu.total || 0).toLocaleString('es-CL')}
+                          </td>
+                        )}
+                        {verColumna('estado') && (
+                          <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                            <EstadoProcesoBadge estado={docu.estado} />
+                          </td>
+                        )}
                       </tr>
                     );
                   })

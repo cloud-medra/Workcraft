@@ -36,6 +36,7 @@ import PaginacionSimple from '../../../../ui/PaginacionSimple';
 import MultiSelectFiltro from '../../../../ui/MultiSelectFiltro';
 import { ThRedimensionable, ColgroupRedimensionable } from '../../../../ui/ThRedimensionable';
 import { useColumnResize } from '../../../../../hooks/useColumnResize';
+import { useColumnasPermitidas } from '../../../../../hooks/useColumnasPermitidas';
 import { useDebouncedValue } from '../../../../../hooks/useDebouncedValue';
 import { incluyeTexto } from '../../../../../utils/normalizarTexto';
 import { ordenarMeses } from '../../../../../utils/ordenarMeses';
@@ -68,21 +69,25 @@ const getDia = (r) => {
 const SIN_ARANCEL = '(Sin arancel)';
 const getArancel = (r) => String(r["Arancel"] ?? '').trim() || SIN_ARANCEL;
 
+// Granularidad por columna: `col_<key>` en la sección 'tabla_registros' de la
+// vista (Documentos o Implantes, ver `pathVista`; useColumnasPermitidas).
 const COLUMNAS = [
-    { key: 'fecha', ancho: 90, min: 70 },
-    { key: 'admision', ancho: 90, min: 60 },
-    { key: 'paciente', ancho: 180, min: 80 },
-    { key: 'edad', ancho: 55, min: 40 },
-    { key: 'codArt', ancho: 90, min: 60 },
-    { key: 'descripcion', ancho: 220, min: 90 },
-    { key: 'arancel', ancho: 200, min: 90 },
-    { key: 'prevision', ancho: 150, min: 80 },
-    { key: 'cirujano', ancho: 170, min: 80 },
-    { key: 'cantidad', ancho: 60, min: 45 },
-    { key: 'revisado', ancho: 115, min: 95 },
+    { key: 'fecha', label: 'Fecha', ancho: 90, min: 70 },
+    { key: 'admision', label: 'Admisión', ancho: 90, min: 60 },
+    { key: 'paciente', label: 'Paciente', ancho: 180, min: 80 },
+    { key: 'edad', label: 'Edad', align: 'text-center', ancho: 55, min: 40 },
+    { key: 'codArt', label: 'Cod.Art.', ancho: 90, min: 60 },
+    { key: 'descripcion', label: 'Descripción', ancho: 220, min: 90 },
+    { key: 'arancel', label: 'Arancel', ancho: 200, min: 90 },
+    { key: 'prevision', label: 'Previsión / Isapre', ancho: 150, min: 80 },
+    { key: 'cirujano', label: 'Cirujano', ancho: 170, min: 80 },
+    { key: 'cantidad', label: 'Cant.', align: 'text-center', ancho: 60, min: 45 },
+    { key: 'revisado', label: 'Revisado', align: 'text-center', ancho: 115, min: 95 },
 ];
 
-const ReportesInfo = () => {
+// `pathVista`: la misma pantalla se monta en Documentos y en Implantes; cada
+// ruta del menú tiene su propia entrada de permisos.
+const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
     const [reportes, setReportes] = useState([]);
     // IDs del mes que está descargado COMPLETO en `reportes` ({ clave: 'anio/mes', ids: Set }).
     // Lo usa idsExistentesDelMes() para no volver a consultar Firestore al
@@ -105,12 +110,13 @@ const ReportesInfo = () => {
     const [tamanoPagina, setTamanoPagina] = useState(25);
 
     const busquedaDebounced = useDebouncedValue(busqueda);
-    const { anchos, handleResize, anchoTotalTabla } = useColumnResize(COLUMNAS);
 
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
 
-    const PATH_VISTA = "/laboratorio/reportesInfo";
+    const PATH_VISTA = pathVista;
+    const { columnasVisibles, ver } = useColumnasPermitidas(pathVista, 'tabla_registros', COLUMNAS);
+    const { anchos, handleResize, anchoTotalTabla } = useColumnResize(columnasVisibles);
     const COL_BASE = "documentos_reportesInfo";
 
     const getMesNombre = (index) => [
@@ -411,11 +417,6 @@ const ReportesInfo = () => {
         }
     };
 
-    const th = (i, label, extra = '') => (
-        <ThRedimensionable col={COLUMNAS[i]} anchos={anchos} onResize={handleResize} className={`px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 ${extra}`}>
-            {label}
-        </ThRedimensionable>
-    );
 
     return (
         <div className="w-full h-full flex flex-col bg-slate-50 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg shadow-sm overflow-hidden p-0 relative font-sans">
@@ -508,26 +509,20 @@ const ReportesInfo = () => {
                     className="text-left text-[11px] border-collapse"
                     style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
                 >
-                    <ColgroupRedimensionable columnas={COLUMNAS} anchos={anchos} />
+                    <ColgroupRedimensionable columnas={columnasVisibles} anchos={anchos} />
                     <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                            {th(0, 'Fecha')}
-                            {th(1, 'Admisión')}
-                            {th(2, 'Paciente')}
-                            {th(3, 'Edad', 'text-center')}
-                            {th(4, 'Cod.Art.')}
-                            {th(5, 'Descripción')}
-                            {th(6, 'Arancel')}
-                            {th(7, 'Previsión / Isapre')}
-                            {th(8, 'Cirujano')}
-                            {th(9, 'Cant.', 'text-center')}
-                            {th(10, 'Revisado', 'text-center')}
+                            {columnasVisibles.map(col => (
+                                <ThRedimensionable key={col.key} col={col} anchos={anchos} onResize={handleResize} className={`px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 ${col.align || ''}`}>
+                                    {col.label}
+                                </ThRedimensionable>
+                            ))}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                         {reportesPagina.length === 0 ? (
                             <tr>
-                                <td colSpan={COLUMNAS.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                                <td colSpan={columnasVisibles.length} className="px-4 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                                     No hay registros disponibles para el período o filtros seleccionados.
                                 </td>
                             </tr>
@@ -539,49 +534,71 @@ const ReportesInfo = () => {
                                         key={item.id}
                                         className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-[#2383C2]"
                                     >
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate text-slate-600 dark:text-gray-400">
-                                            {item["Fecha"]}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-200 font-normal truncate">
-                                            {item["Admisión"]}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal truncate" title={item["Paciente"]}>
-                                            {item["Paciente"]}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 text-center truncate">
-                                            {item["Edad"]}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                                            {item["Cod.Artículo"]}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["Descripción"]}>
-                                            {item["Descripción"]}
-                                        </td>
-                                        <td
-                                            className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate"
-                                            title={[item["Cód.Arancel"], item["Arancel"]].filter(Boolean).join(' — ')}
-                                        >
-                                            {item["Arancel"] || <span className="text-slate-400 dark:text-gray-500">-</span>}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate" title={`${item["Previsión"] || ''} - ${item["Isapre"] || ''}`}>
-                                            {item["Previsión"]} {item["Isapre"] ? `(${item["Isapre"]})` : ''}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["1° Cirujano"]}>
-                                            {item["1° Cirujano"]}
-                                        </td>
-                                        <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 text-center font-normal">
-                                            {item["Cant.Art."]}
-                                        </td>
-                                        <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
-                                            <select
-                                                value={revisado}
-                                                onChange={(e) => cambiarRevisado(item, e.target.value)}
-                                                title={item.revisadoPor ? `Última modificación: ${item.revisadoPor}` : undefined}
-                                                className={`w-full h-5 px-1 rounded-full border text-[10px] font-semibold outline-none cursor-pointer focus:ring-1 focus:ring-[#2383C2] ${CLASE_REVISADO[revisado]}`}
-                                            >
-                                                {OPCIONES_REVISADO.map(o => <option key={o} value={o}>{o}</option>)}
-                                            </select>
-                                        </td>
+                                        {ver('fecha') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate text-slate-600 dark:text-gray-400">
+                                              {item["Fecha"]}
+                                          </td>
+                                        )}
+                                        {ver('admision') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-200 font-normal truncate">
+                                              {item["Admisión"]}
+                                          </td>
+                                        )}
+                                        {ver('paciente') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal truncate" title={item["Paciente"]}>
+                                              {item["Paciente"]}
+                                          </td>
+                                        )}
+                                        {ver('edad') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 text-center truncate">
+                                              {item["Edad"]}
+                                          </td>
+                                        )}
+                                        {ver('codArt') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                                              {item["Cod.Artículo"]}
+                                          </td>
+                                        )}
+                                        {ver('descripcion') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["Descripción"]}>
+                                              {item["Descripción"]}
+                                          </td>
+                                        )}
+                                        {ver('arancel') && (
+                                          <td
+                                              className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate"
+                                              title={[item["Cód.Arancel"], item["Arancel"]].filter(Boolean).join(' — ')}
+                                          >
+                                              {item["Arancel"] || <span className="text-slate-400 dark:text-gray-500">-</span>}
+                                          </td>
+                                        )}
+                                        {ver('prevision') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate" title={`${item["Previsión"] || ''} - ${item["Isapre"] || ''}`}>
+                                              {item["Previsión"]} {item["Isapre"] ? `(${item["Isapre"]})` : ''}
+                                          </td>
+                                        )}
+                                        {ver('cirujano') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["1° Cirujano"]}>
+                                              {item["1° Cirujano"]}
+                                          </td>
+                                        )}
+                                        {ver('cantidad') && (
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 text-center font-normal">
+                                              {item["Cant.Art."]}
+                                          </td>
+                                        )}
+                                        {ver('revisado') && (
+                                          <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+                                              <select
+                                                  value={revisado}
+                                                  onChange={(e) => cambiarRevisado(item, e.target.value)}
+                                                  title={item.revisadoPor ? `Última modificación: ${item.revisadoPor}` : undefined}
+                                                  className={`w-full h-5 px-1 rounded-full border text-[10px] font-semibold outline-none cursor-pointer focus:ring-1 focus:ring-[#2383C2] ${CLASE_REVISADO[revisado]}`}
+                                              >
+                                                  {OPCIONES_REVISADO.map(o => <option key={o} value={o}>{o}</option>)}
+                                              </select>
+                                          </td>
+                                        )}
                                     </tr>
                                 );
                             })

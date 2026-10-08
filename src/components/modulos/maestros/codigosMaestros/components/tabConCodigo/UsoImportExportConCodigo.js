@@ -104,7 +104,9 @@ const PROGRESO_INICIAL = {
   finalizado: false
 };
 
-export const useImportExportConCodigo = ({ registros, userData, showToast, colBase }) => {
+// `ver`: permiso por columna de la tabla (useColumnasPermitidas); la
+// exportación omite las columnas que el usuario no puede ver.
+export const useImportExportConCodigo = ({ registros, userData, showToast, colBase, ver = () => true }) => {
   const [showConfigDrawer, setShowConfigDrawer] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -150,9 +152,18 @@ export const useImportExportConCodigo = ({ registros, userData, showToast, colBa
         item.registradoPor || ''
       ]);
 
+      // Encabezado → columna de la tabla (CX y OBSERVACION no tienen columna
+      // en pantalla: se exportan siempre).
+      const columnaDe = {
+        CODIGO: 'codigo', REFERENCIA: 'referencia', DESCRIPTOR_EMPRESA: 'descEmpresa', EMPRESA: 'empresa',
+        TIPO: 'tipo', SEGMENTO: 'segmento', CLASE: 'clase', DESCRIPTOR_AUTO: 'descriptorMaestro',
+        PRECIO_NETO: 'precioNeto', REGISTRADO_POR: 'registradoPor'
+      };
+      const indices = headers.map((h, i) => i).filter((i) => !columnaDe[headers[i]] || ver(columnaDe[headers[i]]));
+
       descargarCSV(
-        headers,
-        rows,
+        indices.map((i) => headers[i]),
+        rows.map((fila) => indices.map((i) => fila[i])),
         `registros_con_codigo_${new Date().toISOString().slice(0, 10)}.csv`
       );
 

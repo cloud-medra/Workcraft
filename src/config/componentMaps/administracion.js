@@ -154,13 +154,13 @@ export const administracionComponentMaps = {
           col_modulos: { label: 'Columna: Módulos Asignados' },
           col_estado: { label: 'Columna: Estado' },
           btn_activar_inactivar: { label: 'Acción: Activar/Inactivar Usuario' },
-          btn_editar_acceso: { label: 'Acción: Editar Acceso (abre drawer)' },
+          btn_editar_acceso: { label: 'Acción: Editar Acceso (abre la pantalla de edición)' },
           btn_continuar_creacion: { label: 'Acción: Continuar Creación Incompleta' },
           btn_cancelar_creacion: { label: 'Acción: Cancelar Creación Incompleta' },
         },
       },
       drawer_edicion_permisos: {
-        label: 'Sección: Drawer de Edición de Permisos (EditarPermisosUsuarioDrawer.jsx)',
+        label: 'Sección: Edición de Usuario (EditarUsuario.jsx)',
         elements: {
           select_rol: { label: 'Campo: Rol' },
           selector_modulos_items: { label: 'Campo: Módulos e Ítems con Acceso' },

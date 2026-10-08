@@ -18,7 +18,9 @@ import { MODULES } from '../../../../config/modulesConfig.jsx';
 import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import Spinner from '../../../../components/ui/Spinner';
-import EditarPermisosUsuarioDrawer from './EditarPermisosUsuarioDrawer';
+import EditarUsuario from './EditarUsuario';
+import { ROLES } from './roles';
+import { vistasConfigurables, resumenRestricciones, completarVistasDelMenu } from './permisosGranularesUtils';
 
 import {
   Users,
@@ -32,15 +34,10 @@ import {
   PlayCircle,
   Trash2,
   Layers,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 // TODO: mantener sincronizado con la lista de roles de CrearUsuario.jsx.
-const ROLES = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'dev', label: 'Desarrollador' },
-  { value: 'encargado', label: 'Encargado' },
-  { value: 'operador', label: 'Operador' },
-];
 
 const ListadoUsuarios = ({ onContinuarCreacion }) => {
   const { showToast } = useToast();
@@ -89,8 +86,9 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
   const labelPasoIncompleto = (usuario) => {
     const estado = usuario.estadoCreacion || {};
     if (!estado.paso2) return 'Paso 2 pendiente';
-    const totalSeleccionado = [...new Set(Object.values(usuario.permisos || {}).flat())];
-    const configurables = totalSeleccionado.filter((path) => COMPONENT_MAPS[path]);
+    // Mismo conteo que el paso 3 de CrearUsuario (vistas con configuración y
+    // sus pestañas incluidas).
+    const configurables = vistasConfigurables(usuario.permisos, usuario.permisosGranulares, COMPONENT_MAPS);
     const finalizados = configurables.filter((path) => estado.itemsFinalizados?.[path]).length;
     return `Paso 3: ${finalizados}/${configurables.length} ítems`;
   };
@@ -157,12 +155,29 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
     );
   };
 
-  // --- Abrir / cerrar el drawer de edición de permisos ---
+  // --- Abrir / cerrar la edición del usuario (pantalla completa) ---
   const abrirEdicion = (usuario) => {
     setUsuarioEditandoId((actual) => (actual === usuario.id ? null : usuario.id));
   };
 
   const usuarioEditando = usuarios.find((u) => u.id === usuarioEditandoId) || null;
+
+  // Resumen de permisos granulares para la tabla: restricciones dentro de
+  // sus vistas y vistas del menú sin configuración (bloqueadas hasta
+  // configurarlas o correr la migración).
+  const resumenGranular = (usuario) => {
+    if (usuario.rol === 'admin' || usuario.rol === 'dev') return null;
+    const restricciones = resumenRestricciones(usuario.permisos, usuario.permisosGranulares, COMPONENT_MAPS);
+    const sinConfigurar = completarVistasDelMenu(usuario.permisos, usuario.permisosGranulares, COMPONENT_MAPS)
+      .agregadas.filter((p) => Object.values(usuario.permisos || {}).flat().includes(p));
+    const detalle = [
+      restricciones.pestanas && `${restricciones.pestanas} pestaña(s) quitada(s)`,
+      restricciones.secciones && `${restricciones.secciones} sección(es) oculta(s)`,
+      restricciones.acciones && `${restricciones.acciones} acción(es) sin permiso`,
+      restricciones.columnas && `${restricciones.columnas} columna(s) oculta(s)`,
+    ].filter(Boolean);
+    return { restricciones, detalle, sinConfigurar };
+  };
 
   const modulosAsignados = (usuario) => {
     const claves = Object.keys(usuario.permisos || {}).filter((k) => (usuario.permisos[k] || []).length > 0);
@@ -177,6 +192,13 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
       .slice(0, 2)
       .map((p) => p[0]?.toUpperCase())
       .join('');
+
+
+  // Edición a pantalla completa: reemplaza al listado (mismo patrón que las
+  // vistas de detalle del sistema). `key` reinicia el estado al cambiar de usuario.
+  if (usuarioEditando) {
+    return <EditarUsuario key={usuarioEditando.id} usuario={usuarioEditando} onVolver={() => setUsuarioEditandoId(null)} />;
+  }
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -305,6 +327,32 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
                           <Layers size={10} className="text-[#2383C2]" />
                           {cantidadModulos}
                         </span>
+                        {(() => {
+                          const resumen = resumenGranular(usuario);
+                          if (!resumen) return null;
+                          return (
+                            <span className="flex flex-wrap gap-1 mt-0.5">
+                              {resumen.restricciones.total > 0 && (
+                                <span
+                                  title={resumen.detalle.join(' · ')}
+                                  className="flex items-center gap-1 w-fit text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                                >
+                                  <SlidersHorizontal size={10} />
+                                  {resumen.restricciones.total} restricción{resumen.restricciones.total === 1 ? '' : 'es'}
+                                </span>
+                              )}
+                              {resumen.sinConfigurar.length > 0 && (
+                                <span
+                                  title={`Sin configuración de permisos (bloqueadas para el usuario): ${resumen.sinConfigurar.join(', ')}. Ábrelas en "Editar acceso" y guarda.`}
+                                  className="flex items-center gap-1 w-fit text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
+                                >
+                                  <CircleDashed size={10} />
+                                  {resumen.sinConfigurar.length} sin configurar
+                                </span>
+                              )}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
@@ -403,11 +451,6 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
       )}
 
       {/* Drawer de edición de rol / módulos / configuración detallada */}
-      <EditarPermisosUsuarioDrawer
-        isOpen={!!usuarioEditando}
-        usuario={usuarioEditando}
-        onClose={() => setUsuarioEditandoId(null)}
-      />
     </div>
   );
 };

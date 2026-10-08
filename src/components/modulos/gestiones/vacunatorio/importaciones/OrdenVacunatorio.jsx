@@ -276,28 +276,39 @@ const OrdenVacunatorio = () => {
 
             {!ordenSeleccionada && (
                 <div className="bg-slate-100/70 dark:bg-gray-800/40 p-1.5 flex flex-wrap gap-1.5 items-center border-b border-slate-200 dark:border-gray-700">
+                    {hasPermission(PATH_VISTA, "listado", "select_anio") && (
                     <select value={filtroAnio} onChange={(e) => setFiltroAnio(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2]">
                         <option value="">Año</option>
                         {aniosDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
+                    )}
 
+                    {hasPermission(PATH_VISTA, "listado", "select_mes") && (
                     <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} className="h-6 border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 rounded text-[11px] px-1.5 outline-none capitalize focus:border-[#2383C2]">
                         <option value="">Mes</option>
                         {mesesDisponibles.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
+                    )}
 
+                    {hasPermission(PATH_VISTA, "listado", "input_buscar") && (
                     <div className="relative flex-grow max-w-xs">
                         <Search className="absolute left-2 top-1.5 text-slate-400 dark:text-gray-500" size={12} />
                         <input value={busqueda} onChange={e => setBusqueda(e.target.value)} className="w-full h-6 pl-7 pr-2 border border-slate-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:border-[#2383C2]" placeholder="Buscar por N°, RUT o Proveedor..." />
                     </div>
+                    )}
                 </div>
             )}
 
             <div className={`flex-grow min-h-0 ${ordenSeleccionada ? 'flex flex-col' : 'overflow-auto'}`}>
                 {!ordenSeleccionada ? (
-                    <TablaOrdenes ordenes={ordenesFiltradas} onSeleccionar={setOrdenSeleccionada} />
+                    <TablaOrdenes
+                        pathVista={PATH_VISTA}
+                        ordenes={ordenesFiltradas}
+                        onSeleccionar={hasPermission(PATH_VISTA, "listado", "action_ver_detalle") ? setOrdenSeleccionada : undefined}
+                    />
                 ) : (
                     <DetalleOrdenTabla
+                        pathVista={PATH_VISTA}
                         detalle={detalle}
                         facturacion={facturacion}
                         errorFacturacion={errorFacturacion}

@@ -23,6 +23,7 @@ import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
 import { useFirestorePagination } from '../../../../../../hooks/useFirestorePagination';
+import { useColumnasPermitidas } from '../../../../../../hooks/useColumnasPermitidas';
 import { useColumnResize } from '../../../../../../hooks/useColumnResize';
 import { ManijaRedimension } from '../../../../../ui/ManijaRedimension';
 import { ThRelleno, TdRelleno } from '../../../../../ui/ThRedimensionable';
@@ -40,6 +41,8 @@ const CAMPOS_BUSQUEDA = [
   { value: 'empresa', label: 'Empresa' }
 ];
 
+// Granularidad por columna: `col_<key>` en la sección 'tabla_datos' del mapa de
+// permisos (ver useColumnasPermitidas).
 const COLUMNAS = [
   { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
   { key: 'codigo', label: 'Código', ancho: 90, min: 60 },
@@ -98,6 +101,18 @@ const TabConCodigo = () => {
 
   const PATH_VISTA = "/maestros/codigosMaestros/conCodigo";
 
+  // Acciones (claves en componentMaps/maestros.js). Sin la acción, el botón
+  // no se muestra y el handler no hace nada.
+  const puede = {
+    registrar: hasPermission(PATH_VISTA, "formulario_registro", "btn_registrar"),
+    actualizar: hasPermission(PATH_VISTA, "formulario_registro", "btn_actualizar"),
+    editar: hasPermission(PATH_VISTA, "tabla_datos", "action_editar"),
+    eliminar: hasPermission(PATH_VISTA, "tabla_datos", "action_eliminar"),
+    exportar: hasPermission(PATH_VISTA, "btn_configuracion", "btn_exportar"),
+    plantilla: hasPermission(PATH_VISTA, "btn_configuracion", "btn_descargar_plantilla"),
+    importar: hasPermission(PATH_VISTA, "btn_configuracion", "btn_importar"),
+  };
+
   const constraints = useMemo(() => {
     const termino = busqueda.trim().toUpperCase();
 
@@ -127,7 +142,9 @@ const TabConCodigo = () => {
     reload
   } = useFirestorePagination({ colName: COL_BASE, constraints, pageSize: PAGE_SIZE });
 
-  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(COLUMNAS);
+  const { columnasVisibles, ver } = useColumnasPermitidas(PATH_VISTA, 'tabla_datos', COLUMNAS);
+
+  const { anchos, handleResize, restablecerAnchos, anchoTotalTabla } = useColumnResize(columnasVisibles);
 
   const {
     showConfigDrawer,
@@ -141,7 +158,7 @@ const TabConCodigo = () => {
     handleExportarDatos,
     handleDescargarPlantilla,
     handleEjecutarImportacion
-  } = useImportExportConCodigo({ userData, showToast, colBase: COL_BASE });
+  } = useImportExportConCodigo({ registros, userData, showToast, colBase: COL_BASE, ver });
 
   const formatearMiles = (valor) => {
     if (valor === null || valor === undefined || valor === '') return '';
@@ -180,6 +197,7 @@ const TabConCodigo = () => {
 
   const handleGuardar = async (e) => {
     e.preventDefault();
+    if (editingId ? !puede.actualizar : !puede.registrar) return;
     if (!formData.codigo.trim() || !formData.referencia.trim() || !formData.empresa.trim()) {
       return showToast("Código, Referencia y Empresa son obligatorios", "error");
     }
@@ -256,6 +274,7 @@ const TabConCodigo = () => {
   };
 
   const handleDelete = (id) => {
+    if (!puede.eliminar) return;
     const itemAEliminar = registros.find(l => l.id === id);
 
     confirmAction(
@@ -301,6 +320,7 @@ const TabConCodigo = () => {
   };
 
   const iniciarEdicion = (item) => {
+    if (!puede.editar) return;
     setEditingId(item.id);
     setFormData({
       codigo: item.codigo || '',
@@ -474,9 +494,11 @@ const TabConCodigo = () => {
           </div>
 
           <div className="flex items-center gap-1.5 mt-1">
+            {(editingId ? puede.actualizar : puede.registrar) && (
             <button type="submit" className={`h-7 px-3 rounded font-bold text-[11px] flex items-center gap-1.5 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white transition`}>
               {editingId ? <><Save size={13} /> Actualizar</> : <><Plus size={13} /> Registrar</>}
             </button>
+            )}
 
             {editingId && (
               <button type="button" onClick={cancelarEdicion} className="h-7 px-3 bg-gray-200 dark:bg-gray-700 rounded font-bold text-[11px] text-gray-600 dark:text-gray-300 flex items-center gap-1.5 hover:bg-gray-300 dark:hover:bg-gray-600 transition">
@@ -541,14 +563,14 @@ const TabConCodigo = () => {
             style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
           >
             <colgroup>
-              {COLUMNAS.map(col => (
+              {columnasVisibles.map(col => (
                 <col key={col.key} style={{ width: anchos[col.key] }} />
               ))}
               <col />
             </colgroup>
             <thead className="bg-gray-100 dark:bg-gray-900 sticky top-[22px] z-10">
               <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
-                {COLUMNAS.map(col => (
+                {columnasVisibles.map(col => (
                   <th
                     key={col.key}
                     className={`relative py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 overflow-hidden ${col.align === 'center' ? 'text-center' : ''}`}
@@ -569,47 +591,79 @@ const TabConCodigo = () => {
             <tbody>
               {registros.map((item, index) => (
                 <tr key={item.id} className="border-l-2 border-transparent hover:border-emerald-600 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center overflow-hidden text-ellipsis whitespace-nowrap">{pageIndex * PAGE_SIZE + index + 1}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400 overflow-hidden text-ellipsis whitespace-nowrap">{item.codigo}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={item.referencia}>{item.referencia}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorEmpresa}>{item.descriptorEmpresa}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.empresa}>{item.empresa}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.tipo}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.segmento}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.clase}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorAuto}>{item.descriptorAuto}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">
-                    ${new Intl.NumberFormat('es-ES').format(item.precioNeto || 0)}
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 overflow-hidden">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 flex items-center gap-1 w-max">
-                      <CheckCircle2 size={10} /> Con Código
-                    </span>
-                  </td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.registradoPor}>{item.registradoPor || 'N/A'}</td>
-                  <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap">{formatearFecha(item.fechaRegistro)}</td>
-                  <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center overflow-hidden">
-                    <div className="flex justify-center gap-2">
-                      {hasPermission(PATH_VISTA, "btn_log") && (
-                        <button onClick={() => abrirHistorialLogs(item)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
-                          <History size={13} />
-                        </button>
-                      )}
-                      <button onClick={() => iniciarEdicion(item)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
-                        <Pencil size={13} />
-                      </button>
-                      <button onClick={() => handleDelete(item.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
+                  {ver('numero') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center overflow-hidden text-ellipsis whitespace-nowrap">{pageIndex * PAGE_SIZE + index + 1}</td>
+                  )}
+                  {ver('codigo') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 font-bold text-emerald-600 dark:text-emerald-400 overflow-hidden text-ellipsis whitespace-nowrap">{item.codigo}</td>
+                  )}
+                  {ver('referencia') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium overflow-hidden text-ellipsis whitespace-nowrap" title={item.referencia}>{item.referencia}</td>
+                  )}
+                  {ver('descEmpresa') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorEmpresa}>{item.descriptorEmpresa}</td>
+                  )}
+                  {ver('empresa') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap" title={item.empresa}>{item.empresa}</td>
+                  )}
+                  {ver('tipo') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.tipo}</td>
+                  )}
+                  {ver('segmento') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.segmento}</td>
+                  )}
+                  {ver('clase') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">{item.clase}</td>
+                  )}
+                  {ver('descriptorMaestro') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.descriptorAuto}>{item.descriptorAuto}</td>
+                  )}
+                  {ver('precioNeto') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 overflow-hidden text-ellipsis whitespace-nowrap">
+                      ${new Intl.NumberFormat('es-ES').format(item.precioNeto || 0)}
+                    </td>
+                  )}
+                  {ver('estado') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 overflow-hidden">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 flex items-center gap-1 w-max">
+                        <CheckCircle2 size={10} /> Con Código
+                      </span>
+                    </td>
+                  )}
+                  {ver('registradoPor') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap" title={item.registradoPor}>{item.registradoPor || 'N/A'}</td>
+                  )}
+                  {ver('fecha') && (
+                    <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 overflow-hidden text-ellipsis whitespace-nowrap">{formatearFecha(item.fechaRegistro)}</td>
+                  )}
+                  {ver('acciones') && (
+                    <td className="py-1 px-2 border-b border-gray-200 dark:border-gray-700 text-center overflow-hidden">
+                      <div className="flex justify-center gap-2">
+                        {hasPermission(PATH_VISTA, "btn_log") && (
+                          <button onClick={() => abrirHistorialLogs(item)} title="Ver Historial / Logs" className="text-gray-500 hover:text-[#2383C2] dark:hover:text-[#2383C2] transition">
+                            <History size={13} />
+                          </button>
+                        )}
+                        {puede.editar && (
+                          <button onClick={() => iniciarEdicion(item)} title="Editar" className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition">
+                            <Pencil size={13} />
+                          </button>
+                        )}
+                        {puede.eliminar && (
+                          <button onClick={() => handleDelete(item.id)} title="Eliminar" className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition">
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   <TdRelleno className="border-b border-gray-200 dark:border-gray-700/70" />
                 </tr>
               ))}
 
               {!cargandoTabla && registros.length === 0 && (
                 <tr>
-                  <td colSpan={COLUMNAS.length + 1} className="py-8 text-center text-gray-400 dark:text-gray-500 text-[11px]">
+                  <td colSpan={columnasVisibles.length + 1} className="py-8 text-center text-gray-400 dark:text-gray-500 text-[11px]">
                     No hay registros que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -667,14 +721,14 @@ const TabConCodigo = () => {
         show={showConfigDrawer}
         onClose={() => setShowConfigDrawer(false)}
         totalPendientes={registros.length}
-        onExportar={handleExportarDatos}
-        onDescargarPlantilla={handleDescargarPlantilla}
+        onExportar={puede.exportar ? handleExportarDatos : undefined}
+        onDescargarPlantilla={puede.plantilla ? handleDescargarPlantilla : undefined}
         importFile={importFile}
         onSelectFile={setImportFile}
         importing={importing}
         progreso={progreso}
         resetProgreso={resetProgreso}
-        onEjecutarImportacion={() => handleEjecutarImportacion().then(reload)}
+        onEjecutarImportacion={puede.importar ? () => handleEjecutarImportacion().then(reload) : undefined}
       />
     </div>
   );

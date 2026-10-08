@@ -22,6 +22,20 @@ import { useGranularPermission } from '../../../../../../../hooks/useGranularPer
 import DetalleVinculacionOC from './DetalleVinculacionOC';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_documentos' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'folio', label: 'Folio' },
+  { key: 'emision', label: 'Emisión' },
+  { key: 'mesImputacion', label: 'Mes Imputado' },
+  { key: 'ref', label: 'Ref.' },
+  { key: 'razonSocial', label: 'Razón Social' },
+  { key: 'total', label: 'Total (Neto)' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'acciones', label: 'Acciones' }
+];
 
 const VinculacionOrden = () => {
     const [documentos, setDocumentos] = useState([]);
@@ -38,7 +52,8 @@ const VinculacionOrden = () => {
     const { confirmAction } = useModal();
     const { hasPermission } = useGranularPermission();
 
-    const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
+    const PATH_VISTA = "/laboratorio/archivosControlLaboratorio/vinculacionOrdenes"; // permisos propios de esta pestaña
+    const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_documentos', COLUMNAS_TABLA);
     const COL_BASE = "laboratorio_documentos";
 
     const formatearFechaEmision = (fechaStr) => {
@@ -126,7 +141,8 @@ const VinculacionOrden = () => {
         cargarDocumentosProcesarOC();
     }, [cargarDocumentosProcesarOC]);
 
-    const handleVerDetalles = (documento) => setDocumentoSeleccionado(documento);
+    const puedeVerDetalle = hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver");
+    const handleVerDetalles = (documento) => { if (puedeVerDetalle) setDocumentoSeleccionado(documento); };
     const handleVolverALista = () => setDocumentoSeleccionado(null);
 
     const handleVincularOrdenCompra = ({ ordenCompra, detallesActualizados, estadoGeneral }) => {
@@ -220,6 +236,7 @@ const VinculacionOrden = () => {
                     documento={documentoSeleccionado}
                     onVolver={handleVolverALista}
                     onVincular={handleVincularOrdenCompra}
+                    puedeVincular={hasPermission(PATH_VISTA, "acciones_detalle", "btn_vincular_oc")}
                     formatearFechaEmision={formatearFechaEmision}
                     renderBadgeEstadoGeneral={renderBadgeEstadoGeneral}
                 />
@@ -283,20 +300,36 @@ const VinculacionOrden = () => {
                                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
                                     <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                                         <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Mes Imputado</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref.</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
-                                            <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
-                                            <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[7%] text-center">Acciones</th>
+                                            {verColumna('folio') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                                            )}
+                                            {verColumna('emision') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                                            )}
+                                            {verColumna('mesImputacion') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%]">Mes Imputado</th>
+                                            )}
+                                            {verColumna('ref') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref.</th>
+                                            )}
+                                            {verColumna('razonSocial') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
+                                            )}
+                                            {verColumna('total') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
+                                            )}
+                                            {verColumna('estado') && (
+                                              <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
+                                            )}
+                                            {verColumna('acciones') && (
+                                              <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[7%] text-center">Acciones</th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                                         {documentosFiltrados.length === 0 ? (
                                             <tr>
-                                                <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                                                <td colSpan={columnasTabla.length} className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                                                     {filtroAnio
                                                         ? "No hay documentos listos para Orden de Compra (Procesar OC) en este año."
                                                         : "Seleccione un año para visualizar los documentos."}
@@ -310,39 +343,56 @@ const VinculacionOrden = () => {
                                                     className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors cursor-pointer"
                                                     title="Doble clic para ver el detalle"
                                                 >
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                                                        {f.folio}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                                                        {formatearFechaEmision(f.fchEmis)}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 whitespace-nowrap font-medium">
-                                                        {formatearMesImputado(f.mesImputado || f.mesId)}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                                                        {f.folioRef}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
-                                                        {f.rznSoc}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                                                        ${parseInt(f.total || 0, 10).toLocaleString('es-CL')}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                                                        {renderBadgeEstadoGeneral(f.estado)}
-                                                    </td>
-                                                    <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleVerDetalles(f);
-                                                            }}
-                                                            className="p-1 text-slate-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
-                                                            title="Visualizar documento"
-                                                        >
-                                                            <Eye size={14} />
-                                                        </button>
-                                                    </td>
+                                                    {verColumna('folio') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
+                                                          {f.folio}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('emision') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                                                          {formatearFechaEmision(f.fchEmis)}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('mesImputacion') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 whitespace-nowrap font-medium">
+                                                          {formatearMesImputado(f.mesImputado || f.mesId)}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('ref') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                                                          {f.folioRef}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('razonSocial') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={f.rznSoc}>
+                                                          {f.rznSoc}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('total') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                                                          ${parseInt(f.total || 0, 10).toLocaleString('es-CL')}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('estado') && (
+                                                      <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                                                          {renderBadgeEstadoGeneral(f.estado)}
+                                                      </td>
+                                                    )}
+                                                    {verColumna('acciones') && (
+                                                      <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                                                          <button
+                                                              disabled={!puedeVerDetalle}
+                                                              onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  handleVerDetalles(f);
+                                                              }}
+                                                              className="p-1 text-slate-500 hover:text-[#2383C2] dark:text-gray-400 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                              title="Visualizar documento"
+                                                          >
+                                                              <Eye size={14} />
+                                                          </button>
+                                                      </td>
+                                                    )}
                                                 </tr>
                                             ))
                                         )}

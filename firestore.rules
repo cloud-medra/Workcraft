@@ -18,6 +18,28 @@ service cloud.firestore {
       let u = getUsuario();
       return u.permisos[modulo] != null;
     }
+    // Acción granular (mismo criterio que useGranularPermission): la vista
+    // tiene que existir en permisosGranulares; una sección o acción sin
+    // configurar se permite; visible:false o la acción en false se niega.
+    function accionPermitida(ruta, seccion, accion) {
+      let vista = getUsuario().get('permisosGranulares', {}).get(ruta, null);
+      let sec = vista == null ? null : vista.get(seccion, null);
+      return vista != null
+        && (sec == null || (sec.get('visible', true) != false
+          && sec.get('elements', {}).get(accion, true) != false));
+    }
+    // Colecciones con UNA sola pantalla que escribe: además del módulo se
+    // exige el ítem de menú (vista) y, en accionEnVista, además la acción
+    // granular (ej. "Eliminar", "Importar", "Guardar PAD").
+    // Las colecciones compartidas entre pantallas (ej. *_documentos,
+    // maestros_codigos) siguen validando solo por módulo.
+    function escribeVista(modulo, ruta) {
+      return esAdminODev() || (tienePermiso(modulo) && tieneItem(modulo, ruta));
+    }
+    function accionEnVista(modulo, ruta, seccion, accion) {
+      return esAdminODev()
+        || (tienePermiso(modulo) && tieneItem(modulo, ruta) && accionPermitida(ruta, seccion, accion));
+    }
 
     match /{path=**}/documentos/{documentId} {
       allow read: if request.auth != null;
@@ -54,17 +76,23 @@ service cloud.firestore {
 
     match /laboratorio_empresas/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+      allow create, update: if request.auth != null && escribeVista('laboratorio', '/laboratorio/empresasLaboratorio');
+      allow delete: if request.auth != null
+        && accionEnVista('laboratorio', '/laboratorio/empresasLaboratorio', 'tabla_datos', 'action_eliminar');
     }
 
     match /laboratorio_codigos/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+      allow create, update: if request.auth != null && escribeVista('laboratorio', '/laboratorio/codigoLaboratorio');
+      allow delete: if request.auth != null
+        && accionEnVista('laboratorio', '/laboratorio/codigoLaboratorio', 'tabla', 'btn_eliminar');
     }
 
     match /laboratorio_ordenes/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('laboratorio'));
+      // Toda escritura de Órdenes es la importación desde Excel.
+      allow write: if request.auth != null
+        && accionEnVista('laboratorio', '/laboratorio/ordenLaboratorio', 'cabecera_acciones', 'btn_importar');
     }
 
     match /laboratorio_documentos/{document=**} {
@@ -87,17 +115,23 @@ service cloud.firestore {
 
     match /vacunatorio_empresas/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+      allow create, update: if request.auth != null && escribeVista('vacunatorio', '/vacunatorio/empresasVacunatorio');
+      allow delete: if request.auth != null
+        && accionEnVista('vacunatorio', '/vacunatorio/empresasVacunatorio', 'tabla_datos', 'action_eliminar');
     }
 
     match /vacunatorio_codigos/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+      allow create, update: if request.auth != null && escribeVista('vacunatorio', '/vacunatorio/codigoVacunatorio');
+      allow delete: if request.auth != null
+        && accionEnVista('vacunatorio', '/vacunatorio/codigoVacunatorio', 'tabla', 'btn_eliminar');
     }
 
     match /vacunatorio_ordenes/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('vacunatorio'));
+      // Toda escritura de Órdenes es la importación desde Excel.
+      allow write: if request.auth != null
+        && accionEnVista('vacunatorio', '/vacunatorio/ordenVacunatorio', 'cabecera_acciones', 'btn_importar');
     }
 
     match /vacunatorio_documentos/{document=**} {
@@ -237,7 +271,10 @@ service cloud.firestore {
 
     match /maestros_pad/{document=**} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && (esAdminODev() || tienePermiso('maestros'));
+      // Toda escritura de PAD es "Guardar / Actualizar PAD" (incluye el
+      // reemplazo de la receta de ítems).
+      allow write: if request.auth != null
+        && accionEnVista('maestros', '/maestros/padMaestros', 'acciones_pad', 'btn_guardar');
     }
 
     match /maestros_listados/{document=**} {

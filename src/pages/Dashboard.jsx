@@ -251,14 +251,14 @@ const Dashboard = () => {
     '/inventario/escaneoInventario': <EscaneoInventario />,
     '/inventario/inventarioCajas': <InventarioPorCajas />,
 
-    '/documentos/reportesInfo': <ReportesInfo />,
+    '/documentos/reportesInfo': <ReportesInfo pathVista="/documentos/reportesInfo" />,
     '/documentos/importarDetallesOC': <ImportarDetallesOC />,
     '/documentos/seguimientoFacturasGuias': <SeguimientoFacturasGuias />,
     '/documentos/ingresoOrdenes': <IngresoOrdenes />,
 
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/cargaMasivaDocumentos': <CargaMasivaDocumentos />,
-    '/implantes/reportesInfo': <ReportesInfo />,
+    '/implantes/reportesInfo': <ReportesInfo pathVista="/implantes/reportesInfo" />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,
     '/implantes/resumenImplantes': <ResumenImplantes />,
     '/implantes/sincronizacionImputadas': <SincronizacionImputadas />,

@@ -1,3 +1,5 @@
+import { mapaReportesInfo } from './documentos.js';
+
 export const implantesComponentMaps = {
   // Bug corregido (v2): la visibilidad de las pestañas de la vista de
   // detalle (Detalles, Información, Cargas, Orden, Documentos, Logs) se movió de una sección
@@ -308,4 +310,6 @@ export const implantesComponentMaps = {
       },
     },
   },
+
+  '/implantes/reportesInfo': mapaReportesInfo,
 };

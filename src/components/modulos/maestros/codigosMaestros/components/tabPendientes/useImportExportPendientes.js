@@ -8,6 +8,20 @@ import {
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { db } from '../../../../../../firebaseConfig';
+import { filtrarFilasExport } from '../../../../../../hooks/useColumnasPermitidas';
+
+// Encabezado del Excel → columna de la tabla de Pendientes (CX y OBSERVACION
+// no tienen columna en pantalla: se exportan siempre).
+const COLUMNA_DE_EXPORT = {
+  REFERENCIA: 'referencia',
+  DESCRIPTOR_EMPRESA: 'descEmpresa',
+  EMPRESA: 'empresa',
+  TIPO: 'tipo',
+  SEGMENTO: 'segmento',
+  CLASE: 'clase',
+  DESCRIPTOR_AUTO: 'descAuto',
+  PRECIO_NETO: 'precioNeto',
+};
 
 /**
  * Hook que encapsula toda la lógica de importación / exportación masiva
@@ -20,8 +34,10 @@ import { db } from '../../../../../../firebaseConfig';
  * @param {Object} params.userData - Usuario actual (para registradoPor / logs).
  * @param {Function} params.showToast - Función para mostrar notificaciones.
  * @param {string} params.colBase - Nombre de la colección base en Firestore.
+ * @param {Function} [params.ver] - Permiso por columna de la tabla (useColumnasPermitidas):
+ *   la exportación omite las columnas que el usuario no puede ver.
  */
-export function useImportExportPendientes({ registros, userData, showToast, colBase }) {
+export function useImportExportPendientes({ registros, userData, showToast, colBase, ver = () => true }) {
   const [showConfigDrawer, setShowConfigDrawer] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -46,7 +62,7 @@ export function useImportExportPendientes({ registros, userData, showToast, colB
       OBSERVACION: r.observacion || ''
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataExportar);
+    const worksheet = XLSX.utils.json_to_sheet(filtrarFilasExport(dataExportar, COLUMNA_DE_EXPORT, ver));
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Pendientes");
     XLSX.writeFile(workbook, `codigos_pendientes_${new Date().toISOString().slice(0, 10)}.xlsx`);

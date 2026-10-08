@@ -1,41 +1,28 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { User, AtSign, Mail, Lock, Shield, UserPlus, KeyRound, CheckCircle2, CircleDashed, RotateCcw } from 'lucide-react';
 
-// ⚠️ Ajusta estas rutas según dónde ubiques finalmente este archivo dentro de
-// components/modulos/... (mismo nivel de anidamiento que NotasAdmin.jsx).
 import { db, auth, firebaseConfig } from '../../../../firebaseConfig';
-import { MODULES } from '../../../../config/modulesConfig.jsx';
 import { COMPONENT_MAPS } from '../../../../config/componentMaps.jsx';
-
+import { completarPermisosGranulares, vistasConfigurables } from './permisosGranularesUtils';
 import { useToast } from '../../../../context/ToastContext';
 import Spinner from '../../../../components/ui/Spinner';
+import MarcoEdicionUsuario, { Chip, ConfirmarSalida } from './MarcoEdicionUsuario';
+import EditorPermisos from './EditorPermisos';
+import { Tarjeta, CampoTexto, CampoSelect } from './CamposFormulario';
+import { ROLES, esRolAccesoTotal, labelRol } from './roles';
 
-import {
-  UserPlus,
-  User,
-  AtSign,
-  Mail,
-  Lock,
-  Shield,
-  ChevronDown,
-  ChevronRight,
-  SlidersHorizontal,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Circle,
-  CircleDashed,
-} from 'lucide-react';
-
-// TODO: ajusta esta lista a los roles reales que maneja el sistema.
-const ROLES = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'dev', label: 'Desarrollador' },
-  { value: 'encargado', label: 'Encargado' },
-  { value: 'operador', label: 'Operador' },
-];
+// Crear Usuario, con el mismo marco y el mismo editor de permisos que
+// Editar usuario (Listado Usuario):
+//   Datos generales: crea la cuenta (Auth + documento base) — "paso 1".
+//   Permisos:        EditorPermisos. "Guardar permisos" guarda la selección
+//                    ("paso 2") y cada vista configurable se marca como
+//                    revisada ("paso 3", itemsFinalizados). Al estar todo
+//                    revisado la creación queda completa.
+// usuarios/{uid}.estadoCreacion se mantiene igual que antes: Listado Usuario
+// muestra las creaciones incompletas y permite retomarlas.
 
 const ESTADO_INICIAL = {
   nombreCompleto: '',
@@ -46,9 +33,6 @@ const ESTADO_INICIAL = {
   rol: 'operador',
 };
 
-// Se guarda en usuarios/{uid}.estadoCreacion. Permite saber exactamente en
-// qué paso del asistente quedó cada usuario (para poder retomarlo) y qué
-// ítems de configuración granular faltan por finalizar.
 const ESTADO_CREACION_INICIAL = {
   paso1: false,
   paso2: false,
@@ -56,60 +40,46 @@ const ESTADO_CREACION_INICIAL = {
   completo: false,
 };
 
-const PASOS = [
-  { n: 1, label: 'Datos básicos' },
-  { n: 2, label: 'Módulos y permisos' },
-  { n: 3, label: 'Configuración por ítem' },
-];
+const SIN_PERMISOS = { permisos: {}, permisosGranulares: {} };
 
 const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
   const { showToast } = useToast();
 
-  const [pasoActual, setPasoActual] = useState(1);
+  const [tab, setTab] = useState('datos');
   const [usuarioId, setUsuarioId] = useState(null);
   const [formData, setFormData] = useState(ESTADO_INICIAL);
-  // permisos: { moduloKey: ['/ruta/subitem1', '/ruta/subitem2', ...] }
+  // permisos: { moduloKey: ['/ruta/subitem1', ...] }
   const [permisos, setPermisos] = useState({});
   // permisosGranulares: { '/ruta/vista': { seccionKey: { visible, elements: { elementoKey: bool } } } }
   const [permisosGranulares, setPermisosGranulares] = useState({});
+  // Últimos permisos guardados en Firestore (para "cambios sin guardar").
+  const [guardado, setGuardado] = useState(SIN_PERMISOS);
   const [estadoCreacion, setEstadoCreacion] = useState(ESTADO_CREACION_INICIAL);
-
-  const [modulosExpandidos, setModulosExpandidos] = useState({});
-  const [itemAbierto, setItemAbierto] = useState(null); // path del ítem expandido en paso 3
+  const [editorKey, setEditorKey] = useState(0);
 
   const [cargando, setCargando] = useState(false);
   const [cargandoResume, setCargandoResume] = useState(false);
+  const [confirmarDescartar, setConfirmarDescartar] = useState(false);
 
   const resumeConsumidoRef = useRef(false);
 
-  const modulosConPermisos = Object.entries(MODULES).filter(
-    ([, modulo]) => modulo.subItems?.length
+  // Vistas y pestañas configurables incluidas (las que se marcan como revisadas).
+  const configurables = vistasConfigurables(permisos, permisosGranulares, COMPONENT_MAPS);
+  const itemsFinalizadosCount = configurables.filter((p) => estadoCreacion.itemsFinalizados[p]).length;
+
+  const datosSinGuardar = !usuarioId && Object.entries(formData).some(([k, v]) => v !== ESTADO_INICIAL[k]);
+  const permisosSinGuardar = useMemo(
+    () => Boolean(usuarioId) && JSON.stringify({ permisos, permisosGranulares }) !== JSON.stringify(guardado),
+    [usuarioId, permisos, permisosGranulares, guardado]
   );
+  const hayCambios = datosSinGuardar || permisosSinGuardar;
 
-  // Todas las rutas actualmente marcadas en "permisos", sin importar el módulo.
-  const pathsSeleccionados = [...new Set(Object.values(permisos).flat())];
-
-  // De esas rutas, solo las que tienen mapa de componentes (requieren config granular).
-  // El resto (sin entrada en COMPONENT_MAPS) se considera "Finalizado" automáticamente
-  // porque no hay nada que configurar (Opción A).
-  // Los paths con `procesos` (pantallas multi-proceso, ej. Códigos Maestros)
-  // aportan también cada uno de sus sub-procesos como ítem configurable
-  // independiente, aunque no tengan su propio subItem en modulesConfig.
-  // Solo cuentan los procesos que el admin efectivamente incluyó
-  // (existen en permisosGranulares) — uno que se quitó no necesita
-  // "finalizarse".
-  const vistasConfigurables = pathsSeleccionados.flatMap((path) => {
-    const config = COMPONENT_MAPS[path];
-    if (!config) return [];
-    const procesoPaths = Object.keys(config.procesos || {}).filter((p) => Boolean(permisosGranulares[p]));
-    return [path, ...procesoPaths];
-  });
-  const itemsFinalizadosCount = vistasConfigurables.filter(
-    (p) => estadoCreacion.itemsFinalizados[p]
-  ).length;
-  const itemsPendientesCount = vistasConfigurables.length - itemsFinalizadosCount;
-  const totalFinalizadosGlobal =
-    pathsSeleccionados.length - itemsPendientesCount; // sin config + con config finalizados
+  useEffect(() => {
+    if (!hayCambios) return undefined;
+    const avisar = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', avisar);
+    return () => window.removeEventListener('beforeunload', avisar);
+  }, [hayCambios]);
 
   // --- Retomar una creación en curso (viene de ListadoUsuario "Continuar creación") ---
   useEffect(() => {
@@ -137,9 +107,11 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
           rol: data.rol || 'operador',
         });
         setPermisos(data.permisos || {});
-        setPermisosGranulares(backfillProcesos(data.permisosGranulares || {}));
+        const granulares = completarPermisosGranulares(data.permisosGranulares || {}, COMPONENT_MAPS);
+        setPermisosGranulares(granulares);
         setEstadoCreacion(estado);
-        setPasoActual(estado.paso2 ? 3 : 2);
+        setGuardado({ permisos: data.permisos || {}, permisosGranulares: granulares });
+        setTab('permisos');
         showToast('Retomando creación de usuario en curso.', 'info');
       } catch (error) {
         console.error('Error al retomar creación de usuario:', error);
@@ -151,37 +123,6 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     })();
   }, [resumeUsuarioId, onResumeConsumido, showToast]);
 
-  // Genera el acceso total (todas las secciones/elementos visibles) a partir
-  // de una config de COMPONENT_MAPS. Se reutiliza tanto para la vista
-  // principal de un path como para cada uno de sus `procesos` anidados.
-  const generarAccesoTotalDesdeConfig = (config) => {
-    if (!config) return null;
-    const secciones = {};
-    Object.entries(config.sections || {}).forEach(([sectionKey, section]) => {
-      const elementos = {};
-      Object.keys(section.elements || {}).forEach((elKey) => {
-        elementos[elKey] = true;
-      });
-      secciones[sectionKey] = { visible: true, elements: elementos };
-    });
-    return secciones;
-  };
-
-  // Aplana los paths seleccionados de un módulo a la lista de ítems que
-  // realmente se renderizan en el paso 3: cada path, seguido de sus
-  // `procesos` anidados (si los tiene) como sub-ítems propios.
-  const construirItemsRenderables = (items, modulo) =>
-    items.flatMap((path) => {
-      const config = COMPONENT_MAPS[path];
-      const sub = modulo.subItems.find((s) => s.path === path);
-      const procesos = Object.entries(config?.procesos || {}).map(([procesoPath, procesoConfig]) => ({
-        path: procesoPath,
-        config: procesoConfig,
-        sub: null,
-        esProceso: true,
-      }));
-      return [{ path, config, sub, esProceso: false }, ...procesos];
-    });
 
   const calcularCompleto = (itemsFinalizados, listaConfigurables) =>
     listaConfigurables.every((p) => itemsFinalizados[p]);
@@ -191,189 +132,30 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const toggleExpandido = (moduloKey) => {
-    setModulosExpandidos((prev) => ({ ...prev, [moduloKey]: !prev[moduloKey] }));
-  };
-
-  const toggleModuloCompleto = (moduloKey, subItems) => {
-    const total = subItems.length;
-    const yaCompleto = (permisos[moduloKey]?.length || 0) === total;
-
-    setPermisos((prev) => ({
-      ...prev,
-      [moduloKey]: yaCompleto ? [] : subItems.map((s) => s.path),
-    }));
-
-    setPermisosGranulares((prev) => {
-      const copia = { ...prev };
-      subItems.forEach((s) => {
-        const config = COMPONENT_MAPS[s.path];
-        const procesoPaths = Object.keys(config?.procesos || {});
-
-        if (yaCompleto) {
-          delete copia[s.path];
-          procesoPaths.forEach((p) => delete copia[p]);
-          return;
-        }
-
-        if (!copia[s.path] && config) {
-          copia[s.path] = generarAccesoTotalDesdeConfig(config);
-        }
-        procesoPaths.forEach((p) => {
-          if (!copia[p]) copia[p] = generarAccesoTotalDesdeConfig(config.procesos[p]);
-        });
-      });
-      return copia;
-    });
-
-    // Si se está desmarcando todo el módulo, los ítems (incluidos los
-    // procesos anidados) que ya estaban "Finalizado" en el paso 3 dejan de
-    // existir como selección — se limpia su estado para que no queden
-    // colgados si vuelven a marcarse.
-    if (yaCompleto) {
+  // Cambios del editor (lógica pura compartida): lo que se quita deja de
+  // estar "revisado".
+  const onCambiarPermisos = (nuevo, { quitadas = [] } = {}) => {
+    setPermisos(nuevo.permisos);
+    setPermisosGranulares(nuevo.permisosGranulares);
+    if (quitadas.length) {
       setEstadoCreacion((prev) => {
-        const nuevosFinalizados = { ...prev.itemsFinalizados };
+        const quedan = { ...prev.itemsFinalizados };
         let cambio = false;
-        subItems.forEach((s) => {
-          const procesoPaths = Object.keys(COMPONENT_MAPS[s.path]?.procesos || {});
-          [s.path, ...procesoPaths].forEach((p) => {
-            if (p in nuevosFinalizados) {
-              delete nuevosFinalizados[p];
-              cambio = true;
-            }
-          });
-        });
-        if (!cambio) return prev;
-        return { ...prev, itemsFinalizados: nuevosFinalizados, completo: false };
+        quitadas.forEach((p) => { if (p in quedan) { delete quedan[p]; cambio = true; } });
+        return cambio ? { ...prev, itemsFinalizados: quedan, completo: false } : prev;
       });
     }
-  };
-
-  const toggleSubItem = (moduloKey, path) => {
-    const actuales = permisos[moduloKey] || [];
-    const existeAhora = actuales.includes(path);
-    const config = COMPONENT_MAPS[path];
-    const procesoPaths = Object.keys(config?.procesos || {});
-
-    setPermisos((prev) => {
-      const arr = prev[moduloKey] || [];
-      const nuevos = existeAhora ? arr.filter((p) => p !== path) : [...arr, path];
-      return { ...prev, [moduloKey]: nuevos };
-    });
-
-    setPermisosGranulares((prev) => {
-      if (existeAhora) {
-        const copia = { ...prev };
-        delete copia[path];
-        procesoPaths.forEach((p) => delete copia[p]);
-        return copia;
-      }
-      const copia = { ...prev };
-      if (!copia[path] && config) {
-        copia[path] = generarAccesoTotalDesdeConfig(config);
-      }
-      procesoPaths.forEach((p) => {
-        if (!copia[p]) copia[p] = generarAccesoTotalDesdeConfig(config.procesos[p]);
-      });
-      return copia;
-    });
-
-    if (existeAhora) {
-      setEstadoCreacion((prev) => {
-        const nuevosFinalizados = { ...prev.itemsFinalizados };
-        let cambio = false;
-        [path, ...procesoPaths].forEach((p) => {
-          if (p in nuevosFinalizados) {
-            delete nuevosFinalizados[p];
-            cambio = true;
-          }
-        });
-        if (!cambio) return prev;
-        return { ...prev, itemsFinalizados: nuevosFinalizados, completo: false };
-      });
-    }
-  };
-
-  const toggleSeccionVisible = (path, sectionKey) => {
-    setPermisosGranulares((prev) => {
-      const vista = prev[path];
-      if (!vista) return prev;
-      const seccion = vista[sectionKey];
-      return {
-        ...prev,
-        [path]: { ...vista, [sectionKey]: { ...seccion, visible: !seccion.visible } },
-      };
-    });
-  };
-
-  const toggleElementoVisible = (path, sectionKey, elementKey) => {
-    setPermisosGranulares((prev) => {
-      const vista = prev[path];
-      if (!vista) return prev;
-      const seccion = vista[sectionKey];
-      return {
-        ...prev,
-        [path]: {
-          ...vista,
-          [sectionKey]: {
-            ...seccion,
-            elements: { ...seccion.elements, [elementKey]: !seccion.elements[elementKey] },
-          },
-        },
-      };
-    });
-  };
-
-  // Incluye/quita un `proceso` (pestaña con path propio) directamente por
-  // existencia en permisosGranulares — reemplaza al viejo checkbox maestro
-  // de sección "navegacion" que podía apagar todas las pestañas hermanas
-  // de golpe (ver nota en useGranularPermission.js).
-  const toggleProceso = (procesoPath, procesoConfig) => {
-    setPermisosGranulares((prev) => {
-      if (prev[procesoPath]) {
-        const copia = { ...prev };
-        delete copia[procesoPath];
-        return copia;
-      }
-      return { ...prev, [procesoPath]: generarAccesoTotalDesdeConfig(procesoConfig) || {} };
-    });
-
-    setEstadoCreacion((prev) => {
-      if (!(procesoPath in prev.itemsFinalizados)) return prev;
-      const { [procesoPath]: _omit, ...restoFinalizados } = prev.itemsFinalizados;
-      return { ...prev, itemsFinalizados: restoFinalizados, completo: false };
-    });
-  };
-
-  // Migración perezosa: usuarios cuyo módulo padre ya estaba asignado
-  // antes de que ese módulo tuviera `procesos` en el componentMap (o antes
-  // de que se agregara un `proceso` nuevo) no tienen esas entradas en su
-  // permisosGranulares guardado. Se completan acá con acceso total (mismo
-  // comportamiento "todo visible" que ya tenían) la primera vez que se
-  // carga el usuario — así el admin puede empezar a restringir pestañas
-  // puntuales desde el checkbox de cada una, sin necesidad de un script de
-  // migración en Firestore.
-  const backfillProcesos = (permisosGranularesGuardados) => {
-    const resultado = { ...permisosGranularesGuardados };
-    Object.entries(COMPONENT_MAPS).forEach(([path, config]) => {
-      if (!resultado[path] || !config.procesos) return;
-      Object.entries(config.procesos).forEach(([procesoPath, procesoConfig]) => {
-        if (resultado[procesoPath]) return;
-        resultado[procesoPath] = generarAccesoTotalDesdeConfig(procesoConfig) || {};
-      });
-    });
-    return resultado;
   };
 
   const resetWizard = () => {
     setFormData(ESTADO_INICIAL);
     setPermisos({});
     setPermisosGranulares({});
+    setGuardado(SIN_PERMISOS);
     setEstadoCreacion(ESTADO_CREACION_INICIAL);
-    setModulosExpandidos({});
-    setItemAbierto(null);
     setUsuarioId(null);
-    setPasoActual(1);
+    setTab('datos');
+    setEditorKey((k) => k + 1);
   };
 
   const validarPaso1 = () => {
@@ -387,12 +169,12 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
 
   // --- Paso 1: crea el usuario en Auth + el documento base en Firestore ---
   const handleGuardarPaso1 = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
 
     // Si ya existe (venimos de "Continuar creación" o ya se guardó este
     // paso en esta misma sesión), no se vuelve a crear: solo se avanza.
     if (usuarioId) {
-      setPasoActual(2);
+      setTab('permisos');
       return;
     }
 
@@ -438,7 +220,7 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
       setUsuarioId(nuevoUsuario.uid);
       setEstadoCreacion(estadoInicial);
       showToast(`Usuario "${formData.nombreCompleto}" creado. Continúa con los permisos.`, 'success');
-      setPasoActual(2);
+      setTab('permisos');
     } catch (error) {
       console.error('Error al crear usuario:', error);
       if (error.code === 'auth/email-already-in-use') {
@@ -456,15 +238,20 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     }
   };
 
-  // --- Paso 2: guarda la selección de módulos/ítems ---
-  const handleGuardarPaso2 = async () => {
-    if (!usuarioId) return;
+  // Guarda la selección de vistas y la configuración ("paso 2"), y
+  // opcionalmente marca una vista como revisada ("paso 3").
+  const guardarPermisos = async (revisada) => {
+    if (!usuarioId) return false;
     setCargando(true);
     try {
+      const itemsFinalizados = revisada
+        ? { ...estadoCreacion.itemsFinalizados, [revisada]: true }
+        : estadoCreacion.itemsFinalizados;
       const nuevoEstado = {
         ...estadoCreacion,
         paso2: true,
-        completo: calcularCompleto(estadoCreacion.itemsFinalizados, vistasConfigurables),
+        itemsFinalizados,
+        completo: calcularCompleto(itemsFinalizados, configurables),
       };
       await updateDoc(doc(db, 'usuarios', usuarioId), {
         permisos,
@@ -472,37 +259,13 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
         estadoCreacion: nuevoEstado,
       });
       setEstadoCreacion(nuevoEstado);
-      showToast('Permisos guardados.', 'success');
-      setPasoActual(3);
+      setGuardado({ permisos, permisosGranulares });
+      showToast(revisada ? 'Vista marcada como revisada.' : 'Permisos guardados.', 'success');
+      return true;
     } catch (error) {
       console.error('Error al guardar permisos:', error);
       showToast('No se pudieron guardar los permisos', 'error');
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  // --- Paso 3: finaliza la configuración granular de un ítem puntual ---
-  const handleFinalizarItem = async (path) => {
-    if (!usuarioId) return;
-    setCargando(true);
-    try {
-      const nuevosItemsFinalizados = { ...estadoCreacion.itemsFinalizados, [path]: true };
-      const nuevoEstado = {
-        ...estadoCreacion,
-        itemsFinalizados: nuevosItemsFinalizados,
-        completo: calcularCompleto(nuevosItemsFinalizados, vistasConfigurables),
-      };
-      await updateDoc(doc(db, 'usuarios', usuarioId), {
-        permisosGranulares,
-        estadoCreacion: nuevoEstado,
-      });
-      setEstadoCreacion(nuevoEstado);
-      setItemAbierto(null);
-      showToast('Configuración del ítem guardada.', 'success');
-    } catch (error) {
-      console.error('Error al finalizar ítem:', error);
-      showToast('No se pudo guardar la configuración del ítem', 'error');
+      return false;
     } finally {
       setCargando(false);
     }
@@ -513,33 +276,7 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     resetWizard();
   };
 
-  const irAPaso = (n) => {
-    if (n === 1) return setPasoActual(1);
-    if (n === 2 && usuarioId) return setPasoActual(2);
-    if (n === 3 && usuarioId && estadoCreacion.paso2) return setPasoActual(3);
-  };
-
-  const labelEstadoPaso = (n) => {
-    if (n === 1) return usuarioId ? 'Guardado con éxito' : 'Pendiente';
-    if (n === 2) return estadoCreacion.paso2 ? 'Guardado con éxito' : 'Pendiente';
-    if (!estadoCreacion.paso2) return 'Pendiente';
-    if (vistasConfigurables.length === 0) return 'Sin ítems que configurar — Finalizado';
-    return `Pendiente (${itemsPendientesCount}) · Finalizado (${itemsFinalizadosCount})`;
-  };
-
-  const iconoEstadoPaso = (n) => {
-    if (n < pasoActual || (n === 1 && usuarioId) || (n === 2 && estadoCreacion.paso2)) {
-      if (n === 3) {
-        return estadoCreacion.completo ? (
-          <CheckCircle2 size={16} className="text-green-600" />
-        ) : (
-          <CircleDashed size={16} className="text-amber-500" />
-        );
-      }
-      return <CheckCircle2 size={16} className="text-green-600" />;
-    }
-    return <Circle size={16} className="text-gray-300 dark:text-gray-600" />;
-  };
+  const cancelar = () => (hayCambios ? setConfirmarDescartar(true) : resetWizard());
 
   if (cargandoResume) {
     return (
@@ -549,530 +286,103 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     );
   }
 
+  const accesoTotal = esRolAccesoTotal(formData.rol);
+  const estadoChip = !usuarioId
+    ? <Chip tono="gris">Cuenta sin crear</Chip>
+    : estadoCreacion.completo && estadoCreacion.paso2
+      ? <Chip tono="verde" icon={CheckCircle2}>Configuración completa</Chip>
+      : <Chip tono="ambar" icon={CircleDashed}>{itemsFinalizadosCount}/{configurables.length} vistas revisadas</Chip>;
+
   return (
-    <div className="w-full flex flex-col gap-4">
-      {/* --- STEPPER --- */}
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0">
-          {PASOS.map((p, idx) => {
-            const clickable =
-              p.n === 1 || (p.n === 2 && usuarioId) || (p.n === 3 && usuarioId && estadoCreacion.paso2);
-            return (
-              <React.Fragment key={p.n}>
+    <>
+      <ConfirmarSalida
+        abierto={confirmarDescartar}
+        guardando={cargando}
+        onGuardarYSalir={usuarioId ? async () => { if (await guardarPermisos()) { setConfirmarDescartar(false); resetWizard(); } } : undefined}
+        onSalir={() => { setConfirmarDescartar(false); resetWizard(); }}
+        onSeguir={() => setConfirmarDescartar(false)}
+      />
+      <MarcoEdicionUsuario
+        migas={<><span className="uppercase tracking-wider font-semibold">Usuarios</span><span>/</span><span>Crear usuario</span></>}
+        nombre={formData.nombreCompleto}
+        detalle={formData.email}
+        chips={<><Chip tono="azul" icon={Shield}>{labelRol(formData.rol)}</Chip>{estadoChip}</>}
+        hayCambios={hayCambios}
+        guardando={cargando}
+        onCancelar={cancelar}
+        onGuardar={tab === 'datos' ? (usuarioId ? () => setTab('permisos') : handleGuardarPaso1) : () => guardarPermisos()}
+        textoGuardar={tab === 'datos' ? (usuarioId ? 'Ir a permisos' : 'Crear cuenta') : 'Guardar permisos'}
+        puedeGuardar={tab === 'datos' ? true : permisosSinGuardar || !estadoCreacion.paso2}
+        accionesExtra={usuarioId && estadoCreacion.completo && estadoCreacion.paso2 && !permisosSinGuardar && (
+          <button
+            type="button"
+            onClick={handleFinalizarCreacion}
+            className="h-8 px-3.5 rounded-md border border-green-600 text-green-700 dark:text-green-400 text-[12px] font-semibold inline-flex items-center gap-1.5 hover:bg-green-50 dark:hover:bg-green-950/30"
+          >
+            <RotateCcw size={13} /> Finalizar y crear otro
+          </button>
+        )}
+        tabs={[
+          { id: 'datos', label: 'Datos generales', icon: UserPlus },
+          { id: 'permisos', label: 'Permisos', icon: KeyRound, deshabilitada: !usuarioId, motivo: 'Primero crea la cuenta en Datos generales' },
+        ]}
+        tabActiva={tab}
+        onTab={setTab}
+      >
+        {tab === 'datos' ? (
+          <div className="h-full overflow-y-auto">
+            <form onSubmit={handleGuardarPaso1} className="max-w-3xl">
+              <Tarjeta
+                titulo="Datos de la cuenta"
+                descripcion={usuarioId
+                  ? 'La cuenta ya fue creada. Continúa en la pestaña Permisos (o retómala luego desde Listado Usuario).'
+                  : 'Registra al usuario y define sus datos de acceso. Luego podrás asignar sus permisos.'}
+              >
+                <fieldset disabled={!!usuarioId} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                  <CampoTexto id="nombreCompleto" name="nombreCompleto" label="Nombre completo" icon={User} value={formData.nombreCompleto} onChange={handleChange} placeholder="Ej: Juana Pérez Soto" />
+                  <CampoTexto id="nombreUsuario" name="nombreUsuario" label="Nombre de usuario" icon={AtSign} value={formData.nombreUsuario} onChange={handleChange} placeholder="Ej: jperez" />
+                  <CampoTexto id="email" name="email" type="email" label="Correo" icon={Mail} value={formData.email} onChange={handleChange} placeholder="ejemplo@medra.cl" ayuda="Será el correo de ingreso al sistema." />
+                  <CampoSelect id="rol" name="rol" label="Rol" icon={Shield} opciones={ROLES} value={formData.rol} onChange={handleChange}
+                    ayuda={accesoTotal ? 'Acceso total: no se aplican los permisos granulares.' : 'Los permisos se asignan en la pestaña Permisos.'} />
+                  {!usuarioId && (
+                    <>
+                      <CampoTexto id="password" name="password" type="password" label="Contraseña" icon={Lock} value={formData.password} onChange={handleChange} placeholder="Mínimo 6 caracteres" autoComplete="new-password" />
+                      <CampoTexto id="confirmPassword" name="confirmPassword" type="password" label="Confirmar contraseña" icon={Lock} value={formData.confirmPassword} onChange={handleChange} placeholder="Repite la contraseña" autoComplete="new-password" />
+                    </>
+                  )}
+                </fieldset>
+                {/* Enter en el formulario crea la cuenta (igual que el botón del encabezado). */}
+                <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
+              </Tarjeta>
+            </form>
+          </div>
+        ) : (
+          <EditorPermisos
+            key={editorKey}
+            estado={{ permisos, permisosGranulares }}
+            onCambiar={onCambiarPermisos}
+            accesoTotalPorRol={accesoTotal}
+            insigniaVista={(path) => (configurables.includes(path) ? (
+              estadoCreacion.itemsFinalizados[path]
+                ? <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 shrink-0"><CheckCircle2 size={10} /> Revisada</span>
+                : <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0"><CircleDashed size={10} /> Por revisar</span>
+            ) : null)}
+            pieVista={(path) => (configurables.includes(path) && !estadoCreacion.itemsFinalizados[path] ? (
+              <div className="flex justify-end">
                 <button
                   type="button"
-                  disabled={!clickable}
-                  onClick={() => irAPaso(p.n)}
-                  className={`flex items-center gap-2 text-left ${
-                    clickable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
-                  }`}
+                  onClick={() => guardarPermisos(path)}
+                  disabled={cargando}
+                  className="h-8 px-3.5 rounded-md bg-[#2383C2] hover:bg-[#1d6fa5] text-white text-[12px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      pasoActual === p.n
-                        ? 'bg-[#2383C2] text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
-                    }`}
-                  >
-                    {p.n}
-                  </div>
-                  <div className="flex flex-col">
-                    <span
-                      className={`text-xs font-bold ${
-                        pasoActual === p.n
-                          ? 'text-[#2383C2]'
-                          : 'text-gray-600 dark:text-gray-300'
-                      }`}
-                    >
-                      Paso {p.n}: {p.label}
-                    </span>
-                    <span className="flex items-center gap-1 text-[10.5px] text-gray-400 dark:text-gray-500">
-                      {iconoEstadoPaso(p.n)}
-                      {labelEstadoPaso(p.n)}
-                    </span>
-                  </div>
+                  <CheckCircle2 size={14} /> Guardar y marcar como revisada
                 </button>
-                {idx < PASOS.length - 1 && (
-                  <div className="hidden sm:block flex-1 h-px bg-gray-200 dark:bg-gray-700 mx-4" />
-                )}
-              </React.Fragment>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* --- PASO 1: DATOS BÁSICOS --- */}
-      {pasoActual === 1 && (
-        <div className="max-w-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col gap-4">
-          <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
-            <h3 className="text-sm font-bold text-gray-700 dark:text-gray-100 uppercase tracking-wide flex items-center gap-2">
-              <UserPlus size={16} className="text-[#2383C2]" />
-              Crear Usuario
-            </h3>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              {usuarioId
-                ? 'Este paso ya fue guardado. Puedes continuar con los permisos.'
-                : 'Registra un nuevo usuario y define sus datos de acceso.'}
-            </p>
-          </div>
-
-          <form onSubmit={handleGuardarPaso1} className="flex flex-col gap-3">
-            <fieldset disabled={!!usuarioId} className="flex flex-col gap-3 disabled:opacity-60">
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                  Nombre completo
-                </label>
-                <div className="relative flex items-center">
-                  <User className="absolute ml-2 text-gray-400" size={14} />
-                  <input
-                    name="nombreCompleto"
-                    value={formData.nombreCompleto}
-                    onChange={handleChange}
-                    placeholder="Ej: Juana Pérez Soto"
-                    className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
-                  />
-                </div>
               </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                  Nombre de usuario
-                </label>
-                <div className="relative flex items-center">
-                  <AtSign className="absolute ml-2 text-gray-400" size={14} />
-                  <input
-                    name="nombreUsuario"
-                    value={formData.nombreUsuario}
-                    onChange={handleChange}
-                    placeholder="Ej: jperez"
-                    className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                  Correo
-                </label>
-                <div className="relative flex items-center">
-                  <Mail className="absolute ml-2 text-gray-400" size={14} />
-                  <input
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="ejemplo@medra.cl"
-                    className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                  Rol
-                </label>
-                <div className="relative flex items-center">
-                  <Shield className="absolute ml-2 text-gray-400" size={14} />
-                  <select
-                    name="rol"
-                    value={formData.rol}
-                    onChange={handleChange}
-                    className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2] appearance-none"
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {!usuarioId && (
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                      Contraseña
-                    </label>
-                    <div className="relative flex items-center">
-                      <Lock className="absolute ml-2 text-gray-400" size={14} />
-                      <input
-                        name="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={handleChange}
-                        placeholder="********"
-                        className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-600 dark:text-gray-300 mb-1">
-                      Confirmar
-                    </label>
-                    <div className="relative flex items-center">
-                      <Lock className="absolute ml-2 text-gray-400" size={14} />
-                      <input
-                        name="confirmPassword"
-                        type="password"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        placeholder="********"
-                        className="w-full text-xs p-2 pl-7 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </fieldset>
-
-            {!usuarioId && (
-              <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                El usuario deberá cambiar esta contraseña en su primer inicio de sesión
-                (queda marcado con <code className="text-gray-500 dark:text-gray-400">passwordChanged: false</code>).
-              </p>
-            )}
-
-            <div className="flex items-center justify-end gap-2 mt-2">
-              <button
-                type="submit"
-                disabled={cargando}
-                className="bg-[#2383C2] hover:bg-[#1b6aa0] text-white text-xs font-bold px-4 py-2 rounded flex items-center gap-2 transition-colors disabled:opacity-50 min-w-[170px] justify-center"
-              >
-                {cargando ? (
-                  <>
-                    <Spinner size="sm" color="#ffffff" />
-                    <span>Creando...</span>
-                  </>
-                ) : usuarioId ? (
-                  <>
-                    <span>Continuar</span>
-                    <ArrowRight size={13} />
-                  </>
-                ) : (
-                  <>
-                    <UserPlus size={13} />
-                    <span>Guardar y continuar</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* --- PASO 2: MÓDULOS Y PERMISOS --- */}
-      {pasoActual === 2 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-2">
-            <div>
-              <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide">
-                Módulos con acceso
-              </span>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                Selecciona los ítems visibles para {formData.nombreCompleto || 'este usuario'} dentro de cada módulo.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-            {modulosConPermisos.map(([moduloKey, modulo]) => {
-              const seleccionados = permisos[moduloKey] || [];
-              const total = modulo.subItems.length;
-              const expandido = !!modulosExpandidos[moduloKey];
-
-              return (
-                <div
-                  key={moduloKey}
-                  className="border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40 rounded-lg overflow-hidden transition-all"
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleExpandido(moduloKey)}
-                    className="w-full flex items-center justify-between p-2.5 hover:bg-gray-100 dark:hover:bg-gray-800/60 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-200">
-                      <span className="text-[#2383C2]">{modulo.icon}</span>
-                      {modulo.label}
-                      <span className="text-[10px] font-normal text-gray-400">
-                        ({seleccionados.length}/{total})
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <label
-                        className="flex items-center gap-1.5 text-[10px] text-gray-500 dark:text-gray-400"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={seleccionados.length === total}
-                          onChange={() => toggleModuloCompleto(moduloKey, modulo.subItems)}
-                          className="accent-[#2383C2]"
-                        />
-                        Todo
-                      </label>
-                      {expandido ? (
-                        <ChevronDown size={14} className="text-gray-400" />
-                      ) : (
-                        <ChevronRight size={14} className="text-gray-400" />
-                      )}
-                    </div>
-                  </button>
-
-                  {expandido && (
-                    <div className="p-2.5 pt-0 grid grid-cols-1 gap-1">
-                      {modulo.subItems.map((sub) => (
-                        <label
-                          key={sub.path}
-                          className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-300 p-1.5 rounded hover:bg-white dark:hover:bg-gray-800 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={seleccionados.includes(sub.path)}
-                            onChange={() => toggleSubItem(moduloKey, sub.path)}
-                            className="accent-[#2383C2]"
-                          />
-                          <span className="opacity-70">{sub.icon}</span>
-                          {sub.label}
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={() => setPasoActual(1)}
-              className="flex items-center gap-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold px-3 py-2 rounded"
-            >
-              <ArrowLeft size={13} />
-              Volver
-            </button>
-            <button
-              type="button"
-              onClick={handleGuardarPaso2}
-              disabled={cargando}
-              className="flex items-center gap-1.5 bg-[#2383C2] hover:bg-[#1b6aa0] text-white text-xs font-bold px-4 py-2 rounded transition-colors disabled:opacity-50 min-w-[170px] justify-center"
-            >
-              {cargando ? (
-                <>
-                  <Spinner size="sm" color="#ffffff" />
-                  <span>Guardando...</span>
-                </>
-              ) : (
-                <>
-                  <span>Guardar y continuar</span>
-                  <ArrowRight size={13} />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- PASO 3: CONFIGURACIÓN GRANULAR POR ÍTEM --- */}
-      {pasoActual === 3 && (
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm flex flex-col gap-3">
-          <div className="border-b border-gray-100 dark:border-gray-700 pb-2">
-            <span className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide flex items-center gap-2">
-              <SlidersHorizontal size={14} className="text-[#2383C2]" />
-              Configuración por ítem
-            </span>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400">
-              Abre cada ítem para ajustar su configuración detallada y márcalo como finalizado.
-              Los ítems sin configuración adicional ya quedan listos automáticamente.
-              {' '}
-              <span className="font-semibold text-gray-600 dark:text-gray-300">
-                {totalFinalizadosGlobal}/{pathsSeleccionados.length} finalizados.
-              </span>
-            </p>
-          </div>
-
-          {pathsSeleccionados.length === 0 ? (
-            <div className="text-center text-xs text-gray-400 dark:text-gray-500 py-8">
-              No seleccionaste ningún módulo/ítem en el paso anterior.
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {modulosConPermisos.map(([moduloKey, modulo]) => {
-                const items = permisos[moduloKey] || [];
-                if (items.length === 0) return null;
-
-                return (
-                  <div key={moduloKey} className="flex flex-col gap-1.5">
-                    <span className="flex items-center gap-1.5 text-[10.5px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                      <span className="text-[#2383C2]">{modulo.icon}</span>
-                      {modulo.label}
-                    </span>
-
-                    <div className="flex flex-col gap-1.5">
-                      {construirItemsRenderables(items, modulo).map(({ path, config, sub, esProceso }) => {
-                        // Un `proceso` (pestaña/sub-vista con path propio) se puede
-                        // incluir o quitar directamente por existencia — sin pasar
-                        // por un checkbox maestro de sección compartido. Ver nota
-                        // en useGranularPermission.js.
-                        const procesoIncluido = !esProceso || Boolean(permisosGranulares[path]);
-                        const finalizado = config && procesoIncluido ? !!estadoCreacion.itemsFinalizados[path] : true;
-                        const expandido = itemAbierto === path;
-                        const puedeExpandir = Boolean(config) && procesoIncluido;
-
-                        return (
-                          <div
-                            key={path}
-                            className={`border border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-900/40 rounded-lg overflow-hidden ${
-                              esProceso ? 'ml-4' : ''
-                            }`}
-                          >
-                            <div className="w-full flex items-center justify-between p-2.5 gap-2">
-                              <div className="flex items-center gap-2 flex-1 min-w-0">
-                                {esProceso && (
-                                  <input
-                                    type="checkbox"
-                                    checked={procesoIncluido}
-                                    onChange={() => toggleProceso(path, config)}
-                                    className="accent-[#2383C2] shrink-0"
-                                    title={procesoIncluido ? 'Quitar esta pestaña' : 'Incluir esta pestaña'}
-                                  />
-                                )}
-                                <button
-                                  type="button"
-                                  disabled={!puedeExpandir}
-                                  onClick={() => setItemAbierto(expandido ? null : path)}
-                                  className={`flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-200 flex-1 min-w-0 text-left transition-colors ${
-                                    puedeExpandir ? 'hover:text-[#2383C2] cursor-pointer' : 'cursor-default'
-                                  }`}
-                                >
-                                  {esProceso && <span className="text-gray-400 dark:text-gray-500 shrink-0">↳</span>}
-                                  <span className="opacity-70 shrink-0">{sub?.icon}</span>
-                                  <span className="truncate">{sub?.label || config?.label || path}</span>
-                                </button>
-                              </div>
-                              <span className="flex items-center gap-2 shrink-0">
-                                {esProceso && !procesoIncluido ? (
-                                  <span className="text-[9.5px] text-gray-400 dark:text-gray-500">Sin incluir</span>
-                                ) : (
-                                  <span
-                                    className={`flex items-center gap-1 text-[9.5px] font-bold px-1.5 py-0.5 rounded-full ${
-                                      finalizado
-                                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                        : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                                    }`}
-                                  >
-                                    {finalizado ? <CheckCircle2 size={11} /> : <CircleDashed size={11} />}
-                                    {finalizado ? 'Finalizado' : 'Pendiente'}
-                                  </span>
-                                )}
-                                {!config && (
-                                  <span className="text-[9.5px] text-gray-400 dark:text-gray-500">
-                                    (sin configuración adicional)
-                                  </span>
-                                )}
-                                {puedeExpandir && (
-                                  expandido ? (
-                                    <ChevronDown size={14} className="text-gray-400" />
-                                  ) : (
-                                    <ChevronRight size={14} className="text-gray-400" />
-                                  )
-                                )}
-                              </span>
-                            </div>
-
-                            {expandido && config && procesoIncluido && (
-                              <div className="p-3 pt-0 flex flex-col gap-3">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {Object.entries(config.sections).map(([sectionKey, section]) => {
-                                    const vistaPermisos = permisosGranulares[path];
-                                    const seccionEstado = vistaPermisos?.[sectionKey];
-                                    if (!seccionEstado) return null;
-                                    return (
-                                      <div
-                                        key={sectionKey}
-                                        className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 p-2.5"
-                                      >
-                                        <label className="flex items-center gap-2 text-[11px] font-bold text-gray-700 dark:text-gray-200 pb-1.5 mb-1.5 border-b border-gray-100 dark:border-gray-700 cursor-pointer">
-                                          <input
-                                            type="checkbox"
-                                            checked={seccionEstado.visible}
-                                            onChange={() => toggleSeccionVisible(path, sectionKey)}
-                                            className="accent-[#2383C2]"
-                                          />
-                                          {section.label}
-                                        </label>
-
-                                        <div className="flex flex-col gap-1 pl-1">
-                                          {Object.entries(section.elements || {}).map(([elKey, el]) => (
-                                            <label
-                                              key={elKey}
-                                              className={`flex items-center gap-2 text-[10.5px] p-1 rounded cursor-pointer ${
-                                                seccionEstado.visible
-                                                  ? 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/40'
-                                                  : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                                              }`}
-                                            >
-                                              <input
-                                                type="checkbox"
-                                                disabled={!seccionEstado.visible}
-                                                checked={!!seccionEstado.elements[elKey]}
-                                                onChange={() => toggleElementoVisible(path, sectionKey, elKey)}
-                                                className="accent-[#2383C2]"
-                                              />
-                                              {el.label}
-                                            </label>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-
-                                <div className="flex justify-end">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleFinalizarItem(path)}
-                                    disabled={cargando}
-                                    className="flex items-center gap-1.5 bg-[#2383C2] hover:bg-[#1b6aa0] text-white text-xs font-bold px-3 py-1.5 rounded transition-colors disabled:opacity-50"
-                                  >
-                                    <CheckCircle2 size={13} />
-                                    Finalizar
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={() => setPasoActual(2)}
-              className="flex items-center gap-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 text-xs font-bold px-3 py-2 rounded"
-            >
-              <ArrowLeft size={13} />
-              Volver
-            </button>
-            <button
-              type="button"
-              onClick={handleFinalizarCreacion}
-              disabled={!estadoCreacion.completo}
-              title={!estadoCreacion.completo ? 'Finaliza todos los ítems pendientes primero' : ''}
-              className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <CheckCircle2 size={14} />
-              Finalizar creación
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+            ) : null)}
+          />
+        )}
+      </MarcoEdicionUsuario>
+    </>
   );
 };
 

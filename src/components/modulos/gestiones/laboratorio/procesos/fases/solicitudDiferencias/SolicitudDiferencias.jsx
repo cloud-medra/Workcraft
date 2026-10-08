@@ -18,6 +18,20 @@ import { useGranularPermission } from '../../../../../../../hooks/useGranularPer
 import DetalleSolicitudDif from './DetalleSolicitudDif';
 import { useLaboratorioData } from '../../../LaboratorioDataContext';
 import EstadoProcesoBadge from '../../../../shared/EstadoProcesoBadge';
+import { useColumnasPermitidas, filtrarFilasExport } from '../../../../../../../hooks/useColumnasPermitidas';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_documentos' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'folio', label: 'Folio' },
+  { key: 'emision', label: 'Emisión' },
+  { key: 'mesImputacion', label: 'Mes Imputación' },
+  { key: 'ref', label: 'Ref. (OC)' },
+  { key: 'razonSocial', label: 'Razón Social' },
+  { key: 'total', label: 'Total (Neto)' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'acciones', label: 'Acciones' }
+];
 
 const SolicitudDiferencias = () => {
   const [documentos, setDocumentos] = useState([]);
@@ -35,7 +49,8 @@ const SolicitudDiferencias = () => {
   const { confirmAction } = useModal();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio";
+  const PATH_VISTA = "/laboratorio/archivosControlLaboratorio/solicitudDiferencias"; // permisos propios de esta pestaña
+  const { columnasVisibles: columnasTabla, ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_documentos', COLUMNAS_TABLA);
   const COL_BASE = "laboratorio_documentos";
   
   const ESTADOS_PERMITIDOS = [
@@ -123,7 +138,8 @@ const SolicitudDiferencias = () => {
     cargarDocumentosDiferencias();
   }, [cargarDocumentosDiferencias]);
 
-  const handleVerDetalles = (documento) => setDocumentoSeleccionado(documento);
+  const puedeVerDetalle = hasPermission(PATH_VISTA, "tabla_documentos", "btn_ver");
+  const handleVerDetalles = (documento) => { if (puedeVerDetalle) setDocumentoSeleccionado(documento); };
   const handleVolverALista = () => setDocumentoSeleccionado(null);
 
   const documentosFiltrados = useMemo(() => {
@@ -145,6 +161,7 @@ const SolicitudDiferencias = () => {
   }, [documentosFiltrados]);
 
   const handleExportarTodoExcel = () => {
+    if (!hasPermission(PATH_VISTA, "acciones_detalle", "btn_exportar_todo")) return;
     if (documentosFiltrados.length === 0) {
       showToast('No hay documentos para exportar', 'warning');
       return;
@@ -205,13 +222,29 @@ const SolicitudDiferencias = () => {
             return;
           }
 
-          const worksheet = XLSX.utils.json_to_sheet(filasExcel);
+          // Solo las columnas que el usuario ve: las del documento según la tabla de
 
-          worksheet['!cols'] = [
-            { wch: 12 }, { wch: 12 }, { wch: 28 }, { wch: 16 },
-            { wch: 16 }, { wch: 32 }, { wch: 18 }, { wch: 14 },
-            { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 24 }
-          ];
+          // la lista y las de ítems según la tabla del detalle (permisos col_*).
+
+          const columnaDoc = { 'Folio': 'folio', 'Emisión': 'emision', 'Proveedor': 'razonSocial', 'Ref. (OC)': 'ref' };
+
+          const columnaDet = { 'Cód. Maestro': 'codigoMaestro', 'Descripción Maestro': 'descripcionMaestro', 'Artículo OC': 'articuloOC', 'Cant. Documento': 'cantidadDoc', 'Precio Documento': 'precioDoc', 'Cant. OC': 'cantidadOC', 'Precio OC': 'precioOC', 'Estado Discrepancia': 'estadoDiscrepancia' };
+
+          const filasPermitidas = filtrarFilasExport(
+
+            filtrarFilasExport(filasExcel, columnaDoc, (k) => hasPermission(PATH_VISTA, 'tabla_documentos', `col_${k}`)),
+
+            columnaDet, (k) => hasPermission(PATH_VISTA, 'tabla_detalle', `col_${k}`)
+
+          );
+
+          const worksheet = XLSX.utils.json_to_sheet(filasPermitidas);
+
+          // Anchos por encabezado (la hoja puede omitir columnas sin permiso).
+
+          const anchosPorEncabezado = { 'Folio': 12, 'Emisión': 12, 'Proveedor': 28, 'Ref. (OC)': 16, 'Cód. Maestro': 16, 'Descripción Maestro': 32, 'Artículo OC': 18, 'Cant. Documento': 14, 'Precio Documento': 14, 'Cant. OC': 12, 'Precio OC': 12, 'Estado Discrepancia': 24 };
+
+          worksheet['!cols'] = Object.keys(filasPermitidas[0] || {}).map((h) => ({ wch: anchosPorEncabezado[h] || 14 }));
 
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, 'Solicitud Diferencias General');
@@ -278,6 +311,7 @@ const SolicitudDiferencias = () => {
           formatearFechaEmision={formatearFechaEmision}
           getBadgeStyle={renderBadgeEstadoGeneral}
           onVolver={handleVolverALista}
+          puedeExportar={hasPermission(PATH_VISTA, "acciones_detalle", "btn_exportar_solicitud")}
         />
       ) : (
         <>
@@ -341,6 +375,7 @@ const SolicitudDiferencias = () => {
             </div>
 
             <div className="flex items-center gap-1.5">
+              {hasPermission(PATH_VISTA, "acciones_detalle", "btn_exportar_todo") && (
               <button
                 onClick={handleExportarTodoExcel}
                 disabled={!filtroAnio || loading || exportando || documentosFiltrados.length === 0}
@@ -350,6 +385,7 @@ const SolicitudDiferencias = () => {
                 <FileSpreadsheet size={12} />
                 <span>Exportar Todo</span>
               </button>
+              )}
 
               <button
                 onClick={cargarDocumentosDiferencias}
@@ -374,20 +410,36 @@ const SolicitudDiferencias = () => {
                 <table className="w-full text-left text-[11px] border-collapse table-fixed min-w-[950px]">
                   <thead className="bg-slate-100 dark:bg-gray-900/80 sticky top-0 z-10">
                     <tr className="text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px] tracking-wider">
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Mes Imputación</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref. (OC)</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
-                      <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
-                      <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
+                      {verColumna('folio') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Folio</th>
+                      )}
+                      {verColumna('emision') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Emisión</th>
+                      )}
+                      {verColumna('mesImputacion') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[11%] text-center">Mes Imputación</th>
+                      )}
+                      {verColumna('ref') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[10%]">Ref. (OC)</th>
+                      )}
+                      {verColumna('razonSocial') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[27%]">Razón Social</th>
+                      )}
+                      {verColumna('total') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-right">Total (Neto)</th>
+                      )}
+                      {verColumna('estado') && (
+                        <th className="px-2 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 w-[12%] text-center">Estado</th>
+                      )}
+                      {verColumna('acciones') && (
+                        <th className="px-2 py-1.5 border-b border-slate-200 dark:border-gray-700 w-[8%] text-center">Acciones</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/60 dark:divide-gray-700/50 bg-white dark:bg-gray-800">
                     {documentosFiltrados.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
+                        <td colSpan={columnasTabla.length} className="px-3 py-6 text-center text-slate-400 dark:text-gray-500 text-xs">
                           <div className="flex flex-col items-center gap-1.5">
                             <AlertTriangle size={18} className="text-slate-300 dark:text-gray-600" />
                             <span>
@@ -406,39 +458,56 @@ const SolicitudDiferencias = () => {
                           className="border-l-2 border-transparent hover:border-amber-500 hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition-colors cursor-pointer"
                           title="Doble clic para ver el detalle"
                         >
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
-                            {d.folio}
-                          </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
-                            {formatearFechaEmision(d.fchEmis)}
-                          </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 text-center font-medium whitespace-nowrap">
-                            {obtenerMesImputacion(d)}
-                          </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
-                            {d.folioRef || 'S/R'}
-                          </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={d.rznSoc}>
-                            {d.rznSoc || 'Sin Razón Social'}
-                          </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
-                            ${Math.round(Number(d.total || 0)).toLocaleString('es-CL')}
-                          </td>
-                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                            {renderBadgeEstadoGeneral(d.estado)}
-                          </td>
-                          <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleVerDetalles(d);
-                              }}
-                              className="p-1 text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors"
-                              title="Visualizar documento"
-                            >
-                              <Eye size={14} />
-                            </button>
-                          </td>
+                          {verColumna('folio') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 font-normal text-slate-800 dark:text-gray-100 truncate">
+                              {d.folio}
+                            </td>
+                          )}
+                          {verColumna('emision') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 whitespace-nowrap">
+                              {formatearFechaEmision(d.fchEmis)}
+                            </td>
+                          )}
+                          {verColumna('mesImputacion') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 text-center font-medium whitespace-nowrap">
+                              {obtenerMesImputacion(d)}
+                            </td>
+                          )}
+                          {verColumna('ref') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-600 dark:text-gray-400 truncate">
+                              {d.folioRef || 'S/R'}
+                            </td>
+                          )}
+                          {verColumna('razonSocial') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={d.rznSoc}>
+                              {d.rznSoc || 'Sin Razón Social'}
+                            </td>
+                          )}
+                          {verColumna('total') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-800 dark:text-gray-100 font-normal text-right whitespace-nowrap">
+                              ${Math.round(Number(d.total || 0)).toLocaleString('es-CL')}
+                            </td>
+                          )}
+                          {verColumna('estado') && (
+                            <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                              {renderBadgeEstadoGeneral(d.estado)}
+                            </td>
+                          )}
+                          {verColumna('acciones') && (
+                            <td className="px-2 py-1 border-b border-slate-200/60 dark:border-gray-700/70 text-center whitespace-nowrap">
+                              <button
+                                disabled={!puedeVerDetalle}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVerDetalles(d);
+                                }}
+                                className="p-1 text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 hover:bg-slate-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                title="Visualizar documento"
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))
                     )}

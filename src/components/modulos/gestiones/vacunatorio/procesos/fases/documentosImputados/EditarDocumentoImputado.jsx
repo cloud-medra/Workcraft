@@ -1,8 +1,24 @@
 import React, { useState } from 'react';
 import { X, FileText, Package, User, Building2, Briefcase, Save } from 'lucide-react';
 import { getEstadoProcesoClase } from '../../../../shared/estadosProceso';
+import { useColumnasPermitidas } from '../../../../../../../hooks/useColumnasPermitidas';
+
+const PATH_VISTA = '/vacunatorio/archivosControlVacunatorio/documentosImputados';
+
+// Columnas de la tabla (granularidad por columna: `col_<key>` en la sección
+// 'tabla_edicion' del mapa de permisos; ver useColumnasPermitidas).
+const COLUMNAS_TABLA = [
+  { key: 'linea', label: 'Lin.' },
+  { key: 'codigoDoc', label: 'Código Doc.' },
+  { key: 'codigoMaestro', label: 'Cód. Maestro' },
+  { key: 'nombreItem', label: 'Nombre Ítem' },
+  { key: 'cantidad', label: 'Cant.' },
+  { key: 'monto', label: 'Monto ($)' },
+  { key: 'estado', label: 'Estado' }
+];
 
 const EditarDocumentoImputado = ({ documento, onClose, onGuardar }) => {
+  const { ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_edicion', COLUMNAS_TABLA);
   if (!documento) return null;
 
   const [formData, setFormData] = useState({
@@ -230,67 +246,95 @@ const EditarDocumentoImputado = ({ documento, onClose, onGuardar }) => {
               <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead className="bg-slate-100 dark:bg-gray-900 text-slate-600 dark:text-gray-400 uppercase font-normal text-[10px]">
                   <tr>
-                    <th className="p-2 text-center w-12">Lin.</th>
-                    <th className="p-2">Código Doc.</th>
-                    <th className="p-2">Cód. Maestro</th>
-                    <th className="p-2">Nombre Ítem</th>
-                    <th className="p-2">Cant.</th>
-                    <th className="p-2">Monto ($)</th>
-                    <th className="p-2 text-center">Estado</th>
+                    {verColumna('linea') && (
+                      <th className="p-2 text-center w-12">Lin.</th>
+                    )}
+                    {verColumna('codigoDoc') && (
+                      <th className="p-2">Código Doc.</th>
+                    )}
+                    {verColumna('codigoMaestro') && (
+                      <th className="p-2">Cód. Maestro</th>
+                    )}
+                    {verColumna('nombreItem') && (
+                      <th className="p-2">Nombre Ítem</th>
+                    )}
+                    {verColumna('cantidad') && (
+                      <th className="p-2">Cant.</th>
+                    )}
+                    {verColumna('monto') && (
+                      <th className="p-2">Monto ($)</th>
+                    )}
+                    {verColumna('estado') && (
+                      <th className="p-2 text-center">Estado</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-gray-700">
                   {formData.detalles?.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition">
-                      <td className="p-2 text-center text-slate-500">{item.nroLin || idx + 1}</td>
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.codigo || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'codigo', e.target.value)}
-                          className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-600 dark:text-gray-300 w-28"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.codigoMaestro || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'codigoMaestro', e.target.value)}
-                          className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-[#2383C2] w-24"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.nombre || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'nombre', e.target.value)}
-                          className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 w-48"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.cantidad || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'cantidad', e.target.value)}
-                          className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-16 text-right"
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input 
-                          type="text" 
-                          value={item.monto || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'monto', e.target.value)}
-                          className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-28 text-right"
-                        />
-                      </td>
-                      <td className="p-2 text-center">
-                        <input 
-                          type="text" 
-                          value={item.estadoItem || ''} 
-                          onChange={(e) => handleDetalleChange(idx, 'estadoItem', e.target.value)}
-                          className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center text-emerald-700 dark:text-emerald-300 w-24"
-                        />
-                      </td>
+                      {verColumna('linea') && (
+                        <td className="p-2 text-center text-slate-500">{item.nroLin || idx + 1}</td>
+                      )}
+                      {verColumna('codigoDoc') && (
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            value={item.codigo || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'codigo', e.target.value)}
+                            className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-600 dark:text-gray-300 w-28"
+                          />
+                        </td>
+                      )}
+                      {verColumna('codigoMaestro') && (
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            value={item.codigoMaestro || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'codigoMaestro', e.target.value)}
+                            className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-[#2383C2] w-24"
+                          />
+                        </td>
+                      )}
+                      {verColumna('nombreItem') && (
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            value={item.nombre || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'nombre', e.target.value)}
+                            className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200 w-48"
+                          />
+                        </td>
+                      )}
+                      {verColumna('cantidad') && (
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            value={item.cantidad || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'cantidad', e.target.value)}
+                            className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-medium text-slate-700 dark:text-gray-200 w-16 text-right"
+                          />
+                        </td>
+                      )}
+                      {verColumna('monto') && (
+                        <td className="p-2">
+                          <input 
+                            type="text" 
+                            value={item.monto || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'monto', e.target.value)}
+                            className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 font-semibold text-slate-800 dark:text-gray-100 w-28 text-right"
+                          />
+                        </td>
+                      )}
+                      {verColumna('estado') && (
+                        <td className="p-2 text-center">
+                          <input 
+                            type="text" 
+                            value={item.estadoItem || ''} 
+                            onChange={(e) => handleDetalleChange(idx, 'estadoItem', e.target.value)}
+                            className="p-1 rounded border border-slate-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-center text-emerald-700 dark:text-emerald-300 w-24"
+                          />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
