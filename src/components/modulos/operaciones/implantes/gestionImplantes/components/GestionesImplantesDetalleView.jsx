@@ -112,7 +112,12 @@ const GestionesImplantesDetalleView = forwardRef(({
       return regCodigo === admisionCodigoTarget;
     });
 
-    return filtrados.length > 0 ? filtrados : (item ? [item] : []);
+    // Los bloques de la admisión mantienen su orden histórico (creación más
+    // reciente primero), independiente del orden por defecto de la tabla.
+    const msCreacion = (r) => (r.fechaRegistro?.toMillis ? r.fechaRegistro.toMillis() : new Date(r.fechaRegistro || 0).getTime());
+    const ordenados = [...filtrados].sort((a, b) => msCreacion(b) - msCreacion(a));
+
+    return ordenados.length > 0 ? ordenados : (item ? [item] : []);
   }, [admisionCodigoTarget, todosLosRegistros, item]);
 
   const [activeTab, setActiveTab] = useState(() => tabsPermitidas[0]?.id || null);

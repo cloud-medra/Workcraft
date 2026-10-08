@@ -27,6 +27,7 @@ import { registrarLogImplantes } from '../utils/registrarLogImplantes';
 import { existeGestionEnColeccion, extraerDatosBase, MENSAJE_DUPLICADO } from '../../../shared/empresaFechaDesdeDetalle';
 import { calcularOcPendiente, itemsDeGestion } from '../../../shared/ocIndex/indiceOC';
 import { calcularFechaRegistroAdmision } from '../../../shared/fechaRegistroAdmision';
+import { ordenarGestiones } from '../utils/ordenGestiones';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -193,12 +194,11 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
         active: true,
         ...document.data()
       }));
-      mapeados.sort((a, b) => {
-        const millisA = a.fechaRegistro?.toMillis ? a.fechaRegistro.toMillis() : new Date(a.fechaRegistro || 0).getTime();
-        const millisB = b.fechaRegistro?.toMillis ? b.fechaRegistro.toMillis() : new Date(b.fechaRegistro || 0).getTime();
-        return millisB - millisA;
-      });
-      return mapeados;
+      // Orden por defecto: fecha de la gestión (la columna "Fecha"), luego
+      // nombre y empresa. Antes se ordenaba por fechaRegistro (creación del
+      // documento), que no es la fecha que muestra la tabla: por eso salían
+      // intercaladas. Ver utils/ordenGestiones.js.
+      return ordenarGestiones(mapeados);
     };
 
     if (!admision && refPath) {

@@ -128,8 +128,8 @@ export const useGestionesImplantesFiltros = (implantes) => {
   }, [implantesFiltradosSinDia, filtrosDias]);
 
   // Paginación de la tabla (50 filas por página) sobre `implantesFiltrados`,
-  // que ya viene ordenado (useGestionesImplantesData ordena por
-  // fechaRegistro descendente antes de filtrar) — acá solo se corta en
+  // que ya viene ordenado (useGestionesImplantesData ordena por fecha
+  // desc, nombre y empresa — utils/ordenGestiones.js) — acá solo se corta en
   // trozos de 50, sin volver a ordenar. Es 100% client-side: los datos del
   // mes ya están en memoria (acotados por el listener a los más recientes),
   // así que no hace falta una consulta nueva a Firestore por cada página.
