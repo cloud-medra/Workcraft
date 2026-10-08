@@ -82,3 +82,51 @@ describe('partes y otros', () => {
     expect(pares).toEqual([['JUAN PEREZ SOTO', 'PEREZ SOTO JUAN'], ['JUAN PEREZ SOTO', 'JUAN PERES SOTO']]);
   });
 });
+
+describe('montos y códigos (versión 2)', () => {
+  const { aporteDesdeDoc, repartirMontos, clavePrecio } = nucleo;
+  const imp = (extra) => item({ codigo: 'IMP-1', descriptorAuto: 'Tornillo 5mm', cantidad: 2, precio: 1000, ...extra });
+
+  it('monto = cantidad × precio unitario (Consignación usa "costo"), sin IVA ni recargo', () => {
+    expect(aporteDesdeDoc('implantes', imp({ vecesCosto: 1.5, venta: 9999, total: 1 })).monto).toBe(2000);
+    expect(aporteDesdeDoc('consignacion', { gestionId: '1', nombre: 'X', codigo: 'C-1', descripcion: 'Placa', cantidad: 3, costo: 500 }).monto).toBe(1500);
+  });
+
+  it('sub-ítems (contenido de PAD y lotes adicionales) no son línea de código ni "sin precio"', () => {
+    const contenido = aporteDesdeDoc('implantes', imp({ padPadreId: 'pad1', codigo: 'No lleva OC', precio: 0 }));
+    const lote = aporteDesdeDoc('implantes', imp({ codigo: 'No lleva OC', precio: 0 }));
+    [contenido, lote].forEach((ap) => { expect(ap.linea).toBeNull(); expect(ap.sinPrecio).toBe(false); });
+    expect(aporteDesdeDoc('implantes', imp({ precio: 0 })).sinPrecio).toBe(true);
+  });
+
+  it('sin código: línea "Sin código" separada por descripción, no mezclada con códigos reales', () => {
+    const a = aporteDesdeDoc('implantes', imp({ codigo: 'P', descriptorAuto: 'Malla' }));
+    const b = aporteDesdeDoc('implantes', imp({ codigo: '', descriptorAuto: 'malla ' }));
+    const c = aporteDesdeDoc('implantes', imp({ codigo: 'S/C', descriptorAuto: 'Clavo' }));
+    expect(a.linea.datos.k).toBe(b.linea.datos.k);
+    expect(a.linea.datos.k).not.toBe(c.linea.datos.k);
+    expect(a.linea.datos.k.startsWith('SC-')).toBe(true);
+    expect(a.linea.codigo.c).toBe('');
+  });
+
+  it('calcularPeriodo: líneas por admisión × código, montos y precios usados', () => {
+    const r = calcularPeriodo('implantes', [imp(), imp({ precio: 1200, cantidad: 1 }), imp({ codigo: 'IMP-2', precio: 0 }), imp({ padPadreId: 'x', codigo: 'No lleva OC', precio: 0 })]);
+    expect(r.documentos).toBe(4);
+    expect(r.sinPrecio).toBe(1);
+    const lineas = Object.entries(r.l);
+    expect(lineas).toHaveLength(2);
+    const [claveImp1, l1] = lineas.find(([, l]) => l.k === Object.keys(r.codigos).find((k) => r.codigos[k].c === 'IMP-1'));
+    expect([l1.q, l1.n]).toEqual([3, 2]);
+    expect(r.montos.l[claveImp1].$).toBe(3200);
+    expect(r.montos.l[claveImp1].p).toEqual({ [clavePrecio(1000)]: 1, [clavePrecio(1200)]: 1 });
+    expect(Object.values(r.montos.t).reduce((s, m) => s + m.$, 0)).toBe(3200);
+  });
+
+  it('precios con decimales no rompen las claves; los montos se reparten si no caben', () => {
+    expect(clavePrecio(1234.5)).toBe('1234,5');
+    const muchos = { t: Object.fromEntries(Array.from({ length: 40000 }, (_, i) => [`t${i}`, { $: i, sp: 0 }])), l: {} };
+    const grupos = repartirMontos(muchos);
+    expect(grupos.length).toBeGreaterThan(1);
+    expect(grupos.reduce((s, g) => s + Object.keys(g.t).length, 0)).toBe(40000);
+  });
+});

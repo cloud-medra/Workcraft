@@ -1,33 +1,53 @@
-import { formatoNumero } from './formato';
+import { formatoNumero, formatoMonto } from './formato';
 
-// Top 10 por admisiones del período elegido. La barra gris clara de fondo es
-// el período anterior, para comparar de un vistazo.
-const BarrasTop = ({ filas, titulo, etiquetaActual, etiquetaAnterior, onSeleccionar }) => {
-  const top = [...filas].sort((a, b) => b.actual - a.actual || a.nombre.localeCompare(b.nombre, 'es')).filter((f) => f.actual > 0).slice(0, 10);
-  const maximo = Math.max(1, ...top.map((f) => Math.max(f.actual, f.anterior)));
+// Top 10 del período elegido, por admisiones / cantidad o por monto
+// (`metrica`). La barra clara de fondo es el período anterior, para comparar
+// de un vistazo.
+const METRICAS = {
+  actual: { anterior: 'anterior', formato: formatoNumero },
+  monto: { anterior: 'montoAnterior', formato: formatoMonto },
+};
+
+const BarrasTop = ({ filas, titulo, etiquetaActual, etiquetaAnterior, onSeleccionar, metrica = 'actual', opciones, onMetrica, nombreDe = (f) => f.nombre }) => {
+  const m = METRICAS[metrica];
+  const top = [...filas]
+    .sort((a, b) => b[metrica] - a[metrica] || nombreDe(a).localeCompare(nombreDe(b), 'es'))
+    .filter((f) => f[metrica] > 0)
+    .slice(0, 10);
+  const maximo = Math.max(1, ...top.map((f) => Math.max(f[metrica], f[m.anterior] || 0)));
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-        <h3 className="text-[12.5px] font-semibold text-gray-800 dark:text-gray-100">{titulo}</h3>
-        <div className="flex items-center gap-3 text-[10.5px] text-gray-500 dark:text-gray-400">
-          <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2] inline-block" />{etiquetaActual}</span>
-          <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2]/20 inline-block" />{etiquetaAnterior}</span>
-        </div>
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+        <h3 className="text-[12px] font-semibold text-gray-800 dark:text-gray-100">{titulo}</h3>
+        {opciones && opciones.length > 1 && (
+          <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden text-[10.5px] font-semibold" role="group" aria-label="Ordenar Top 10 por">
+            {opciones.map((o) => (
+              <button key={o.id} type="button" onClick={() => onMetrica(o.id)} aria-pressed={metrica === o.id}
+                className={`h-6 px-2 ${metrica === o.id ? 'bg-[#2383C2] text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:text-[#2383C2]'}`}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-3 mb-2 text-[10px] text-gray-500 dark:text-gray-400">
+        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2] inline-block" />{etiquetaActual}</span>
+        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2]/20 inline-block" />{etiquetaAnterior}</span>
       </div>
       {top.length === 0 ? (
         <p className="text-[12px] text-gray-400 py-6 text-center">Sin datos en este período.</p>
       ) : (
-        <ol className="space-y-2">
+        <ol className="space-y-1.5">
           {top.map((f, i) => (
             <li key={f.clave}>
-              <button type="button" onClick={() => onSeleccionar?.(f)} className="w-full text-left group" title={`${f.nombre}: ${f.actual} (${etiquetaAnterior}: ${f.anterior})`}>
-                <div className="flex items-baseline justify-between gap-2 text-[11.5px]">
-                  <span className="truncate text-gray-700 dark:text-gray-200 group-hover:text-[#2383C2]"><span className="text-gray-400 tabular-nums mr-1.5">{i + 1}.</span>{f.nombre}</span>
-                  <span className="font-semibold tabular-nums text-gray-800 dark:text-gray-100">{formatoNumero(f.actual)}</span>
+              <button type="button" onClick={() => onSeleccionar?.(f)} className="w-full text-left group" title={`${nombreDe(f)}: ${m.formato(f[metrica])} (${etiquetaAnterior}: ${m.formato(f[m.anterior] || 0)})`}>
+                <div className="flex items-baseline justify-between gap-2 text-[11px]">
+                  <span className="truncate text-gray-700 dark:text-gray-200 group-hover:text-[#2383C2]"><span className="text-gray-400 tabular-nums mr-1.5">{i + 1}.</span>{nombreDe(f)}</span>
+                  <span className="font-semibold tabular-nums text-gray-800 dark:text-gray-100 whitespace-nowrap">{m.formato(f[metrica])}</span>
                 </div>
-                <div className="relative h-2 mt-1 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2]/20" style={{ width: `${(f.anterior / maximo) * 100}%` }} />
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2] transition-all" style={{ width: `${(f.actual / maximo) * 100}%`, height: '100%' }} />
+                <div className="relative h-1.5 mt-0.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2]/20" style={{ width: `${((f[m.anterior] || 0) / maximo) * 100}%` }} />
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2] transition-all" style={{ width: `${(f[metrica] / maximo) * 100}%`, height: '100%' }} />
                 </div>
               </button>
             </li>

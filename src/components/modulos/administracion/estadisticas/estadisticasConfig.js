@@ -23,7 +23,7 @@ export const BLOQUES = [
       { id: 'consignacion', nombre: 'Consignación', permiso: 'opt_consignacion' },
       { id: 'hemodinamia', nombre: 'Hemodinamia', permiso: 'opt_hemodinamia' },
     ],
-    dimensiones: ['m', 'c', 'e'],
+    dimensiones: ['m', 'c', 'e', 'k'],
   },
 ];
 
@@ -31,10 +31,15 @@ export const DIMENSIONES = {
   m: { id: 'm', nombre: 'Médicos', singular: 'Médico', permiso: 'tab_medicos' },
   c: { id: 'c', nombre: 'Cirugías', singular: 'Cirugía', permiso: 'tab_cirugias' },
   e: { id: 'e', nombre: 'Empresas', singular: 'Empresa', permiso: 'tab_empresas' },
+  k: { id: 'k', nombre: 'Códigos', singular: 'Código', permiso: 'tab_codigos' },
 };
 
+// Versión del formato con montos y códigos (functions/estadisticas/nucleo.js).
+export const VERSION_MONTOS = 2;
+export const SIN_CODIGO = 'Sin código';
+
 // Cruces que muestra el detalle de cada dimensión.
-export const CRUCES = { m: ['c', 'e'], c: ['m', 'e'], e: ['c', 'm'] };
+export const CRUCES = { m: ['c', 'e'], c: ['m', 'e'], e: ['c', 'm'], k: ['m', 'c', 'e'] };
 
 // Períodos: clave 'AAAA-MM' (orden natural) <-> { anio, mes: 'octubre' }.
 export const claveMes = (anio, mesId) => {

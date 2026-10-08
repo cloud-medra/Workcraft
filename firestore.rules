@@ -518,16 +518,19 @@ service cloud.firestore {
     }
 
     // Administración → Estadísticas: documentos precalculados por módulo y
-    // período ({modulo}_{AAAA-MM}, sus partes {id}__pN y el índice _indice).
-    // Solo lectura, con la vista y el filtro del módulo del documento
-    // (opt_implantes, opt_consignacion, opt_hemodinamia). Solo escriben las
+    // período ({modulo}_{AAAA-MM}, {id}__codigos, {id}__montos, sus partes
+    // ...__pN y el índice _indice). Solo lectura, con la vista y el filtro del
+    // módulo del documento (opt_implantes, opt_consignacion, opt_hemodinamia);
+    // los de montos exigen además la acción "Ver montos". Solo escriben las
     // Cloud Functions y el script inicial (Admin SDK, no pasan por reglas).
     match /estadisticas/{docId} {
       allow read: if request.auth != null && (esAdminODev()
         || (tienePermiso('administracion')
           && tieneItem('administracion', '/administracion/estadisticas')
           && (docId == '_indice'
-            || accionPermitida('/administracion/estadisticas', 'filtros', 'opt_' + docId.split('_')[0]))));
+            || (accionPermitida('/administracion/estadisticas', 'filtros', 'opt_' + docId.split('_')[0])
+              && (!docId.matches('.*__montos.*')
+                || accionPermitida('/administracion/estadisticas', 'acciones', 'ver_montos'))))));
       allow write: if false;
     }
 

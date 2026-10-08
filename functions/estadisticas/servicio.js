@@ -6,8 +6,9 @@
 
 const { FieldValue } = require('firebase-admin/firestore');
 const {
-  FUENTES, COLECCION_ESTADISTICAS, ID_INDICE, VERSION,
-  claveMes, idEstadistica, idParte, calcularPeriodo, repartir, parteDe, tuplaDesdeDoc,
+  FUENTES, COLECCION_ESTADISTICAS, ID_INDICE, VERSION, SUFIJO_CODIGOS, SUFIJO_MONTOS,
+  claveMes, idEstadistica, idParte, calcularPeriodo, repartir, repartirMapa, repartirMontos, parteDe, GRUPO,
+  aporteDesdeDoc, huellaAporte, clavePrecio,
 } = require('./nucleo');
 
 const ESTADOS_ABIERTOS = ['ABIERTO', 'REABIERTO'];
@@ -31,9 +32,11 @@ const entradaIndice = (modulo, anio, mesId, datos) => ({
 });
 
 // Recalcula un período completo desde sus documentos imputados (lecturas =
-// cantidad de ítems del período + 1). `definitivo` undefined = conservar el
-// estado que tenía. `reiniciarCambios` pone en 0 los cambios posteriores al
-// cierre (cierre y recálculo manual).
+// cantidad de ítems del período + 1). Escribe los tres documentos: principal
+// ({id}: tuplas), códigos ({id}__codigos) y montos ({id}__montos, protegido
+// por reglas con "Ver montos"), cada uno con sus partes si no cabe.
+// `definitivo` undefined = conservar el estado que tenía. `reiniciarCambios`
+// pone en 0 los cambios posteriores al cierre (cierre y recálculo manual).
 const recalcularPeriodo = async (db, modulo, anio, mesId, { definitivo, origen, usuario = null, reiniciarCambios = false } = {}) => {
   const id = idEstadistica(modulo, anio, mesId);
   if (!id || !FUENTES[modulo]) throw new Error(`Período inválido: ${modulo} ${anio} ${mesId}`);
@@ -42,10 +45,14 @@ const recalcularPeriodo = async (db, modulo, anio, mesId, { definitivo, origen, 
     refEstadistica(db, id).get(),
   ]);
   const previo = previoSnap.exists ? previoSnap.data() : {};
-  const { t, nombres, documentos } = calcularPeriodo(modulo, docs);
-  const grupos = repartir(t, nombres);
+  const calculo = calcularPeriodo(modulo, docs);
+  const grupos = repartir(calculo.t, calculo.nombres);
+  const gruposCodigos = repartirMapa(calculo.l, calculo.codigos, GRUPO.codigos);
+  const gruposMontos = repartirMontos(calculo.montos);
   const esDefinitivo = definitivo === undefined ? Boolean(previo.definitivo) : definitivo;
   const ahora = FieldValue.serverTimestamp();
+  const idCodigos = `${id}${SUFIJO_CODIGOS}`;
+  const idMontos = `${id}${SUFIJO_MONTOS}`;
 
   const batch = db.batch();
   batch.set(refEstadistica(db, id), {
@@ -61,26 +68,73 @@ const recalcularPeriodo = async (db, modulo, anio, mesId, { definitivo, origen, 
     actualizadoEl: ahora,
     origen,
     ...(usuario ? { recalculadoPor: usuario, recalculadoEl: ahora } : {}),
-    documentos,
+    documentos: calculo.documentos,
     partes: grupos.length,
-    nombres,
+    partesCodigos: gruposCodigos.length,
+    partesMontos: gruposMontos.length,
+    nombres: calculo.nombres,
     t: grupos[0],
   });
   grupos.slice(1).forEach((g, i) => batch.set(refEstadistica(db, idParte(id, i + 1)), { base: id, t: g }));
+  batch.set(refEstadistica(db, idCodigos), { base: id, codigos: calculo.codigos, l: gruposCodigos[0] });
+  gruposCodigos.slice(1).forEach((g, i) => batch.set(refEstadistica(db, idParte(idCodigos, i + 1)), { base: id, l: g }));
+  batch.set(refEstadistica(db, idMontos), { base: id, ...gruposMontos[0] });
+  gruposMontos.slice(1).forEach((g, i) => batch.set(refEstadistica(db, idParte(idMontos, i + 1)), { base: id, ...g }));
   for (let p = grupos.length; p < (previo.partes || 1); p += 1) batch.delete(refEstadistica(db, idParte(id, p)));
+  for (let p = gruposCodigos.length; p < (previo.partesCodigos || 1); p += 1) batch.delete(refEstadistica(db, idParte(idCodigos, p)));
+  for (let p = gruposMontos.length; p < (previo.partesMontos || 1); p += 1) batch.delete(refEstadistica(db, idParte(idMontos, p)));
   batch.set(refIndice(db), entradaIndice(modulo, anio, mesId, { definitivo: esDefinitivo }), { merge: true });
   await batch.commit();
-  return { id, documentos, tuplas: Object.keys(t).length, partes: grupos.length, definitivo: esDefinitivo };
+  return {
+    id,
+    documentos: calculo.documentos,
+    tuplas: Object.keys(calculo.t).length,
+    lineas: Object.keys(calculo.l).length,
+    sinPrecio: calculo.sinPrecio,
+    partes: grupos.length,
+    partesCodigos: gruposCodigos.length,
+    partesMontos: gruposMontos.length,
+    definitivo: esDefinitivo,
+  };
 };
 
-// Trigger de un documento imputado. Solo escribe si cambió la admisión, el
-// médico, la cirugía o la empresa (o si se creó o borró). Costo: 0 si no
-// cambió nada de eso; si cambió, 1 lectura + 1 escritura.
+// Diferencias netas entre el aporte anterior y el nuevo de un documento.
+const sumar = (mapa, clave, campo, valor) => {
+  if (!valor) return;
+  mapa[clave] = mapa[clave] || {};
+  mapa[clave][campo] = (mapa[clave][campo] || 0) + valor;
+};
+const deltasDe = (viejo, nuevo) => {
+  const d = { t: {}, mt: {}, l: {}, ml: {}, datosT: {}, datosL: {}, codigos: {} };
+  [[viejo, -1], [nuevo, 1]].forEach(([ap, signo]) => {
+    if (!ap) return;
+    sumar(d.t, ap.clave, 'n', signo);
+    sumar(d.mt, ap.clave, '$', signo * ap.monto);
+    sumar(d.mt, ap.clave, 'sp', signo * (ap.sinPrecio ? 1 : 0));
+    if (signo > 0) d.datosT[ap.clave] = ap.tupla;
+    if (ap.linea) {
+      const lc = ap.linea.clave;
+      sumar(d.l, lc, 'q', signo * ap.linea.cantidad);
+      sumar(d.l, lc, 'n', signo);
+      sumar(d.ml, lc, '$', signo * ap.monto);
+      if (ap.linea.precio > 0) sumar(d.ml, lc, `p:${clavePrecio(ap.linea.precio)}`, signo);
+      if (signo > 0) {
+        d.datosL[lc] = ap.linea.datos;
+        d.codigos[ap.linea.datos.k] = ap.linea.codigo;
+      }
+    }
+  });
+  return d;
+};
+
+// Trigger de un documento imputado. Solo escribe si cambió lo que aporta
+// (admisión, médico, cirugía, empresa, código, cantidad o precio), o si se
+// creó o borró. Costo: 0 si no cambió nada de eso; si cambió, 1 lectura y
+// hasta 3 escrituras (principal, códigos y montos).
 const aplicarCambio = async (db, modulo, anio, mesId, antes, despues) => {
-  const viejo = antes ? tuplaDesdeDoc(modulo, antes) : null;
-  const nuevo = despues ? tuplaDesdeDoc(modulo, despues) : null;
-  if (viejo && nuevo && viejo.clave === nuevo.clave) return 'sin-cambio';
-  if (!viejo && !nuevo) return 'sin-cambio';
+  const viejo = antes ? aporteDesdeDoc(modulo, antes) : null;
+  const nuevo = despues ? aporteDesdeDoc(modulo, despues) : null;
+  if (huellaAporte(viejo) === huellaAporte(nuevo)) return 'sin-cambio';
 
   const id = idEstadistica(modulo, anio, mesId);
   if (!id) return 'mes-invalido';
@@ -100,39 +154,70 @@ const aplicarCambio = async (db, modulo, anio, mesId, antes, despues) => {
     await snap.ref.update({ cambiosTrasCierre: FieldValue.increment(1), ultimoCambioTrasCierre: FieldValue.serverTimestamp() });
     return 'cambio-tras-cierre';
   }
+  if ((actual.version || 1) < VERSION) {
+    // Período abierto con el formato anterior (sin montos ni códigos).
+    await recalcularPeriodo(db, modulo, anio, mesId, { definitivo: false, origen: 'formato' });
+    return 'recalculado';
+  }
 
-  const partes = actual.partes || 1;
-  const porParte = {};
-  const agregar = (parte, clave, valor) => {
-    porParte[parte] = porParte[parte] || {};
-    porParte[parte][clave] = valor;
+  const d = deltasDe(viejo, nuevo);
+  const escrituras = new Map(); // id de documento -> datos (set con merge)
+  const en = (docId, ruta, valor) => {
+    if (!escrituras.has(docId)) escrituras.set(docId, {});
+    let nodo = escrituras.get(docId);
+    ruta.slice(0, -1).forEach((r) => { nodo[r] = nodo[r] || {}; nodo = nodo[r]; });
+    nodo[ruta[ruta.length - 1]] = valor;
   };
-  if (viejo) agregar(parteDe(viejo.tupla.a, partes), viejo.clave, { n: FieldValue.increment(-1) });
-  if (nuevo) agregar(parteDe(nuevo.tupla.a, partes), nuevo.clave, { ...nuevo.tupla, n: FieldValue.increment(1) });
+  const inc = (v) => FieldValue.increment(v);
+  const idCodigos = `${id}${SUFIJO_CODIGOS}`;
+  const idMontos = `${id}${SUFIJO_MONTOS}`;
+  const partes = actual.partes || 1;
+  const partesCodigos = actual.partesCodigos || 1;
+  const partesMontos = actual.partesMontos || 1;
+
+  // Principal: tuplas.
+  const clavesT = new Set([...Object.keys(d.t), ...Object.keys(d.datosT)]);
+  clavesT.forEach((k) => {
+    const a = d.datosT[k]?.a || viejo?.tupla.a;
+    const docId = idParte(id, parteDe(a, partes));
+    if (d.datosT[k]) Object.entries(d.datosT[k]).forEach(([c, v]) => en(docId, ['t', k, c], v));
+    if (d.t[k]?.n) en(docId, ['t', k, 'n'], inc(d.t[k].n));
+  });
+  // Códigos: líneas y diccionario.
+  const clavesL = new Set([...Object.keys(d.l), ...Object.keys(d.datosL)]);
+  clavesL.forEach((k) => {
+    const a = d.datosL[k]?.a || viejo?.linea?.datos.a;
+    const docId = idParte(idCodigos, parteDe(a, partesCodigos));
+    if (d.datosL[k]) Object.entries(d.datosL[k]).forEach(([c, v]) => en(docId, ['l', k, c], v));
+    Object.entries(d.l[k] || {}).forEach(([c, v]) => { if (v) en(docId, ['l', k, c], inc(v)); });
+  });
+  Object.entries(d.codigos).forEach(([k, v]) => en(idCodigos, ['codigos', k], v));
+  // Montos: por tupla y por línea (con los precios unitarios usados).
+  Object.entries(d.mt).forEach(([k, campos]) => {
+    const docId = idParte(idMontos, parteDe(k, partesMontos));
+    Object.entries(campos).forEach(([c, v]) => { if (v) en(docId, ['t', k, c], inc(v)); });
+  });
+  Object.entries(d.ml).forEach(([k, campos]) => {
+    const docId = idParte(idMontos, parteDe(k, partesMontos));
+    Object.entries(campos).forEach(([c, v]) => {
+      if (!v) return;
+      if (c.startsWith('p:')) en(docId, ['l', k, 'p', c.slice(2)], inc(v));
+      else en(docId, ['l', k, c], inc(v));
+    });
+  });
 
   // Nombres nuevos para el diccionario (los existentes no se pisan).
-  const nombres = {};
   if (nuevo) {
     ['m', 'c', 'e'].forEach((dim) => {
       const [[k, v]] = Object.entries(nuevo.nombres[dim]);
-      if (!actual.nombres?.[dim]?.[k]) {
-        nombres[dim] = nombres[dim] || {};
-        nombres[dim][k] = v;
-      }
+      if (!actual.nombres?.[dim]?.[k]) en(id, ['nombres', dim, k], v);
     });
   }
+  en(id, ['actualizadoEl'], FieldValue.serverTimestamp());
+  en(id, ['origen'], 'trigger');
 
   const batch = db.batch();
-  Object.entries(porParte).forEach(([parte, t]) => {
-    const p = Number(parte);
-    const datos = p === 0
-      ? { t, actualizadoEl: FieldValue.serverTimestamp(), origen: 'trigger', ...(Object.keys(nombres).length ? { nombres } : {}) }
-      : { t };
-    batch.set(refEstadistica(db, idParte(id, p)), datos, { merge: true });
-  });
-  if (!porParte[0]) {
-    batch.set(snap.ref, { actualizadoEl: FieldValue.serverTimestamp(), origen: 'trigger', ...(Object.keys(nombres).length ? { nombres } : {}) }, { merge: true });
-  }
+  escrituras.forEach((datos, docId) => batch.set(refEstadistica(db, docId), docId === id ? datos : { base: id, ...datos }, { merge: true }));
   await batch.commit();
   return 'actualizado';
 };

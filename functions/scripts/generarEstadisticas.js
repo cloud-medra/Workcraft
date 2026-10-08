@@ -11,8 +11,9 @@
 // estadisticas/{modulo}_{AAAA-MM}. Los períodos CERRADO quedan definitivos.
 // Es idempotente: correrlo dos veces deja lo mismo.
 //
-// Por defecto solo simula: muestra por período cuántos ítems, admisiones y
-// tuplas hay, el tamaño estimado del documento y los nombres que parecen el
+// Por defecto solo simula: muestra por período cuántos ítems, admisiones,
+// tuplas y líneas de código hay, los ítems sin precio, el tamaño estimado de
+// cada documento (principal, códigos, montos) y los nombres que parecen el
 // mismo escrito distinto (para revisarlos; no se unen solos).
 //
 //   cd functions
@@ -20,6 +21,9 @@
 //   node scripts/generarEstadisticas.js --aplicar          # escribe
 //   node scripts/generarEstadisticas.js --modulo implantes # un módulo
 //   node scripts/generarEstadisticas.js --desde 2026-01    # desde un período
+//   node scripts/generarEstadisticas.js --version-antigua  # solo los períodos
+//       calculados con un formato anterior (p. ej. sin montos ni códigos);
+//       conserva el estado de cierre (CERRADO queda definitivo)
 //   node scripts/generarEstadisticas.js --contar-sin-periodo
 //       (además lee las gestiones para contar las que aún no se han
 //        solicitado, es decir, sin período; cuesta 1 lectura por gestión)
@@ -35,7 +39,8 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, FieldPath } = require('firebase-admin/firestore');
 const {
-  FUENTES, claveMes, calcularPeriodo, repartir, tamanoAprox, nombresDudosos, normalizar,
+  FUENTES, VERSION, COLECCION_ESTADISTICAS, claveMes, idEstadistica, calcularPeriodo, repartir, repartirMapa, repartirMontos,
+  GRUPO, tamanoAprox, nombresDudosos, normalizar,
 } = require('../estadisticas/nucleo');
 const { recalcularPeriodo, leerDocumentosPeriodo } = require('../estadisticas/servicio');
 
@@ -43,6 +48,7 @@ const PROYECTO = process.env.GCLOUD_PROJECT || 'workcraft-491b7';
 const args = process.argv.slice(2);
 const APLICAR = args.includes('--aplicar');
 const CONTAR_SIN_PERIODO = args.includes('--contar-sin-periodo');
+const VERSION_ANTIGUA = args.includes('--version-antigua');
 const valor = (nombre) => {
   const i = args.indexOf(nombre);
   return i >= 0 ? args[i + 1] : null;
@@ -93,18 +99,29 @@ const main = async () => {
 
     for (const c of periodos) {
       const clave = claveMes(c.anio, c.mes);
+      if (VERSION_ANTIGUA) {
+        const actual = await db.collection(COLECCION_ESTADISTICAS).doc(idEstadistica(modulo, c.anio, c.mes)).get();
+        if (actual.exists && (actual.data().version || 1) >= VERSION) {
+          console.log(`  ${clave} [${c.estado}]  ya está en la versión ${VERSION}: se omite`);
+          continue;
+        }
+      }
       const docs = await leerDocumentosPeriodo(db, modulo, c.anio, c.mes);
       const calculo = calcularPeriodo(modulo, docs);
       const tuplas = Object.values(calculo.t);
       const admisiones = new Set(tuplas.map((t) => t.a)).size;
       const sinId = new Set(tuplas.filter((t) => t.s).map((t) => t.a)).size;
       const partes = repartir(calculo.t, calculo.nombres).length;
-      const kb = Math.round(tamanoAprox({ t: calculo.t, nombres: calculo.nombres }) / 1024);
+      const partesCodigos = repartirMapa(calculo.l, calculo.codigos, GRUPO.codigos).length;
+      const partesMontos = repartirMontos(calculo.montos).length;
+      const kb = (o) => Math.round(tamanoAprox(o) / 1024);
       ['m', 'c', 'e'].forEach((dim) => nombres[dim].push(...Object.values(calculo.nombres[dim])));
       totalItems += docs.length;
       totalPeriodos += 1;
 
-      console.log(`  ${clave} [${c.estado}]  ítems ${docs.length}  admisiones ${admisiones} (sin ID ${sinId})  tuplas ${tuplas.length}  ~${kb} KB${partes > 1 ? `  partes ${partes}` : ''}`);
+      const extra = (n) => (n > 1 ? ` (${n} partes)` : '');
+      console.log(`  ${clave} [${c.estado}]  ítems ${docs.length}  admisiones ${admisiones} (sin ID ${sinId})  sin precio ${calculo.sinPrecio}  códigos ${Object.keys(calculo.codigos).length}`);
+      console.log(`      tamaño: principal ~${kb({ t: calculo.t, nombres: calculo.nombres })} KB${extra(partes)} · códigos ~${kb({ l: calculo.l, codigos: calculo.codigos })} KB${extra(partesCodigos)} · montos ~${kb(calculo.montos)} KB${extra(partesMontos)}  (máximo por documento: 1024 KB)`);
       if (APLICAR) {
         await recalcularPeriodo(db, modulo, c.anio, c.mes, {
           definitivo: c.estado === 'CERRADO', origen: 'script', reiniciarCambios: true,

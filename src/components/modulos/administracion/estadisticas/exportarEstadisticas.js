@@ -5,14 +5,44 @@ import { etiquetaPeriodo } from './estadisticasConfig';
 
 const redondear = (v) => (v == null ? '' : Math.round(v * 10) / 10);
 
-// Filas de una tabla comparada -> arreglo de objetos con encabezados legibles.
-export const filasParaExcel = (filas, { singular, periodo, anterior }) => filas.map((f) => ({
+const pesos = (v) => (v == null ? '' : Math.round(v));
+
+// Columnas de monto (solo con "Ver montos"; sin permiso no se exportan).
+const columnasMonto = (f, { periodo, anterior }) => ({
+  [`Monto ${etiquetaPeriodo(periodo)}`]: pesos(f.monto),
+  [`Monto ${etiquetaPeriodo(anterior)}`]: pesos(f.montoAnterior),
+  'Diferencia de monto': pesos(f.montoDiferencia),
+  'Variación % de monto': redondear(f.montoVariacion),
+});
+
+// Filas de una tabla comparada (médicos, cirugías, empresas o cruces) ->
+// objetos con encabezados legibles. `unidad`: 'Admisiones' o 'Cantidad'.
+export const filasParaExcel = (filas, { singular, periodo, anterior, conMontos = false, unidad = 'Admisiones' }) => filas.map((f) => ({
   [singular]: f.nombre,
-  [`Admisiones ${etiquetaPeriodo(periodo)}`]: f.actual,
-  [`Admisiones ${etiquetaPeriodo(anterior)}`]: f.anterior,
+  [`${unidad} ${etiquetaPeriodo(periodo)}`]: f.actual,
+  [`${unidad} ${etiquetaPeriodo(anterior)}`]: f.anterior,
   Diferencia: f.diferencia,
   'Variación %': redondear(f.variacion),
-  '% del total': redondear(f.participacion),
+  ...(f.participacion != null ? { '% del total': redondear(f.participacion) } : {}),
+  ...(f.admisiones != null && unidad !== 'Admisiones' ? { Admisiones: f.admisiones } : {}),
+  ...(conMontos ? columnasMonto(f, { periodo, anterior }) : {}),
+}));
+
+// Filas de códigos (pestaña Códigos o sección Códigos del detalle).
+export const filasCodigosParaExcel = (filas, { periodo, anterior, conMontos = false }) => filas.map((f) => ({
+  Código: f.codigo,
+  Descripción: f.descripcion,
+  [`Cantidad ${etiquetaPeriodo(periodo)}`]: f.actual,
+  [`Cantidad ${etiquetaPeriodo(anterior)}`]: f.anterior,
+  Diferencia: f.diferencia,
+  'Variación %': redondear(f.variacion),
+  Admisiones: f.admisiones,
+  ...(conMontos ? {
+    'Precio unitario (promedio)': pesos(f.precio),
+    'Precio mínimo': pesos(f.precioMin),
+    'Precio máximo': pesos(f.precioMax),
+    ...columnasMonto(f, { periodo, anterior }),
+  } : {}),
 }));
 
 const hoja = (titulo, contexto, filas) => {

@@ -33,10 +33,27 @@ export const obtenerPeriodo = async (modulo, clave) => {
   return { ...base, modulo, piezas: [base, ...extra.filter(Boolean)] };
 };
 
+// Documentos complementarios de un período, con sus partes: códigos
+// ('__codigos', se lee solo al abrir la pestaña Códigos o un detalle) y
+// montos ('__montos', solo con "Ver montos"; las reglas lo exigen).
+// `base` es el documento principal (de él sale cuántas partes tiene).
+const leerComplemento = async (base, sufijo, campoPartes) => {
+  if (!base) return null;
+  const id = `${base.modulo}_${base.periodo}${sufijo}`;
+  const primero = await leer(id);
+  if (!primero) return null;
+  const extra = await Promise.all(
+    Array.from({ length: Math.max(0, (base[campoPartes] || 1) - 1) }, (_, i) => leer(`${id}__p${i + 1}`))
+  );
+  return { ...primero, modulo: base.modulo, piezas: [primero, ...extra.filter(Boolean)] };
+};
+export const obtenerCodigos = (base) => leerComplemento(base, '__codigos', 'partesCodigos');
+export const obtenerMontos = (base) => leerComplemento(base, '__montos', 'partesMontos');
+
 // Tras un recálculo manual: descarta lo leído de ese período y el índice.
 export const invalidarPeriodo = (modulo, clave) => {
   [...cache.keys()].forEach((id) => {
-    if (id === ID_INDICE || id === `${modulo}_${clave}` || id.startsWith(`${modulo}_${clave}__p`)) cache.delete(id);
+    if (id === ID_INDICE || id === `${modulo}_${clave}` || id.startsWith(`${modulo}_${clave}__`)) cache.delete(id);
   });
 };
 
