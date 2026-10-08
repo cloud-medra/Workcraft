@@ -4,6 +4,8 @@ import { omitirSincronizacionEnProximaCarga } from '../services/sessionSync';
 import { signOut } from 'firebase/auth';
 import { useUser } from '../context/UserContext';
 import { useTheme } from '../context/ThemeContext';
+import logoMedraMenu from '../assets/logo/medra-logo-blanco.svg';
+import simboloMedraMenu from '../assets/logo/medra-simbolo-blanco.svg';
 import { obtenerNombreMostrar } from '../utils/nombreMostrar';
 import {
   LogOut, Calendar, UserCircle, ChevronRight, ArrowLeft, FileText,
@@ -344,15 +346,25 @@ const Dashboard = () => {
                 <span>Ajustes Sistema</span>
               </>
             ) : (
-              'Cloud - Medra'
+              <img src={logoMedraMenu} alt="Medra" className="h-8 w-auto" />
             )}
           </span>
+          {/* Contraído: el símbolo del logo es el botón para expandir (al pasar
+              el mouse se ve el ícono de menú). */}
           <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className={`p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-gray-800 transition flex-shrink-0 ${isSidebarCollapsed ? 'mx-auto' : ''}`}
+            className={`group p-1.5 rounded-lg hover:bg-white/10 dark:hover:bg-gray-800 transition flex-shrink-0 ${isSidebarCollapsed ? 'mx-auto' : ''}`}
             title={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+            aria-label={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
           >
-            <Menu size={18} />
+            {isSidebarCollapsed && !isAjustesMode ? (
+              <>
+                <img src={simboloMedraMenu} alt="" className="w-5 h-5 group-hover:hidden" />
+                <Menu size={18} className="hidden group-hover:block m-px" />
+              </>
+            ) : (
+              <Menu size={18} />
+            )}
           </button>
         </div>
 

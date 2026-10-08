@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image as ImageIcon } from 'lucide-react';
-import logoMedra from '../../../../assets/logo_medra_login/android-chrome-192x192.png';
+import logoMedra from '../../../../assets/logo/medra-simbolo.svg';
 
 const BrandingCard = () => {
   return (
@@ -8,7 +8,7 @@ const BrandingCard = () => {
       <div className="w-10 h-10 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
         <img
           src={logoMedra}
-          alt="Medra Cloud Logo"
+          alt="Medra"
           className="w-7 h-7 object-contain"
           onError={(e) => {
             e.target.style.display = 'none';

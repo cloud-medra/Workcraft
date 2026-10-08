@@ -8,7 +8,7 @@ import { auth } from '../firebaseConfig';
 import { useUser } from '../context/UserContext';
 import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import loginIllustration from '../assets/login.svg';
-import logoMedra from '../assets/logo_medra_login/android-chrome-192x192.png';
+import logoMedra from '../assets/logo/medra-logo-sistema-integral-claro.svg';
 import { motion } from 'framer-motion';
 import PuntosAnimados from './PuntosAnimados';
 
@@ -124,7 +124,7 @@ const LoginForm = () => {
             <motion.img
               src={logoMedra}
               alt="Medra Sistema Integral"
-              className="h-32 max-w-full w-auto object-contain"
+              className="h-20 max-w-full w-auto object-contain"
               initial={{ opacity: 0, y: -16, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{
