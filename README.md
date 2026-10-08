@@ -19,7 +19,7 @@ If you are developing a production application, we recommend using TypeScript wi
 
 El dominio principal de la app es **https://app.medra.cl** (también responde en `workcraft-491b7.web.app` y `workcraft-491b7.firebaseapp.com`; el dominio anterior `workcraft.medra.cl` se mantiene durante la transición). El código no tiene el dominio escrito: la configuración de Firebase sale de las variables `VITE_*` de `.env` y los enlaces se arman con `window.location.origin`.
 
-Los PDF (Documentos de implantes y órdenes de compra) se suben y se abren desde el navegador directo contra Storage (`uploadBytesResumable`, `getBlob`), así que el bucket debe permitir esos orígenes. La configuración activa está en [`cors.json`](cors.json): el dominio principal (y el anterior, mientras dure la transición), los dos de Hosting y `http://localhost:5173`. No incluye la URL del Codespace porque cambia.
+Los archivos (Documentos de implantes, órdenes de compra, Respaldo de documentos y Archivo digital) se abren desde el navegador directo contra Storage con `getBlob` (visor y descargas), así que el bucket debe permitir esos orígenes para lectura (`GET`, `HEAD`). La configuración aplicada está en [`cors.json`](cors.json): el dominio principal (y el anterior, mientras dure la transición), los dos de Hosting, el Codespace de desarrollo y `http://localhost:5173`. Si cambia la URL del Codespace, hay que actualizarla en `cors.json` y volver a aplicarlo.
 
 Para aplicarla después de cambiar `cors.json`:
 
