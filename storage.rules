@@ -17,6 +17,22 @@ service firebase.storage {
       let u = getUsuario();
       return u.permisos[modulo] != null;
     }
+    // Mismo criterio que firestore.rules (tieneItem / accionPermitida /
+    // accionEnVista): ítem de menú + acción granular de la vista.
+    function tieneItem(modulo, ruta) {
+      return ruta in getUsuario().permisos.get(modulo, []);
+    }
+    function accionPermitida(ruta, seccion, accion) {
+      let vista = getUsuario().get('permisosGranulares', {}).get(ruta, null);
+      let sec = vista == null ? null : vista.get(seccion, null);
+      return vista != null
+        && (sec == null || (sec.get('visible', true) != false
+          && sec.get('elements', {}).get(accion, true) != false));
+    }
+    function accionEnVista(modulo, ruta, seccion, accion) {
+      return esAdminODev()
+        || (tienePermiso(modulo) && tieneItem(modulo, ruta) && accionPermitida(ruta, seccion, accion));
+    }
 
     // Snapshot de comparación de "Importar Detalles OC" (documentos_sistema),
     // usado para minimizar lecturas de Firestore en cada importación.
@@ -63,6 +79,40 @@ service firebase.storage {
         && archivo.matches('OC_[^/]+\\.pdf')
         && request.resource.size < 15 * 1024 * 1024
         && (esAdminODev() || tienePermiso('documentos') || tienePermiso('implantes'));
+    }
+
+    // Implantes → Respaldo de documentos (PDF hasta 20 MB). Leer exige ver o
+    // descargar. Borrar: "eliminar definitivamente" o, para quien sube, el
+    // archivo huérfano cuyo registro en Firestore no llegó a crearse.
+    match /implantes_respaldo/{docId}/{archivo} {
+      allow read: if request.auth != null
+        && (accionEnVista('implantes', '/implantes/respaldoDocumentos', 'tabla_documentos', 'btn_ver')
+          || accionEnVista('implantes', '/implantes/respaldoDocumentos', 'tabla_documentos', 'btn_descargar'));
+      allow create: if request.auth != null
+        && request.resource.contentType == 'application/pdf'
+        && archivo.matches('.*\\.pdf$')
+        && request.resource.size <= 20 * 1024 * 1024
+        && accionEnVista('implantes', '/implantes/respaldoDocumentos', 'acciones', 'btn_subir');
+      allow delete: if request.auth != null
+        && (accionEnVista('implantes', '/implantes/respaldoDocumentos', 'papelera', 'btn_eliminar_definitivo')
+          || (accionEnVista('implantes', '/implantes/respaldoDocumentos', 'acciones', 'btn_subir')
+            && !firestore.exists(/databases/(default)/documents/implantes_respaldo_documentos/$(docId))));
+    }
+
+    // Documentos → Archivo digital (PDF, JPG, PNG, WEBP hasta 25 MB). Mismo
+    // criterio que el respaldo; renombrar y mover no tocan Storage.
+    match /documentos_archivo/{nodoId}/{archivo} {
+      allow read: if request.auth != null
+        && (accionEnVista('documentos', '/documentos/archivoDigital', 'archivos', 'btn_ver')
+          || accionEnVista('documentos', '/documentos/archivoDigital', 'archivos', 'btn_descargar'));
+      allow create: if request.auth != null
+        && request.resource.contentType in ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+        && request.resource.size <= 25 * 1024 * 1024
+        && accionEnVista('documentos', '/documentos/archivoDigital', 'archivos', 'btn_subir');
+      allow delete: if request.auth != null
+        && (accionEnVista('documentos', '/documentos/archivoDigital', 'papelera', 'btn_eliminar_definitivo')
+          || (accionEnVista('documentos', '/documentos/archivoDigital', 'archivos', 'btn_subir')
+            && !firestore.exists(/databases/(default)/documents/documentos_archivo/$(nodoId))));
     }
 
     match /{allPaths=**} {

@@ -440,6 +440,83 @@ service cloud.firestore {
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('implantes'));
     }
 
+    // Implantes → Respaldo de documentos: PDF cuyo ID no coincide con ninguna
+    // gestión. Solo se lee con la vista; eliminar es lógico (papelera) y solo
+    // "eliminar definitivamente" borra el registro.
+    match /implantes_respaldo_documentos/{docId} {
+      function vistaRespaldo() {
+        return esAdminODev() || (tienePermiso('implantes') && tieneItem('implantes', '/implantes/respaldoDocumentos'));
+      }
+      function enRespaldo(seccion, accion) {
+        return accionEnVista('implantes', '/implantes/respaldoDocumentos', seccion, accion);
+      }
+      allow read: if request.auth != null && vistaRespaldo();
+      allow create: if request.auth != null
+        && enRespaldo('acciones', 'btn_subir')
+        && request.resource.data.eliminado == false
+        && request.resource.data.ruta is string
+        && request.resource.data.ruta.matches('implantes_respaldo/' + docId + '/.+');
+      // Solo enviar a la papelera / restaurar (no se editan los datos).
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['eliminado', 'eliminadoPor', 'eliminadoEl'])
+        && (request.resource.data.eliminado == true
+          ? enRespaldo('tabla_documentos', 'btn_eliminar')
+          : enRespaldo('papelera', 'btn_restaurar'));
+      allow delete: if request.auth != null && enRespaldo('papelera', 'btn_eliminar_definitivo');
+    }
+
+    // Documentos → Archivo digital: carpetas y archivos (padreId) en una sola
+    // colección. Cada cambio se valida contra la acción granular que lo
+    // permite: crear carpeta / subir, renombrar, mover, eliminar (lógico,
+    // eliminadoGrupo = nodo eliminado; el contenido de una carpeta se marca
+    // con el permiso de eliminar carpetas), restaurar y eliminar definitivo.
+    match /documentos_archivo/{nodoId} {
+      function vistaArchivo() {
+        return esAdminODev() || (tienePermiso('documentos') && tieneItem('documentos', '/documentos/archivoDigital'));
+      }
+      function enArchivo(seccion, accion) {
+        return accionEnVista('documentos', '/documentos/archivoDigital', seccion, accion);
+      }
+      function seccionDe(tipo) {
+        return tipo == 'carpeta' ? 'carpetas' : 'archivos';
+      }
+      function cambios() {
+        return request.resource.data.diff(resource.data).affectedKeys();
+      }
+      allow read: if request.auth != null && vistaArchivo();
+      allow create: if request.auth != null
+        && request.resource.data.eliminado == false
+        && ((request.resource.data.tipo == 'carpeta' && enArchivo('carpetas', 'btn_crear'))
+          || (request.resource.data.tipo == 'archivo'
+            && request.resource.data.ruta is string
+            && request.resource.data.ruta.matches('documentos_archivo/' + nodoId + '/.+')
+            && enArchivo('archivos', 'btn_subir')));
+      allow update: if request.auth != null
+        && request.resource.data.tipo == resource.data.tipo
+        && (
+          // Renombrar
+          (resource.data.eliminado == false
+            && cambios().hasOnly(['nombre', 'actualizadoEl'])
+            && enArchivo(seccionDe(resource.data.tipo), 'btn_renombrar'))
+          // Mover (con " (2)" si el nombre ya existe en el destino)
+          || (resource.data.eliminado == false
+            && cambios().hasAny(['padreId'])
+            && cambios().hasOnly(['padreId', 'nombre', 'actualizadoEl'])
+            && enArchivo(seccionDe(resource.data.tipo), 'btn_mover'))
+          // Enviar a la papelera
+          || (resource.data.eliminado == false
+            && request.resource.data.eliminado == true
+            && cambios().hasOnly(['eliminado', 'eliminadoEl', 'eliminadoPor', 'eliminadoGrupo'])
+            && enArchivo(request.resource.data.eliminadoGrupo == nodoId ? seccionDe(resource.data.tipo) : 'carpetas', 'btn_eliminar'))
+          // Restaurar
+          || (resource.data.eliminado == true
+            && request.resource.data.eliminado == false
+            && cambios().hasOnly(['eliminado', 'eliminadoEl', 'eliminadoPor', 'eliminadoGrupo', 'padreId'])
+            && enArchivo('papelera', 'btn_restaurar'))
+        );
+      allow delete: if request.auth != null && enArchivo('papelera', 'btn_eliminar_definitivo');
+    }
+
     // =================================================================
     // HEMODINAMIA
     // =================================================================

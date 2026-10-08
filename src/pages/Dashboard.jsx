@@ -73,6 +73,8 @@ import SolicitudImplantes from '../components/modulos/operaciones/implantes/soli
 import ResumenImplantes from '../components/modulos/operaciones/implantes/resumenImplantes/ResumenImplantes.jsx';
 import SincronizacionImputadas from '../components/modulos/operaciones/implantes/sincronizacionImputadas/SincronizacionImputadas.jsx';
 import CargaMasivaDocumentos from '../components/modulos/operaciones/implantes/cargaMasivaDocumentos/CargaMasivaDocumentos.jsx';
+import RespaldoDocumentos from '../components/modulos/operaciones/implantes/respaldoDocumentos/RespaldoDocumentos.jsx';
+import ArchivoDigital from '../components/modulos/operaciones/documentos/archivoDigital/ArchivoDigital.jsx';
 
 import GestionHemodinamia from '../components/modulos/operaciones/hemodinamia/gestionHemodinamia/GestionHemodinamia';
 import SolicitudHemodinamia from '../components/modulos/operaciones/hemodinamia/solicitudHemodinamia/SolicitudHemodinamia';
@@ -255,9 +257,11 @@ const Dashboard = () => {
     '/documentos/importarDetallesOC': <ImportarDetallesOC />,
     '/documentos/seguimientoFacturasGuias': <SeguimientoFacturasGuias />,
     '/documentos/ingresoOrdenes': <IngresoOrdenes />,
+    '/documentos/archivoDigital': <ArchivoDigital />,
 
     '/implantes/gestionImplantes': <GestionImplantes />,
     '/implantes/cargaMasivaDocumentos': <CargaMasivaDocumentos />,
+    '/implantes/respaldoDocumentos': <RespaldoDocumentos />,
     '/implantes/reportesInfo': <ReportesInfo pathVista="/implantes/reportesInfo" />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,
     '/implantes/resumenImplantes': <ResumenImplantes />,

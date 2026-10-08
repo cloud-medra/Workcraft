@@ -57,7 +57,14 @@ const motivoRechazo = (fila) => {
   }
 };
 
-export const rechazoDeFila = (fila) => ({ nombre: fila.nombre, motivo: motivoRechazo(fila) });
+// `respaldable`: la admisión no existe en Implantes, así que el archivo se
+// puede enviar al Respaldo de documentos (se conserva `file` para eso).
+export const rechazoDeFila = (fila) => ({
+  nombre: fila.nombre,
+  motivo: motivoRechazo(fila),
+  file: fila.file,
+  respaldable: fila.estado === 'NO_ENCONTRADA',
+});
 
 // items: [{ key, file }]
 // admisiones: Map id -> { nombre } | null (null = no existe); sin clave = sin verificar

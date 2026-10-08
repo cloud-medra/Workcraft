@@ -4,12 +4,19 @@ import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-li
 import '@testing-library/jest-dom/vitest';
 
 vi.mock('../../../../../../../context/ToastContext', () => ({ useToast: () => ({ showToast: vi.fn() }) }));
+vi.mock('../../../../../../../context/UserContext', () => ({ useUser: () => ({ userData: { rol: 'admin' } }) }));
+vi.mock('../../../respaldoDocumentos/respaldoService', () => ({ subirRespaldo: vi.fn() }));
 vi.mock('../../../shared/documentosAdmision/documentosStorage', () => ({
   subirTandaAdmision: vi.fn(),
   obtenerBlobDocumento: vi.fn(async (ruta) => new Blob([ruta], { type: 'application/pdf' }))
 }));
+// La zona de subida simulada expone los archivos de prueba en `globalThis.__archivosPrueba`.
 vi.mock('../../../shared/documentosAdmision/ZonaSubidaPdf', () => ({
-  ZonaSubidaPdf: () => <div data-testid="zona-subida" />
+  ZonaSubidaPdf: ({ onArchivos }) => (
+    <div data-testid="zona-subida">
+      <button type="button" onClick={() => onArchivos(globalThis.__archivosPrueba || [])}>simular subida</button>
+    </div>
+  )
 }));
 
 import { DocumentosTab } from './Documentostab';
@@ -84,5 +91,21 @@ describe('DocumentosTab', () => {
     expect(celdaCot).toHaveTextContent('· 2');
     expect(screen.getAllByText('COT — Cotización')).toHaveLength(1);
     expect(screen.getAllByRole('img', { name: 'PDF' })).toHaveLength(4);
+  });
+
+  it('un PDF de otra admisión se puede enviar al respaldo, con sus datos leídos del nombre', async () => {
+    const { subirTandaAdmision } = await import('../../../shared/documentosAdmision/documentosStorage');
+    subirTandaAdmision.mockResolvedValue({ lista: [], subidos: [], fallidos: [], sinPermiso: false });
+    globalThis.__archivosPrueba = [new File(['x'], '555 - LUIS SOTO - COT 9 - EMP.pdf', { type: 'application/pdf' })];
+    renderTab({ lista: [], cargando: false, error: null });
+    fireEvent.click(screen.getByText('simular subida'));
+    const boton = await screen.findByRole('button', { name: /Enviar 1 a respaldo/ });
+    fireEvent.click(boton);
+    const dialogo = screen.getByRole('dialog', { name: 'Subir al respaldo de documentos' });
+    expect(within(dialogo).getByDisplayValue('555')).toBeInTheDocument();
+    expect(within(dialogo).getByDisplayValue('LUIS SOTO')).toBeInTheDocument();
+    expect(within(dialogo).getByDisplayValue('COT — Cotización')).toBeInTheDocument();
+    expect(within(dialogo).getByText('555 - LUIS SOTO - COT.pdf')).toBeInTheDocument();
+    delete globalThis.__archivosPrueba;
   });
 });

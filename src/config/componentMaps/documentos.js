@@ -78,4 +78,52 @@ export const documentosComponentMaps = {
   },
 
   '/documentos/reportesInfo': mapaReportesInfo,
+
+  // Archivo digital: carpetas y archivos (ArchivoDigital.jsx). Las acciones
+  // también se validan en firestore.rules y storage.rules.
+  '/documentos/archivoDigital': {
+    label: 'Archivo digital (ArchivoDigital.jsx)',
+    sections: {
+      carpetas: {
+        label: 'Sección: Carpetas',
+        elements: {
+          btn_crear: { label: 'Acción: Crear carpeta' },
+          btn_renombrar: { label: 'Operación: Renombrar carpeta' },
+          btn_mover: { label: 'Operación: Mover carpeta' },
+          btn_eliminar: { label: 'Operación: Eliminar carpeta con su contenido (a la papelera)' },
+        },
+      },
+      archivos: {
+        label: 'Sección: Archivos',
+        elements: {
+          btn_subir: { label: 'Acción: Subir archivos' },
+          btn_ver: { label: 'Operación: Ver (vista previa)' },
+          btn_descargar: { label: 'Operación: Descargar' },
+          btn_renombrar: { label: 'Operación: Renombrar archivo' },
+          btn_mover: { label: 'Operación: Mover archivo' },
+          btn_eliminar: { label: 'Operación: Eliminar archivo (a la papelera)' },
+        },
+      },
+      buscador: {
+        label: 'Sección: Buscador',
+        elements: {
+          input_busqueda: { label: 'Campo: Buscar archivos y carpetas' },
+        },
+      },
+      tabla: {
+        label: 'Sección: Lista de carpetas y archivos',
+        elements: columnas([
+          ['nombre', 'Nombre'], ['tamano', 'Tamaño'], ['subidoEl', 'Fecha de subida'],
+          ['subidoPor', 'Subido por'], ['acciones', 'Acciones'],
+        ]),
+      },
+      papelera: {
+        label: 'Sección: Papelera',
+        elements: {
+          btn_restaurar: { label: 'Operación: Restaurar' },
+          btn_eliminar_definitivo: { label: 'Operación: Eliminar definitivamente (borra los archivos)' },
+        },
+      },
+    },
+  },
 };

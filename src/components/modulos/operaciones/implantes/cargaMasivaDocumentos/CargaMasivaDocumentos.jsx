@@ -1,6 +1,9 @@
 import { useState, useMemo, useRef } from 'react';
-import { FolderUp, UploadCloud, Loader2, X, AlertTriangle, CheckCircle2, XCircle, HelpCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { FolderUp, UploadCloud, Loader2, X, AlertTriangle, CheckCircle2, XCircle, HelpCircle, RefreshCw, Trash2, Archive } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
+import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
+import FormularioRespaldo from '../respaldoDocumentos/FormularioRespaldo';
+import { RUTA_VISTA_RESPALDO } from '../respaldoDocumentos/respaldoHelpers';
 import { TIPOS_DOCUMENTO, ordenarDocumentos } from '../shared/documentosAdmision/documentosHelpers';
 import { listarDocumentosAdmision, subirTandaAdmision } from '../shared/documentosAdmision/documentosStorage';
 import { ZonaSubidaPdf } from '../shared/documentosAdmision/ZonaSubidaPdf';
@@ -187,6 +190,19 @@ const CargaMasivaDocumentos = () => {
     if (sinTipo.length > 0) showToast(`${sinTipo.length} archivo(s) subido(s) sin tipo reconocido. Revisa el resumen.`, 'warning');
   };
 
+  // Archivos cuya admisión no existe: se pueden enviar al Respaldo de
+  // documentos (con ID, nombre y tipo leídos del nombre del archivo).
+  const { hasPermission } = useGranularPermission();
+  const puedeRespaldar = hasPermission(RUTA_VISTA_RESPALDO, 'acciones', 'btn_subir');
+  const [respaldoAbierto, setRespaldoAbierto] = useState(false);
+  const respaldables = (resumen?.rechazados || []).filter((r) => r.respaldable && r.file);
+  const alEnviarARespaldo = (files) => setResumen((prev) => prev && ({
+    ...prev,
+    rechazados: prev.rechazados.map((r) => (files.includes(r.file)
+      ? { ...r, respaldable: false, motivo: `${r.motivo} Se envió al Respaldo de documentos.` }
+      : r)),
+  }));
+
   const etiquetaTipo = (tipo) => (tipo ? TIPOS_DOCUMENTO.find(t => t.id === tipo)?.id : null);
 
   return (
@@ -363,6 +379,16 @@ const CargaMasivaDocumentos = () => {
               <div className="px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
                 <div className="flex items-center gap-1.5 font-semibold mb-1">
                   <XCircle size={13} className="shrink-0" /> No subidos ({resumen.rechazados.length})
+                  {puedeRespaldar && respaldables.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRespaldoAbierto(true)}
+                      className="ml-auto h-6 px-2 rounded border border-red-300 dark:border-red-800 bg-white dark:bg-gray-800 text-[10.5px] font-semibold text-red-700 dark:text-red-400 inline-flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-950/40"
+                      title="Las admisiones de estos archivos no existen: guárdalos en Respaldo de documentos"
+                    >
+                      <Archive size={12} /> Enviar {respaldables.length} a respaldo
+                    </button>
+                  )}
                 </div>
                 <ul className="space-y-0.5 pl-5 list-disc">
                   {resumen.rechazados.map((r, idx) => (
@@ -376,6 +402,13 @@ const CargaMasivaDocumentos = () => {
           </div>
         )}
       </div>
+      {respaldoAbierto && (
+        <FormularioRespaldo
+          iniciales={respaldables.map((r) => ({ file: r.file }))}
+          onCerrar={() => setRespaldoAbierto(false)}
+          onSubidos={alEnviarARespaldo}
+        />
+      )}
     </div>
   );
 };

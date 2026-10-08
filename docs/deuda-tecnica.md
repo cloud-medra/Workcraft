@@ -34,3 +34,18 @@ Línea base al 2026-09-25 (rama `main`, commit `a9b3458`): **541 problemas — 4
   (lee `maestros_codigos` / `maestros_empresas` completos). Candidato a eliminar.
 - `firestore.indexes.json` puede no estar sincronizado con los índices desplegados
   (el índice `maestros_codigos: tieneCodigo + fechaRegistro` faltaba en el archivo).
+
+## Pendientes de funcionalidades
+
+- **Vaciado automático de la papelera a los 30 días** (Implantes → Respaldo de
+  documentos y Documentos → Archivo digital). Hoy eliminar es lógico
+  (`eliminado: true`, con `eliminadoEl`) y solo "Eliminar definitivamente" borra.
+  Falta una Cloud Function programada (por ejemplo, diaria) que borre del Storage
+  y de Firestore lo que lleve más de 30 días en la papelera:
+  - `implantes_respaldo_documentos` donde `eliminado == true` y `eliminadoEl < ahora - 30 días`
+    (más el PDF en `ruta`).
+  - `documentos_archivo`: por grupo (`eliminadoGrupo`), cuando el nodo raíz del grupo
+    tiene `eliminadoEl` de hace más de 30 días; borrar los archivos (`ruta`) y todos
+    los nodos del grupo.
+  Requiere índice compuesto `eliminado + eliminadoEl` en ambas colecciones (o filtrar
+  en memoria si el volumen es bajo).

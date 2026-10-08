@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react';
-import { FileText, UploadCloud, Eye, Download, Loader2, AlertCircle, RefreshCw, FolderOpen, CheckCircle2, XCircle, HelpCircle, Copy, ChevronUp } from 'lucide-react';
+import { FileText, UploadCloud, Eye, Download, Loader2, AlertCircle, RefreshCw, FolderOpen, CheckCircle2, XCircle, HelpCircle, Copy, ChevronUp, Archive } from 'lucide-react';
 import { useToast } from '../../../../../../../context/ToastContext';
+import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
+import FormularioRespaldo from '../../../respaldoDocumentos/FormularioRespaldo';
+import { RUTA_VISTA_RESPALDO } from '../../../respaldoDocumentos/respaldoHelpers';
 import {
   TIPOS_DOCUMENTO,
   TAMANO_MAXIMO_MB,
@@ -39,6 +42,19 @@ export const DocumentosTab = ({
   const [abriendoRuta, setAbriendoRuta] = useState(null);
   const [mostrarSubida, setMostrarSubida] = useState(false);
   const [visorIndice, setVisorIndice] = useState(null);  // índice en `ordenados`
+
+  // PDF rechazados por id distinto o ilegible: se pueden enviar al Respaldo
+  // de documentos (con ID, nombre y tipo leídos del nombre del archivo).
+  const { hasPermission } = useGranularPermission();
+  const puedeRespaldar = hasPermission(RUTA_VISTA_RESPALDO, 'acciones', 'btn_subir');
+  const [respaldoAbierto, setRespaldoAbierto] = useState(false);
+  const respaldables = (resumen?.rechazados || []).filter((r) => r.respaldable && r.file);
+  const alEnviarARespaldo = (files) => setResumen((prev) => prev && ({
+    ...prev,
+    rechazados: prev.rechazados.map((r) => (files.includes(r.file)
+      ? { ...r, respaldable: false, motivo: `${r.motivo} Se envió al Respaldo de documentos.` }
+      : r)),
+  }));
 
   const sinAdmision = !idAdmision;
   const { lista = [], cargando, error: errorListado } = documentos || {};
@@ -241,6 +257,16 @@ export const DocumentosTab = ({
               <div className="px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
                 <div className="flex items-center gap-1.5 font-semibold mb-1">
                   <XCircle size={13} className="shrink-0" /> No subidos ({resumen.rechazados.length})
+                  {puedeRespaldar && respaldables.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setRespaldoAbierto(true)}
+                      className="ml-auto h-6 px-2 rounded border border-red-300 dark:border-red-800 bg-white dark:bg-gray-800 text-[10.5px] font-semibold text-red-700 dark:text-red-400 inline-flex items-center gap-1 hover:bg-red-100 dark:hover:bg-red-950/40"
+                      title="Guárdalos en Respaldo de documentos con su propio ID"
+                    >
+                      <Archive size={12} /> Enviar {respaldables.length} a respaldo
+                    </button>
+                  )}
                 </div>
                 <ul className="space-y-0.5 pl-5 list-disc">
                   {resumen.rechazados.map((r, idx) => (
@@ -319,6 +345,13 @@ export const DocumentosTab = ({
         )}
       </div>
 
+      {respaldoAbierto && (
+        <FormularioRespaldo
+          iniciales={respaldables.map((r) => ({ file: r.file }))}
+          onCerrar={() => setRespaldoAbierto(false)}
+          onSubidos={alEnviarARespaldo}
+        />
+      )}
       {visorIndice !== null && ordenados[visorIndice] && (
         <VisorDocumentoModal
           documentos={ordenados}

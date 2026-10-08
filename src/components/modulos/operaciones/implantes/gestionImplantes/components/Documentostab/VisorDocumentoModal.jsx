@@ -15,7 +15,12 @@ const etiquetaTipo = (tipo) => {
 // (flechas ← → del teclado) y Esc para cerrar. Cada PDF se descarga de
 // Storage una sola vez mientras el visor está abierto (blob URL) y se libera
 // al cerrarlo.
-export const VisorDocumentoModal = ({ documentos, indiceInicial = 0, onCerrar }) => {
+// Lo usan también Respaldo de documentos (Implantes) y Archivo digital
+// (Documentos): `describir(documento)` cambia el texto bajo el título (por
+// defecto, el tipo DP/RP/INF/COT) y `puedeDescargar` oculta Descargar y
+// Pestaña nueva cuando el usuario no tiene ese permiso. Muestra PDF e
+// imágenes (el iframe abre cualquiera de los dos desde el blob).
+export const VisorDocumentoModal = ({ documentos, indiceInicial = 0, onCerrar, describir = (d) => etiquetaTipo(d.tipo), puedeDescargar = true }) => {
   const [indice, setIndice] = useState(indiceInicial);
   const [urls, setUrls] = useState({});
   const [errores, setErrores] = useState({});
@@ -88,7 +93,7 @@ export const VisorDocumentoModal = ({ documentos, indiceInicial = 0, onCerrar })
           <div className="min-w-0 flex-1">
             <h3 className="text-[12px] font-bold text-slate-800 dark:text-gray-100 truncate" title={actual.nombre}>{actual.nombre}</h3>
             <p className="text-[10px] text-slate-500 dark:text-gray-400 truncate">
-              {etiquetaTipo(actual.tipo)} · {indice + 1} de {total}
+              {describir(actual)} · {indice + 1} de {total}
             </p>
           </div>
 
@@ -99,13 +104,17 @@ export const VisorDocumentoModal = ({ documentos, indiceInicial = 0, onCerrar })
             <button type="button" onClick={() => irA(indice + 1)} disabled={indice === total - 1} className={BOTON} title="Documento siguiente (→)">
               <span className="hidden md:inline">Siguiente</span> <ChevronRight size={13} />
             </button>
-            <span className="w-px h-5 bg-slate-200 dark:bg-gray-700 mx-0.5" />
-            <button type="button" onClick={descargar} disabled={!url} className={BOTON} title="Descargar">
-              <Download size={13} /> <span className="hidden md:inline">Descargar</span>
-            </button>
-            <button type="button" onClick={() => url && window.open(url, '_blank')} disabled={!url} className={BOTON} title="Abrir en pestaña nueva">
-              <ExternalLink size={13} /> <span className="hidden md:inline">Pestaña nueva</span>
-            </button>
+            {puedeDescargar && (
+              <>
+                <span className="w-px h-5 bg-slate-200 dark:bg-gray-700 mx-0.5" />
+                <button type="button" onClick={descargar} disabled={!url} className={BOTON} title="Descargar">
+                  <Download size={13} /> <span className="hidden md:inline">Descargar</span>
+                </button>
+                <button type="button" onClick={() => url && window.open(url, '_blank')} disabled={!url} className={BOTON} title="Abrir en pestaña nueva">
+                  <ExternalLink size={13} /> <span className="hidden md:inline">Pestaña nueva</span>
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={onCerrar}

@@ -102,6 +102,8 @@ describe('clasificarArchivos', () => {
     expect(validos.map(f => f.name)).toEqual(['102030 - JOSE PEREZ - DP.pdf', '102030 - JOSE PEREZ - EXAMEN.pdf']);
     expect(rechazados.map(r => r.nombre)).toEqual(['104030 - JOSE PEREZ - DP.pdf', 'escaneo.pdf', 'foto.png']);
     expect(rechazados[0].motivo).toBe("El archivo '104030 - JOSE PEREZ - DP.pdf' no corresponde a la admisión 102030. No se subió.");
+    // PDF con id distinto o ilegible se pueden enviar al respaldo; un no-PDF no.
+    expect(rechazados.map(r => Boolean(r.respaldable))).toEqual([true, true, false]);
   });
 });
 

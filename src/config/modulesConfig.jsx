@@ -1,6 +1,8 @@
 import React from 'react';
 import {
   Activity,
+  Archive,
+  FolderOpen,
   ArrowDownToLine,
   ArrowUpFromLine,
   ArrowRightToLine,
@@ -157,6 +159,7 @@ export const MODULES = {
       { label: 'Importar Detalles OC', path: '/documentos/importarDetallesOC', icon: <FileSpreadsheet size={14} /> },
       { label: 'Seguimiento de Facturas y Guías', path: '/documentos/seguimientoFacturasGuias', icon: <Receipt size={14} /> },
       { label: 'Ingreso de Órdenes', path: '/documentos/ingresoOrdenes', icon: <FileUp size={14} /> },
+      { label: 'Archivo digital', path: '/documentos/archivoDigital', icon: <FolderOpen size={14} /> },
     ]
   },
 
@@ -170,6 +173,7 @@ export const MODULES = {
       { label: 'Resumen', path: '/implantes/resumenImplantes', icon: <BarChart2 size={14} /> },
       { label: 'Sincronizar', path: '/implantes/sincronizacionImputadas', icon: <GitCompareArrows size={14} /> },
       { label: 'Reportes Info', path: '/implantes/reportesInfo', icon: <BarChart2 size={14} /> },
+      { label: 'Respaldo de documentos', path: '/implantes/respaldoDocumentos', icon: <Archive size={14} /> },
     ]
   },
   hemodinamia: {

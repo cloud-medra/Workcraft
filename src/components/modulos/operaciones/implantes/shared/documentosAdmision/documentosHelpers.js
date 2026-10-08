@@ -106,7 +106,9 @@ export const nombreDisponible = (nombre, nombresExistentes = []) => {
 };
 
 // Separa lo seleccionado en lo que se puede subir y lo rechazado (con el
-// motivo), antes de tocar Storage.
+// motivo), antes de tocar Storage. Los PDF rechazados por id ilegible o
+// distinto quedan `respaldable` (con su `file`) para poder enviarlos al
+// Respaldo de documentos.
 export const clasificarArchivos = (files, idAdmision) => {
   const validos = [];
   const rechazados = [];
@@ -114,9 +116,9 @@ export const clasificarArchivos = (files, idAdmision) => {
     if (!esPdf(file)) {
       rechazados.push({ nombre: file.name, motivo: 'No es un archivo PDF. No se subió.' });
     } else if (!idDesdeNombre(file.name)) {
-      rechazados.push({ nombre: file.name, motivo: `El nombre no comienza con un id de admisión legible ("${idAdmision} - ..."). No se subió.` });
+      rechazados.push({ nombre: file.name, motivo: `El nombre no comienza con un id de admisión legible ("${idAdmision} - ..."). No se subió.`, file, respaldable: true });
     } else if (!idCoincide(file.name, idAdmision)) {
-      rechazados.push({ nombre: file.name, motivo: `El archivo '${file.name}' no corresponde a la admisión ${idAdmision}. No se subió.` });
+      rechazados.push({ nombre: file.name, motivo: `El archivo '${file.name}' no corresponde a la admisión ${idAdmision}. No se subió.`, file, respaldable: true });
     } else {
       validos.push(file);
     }
