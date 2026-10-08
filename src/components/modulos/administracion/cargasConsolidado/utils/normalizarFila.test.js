@@ -149,12 +149,13 @@ describe('normalizarSolicitudImplantes / Hemodinamia / Consignacion (Solicitudes
       fecha: '2026-09-20',
       empresa: 'EmpresaX',
       atributo: 'IMPLANTES',
-      fechaRegistro: 'ts',
+      fechaRegistro: 'ts-creacion',
+      fechaRegistroAdmision: 'ts-admision',
       // bloque.items (top-level) NO existe en el doc real — solo debe leer
       // cotizaciones[0].items. Si el código leyera bloque.items por error,
       // esto debería dar 1 fila "vacía", no 2.
       cotizaciones: [{ numCotizacion: 'COT-1', items: [
-        { id: 'it1', codigo: 'COD-A', referencia: 'Ref A', cantidad: 2, precio: 1000, lote: 'L1', vencimiento: '2027-01-01' },
+        { id: 'it1', codigo: 'COD-A', referencia: 'Ref A', descriptorAuto: 'Desc A', cantidad: 2, precio: 1000, lote: 'L1', vencimiento: '2027-01-01' },
         { id: 'it2', codigo: 'COD-B', referencia: 'Ref B', cantidad: 1, precio: 500, numCotizacion: 'COT-2' }
       ] }]
     };
@@ -168,18 +169,23 @@ describe('normalizarSolicitudImplantes / Hemodinamia / Consignacion (Solicitudes
     // ids de fila distintos entre sí, para keys de React.
     expect(new Set(filas.map(f => f.id)).size).toBe(2);
 
-    expect(filas[0]).toMatchObject({ codigo: 'COD-A', descripcion: 'Ref A', cantidad: 2, precio: 1000, lote: 'L1', numGuia: 'COT-1' });
+    // Descripción = descriptorAuto (no la referencia), igual que el Excel.
+    expect(filas[0]).toMatchObject({ codigo: 'COD-A', descripcion: 'Desc A', cantidad: 2, precio: 1000, lote: 'L1', numGuia: 'COT-1' });
     // El segundo ítem trae su propio numCotizacion — debe primar sobre el de la cotización.
     expect(filas[1]).toMatchObject({ codigo: 'COD-B', numGuia: 'COT-2' });
+    // Fecha de Registro = cuándo se ingresó el ID de admisión, no la creación.
+    expect(filas.every(f => f.fechaRegistro === 'ts-admision')).toBe(true);
     // Atributo viene del bloque (mismo campo/nombre en las 3 colecciones).
     expect(filas.every(f => f.atributo === 'IMPLANTES')).toBe(true);
   });
 
   it('Implantes: bloque sin ítems produce 1 fila con placeholders, no 0 filas', () => {
-    const bloque = { refPath: 'implantes_gestiones/.../vacio', gestionId: '1', cotizaciones: [{ items: [] }] };
+    const bloque = { refPath: 'implantes_gestiones/.../vacio', gestionId: '1', fechaRegistro: 'ts-creacion', cotizaciones: [{ items: [] }] };
     const filas = normalizarSolicitudImplantes(bloque);
     expect(filas).toHaveLength(1);
     expect(filas[0].codigo).toBe('-');
+    // Sin fechaRegistroAdmision (registro antiguo o sin ID) → vacío, no la de creación.
+    expect(filas[0].fechaRegistro).toBeNull();
   });
 
   it('Hemodinamia: mismo comportamiento que Implantes (bloque con cotizaciones[0].items anidado)', () => {
@@ -189,6 +195,8 @@ describe('normalizarSolicitudImplantes / Hemodinamia / Consignacion (Solicitudes
       gestionId: '600200',
       nombre: 'Pedro Gómez',
       atributo: 'HEMODINAMIA',
+      fechaRegistro: 'ts-creacion',
+      fechaRegistroAdmision: 'ts-admision',
       cotizaciones: [{ numCotizacion: 'COT-9', items: [
         { id: 'it1', codigo: 'COD-Z', referencia: 'Ref Z', cantidad: 5, precio: 200, lote: 'L9', vencimiento: '2026-12-31' }
       ] }]
@@ -205,7 +213,8 @@ describe('normalizarSolicitudImplantes / Hemodinamia / Consignacion (Solicitudes
       cantidad: 5,
       precio: 200,
       numGuia: 'COT-9',
-      atributo: 'HEMODINAMIA'
+      atributo: 'HEMODINAMIA',
+      fechaRegistro: 'ts-admision'
     });
   });
 

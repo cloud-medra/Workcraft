@@ -26,6 +26,7 @@ import { refImputada, construirPayloadImputada } from '../utils/imputadaSync';
 import { registrarLogImplantes } from '../utils/registrarLogImplantes';
 import { existeGestionEnColeccion, extraerDatosBase, MENSAJE_DUPLICADO } from '../../../shared/empresaFechaDesdeDetalle';
 import { calcularOcPendiente, itemsDeGestion } from '../../../shared/ocIndex/indiceOC';
+import { calcularFechaRegistroAdmision } from '../../../shared/fechaRegistroAdmision';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -445,6 +446,7 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
       // (Firestore no puede consultar "campo inexistente").
       ocPendiente: calcularOcPendiente(itemsDeGestion(dataNormalizada), {}),
       fechaRegistro: new Date(),
+      fechaRegistroAdmision: calcularFechaRegistroAdmision({ idNuevo: dataNormalizada.gestionId }),
       registradoPor: userData?.nombreCompleto || 'Usuario'
     };
 
@@ -583,6 +585,11 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
         const dataAEnviar = {
           ...dataNormalizada,
           fechaRegistro: implanteExistente?.fechaRegistro || new Date(),
+          fechaRegistroAdmision: calcularFechaRegistroAdmision({
+            idAnterior: implanteExistente?.gestionId || implanteExistente?.agendaId,
+            idNuevo: dataNormalizada.gestionId,
+            fechaAnterior: implanteExistente?.fechaRegistroAdmision
+          }),
           registradoPor: implanteExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
         // Gestión anterior a "Sincronizar OC" sin el flag: se agrega al
@@ -683,6 +690,12 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
 
         const original = registro.id ? buscarOriginal(registro.id) : null;
 
+        // Viaja también cuando el doc se mueve de ruta (cambio de ID/fecha/empresa).
+        dataNormalizada.fechaRegistroAdmision = calcularFechaRegistroAdmision({
+          idAnterior: original?.gestionId || original?.agendaId,
+          idNuevo: dataNormalizada.gestionId,
+          fechaAnterior: original?.fechaRegistroAdmision
+        });
         dataNormalizada.fechaInicioCarga = registro.fechaInicioCarga || original?.fechaInicioCarga || null;
         dataNormalizada.fechaCarga = registro.fechaCarga || original?.fechaCarga || null;
 
@@ -1022,7 +1035,8 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
             active: true,
             ocPendiente: false, // sin ítems todavía: nada que sincronizar
             registradoPor: userData?.nombreCompleto || 'Importación Masiva',
-            fechaRegistro: new Date()
+            fechaRegistro: new Date(),
+            fechaRegistroAdmision: calcularFechaRegistroAdmision({ idNuevo: gestionIdLimpio })
           };
 
           batch.set(implanteRef, dataRegistro);

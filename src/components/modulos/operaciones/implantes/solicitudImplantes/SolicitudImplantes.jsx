@@ -100,7 +100,8 @@ const CAMPOS_A_VALIDAR = [
   { key: 'centro', label: 'Centro', columna: null, obtener: (b) => b.centro },
   { key: 'atributo', label: 'Atributo', columna: null, obtener: (b) => b.atributo },
   { key: 'numCotizacion', label: 'N° Cotización', columna: 'numCotizacion', obtener: (b, it) => it?.numCotizacion || b.numCotizacion },
-  { key: 'referencia', label: 'Referencia', columna: 'descripcion', obtener: (b, it) => it?.referencia },
+  // Sin columna propia: "Descripción" muestra descriptorAuto, no la referencia.
+  { key: 'referencia', label: 'Referencia', columna: null, obtener: (b, it) => it?.referencia },
   { key: 'codigo', label: 'Código', columna: 'codigo', obtener: (b, it) => it?.codigo },
   // "clase", "descriptorAuto", "tipoVinculado", "detalle" y
   // "empresaVinculada" excluidas a propósito: se completan automáticamente
@@ -420,10 +421,10 @@ const SolicitudImplantes = () => {
                     <td className={cc('codigo', `py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 whitespace-nowrap overflow-hidden text-ellipsis ${esContenidoPad ? 'text-fuchsia-600 dark:text-fuchsia-400 italic' : 'font-num text-emerald-600 dark:text-emerald-400'}`)} title={tt('codigo')}>
                       {item ? (item.codigo || 'S/C') : '-'}
                     </td>
-                    <td className={cc('descripcion', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 truncate max-w-[180px]')} title={tt('descripcion', item?.referencia || item?.descriptorAuto)}>
+                    <td className={cc('descripcion', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 truncate max-w-[180px]')} title={tt('descripcion', item?.descriptorAuto)}>
                       <span className="flex items-center gap-1">
                         {esContenidoPad && <span className="text-fuchsia-400 dark:text-fuchsia-600 shrink-0">↳</span>}
-                        <span className="truncate">{item ? (item.referencia || item.descriptorAuto || '-') : '-'}</span>
+                        <span className="truncate">{item ? (item.descriptorAuto || '-') : '-'}</span>
                         {esPrincipalPad && (
                           <span className="flex items-center gap-0.5 text-[8px] px-1 rounded bg-fuchsia-100 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-400 font-bold shrink-0">
                             <Package size={9} /> PAD
@@ -441,7 +442,7 @@ const SolicitudImplantes = () => {
                       {item ? (item.tipoVinculado || 'P') : '-'}
                     </td>
                     <td className={cc('fechaRegistro', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis')} title={tt('fechaRegistro')}>
-                      {formatearFechaDeTimestamp(bloque.fechaRegistro)}
+                      {formatearFechaDeTimestamp(bloque.fechaRegistroAdmision)}
                     </td>
                     <td className={cc('fechaCarga', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis')} title={tt('fechaCarga')}>
                       {formatearFechaTabla(bloque.fecha)}

@@ -389,7 +389,7 @@ const SolicitudHemodinamia = () => {
                       {item ? (item.tipoVinculado || 'P') : '-'}
                     </td>
                     <td className={cc('fechaRegistro', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis')} title={tt('fechaRegistro')}>
-                      {formatearFechaDeTimestamp(bloque.fechaRegistro)}
+                      {formatearFechaDeTimestamp(bloque.fechaRegistroAdmision)}
                     </td>
                     <td className={cc('fechaCarga', 'py-1 px-2 border-r border-gray-200 dark:border-gray-700/70 text-gray-600 dark:text-gray-300 whitespace-nowrap overflow-hidden text-ellipsis')} title={tt('fechaCarga')}>
                       {formatearFechaTabla(bloque.fecha)}

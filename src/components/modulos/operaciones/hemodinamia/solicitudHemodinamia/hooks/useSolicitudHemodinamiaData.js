@@ -67,6 +67,7 @@ export const useSolicitudHemodinamiaData = () => {
           costo: data.costo || 0,
           registradoPor: data.registradoPor || 'Usuario',
           fechaRegistro: data.fechaRegistro || null,
+          fechaRegistroAdmision: data.fechaRegistroAdmision || null,
           numCotizacion: data.cotizaciones?.[0]?.numCotizacion || 'P',
           items
         };
@@ -175,7 +176,8 @@ export const useSolicitudHemodinamiaData = () => {
           const filasResumen = [];
 
           bloquesSeleccionados.forEach(bloque => {
-            const fechaRegistroBloque = formatearFechaDeTimestamp(bloque.fechaRegistro);
+            // "FECHA REGISTRO" = cuándo se ingresó el ID de admisión (no la creación del registro).
+            const fechaRegistroBloque = formatearFechaDeTimestamp(bloque.fechaRegistroAdmision);
 
             if (bloque.items.length === 0) {
               filas.push({

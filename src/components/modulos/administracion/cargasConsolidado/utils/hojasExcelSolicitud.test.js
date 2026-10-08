@@ -19,7 +19,8 @@ const bloqueImplantes = {
   centro: 'PABELLON',
   prevision: 'FONASA',
   atributo: 'IMPLANTES',
-  fechaRegistro,
+  // Implantes/Hemodinamia: "FECHA REGISTRO" = fecha de ingreso del ID de admisión.
+  fechaRegistroAdmision: fechaRegistro,
   cotizaciones: [{
     numCotizacion: 'COT-1',
     items: [{
@@ -38,7 +39,8 @@ const docHemodinamia = {
   fecha: '2026-09-19',
   empresa: 'EMP HEMO',
   prevision: 'ISAPRE',
-  fechaRegistro,
+  // Implantes/Hemodinamia: "FECHA REGISTRO" = fecha de ingreso del ID de admisión.
+  fechaRegistroAdmision: fechaRegistro,
   cotizaciones: [{
     numCotizacion: 'COT-2',
     items: [{

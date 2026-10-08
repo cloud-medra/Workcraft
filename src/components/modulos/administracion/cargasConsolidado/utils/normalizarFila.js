@@ -210,6 +210,14 @@ export const normalizarImputadaConsignacion = (doc) => ({
 // (el valor de pantalla = referencia), por eso salía la Referencia en la
 // columna DESCRIPCION. Consignación no tiene esa diferencia: su
 // `descripcion` ya es la real en ambos lados.
+// En Implantes la columna "Descripción" de pantalla también muestra
+// `descriptorAuto` (antes mostraba la referencia, igual que la tabla
+// nativa; ambas se corrigieron juntas).
+//
+// "Fecha de Registro" en Implantes/Hemodinamia es `fechaRegistroAdmision`
+// (cuándo se ingresó el ID de admisión, ver shared/fechaRegistroAdmision.js),
+// no `fechaRegistro` (creación del documento). En Consignación sigue siendo
+// `fechaRegistro`.
 
 const FILA_ITEM_VACIA = { codigo: '-', descripcion: '-', cantidad: '-', precio: 0, lote: '-', vencimiento: '' };
 
@@ -233,11 +241,11 @@ export const normalizarSolicitudImplantes = (bloque) => {
     fecha: bloque.fecha || '',
     empresa: bloque.empresa || 'P',
     codigo: it ? (it.codigo || 'S/C') : FILA_ITEM_VACIA.codigo,
-    descripcion: it ? (it.referencia || it.descriptorAuto || 'P') : FILA_ITEM_VACIA.descripcion,
+    descripcion: it ? (it.descriptorAuto || 'P') : FILA_ITEM_VACIA.descripcion,
     cantidad: it ? (it.cantidad ?? FILA_ITEM_VACIA.cantidad) : FILA_ITEM_VACIA.cantidad,
     precio: it ? Number(it.precio) || 0 : FILA_ITEM_VACIA.precio,
     atributo: bloque.atributo || 'P',
-    fechaRegistro: bloque.fechaRegistro || null,
+    fechaRegistro: bloque.fechaRegistroAdmision || null,
     fechaCarga: bloque.fecha || '',
     numGuia: it?.numCotizacion || numCotizacionBloque,
     lote: it ? (it.lote || 'P') : FILA_ITEM_VACIA.lote,
@@ -315,6 +323,7 @@ export const normalizarSolicitudHemodinamia = (doc) => {
     costo: doc.costo || 0,
     registradoPor: doc.registradoPor || 'Usuario',
     fechaRegistro: doc.fechaRegistro || null,
+    fechaRegistroAdmision: doc.fechaRegistroAdmision || null,
     numCotizacion: numCotizacionBloque,
     items
   };
@@ -336,7 +345,7 @@ export const normalizarSolicitudHemodinamia = (doc) => {
     cantidad: it ? (it.cantidad ?? FILA_ITEM_VACIA.cantidad) : FILA_ITEM_VACIA.cantidad,
     precio: it ? Number(it.precio) || 0 : FILA_ITEM_VACIA.precio,
     atributo: bloque.atributo || 'P',
-    fechaRegistro: bloque.fechaRegistro || null,
+    fechaRegistro: bloque.fechaRegistroAdmision || null,
     fechaCarga: bloque.fecha === 'P' ? '' : bloque.fecha,
     numGuia: it?.numCotizacion || numCotizacionBloque,
     lote: it ? (it.lote || 'P') : FILA_ITEM_VACIA.lote,

@@ -26,6 +26,7 @@ import { periodoEstaAbierto } from '../components/Cargastab/verificacionPeriodoB
 import { refImputada, construirPayloadImputada } from '../utils/imputadaSync';
 import { registrarLogHemodinamia } from '../utils/registrarLogHemodinamia';
 import { existeGestionEnColeccion, extraerDatosBase, MENSAJE_DUPLICADO } from '../../../shared/empresaFechaDesdeDetalle';
+import { calcularFechaRegistroAdmision } from '../../../shared/fechaRegistroAdmision';
 
 const getFechaActualISO = () => {
   const hoy = new Date();
@@ -415,6 +416,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
     const dataAEnviar = {
       ...dataNormalizada,
       fechaRegistro: new Date(),
+      fechaRegistroAdmision: calcularFechaRegistroAdmision({ idNuevo: dataNormalizada.gestionId }),
       registradoPor: userData?.nombreCompleto || 'Usuario'
     };
 
@@ -553,6 +555,11 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
         const dataAEnviar = {
           ...dataNormalizada,
           fechaRegistro: implanteExistente?.fechaRegistro || new Date(),
+          fechaRegistroAdmision: calcularFechaRegistroAdmision({
+            idAnterior: implanteExistente?.gestionId || implanteExistente?.agendaId,
+            idNuevo: dataNormalizada.gestionId,
+            fechaAnterior: implanteExistente?.fechaRegistroAdmision
+          }),
           registradoPor: implanteExistente?.registradoPor || userData?.nombreCompleto || 'Usuario'
         };
 
@@ -645,6 +652,12 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
 
         const original = registro.id ? buscarOriginal(registro.id) : null;
 
+        // Viaja también cuando el doc se mueve de ruta (cambio de ID/fecha/empresa).
+        dataNormalizada.fechaRegistroAdmision = calcularFechaRegistroAdmision({
+          idAnterior: original?.gestionId || original?.agendaId,
+          idNuevo: dataNormalizada.gestionId,
+          fechaAnterior: original?.fechaRegistroAdmision
+        });
         dataNormalizada.fechaInicioCarga = registro.fechaInicioCarga || original?.fechaInicioCarga || null;
         dataNormalizada.fechaCarga = registro.fechaCarga || original?.fechaCarga || null;
 
@@ -963,7 +976,8 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
             solicitud: 'PENDIENTE',
             active: true,
             registradoPor: userData?.nombreCompleto || 'Importación Masiva',
-            fechaRegistro: new Date()
+            fechaRegistro: new Date(),
+            fechaRegistroAdmision: calcularFechaRegistroAdmision({ idNuevo: gestionIdLimpio })
           };
 
           batch.set(implanteRef, dataRegistro);
