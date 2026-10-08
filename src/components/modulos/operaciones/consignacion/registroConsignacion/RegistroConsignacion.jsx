@@ -28,8 +28,11 @@ import {
   construirDatosDoc,
   construirNuevoRegistro,
   agregarCarpetasFecha,
-  nuevaRefDetalle,
-  agregarRegistroNuevoABatch
+  agregarRegistroNuevoABatch,
+  esRegistroEditable,
+  mensajeRegistroNoEditable,
+  guardarEdicionRegistroConsignacion,
+  RegistroNoEditableError
 } from '../utils/registroConsignacionService';
 
 import RegistroConsignacionForm from './components/RegistroConsignacionForm';
@@ -141,8 +144,8 @@ const RegistroConsignacion = () => {
       return;
     }
 
-    if (registroEditando && (registroEditando.estado || '').toUpperCase() === 'CARGADO') {
-      showToast('Este registro ya fue cargado y no se puede modificar', 'error');
+    if (registroEditando && !esRegistroEditable(registroEditando)) {
+      showToast(mensajeRegistroNoEditable(registroEditando), 'error');
       setRegistroEditando(null);
       return;
     }
@@ -152,43 +155,17 @@ const RegistroConsignacion = () => {
     setCargando(true);
     try {
       if (registroEditando) {
-        const clavesAnteriores = descomponerFecha(registroEditando.fecha);
-        const seMovioDeCarpeta =
-          !clavesAnteriores ||
-          clavesAnteriores.anio !== clavesNuevas.anio ||
-          clavesAnteriores.nombreMes !== clavesNuevas.nombreMes ||
-          clavesAnteriores.dia !== clavesNuevas.dia;
-
-        if (!seMovioDeCarpeta) {
-          await updateDoc(registroEditando.ref, datosDoc);
-          setRegistros((prev) =>
-            prev.map((r) => (r.id === registroEditando.id ? { ...r, ...datosDoc } : r))
-          );
-          await registrarLogConsignacion(registroEditando.ref, 'EDICION', datosDoc, userData);
-        } else {
-          const batch = writeBatch(db);
-          agregarCarpetasFecha(batch, db, clavesNuevas);
-
-          const nuevoRef = nuevaRefDetalle(db, clavesNuevas);
-          const nuevoDoc = {
-            ...datosDoc,
-            guias: registroEditando.guias || '',
-            orden: registroEditando.orden || '',
-            despachado: registroEditando.despachado || 'PENDIENTE',
-            fechaRegistro: registroEditando.fechaRegistro || new Date(),
-            registradoPor: registroEditando.registradoPor || userData?.nombreCompleto || 'Usuario'
-          };
-          batch.set(nuevoRef, nuevoDoc);
-          batch.delete(registroEditando.ref);
-
-          await batch.commit();
-
-          setRegistros((prev) => [
-            { id: nuevoRef.id, ref: nuevoRef, ...nuevoDoc },
-            ...prev.filter((r) => r.id !== registroEditando.id)
-          ]);
-          await registrarLogConsignacion(nuevoRef, 'EDICION', nuevoDoc, userData);
-        }
+        // La transacción relee el estado en Firestore: si ya no está
+        // INGRESADO (lo cargaron/solicitaron mientras tanto) se rechaza.
+        const { ref, datos, movido } = await guardarEdicionRegistroConsignacion(
+          db, registroEditando, datosDoc, clavesNuevas, userData
+        );
+        setRegistros((prev) =>
+          movido
+            ? [{ id: ref.id, ref, ...datos }, ...prev.filter((r) => r.id !== registroEditando.id)]
+            : prev.map((r) => (r.id === registroEditando.id ? { ...r, ...datos } : r))
+        );
+        await registrarLogConsignacion(ref, 'EDICION', datos, userData);
 
         showToast('Registro actualizado correctamente', 'success');
         setRegistroEditando(null);
@@ -205,6 +182,12 @@ const RegistroConsignacion = () => {
         showToast('Ítem registrado correctamente', 'success');
       }
     } catch (error) {
+      if (error instanceof RegistroNoEditableError) {
+        showToast(error.message, 'error');
+        setRegistroEditando(null);
+        cargarPrimeraPagina(); // la lista mostraba un estado desactualizado
+        return;
+      }
       console.error('Error al guardar:', error);
       showToast('Error al guardar: ' + error.message, 'error');
     } finally {
@@ -213,9 +196,8 @@ const RegistroConsignacion = () => {
   };
 
   const handleIniciarEdicion = (registro) => {
-    const estadoActual = (registro.estado || '').toUpperCase();
-    if (estadoActual === 'CARGADO') {
-      showToast('Este registro ya fue cargado y no se puede modificar', 'error');
+    if (!esRegistroEditable(registro)) {
+      showToast(mensajeRegistroNoEditable(registro), 'error');
       return;
     }
     setRegistroEditando(registro);

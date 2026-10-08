@@ -1,5 +1,9 @@
 import React from 'react';
 import { User, Package } from 'lucide-react';
+import { useColumnResize } from '../../../../../../hooks/useColumnResize';
+import { useUser } from '../../../../../../context/UserContext';
+import { TablaRedimensionable } from '../../../../../ui/TablaRedimensionable';
+import { BotonRestablecerAnchos } from '../../../../../ui/BotonRestablecerAnchos';
 
 const formatearFechaTabla = (fechaString) => {
   if (!fechaString || !fechaString.includes('-')) return fechaString || '-';
@@ -21,9 +25,50 @@ const ESTADO_BADGE = {
   CARGADO: 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400'
 };
 
+const totalItem = (it) => (Number(it.costo) || 0) * (Number(it.cantidad) || 1);
+
+// Columnas de "Ítems Registrados" (redimensionables, anchos recordados por
+// usuario en localStorage bajo 'consignacion.detalle').
+const COLUMNAS = [
+  { key: 'codigo', label: 'Código', ancho: 90, min: 55,
+    clase: 'font-num text-emerald-600 dark:text-emerald-400', celda: it => it.codigo || 'S/C' },
+  { key: 'referencia', label: 'Referencia', ancho: 160, min: 80,
+    clase: 'font-medium text-slate-700 dark:text-gray-200', celda: it => it.referencia || '-' },
+  { key: 'descripcion', label: 'Descripción', ancho: 200, min: 80,
+    clase: 'text-slate-500 dark:text-gray-400', celda: it => it.descripcion || '-' },
+  { key: 'empresa', label: 'Empresa', ancho: 140, min: 70,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => renderP(it.empresa) },
+  { key: 'cantidad', label: 'Cant.', ancho: 55, min: 40, align: 'center',
+    clase: 'text-slate-700 dark:text-gray-200 font-semibold', celda: it => it.cantidad ?? 0 },
+  { key: 'costo', label: 'Costo', ancho: 90, min: 55,
+    clase: 'text-emerald-700 dark:text-emerald-400', celda: it => (it.costo ? `$${Number(it.costo).toLocaleString('es-CL')}` : '-') },
+  { key: 'total', label: 'Total', ancho: 95, min: 60,
+    clase: 'text-emerald-700 dark:text-emerald-400 font-semibold',
+    celda: it => { const t = totalItem(it); return t ? `$${Math.round(t).toLocaleString('es-CL')}` : '-'; } },
+  { key: 'delivery', label: 'Delivery', ancho: 100, min: 55,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.delivery || '-' },
+  { key: 'atributo', label: 'Atributo', ancho: 110, min: 60,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.atributo || '-' },
+  { key: 'estado', label: 'Estado', ancho: 100, min: 65,
+    celda: it => {
+      const estadoKey = (it.estado || 'INGRESADO').toUpperCase();
+      return (
+        <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${ESTADO_BADGE[estadoKey] || 'bg-slate-100 text-slate-600'}`}>
+          {estadoKey}
+        </span>
+      );
+    } }
+];
+
+const claseFilaItem = () =>
+  'border-l-2 border-transparent hover:border-[#2383C2] transition-colors hover:bg-gray-50/80 dark:hover:bg-gray-700/40';
+
 const DetalleTab = ({ registro, items = [] }) => {
+  const usuario = useUser()?.userData?.uid;
+  const { anchos, handleResize, restablecerAnchos, personalizados } =
+    useColumnResize(COLUMNAS, { clave: 'consignacion.detalle', usuario });
   const totalItems = items.length;
-  const sumaCostos = items.reduce((acc, it) => acc + (Number(it.costo) || 0) * (Number(it.cantidad) || 1), 0);
+  const sumaCostos = items.reduce((acc, it) => acc + totalItem(it), 0);
 
   return (
     <div className="p-4 max-w-7xl mx-auto w-full space-y-4">
@@ -84,89 +129,18 @@ const DetalleTab = ({ registro, items = [] }) => {
           <h3 className="text-[11px] font-bold text-slate-700 dark:text-gray-200 uppercase tracking-wide">
             Ítems Registrados
           </h3>
+          <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} className="ml-auto" />
         </div>
 
-        <div className="overflow-auto">
-          <table className="w-full text-left text-[10px] border-collapse">
-            <thead className="bg-slate-50 dark:bg-gray-900/60">
-              <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Descripción</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Empresa</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Costo</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Delivery</th>
-                <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Atributo</th>
-                <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
-                    Sin ítems registrados para esta admisión
-                  </td>
-                </tr>
-              ) : (
-                items.map((it) => {
-                  const estadoKey = (it.estado || 'INGRESADO').toUpperCase();
-                  const total = (Number(it.costo) || 0) * (Number(it.cantidad) || 1);
-                  return (
-                    <tr key={it.id} className="border-l-2 border-transparent hover:border-[#2383C2] transition-colorshover:bg-gray-50/80 dark:hover:bg-gray-700/40">
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num text-emerald-600 dark:text-emerald-400">
-                        {it.codigo || 'S/C'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={it.referencia}>
-                        {it.referencia || '-'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[180px]" title={it.descripcion}>
-                        {it.descripcion || '-'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                        {renderP(it.empresa)}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-700 dark:text-gray-200 font-semibold">
-                        {it.cantidad ?? 0}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400">
-                        {it.costo ? `$${Number(it.costo).toLocaleString('es-CL')}` : '-'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
-                        {total ? `$${Math.round(total).toLocaleString('es-CL')}` : '-'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                        {it.delivery || '-'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                        {it.atributo || '-'}
-                      </td>
-                      <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60">
-                        <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded-full uppercase ${ESTADO_BADGE[estadoKey] || 'bg-slate-100 text-slate-600'}`}>
-                          {estadoKey}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-            {items.length > 0 && (
-              <tfoot>
-                <tr className="bg-slate-50 dark:bg-gray-900/60 font-bold">
-                  <td colSpan={6} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right">
-                    Total de la admisión:
-                  </td>
-                  <td className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-emerald-700 dark:text-emerald-400">
-                    ${Math.round(sumaCostos).toLocaleString('es-CL')}
-                  </td>
-                  <td colSpan={3} className="border-t border-slate-200 dark:border-gray-700"></td>
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+        <TablaRedimensionable
+          columnas={COLUMNAS}
+          filas={items}
+          anchos={anchos}
+          onResize={handleResize}
+          claseFila={claseFilaItem}
+          vacio="Sin ítems registrados para esta admisión"
+          pie={{ etiqueta: 'Total de la admisión:', columna: 'total', valor: `$${Math.round(sumaCostos).toLocaleString('es-CL')}` }}
+        />
       </div>
     </div>
   );

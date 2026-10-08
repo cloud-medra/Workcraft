@@ -13,11 +13,67 @@ import { MESES } from '../../../../../administracion/controlMensual/constants';
 import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 import { itemRequiereOC } from '../../../../shared/ocIndex/indiceOC';
 import EstadoBadge from '../../../shared/estadoGestion/EstadoBadge';
+import { useColumnResize } from '../../../../../../../hooks/useColumnResize';
+import { useUser } from '../../../../../../../context/UserContext';
+import { TablaRedimensionable } from '../../../../../../ui/TablaRedimensionable';
+import { BotonRestablecerAnchos } from '../../../../../../ui/BotonRestablecerAnchos';
+
+// Columnas de la tabla de ítems (redimensionables, anchos recordados por
+// usuario en localStorage bajo 'implantes.detalle'). `contexto.ocPorItem`
+// es el mapa de OC del bloque que se está dibujando.
+const COLUMNAS = [
+  { key: 'referencia', label: 'Referencia', ancho: 100, min: 60,
+    clase: 'font-medium text-slate-700 dark:text-gray-200', celda: it => it.referencia },
+  { key: 'codigo', label: 'Código', ancho: 90, min: 55,
+    clase: it => `font-num ${it.sinCodigo ? 'text-red-600 dark:text-red-400 font-bold' : 'text-emerald-600 dark:text-emerald-400'}`,
+    celda: it => it.codigo || 'S/C' },
+  { key: 'descriptorAuto', label: 'Desc. Auto', ancho: 180, min: 80,
+    clase: 'text-slate-500 dark:text-gray-400', celda: it => it.descriptorAuto || 'P' },
+  { key: 'clase', label: 'Clase', ancho: 60, min: 40,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.clase || 'P' },
+  { key: 'tipo', label: 'Tipo', ancho: 70, min: 40,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.tipoVinculado || 'P' },
+  { key: 'precio', label: 'Precio', ancho: 85, min: 55,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => `$${formatearPesos(it.precio || 0)}` },
+  { key: 'vecesCosto', label: 'Veces Costo', ancho: 80, min: 50, align: 'center',
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.vecesCosto || 1 },
+  { key: 'venta', label: 'Venta', ancho: 85, min: 55,
+    clase: 'text-slate-700 dark:text-gray-200 font-medium', celda: it => `$${formatearPesos(it.venta || 0)}` },
+  { key: 'cantidad', label: 'Cant.', ancho: 55, min: 40, align: 'center',
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.cantidad },
+  { key: 'totalItem', label: 'Total Ítem', ancho: 95, min: 60,
+    clase: 'text-emerald-700 dark:text-emerald-400 font-semibold', celda: it => `$${formatearPesos(it.totalItem || 0)}` },
+  { key: 'lote', label: 'Lote', ancho: 85, min: 45,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => it.lote },
+  { key: 'vencimiento', label: 'Vencimiento', ancho: 90, min: 60,
+    clase: 'text-slate-600 dark:text-gray-300', celda: it => formatearFechaTabla(it.vencimiento) },
+  { key: 'oc', label: 'OC', ancho: 60, min: 30, clase: 'font-num',
+    titulo: (it, { ocPorItem }) => ocPorItem[it.id],
+    celda: (it, { ocPorItem }) => (ocPorItem[it.id]
+      ? <span className="text-slate-700 dark:text-gray-200 font-semibold">{ocPorItem[it.id]}</span>
+      : <span className="text-slate-400 dark:text-gray-500 font-sans">{itemRequiereOC(it) ? 'Pendiente' : '—'}</span>) },
+  { key: 'estadoCarga', label: 'Estado Carga', ancho: 105, min: 70,
+    celda: it => {
+      if (it.sinCodigo) return <span className="text-[9px] font-semibold text-red-600 dark:text-red-400">SIN CÓDIGO</span>;
+      const estilo = getEstadoCargaStyle(it.estadoCarga);
+      return (
+        <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded border ${estilo.bg} ${estilo.border} ${estilo.text}`}>
+          {it.estadoCarga || 'PENDIENTE'}
+        </span>
+      );
+    } }
+];
+
+const claseFilaItem = (it) =>
+  `border-l-2 border-transparent hover:border-[#2383C2] transition-colors ${it.sinCodigo ? 'bg-red-50/50 dark:bg-red-950/20' : 'hover:bg-gray-50/80 dark:hover:bg-gray-700/40'}`;
 
 // ocPorItemBloques: [{ itemId: oc }] alineado con formData.bloques (ver
 // GestionesImplantesDetalleView).
 export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
   const bloques = formData?.bloques || [];
+  const usuario = useUser()?.userData?.uid;
+  const { anchos, handleResize, restablecerAnchos, personalizados } =
+    useColumnResize(COLUMNAS, { clave: 'implantes.detalle', usuario });
 
   // Período/fecha de carga son datos de la ADMISIÓN (no de una empresa en
   // particular), así que se toman del primer ítem que ya tenga periodoAnio/
@@ -111,6 +167,12 @@ export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
         </div>
       </div>
 
+      {bloques.length > 0 && (
+        <div className="flex justify-end -mb-2">
+          <BotonRestablecerAnchos onClick={restablecerAnchos} personalizados={personalizados} />
+        </div>
+      )}
+
       {bloques.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-lg p-6 text-center text-[10px] text-slate-400 dark:text-gray-500">
           Sin empresas/fechas registradas para esta admisión.
@@ -154,108 +216,20 @@ export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
                 </div>
               </div>
 
-              <div className="overflow-auto">
-                <table className="w-full text-left text-[10px] border-collapse">
-                  <thead className="bg-slate-50 dark:bg-gray-900/60">
-                    <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Referencia</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Código</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Desc. Auto</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Clase</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Tipo</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Precio</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Veces Costo</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Venta</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700 text-center">Cant.</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Total Ítem</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Lote</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">Vencimiento</th>
-                      <th className="px-2.5 py-1.5 border-b border-r border-slate-200 dark:border-gray-700">OC</th>
-                      <th className="px-2.5 py-1.5 border-b border-slate-200 dark:border-gray-700">Estado Carga</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.length === 0 ? (
-                      <tr>
-                        <td colSpan={14} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
-                          Sin ítems registrados en este bloque
-                        </td>
-                      </tr>
-                    ) : (
-                      items.map(it => {
-                        const estilo = getEstadoCargaStyle(it.estadoCarga);
-                        return (
-                          <tr key={it.id} className={`border-l-2 border-transparent hover:border-[#2383C2] transition-colors ${it.sinCodigo ? 'bg-red-50/50 dark:bg-red-950/20' : 'hover:bg-gray-50/80 dark:hover:bg-gray-700/40'}`}>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-medium text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={it.referencia}>
-                              {it.referencia}
-                            </td>
-                            <td className={`px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num ${it.sinCodigo ? 'text-red-600 dark:text-red-400 font-bold' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                              {it.codigo || 'S/C'}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-500 dark:text-gray-400 truncate max-w-[160px]" title={it.descriptorAuto}>
-                              {it.descriptorAuto || 'P'}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                              {it.clase || 'P'}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                              {it.tipoVinculado || 'P'}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                              ${formatearPesos(it.precio || 0)}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">
-                              {it.vecesCosto || 1}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-700 dark:text-gray-200 font-medium">
-                              ${formatearPesos(it.venta || 0)}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-center text-slate-600 dark:text-gray-300">
-                              {it.cantidad}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-emerald-700 dark:text-emerald-400 font-semibold">
-                              ${formatearPesos(it.totalItem || 0)}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                              {it.lote}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 text-slate-600 dark:text-gray-300">
-                              {formatearFechaTabla(it.vencimiento)}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-r border-slate-100 dark:border-gray-700/60 font-num">
-                              {ocPorItem[it.id]
-                                ? <span className="text-slate-700 dark:text-gray-200 font-semibold">{ocPorItem[it.id]}</span>
-                                : <span className="text-slate-400 dark:text-gray-500 font-sans">{itemRequiereOC(it) ? 'Pendiente' : '—'}</span>}
-                            </td>
-                            <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60">
-                              {it.sinCodigo ? (
-                                <span className="text-[9px] font-semibold text-red-600 dark:text-red-400">SIN CÓDIGO</span>
-                              ) : (
-                                <span className={`inline-block px-1.5 py-0.5 text-[9px] font-bold rounded border ${estilo.bg} ${estilo.border} ${estilo.text}`}>
-                                  {it.estadoCarga || 'PENDIENTE'}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                  {items.length > 0 && (
-                    <tfoot>
-                      <tr className="bg-slate-50 dark:bg-gray-900/60 font-bold">
-                        <td colSpan={9} className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-slate-600 dark:text-gray-300 text-right">
-                          Suma de ítems:
-                        </td>
-                        <td className="px-2.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 text-emerald-700 dark:text-emerald-400">
-                          ${formatearPesos(items.reduce((acc, it) => acc + (Number(it.totalItem) || 0), 0))}
-                        </td>
-                        <td colSpan={3} className="border-t border-slate-200 dark:border-gray-700"></td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
+              <TablaRedimensionable
+                columnas={COLUMNAS}
+                filas={items}
+                anchos={anchos}
+                onResize={handleResize}
+                contexto={{ ocPorItem }}
+                claseFila={claseFilaItem}
+                vacio="Sin ítems registrados en este bloque"
+                pie={{
+                  etiqueta: 'Suma de ítems:',
+                  columna: 'totalItem',
+                  valor: `$${formatearPesos(items.reduce((acc, it) => acc + (Number(it.totalItem) || 0), 0))}`
+                }}
+              />
             </div>
           );
         })

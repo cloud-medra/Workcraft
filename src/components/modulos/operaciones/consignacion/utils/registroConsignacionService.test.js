@@ -4,11 +4,15 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
   doc: vi.fn(),
   writeBatch: vi.fn(),
+  runTransaction: vi.fn(async (_db, fn) => fn(globalThis.__txFalsa)),
   addDoc: vi.fn(),
   serverTimestamp: vi.fn(() => 'TS')
 }));
 
-import { descripcionDesdeMaestro, mapearItemMaestro, buscarItemMaestro } from './registroConsignacionService';
+import {
+  descripcionDesdeMaestro, mapearItemMaestro, buscarItemMaestro,
+  esRegistroEditable, mensajeRegistroNoEditable, guardarEdicionRegistroConsignacion, RegistroNoEditableError
+} from './registroConsignacionService';
 
 const ITEM = {
   codigo: 'C-200',
@@ -62,5 +66,51 @@ describe('buscarItemMaestro', () => {
     expect(buscarItemMaestro(codigos, { referencia: 'KITBYPASS' })).toBeNull();
     expect(buscarItemMaestro(codigos, {})).toBeNull();
     expect(buscarItemMaestro(undefined, { codigo: 'C-200' })).toBeNull();
+  });
+});
+
+describe('esRegistroEditable (solo INGRESADO)', () => {
+  it('INGRESADO o sin estado → editable', () => {
+    expect(esRegistroEditable({ estado: 'INGRESADO' })).toBe(true);
+    expect(esRegistroEditable({ estado: ' ingresado ' })).toBe(true);
+    expect(esRegistroEditable({})).toBe(true);
+  });
+  it('CARGADO, SOLICITADO y cualquier estado nuevo → no editable', () => {
+    ['CARGADO', 'SOLICITADO', 'PENDIENTE', 'REVISAR', 'ANULADO_FUTURO'].forEach(estado =>
+      expect(esRegistroEditable({ estado })).toBe(false));
+  });
+  it('el mensaje nombra el estado actual', () => {
+    expect(mensajeRegistroNoEditable({ estado: 'solicitado' })).toContain('SOLICITADO');
+  });
+});
+
+describe('guardarEdicionRegistroConsignacion (revalida en Firestore)', () => {
+  const crearTx = (datosActuales) => ({
+    get: vi.fn(async () => ({ exists: () => datosActuales !== null, data: () => datosActuales })),
+    update: vi.fn(),
+    set: vi.fn(),
+    delete: vi.fn()
+  });
+  const registro = { id: 'r1', ref: { id: 'r1' } };
+  const claves = { anio: '2026', nombreMes: 'octubre', dia: '08' };
+
+  it('rechaza si en Firestore ya está SOLICITADO, aunque la pantalla diga INGRESADO', async () => {
+    globalThis.__txFalsa = crearTx({ estado: 'SOLICITADO', fecha: '2026-10-08' });
+    await expect(guardarEdicionRegistroConsignacion({}, { ...registro, estado: 'INGRESADO' }, {}, claves, null))
+      .rejects.toBeInstanceOf(RegistroNoEditableError);
+    expect(globalThis.__txFalsa.update).not.toHaveBeenCalled();
+  });
+
+  it('rechaza si el registro ya no existe', async () => {
+    globalThis.__txFalsa = crearTx(null);
+    await expect(guardarEdicionRegistroConsignacion({}, registro, {}, claves, null))
+      .rejects.toBeInstanceOf(RegistroNoEditableError);
+  });
+
+  it('INGRESADO y misma fecha → update en el mismo documento', async () => {
+    globalThis.__txFalsa = crearTx({ estado: 'INGRESADO', fecha: '2026-10-08' });
+    const res = await guardarEdicionRegistroConsignacion({}, registro, { cantidad: 2 }, claves, null);
+    expect(globalThis.__txFalsa.update).toHaveBeenCalledWith(registro.ref, { cantidad: 2 });
+    expect(res.movido).toBe(false);
   });
 });

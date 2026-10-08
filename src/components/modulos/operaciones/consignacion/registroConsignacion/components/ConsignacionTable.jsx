@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Trash2, RefreshCw, RotateCcw, Pencil, Lock } from 'lucide-react';
+import { esRegistroEditable, mensajeRegistroNoEditable } from '../../utils/registroConsignacionService';
 
 const COLUMNAS = [
   { key: 'numero', label: '#', ancho: 40, min: 28, align: 'center' },
@@ -202,7 +203,7 @@ export const ConsignacionTable = ({ registros, numeroInicial = 0, onEliminar, on
           ) : (
             registros.map((r, index) => {
               const estadoKey = (r.estado || 'INGRESADO').toUpperCase();
-              const yaCargado = estadoKey === 'CARGADO';
+              const editable = esRegistroEditable(r);
               const estadoGuiaKey = calcularEstadoGuia(r.guias);
 
               return (
@@ -262,14 +263,14 @@ export const ConsignacionTable = ({ registros, numeroInicial = 0, onEliminar, on
                     <div className="flex items-center justify-center gap-1.5" onClick={e => e.stopPropagation()}>
                       <button
                         onClick={() => onEditar(r)}
-                        disabled={yaCargado}
-                        title={yaCargado ? 'Ya fue cargado: no se puede modificar' : 'Editar registro'}
-                        className={`p-0.5 rounded transition ${yaCargado
+                        disabled={!editable}
+                        title={editable ? 'Editar registro' : mensajeRegistroNoEditable(r)}
+                        className={`p-0.5 rounded transition ${!editable
                           ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                           : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-950/30'
                           }`}
                       >
-                        {yaCargado ? <Lock size={13} /> : <Pencil size={13} />}
+                        {editable ? <Pencil size={13} /> : <Lock size={13} />}
                       </button>
                       <button
                         onClick={() => handleClickActualizarVinculados(r)}

@@ -1,4 +1,4 @@
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import { collection, doc, writeBatch, runTransaction } from 'firebase/firestore';
 import { construirLogConsignacion } from './registrarLogConsignacion';
 
 // =====================================================================
@@ -14,6 +14,22 @@ export const COL_BASE = 'consignacion_registros';
 export const NOMBRE_SUBCOL_DETALLES = 'detalles';
 export const CENTRO_FIJO = 'PABELLON';
 export const ESTADO_FIJO = 'INGRESADO';
+// Edición del registro: SOLO en estado INGRESADO. La regla es en positivo
+// (no una lista de estados excluidos) para que cualquier estado posterior
+// —CARGADO, SOLICITADO o uno nuevo— quede bloqueado por defecto. Sin
+// estado se trata como INGRESADO, igual que el badge de la tabla.
+export const estadoRegistro = (registro) => String(registro?.estado || ESTADO_FIJO).trim().toUpperCase();
+export const esRegistroEditable = (registro) => estadoRegistro(registro) === ESTADO_FIJO;
+export const mensajeRegistroNoEditable = (registro) =>
+  `Solo se pueden editar registros en estado ${ESTADO_FIJO}. Este registro está ${estadoRegistro(registro)}.`;
+
+export class RegistroNoEditableError extends Error {
+  constructor(mensaje) {
+    super(mensaje);
+    this.name = 'RegistroNoEditableError';
+  }
+}
+
 export const TIPOS_CONSIGNACION = ['CONSIGNACION', 'COTIZACION'];
 export const MAX_ESCRITURAS_BATCH = 500;
 
@@ -216,3 +232,49 @@ export const guardarRegistrosConsignacionEnLote = async (db, payloads, userData)
 
   return resultados;
 };
+
+// Guarda la edición de un registro existente dentro de una transacción que
+// relee el documento en Firestore y la rechaza (RegistroNoEditableError) si
+// ya no está INGRESADO: cubre una pantalla desactualizada (otro usuario lo
+// cargó/solicitó mientras tanto) o un intento de editar uno bloqueado
+// saltándose el lápiz. Si cambia la fecha, el registro se mueve a la
+// carpeta año/mes/día nueva (los campos de seguimiento se toman del doc
+// releído, no de la copia de pantalla).
+// Devuelve { ref, datos, movido }.
+export const guardarEdicionRegistroConsignacion = (db, registro, datosDoc, clavesNuevas, userData) =>
+  runTransaction(db, async (tx) => {
+    const snap = await tx.get(registro.ref);
+    if (!snap.exists()) {
+      throw new RegistroNoEditableError('El registro ya no existe: fue eliminado o movido. Recarga la lista.');
+    }
+    const actual = snap.data();
+    if (!esRegistroEditable(actual)) {
+      throw new RegistroNoEditableError(mensajeRegistroNoEditable(actual));
+    }
+
+    const clavesAnteriores = descomponerFecha(actual.fecha);
+    const seMovioDeCarpeta =
+      !clavesAnteriores ||
+      clavesAnteriores.anio !== clavesNuevas.anio ||
+      clavesAnteriores.nombreMes !== clavesNuevas.nombreMes ||
+      clavesAnteriores.dia !== clavesNuevas.dia;
+
+    if (!seMovioDeCarpeta) {
+      tx.update(registro.ref, datosDoc);
+      return { ref: registro.ref, datos: datosDoc, movido: false };
+    }
+
+    agregarCarpetasFecha(tx, db, clavesNuevas);
+    const nuevoRef = nuevaRefDetalle(db, clavesNuevas);
+    const nuevoDoc = {
+      ...datosDoc,
+      guias: actual.guias || '',
+      orden: actual.orden || '',
+      despachado: actual.despachado || 'PENDIENTE',
+      fechaRegistro: actual.fechaRegistro || new Date(),
+      registradoPor: actual.registradoPor || userData?.nombreCompleto || 'Usuario'
+    };
+    tx.set(nuevoRef, nuevoDoc);
+    tx.delete(registro.ref);
+    return { ref: nuevoRef, datos: nuevoDoc, movido: true };
+  });
