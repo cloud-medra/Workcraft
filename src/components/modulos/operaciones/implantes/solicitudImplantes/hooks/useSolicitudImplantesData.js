@@ -17,6 +17,7 @@ import { onSnapshotVisible } from '../../../../../../hooks/useVisibleSnapshot';
 import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
+import { camposPeriodoSolicitud } from '../../../shared/periodoImputacion';
 
 export const useSolicitudImplantesData = () => {
   const [bloques, setBloques] = useState([]);
@@ -296,7 +297,8 @@ export const useSolicitudImplantesData = () => {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
               solicitadoPor: userData?.nombreCompleto || 'Usuario',
-              periodo: periodoTexto
+              periodo: periodoTexto,
+              ...camposPeriodoSolicitud(periodoActivo)
             }));
 
             const { anio, mes, dia } = descomponerFecha(bloque.fecha);

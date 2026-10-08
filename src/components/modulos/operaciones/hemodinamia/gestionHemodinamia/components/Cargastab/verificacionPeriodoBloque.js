@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
-import { obtenerPeriodosDeItems } from './cargasHelpers';
+import { periodosImputacionDeBloque } from '../../../../shared/periodoImputacion';
 
 const MODULO_HEMODINAMIA = 'hemodinamia';
 
@@ -20,8 +20,10 @@ export const periodoEstaAbierto = async (anio, mes) => {
  * Verifica, para el candado de bloqueo de un bloque de Cargas, si TODOS los
  * períodos presentes en sus ítems están actualmente abiertos.
  */
-export const verificarPeriodosBloque = async (items) => {
-  const periodos = obtenerPeriodosDeItems(items);
+// `bloque`: si ya está SOLICITADO, se valida su período de solicitud (donde
+// está imputado), no el de carga de sus ítems (ver periodoImputacion).
+export const verificarPeriodosBloque = async (items, bloque = null) => {
+  const periodos = periodosImputacionDeBloque(bloque, items);
   if (periodos.length === 0) {
     return { estado: 'DESCONOCIDO', periodosCerrados: [] };
   }

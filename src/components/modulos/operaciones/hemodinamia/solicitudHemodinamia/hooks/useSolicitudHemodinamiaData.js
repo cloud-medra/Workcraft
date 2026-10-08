@@ -18,6 +18,7 @@ import { useToast } from '../../../../../../context/ToastContext';
 import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { CENTRO_HEMODINAMIA } from '../../gestionHemodinamia/utils/constantesHemodinamia';
+import { camposPeriodoSolicitud } from '../../../shared/periodoImputacion';
 
 export const useSolicitudHemodinamiaData = () => {
   const [bloques, setBloques] = useState([]);
@@ -281,7 +282,8 @@ export const useSolicitudHemodinamiaData = () => {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
               solicitadoPor: userData?.nombreCompleto || 'Usuario',
-              periodo: periodoTexto
+              periodo: periodoTexto,
+              ...camposPeriodoSolicitud(periodoActivo)
             }));
 
             const { anio, mes, dia } = descomponerFecha(bloque.fecha);

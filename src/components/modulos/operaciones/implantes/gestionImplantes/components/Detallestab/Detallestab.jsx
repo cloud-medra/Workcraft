@@ -17,6 +17,7 @@ import { useColumnResize } from '../../../../../../../hooks/useColumnResize';
 import { useUser } from '../../../../../../../context/UserContext';
 import { TablaRedimensionable } from '../../../../../../ui/TablaRedimensionable';
 import { BotonRestablecerAnchos } from '../../../../../../ui/BotonRestablecerAnchos';
+import { periodoImputacion } from '../../../../shared/periodoImputacion';
 
 // Columnas de la tabla de ítems (redimensionables, anchos recordados por
 // usuario en localStorage bajo 'implantes.detalle'). `contexto.ocPorItem`
@@ -83,9 +84,12 @@ export const DetallesTab = ({ formData, ocPorItemBloques = [] }) => {
   let itemConPeriodo = null;
   let bloqueDelPeriodo = null;
   for (const bloque of bloques) {
-    const encontrado = (bloque.cotizaciones?.[0]?.items || []).find(it => it.periodoAnio && it.periodoMes);
+    // Bloque solicitado: su período de solicitud (donde está imputado).
+    const encontrado = (bloque.cotizaciones?.[0]?.items || [])
+      .map(it => periodoImputacion(bloque, it))
+      .find(Boolean);
     if (encontrado) {
-      itemConPeriodo = encontrado;
+      itemConPeriodo = { periodoAnio: encontrado.anio, periodoMes: encontrado.mes };
       bloqueDelPeriodo = bloque;
       break;
     }

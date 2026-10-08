@@ -1,6 +1,6 @@
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../../../../../firebaseConfig';
-import { obtenerPeriodosDeItems } from './cargasHelpers';
+import { periodosImputacionDeBloque } from '../../../../shared/periodoImputacion';
 
 const MODULO_IMPLANTES = 'implantes';
 
@@ -33,8 +33,10 @@ export const periodoEstaAbierto = async (anio, mes) => {
  *    (registros legacy); no hay forma de verificar, así que por seguridad
  *    se trata como no-abierto en vez de asumir que está bien.
  */
-export const verificarPeriodosBloque = async (items) => {
-  const periodos = obtenerPeriodosDeItems(items);
+// `bloque`: si ya está SOLICITADO, se valida su período de solicitud (donde
+// está imputado), no el de carga de sus ítems (ver periodoImputacion).
+export const verificarPeriodosBloque = async (items, bloque = null) => {
+  const periodos = periodosImputacionDeBloque(bloque, items);
   if (periodos.length === 0) {
     return { estado: 'DESCONOCIDO', periodosCerrados: [] };
   }

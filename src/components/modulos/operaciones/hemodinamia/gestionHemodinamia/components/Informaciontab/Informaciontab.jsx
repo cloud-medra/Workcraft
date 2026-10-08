@@ -79,7 +79,7 @@ export const InformacionTab = forwardRef(({
     setVerificandoCandado(true);
     try {
       const items = bloqueActivo.cotizaciones?.[0]?.items || [];
-      const resultado = await verificarPeriodosBloque(items);
+      const resultado = await verificarPeriodosBloque(items, bloqueActivo);
       if (resultado.estado !== 'ABIERTO') {
         setErrorCandado(
           resultado.estado === 'CERRADO'

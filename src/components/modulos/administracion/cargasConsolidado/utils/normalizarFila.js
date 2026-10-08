@@ -9,6 +9,7 @@
 
 import { CENTRO_HEMODINAMIA } from '../../../operaciones/hemodinamia/gestionHemodinamia/utils/constantesHemodinamia';
 import { CODIGO_SIN_OC } from '../../../operaciones/implantes/gestionImplantes/components/Cargastab/cargasHelpers';
+import { periodoImputacion } from '../../../operaciones/shared/periodoImputacion';
 
 export const ORIGEN = {
   IMPLANTES: 'IMPLANTES',
@@ -35,10 +36,12 @@ export const ORIGEN_BADGE_STYLE = {
 // (ej. fecha 30-08-2026 imputada al período de septiembre). Para un bloque
 // de Implantes se toma del primer ítem que lo tenga, mismo criterio que
 // usa DetallesTab.jsx para mostrarlo en el detalle.
+// Si el bloque ya fue solicitado, es su período de solicitud (donde está
+// imputado; ver periodoImputacion).
 const obtenerPeriodoBloqueImplantes = (bloque) => {
   for (const cot of bloque.cotizaciones || []) {
-    const it = (cot.items || []).find(x => x.periodoAnio && x.periodoMes);
-    if (it) return { periodoAnio: it.periodoAnio, periodoMes: it.periodoMes };
+    const p = (cot.items || []).map(x => periodoImputacion(bloque, x)).find(Boolean);
+    if (p) return { periodoAnio: p.anio, periodoMes: p.mes };
   }
   return { periodoAnio: '', periodoMes: '' };
 };

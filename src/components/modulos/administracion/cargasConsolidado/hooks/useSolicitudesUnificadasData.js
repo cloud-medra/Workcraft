@@ -24,6 +24,7 @@ import { consultaCandidatosSolicitudConsignacion, construirCandidatosSolicitudCo
 import { ORIGEN, normalizarSolicitudImplantes, normalizarSolicitudConsignacion, normalizarSolicitudHemodinamia, filtrarPorBusquedaYOrigen } from '../utils/normalizarFila';
 import { construirHojasSolicitudUnificada, formatearFechaExcel } from '../utils/hojasExcelSolicitud';
 import { limpiarParaFirestore, camposUndefined } from '../utils/limpiarParaFirestore';
+import { camposPeriodoSolicitud } from '../../../operaciones/shared/periodoImputacion';
 
 const RANGO_MIN_IMPLANTES = 'implantes_gestiones/0000';
 const RANGO_MAX_IMPLANTES = 'implantes_gestiones/9999';
@@ -371,7 +372,8 @@ export const useSolicitudesUnificadasData = () => {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
               solicitadoPor: userData?.nombreCompleto || 'Usuario',
-              periodo: periodoTextoImplantes
+              periodo: periodoTextoImplantes,
+              ...camposPeriodoSolicitud(periodoImplantes)
             } });
 
             const { anio, mes, dia } = descomponerFecha(bloque.fecha);
@@ -500,7 +502,8 @@ export const useSolicitudesUnificadasData = () => {
               solicitud: 'SOLICITADO',
               fechaSolicitud: new Date(),
               solicitadoPor: userData?.nombreCompleto || 'Usuario',
-              periodo: periodoTextoHemodinamia
+              periodo: periodoTextoHemodinamia,
+              ...camposPeriodoSolicitud(periodoHemodinamia)
             } });
 
             const [anioF, mesF, diaF] = bloque.fecha && bloque.fecha.includes('-')

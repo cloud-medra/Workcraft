@@ -10,6 +10,7 @@ import { DetallesTab } from './Detallestab/Detallestab';
 import { CargasTab } from './Cargastab/Cargastab';
 import { esEstadoCargaCompleto } from './Cargastab/cargasHelpers';
 import { verificarPeriodosBloque } from './Cargastab/verificacionPeriodoBloque';
+import { camposSolicitudDe } from '../../../shared/periodoImputacion';
 import { aplicarNuevoItemABloque } from '../utils/aplicarNuevoItemABloque';
 import { EmpresasFechasPanel } from './EmpresasFechasPanel';
 import { validarNuevaEmpresaFecha, extraerDatosBase } from '../../../shared/empresaFechaDesdeDetalle';
@@ -120,6 +121,8 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
       costo: reg.costo ?? reg.monto ?? 0,
       cotizaciones: Array.isArray(reg.cotizaciones) ? reg.cotizaciones : [],
       solicitud: reg.solicitud || 'PENDIENTE',
+      // Período de solicitud (candado y resincronización: ver periodoImputacion).
+      ...camposSolicitudDe(reg),
       estado: reg.estado || 'AGENDADO',
       fechaInicioCarga: reg.fechaInicioCarga || null,
       fechaCarga: reg.fechaCarga || null
@@ -347,7 +350,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
     if (cargasTabRef.current?.estaBloqueDesbloqueado?.() || informacionTabRef.current?.estaBloqueDesbloqueado?.()) {
       const bloqueDesbloqueado = formData.bloques[bloqueActivoIndex];
       const itemsBloqueDesbloqueado = bloqueDesbloqueado?.cotizaciones?.[0]?.items || [];
-      const resultadoPeriodo = await verificarPeriodosBloque(itemsBloqueDesbloqueado);
+      const resultadoPeriodo = await verificarPeriodosBloque(itemsBloqueDesbloqueado, bloqueDesbloqueado);
       if (resultadoPeriodo.estado !== 'ABIERTO') {
         showToast(
           resultadoPeriodo.estado === 'CERRADO'
@@ -448,6 +451,7 @@ const GestionesHemodinamiaDetalleView = forwardRef(({
           costo: b.costo,
           cotizaciones: b.cotizaciones || [],
           solicitud: b.solicitud || 'PENDIENTE',
+          ...camposSolicitudDe(b),
           estado: b.estado || 'AGENDADO',
           fechaInicioCarga: b.fechaInicioCarga || null,
           fechaCarga: b.fechaCarga || null,

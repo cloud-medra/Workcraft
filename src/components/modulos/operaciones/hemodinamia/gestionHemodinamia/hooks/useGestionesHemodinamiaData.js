@@ -23,6 +23,7 @@ import { useModal } from '../../../../../../context/ModalContext';
 import { useUser } from '../../../../../../context/UserContext';
 import { exportarGestionesAExcel, descargarPlantillaCSV, parsearArchivoImportacion } from '../utils/gestionesImportExport';
 import { periodoEstaAbierto } from '../components/Cargastab/verificacionPeriodoBloque';
+import { periodoImputacion, bloqueParaImputacion, camposSolicitudDe } from '../../../shared/periodoImputacion';
 import { refImputada, construirPayloadImputada } from '../utils/imputadaSync';
 import { registrarLogHemodinamia } from '../utils/registrarLogHemodinamia';
 import { existeGestionEnColeccion, extraerDatosBase, MENSAJE_DUPLICADO } from '../../../shared/empresaFechaDesdeDetalle';
@@ -689,6 +690,8 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
             fechaRegistro: original?.fechaRegistro || new Date(),
             registradoPor: original?.registradoPor || userData?.nombreCompleto || 'Usuario'
           };
+          // Si estaba solicitado, conserva la solicitud (período incluido).
+          if (original) Object.assign(datosGuardados, camposSolicitudDe(original));
           batch.set(nuevoDocRef, datosGuardados);
           logsAAgregar.push({ docRef: nuevoDocRef, accion: original ? 'EDICION' : 'CREACION', detalles: dataNormalizada });
 
@@ -756,6 +759,7 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
         });
 
         const bloqueEstaSolicitado = (registro.solicitud || '').toUpperCase() === 'SOLICITADO';
+        const bloqueImputacion = bloqueParaImputacion(registro, original);
 
         if (bloqueEstaSolicitado) {
           const itemsActuales = registro.cotizaciones?.[0]?.items || [];
@@ -763,8 +767,11 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
           const itemsNoSincronizadosBloque = [];
 
           for (const it of itemsActuales) {
-            let periodoAnioItem = it.periodoAnio;
-            let periodoMesItem = it.periodoMes;
+            // Bloque ya solicitado: el período de SOLICITUD (donde está
+            // imputado), no el de carga del ítem (ver periodoImputacion).
+            const periodoItem = periodoImputacion(bloqueImputacion, it);
+            let periodoAnioItem = periodoItem?.anio;
+            let periodoMesItem = periodoItem?.mes;
 
             if (!periodoAnioItem || !periodoMesItem) {
               const fallback = await obtenerPeriodoAbiertoFallback();
@@ -809,12 +816,13 @@ export const useGestionesHemodinamiaData = ({ admision, refPath } = {}) => {
         }
 
         (registro.itemsEliminados || []).forEach(itEliminado => {
-          if (!itEliminado.periodoAnio || !itEliminado.periodoMes) return;
+          const periodoEliminado = periodoImputacion(bloqueImputacion, itEliminado);
+          if (!periodoEliminado) return;
 
           const imputadaRef = doc(
             db,
-            'hemodinamia_imputadas', String(itEliminado.periodoAnio),
-            'meses', itEliminado.periodoMes,
+            'hemodinamia_imputadas', String(periodoEliminado.anio),
+            'meses', periodoEliminado.mes,
             'documentos', itEliminado.id
           );
 
