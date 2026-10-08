@@ -10,6 +10,7 @@ import { ShieldCheck, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 import loginIllustration from '../assets/login.svg';
 import logoMedra from '../assets/logo_medra_login/android-chrome-192x192.png';
 import { motion } from 'framer-motion';
+import PuntosAnimados from './PuntosAnimados';
 
 // Mensaje según el código de Firebase Auth: solo los errores de credenciales
 // se informan como tales (antes cualquier fallo, incluso uno de Firestore,
@@ -114,7 +115,7 @@ const LoginForm = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center fondo-puntos-login p-4">
       <div className={`bg-white rounded-3xl shadow-2xl flex w-full max-w-4xl overflow-hidden min-h-[500px] ${shakeError ? 'shake-error' : ''}`}>
 
         <div className="w-full md:w-1/2 p-10 flex flex-col justify-center">
@@ -215,13 +216,11 @@ const LoginForm = () => {
         </div>
 
         <div className="hidden md:flex w-1/2 bg-[#208DD0] p-12 text-white flex-col justify-between relative overflow-hidden">
+          {/* Cuadrícula decorativa: detrás del contenido (que va en z-10) y sin recibir clics. */}
+          <div aria-hidden="true" className="cuadricula-sutil cuadricula-sutil-clara absolute inset-0 z-0" />
           <div className="absolute top-0 right-0 w-64 h-64 z-0 pointer-events-none">
             <div className="absolute -top-10 -right-10 w-full h-full bg-white/5 rounded-bl-full"></div>
-            <div className="absolute top-6 right-6 grid grid-cols-4 gap-3 opacity-30">
-              {[...Array(12)].map((_, i) => (
-                <div key={i} className="w-2 h-2 bg-white rounded-full"></div>
-              ))}
-            </div>
+            <PuntosAnimados className="absolute top-6 right-6" />
           </div>
 
           <div className="relative z-10">
@@ -247,6 +246,12 @@ const LoginForm = () => {
         </div>
 
       </div>
+
+      {/* Pie de página, fuera de la tarjeta. El año se toma de la fecha actual. */}
+      <footer className="mt-6 text-center text-xs leading-relaxed text-gray-500">
+        <p>© {new Date().getFullYear()} Medra Sistema Integral. Todos los derechos reservados.</p>
+        <p>Desarrollado por Medra.</p>
+      </footer>
     </div>
   );
 };

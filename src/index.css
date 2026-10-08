@@ -23,6 +23,88 @@
   background-position: center;
 }
 
+/* Cuadrícula decorativa de líneas finas (1px), muy sutil, que se desvanece
+   hacia los bordes. Va en una capa absoluta detrás del contenido
+   (pointer-events: none). El color y el tamaño de los cuadros se ajustan con
+   --cuadricula-color y --cuadricula-tamano. */
+.cuadricula-sutil {
+  --cuadricula-color: rgb(30 64 105 / 0.06);
+  --cuadricula-tamano: 48px;
+  background-image:
+    linear-gradient(to right, var(--cuadricula-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--cuadricula-color) 1px, transparent 1px);
+  background-size: var(--cuadricula-tamano) var(--cuadricula-tamano);
+  background-position: center center;
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+  mask-image: radial-gradient(ellipse at center, #000 30%, transparent 78%);
+  pointer-events: none;
+}
+.cuadricula-sutil-clara {
+  --cuadricula-color: rgb(255 255 255 / 0.05);
+}
+
+/* Fondo de la pantalla de login: cuadrícula regular de puntos suaves,
+   recreada con CSS a partir de una imagen de referencia (fondo #F5F8FC,
+   puntos de ~2px color #E3EBF4, separados 28px). */
+.fondo-puntos-login {
+  background-color: #f5f8fc;
+  background-image: radial-gradient(circle, #e3ebf4 1px, transparent 1.6px);
+  background-size: 28px 28px;
+  background-position: center center;
+}
+
+/* Puntos animados del login (PuntosAnimados.jsx). Cada punto tiene tres
+   capas: núcleo, halo (resplandor) y onda (anillo). Solo se animan
+   transform y opacity; la duración llega por --punto-duracion. */
+.punto-nucleo { opacity: 0.18; }
+.punto-halo,
+.punto-onda { opacity: 0; }
+.punto-halo {
+  background: radial-gradient(circle, rgb(206 233 252 / 0.95) 0%, rgb(150 205 242 / 0.45) 45%, transparent 70%);
+}
+.punto-onda { border: 1px solid rgb(214 237 253 / 0.9); }
+
+.punto-brillo .punto-nucleo,
+.punto-brilloCrece .punto-nucleo,
+.punto-onda-activa .punto-nucleo,
+.punto-brillo .punto-halo,
+.punto-brilloCrece .punto-halo,
+.punto-onda-activa .punto-onda {
+  animation-duration: var(--punto-duracion, 2s);
+  animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  animation-fill-mode: both;
+}
+.punto-brillo .punto-nucleo { animation-name: punto-nucleo-brillo; }
+.punto-brilloCrece .punto-nucleo { animation-name: punto-nucleo-crece; }
+.punto-onda-activa .punto-nucleo { animation-name: punto-nucleo-brillo; }
+.punto-brillo .punto-halo,
+.punto-brilloCrece .punto-halo { animation-name: punto-halo; }
+.punto-onda-activa .punto-onda {
+  animation-name: punto-onda;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes punto-nucleo-brillo {
+  0%, 100% { opacity: 0.18; }
+  50% { opacity: 0.95; }
+}
+@keyframes punto-nucleo-crece {
+  0%, 100% { opacity: 0.18; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.35); }
+}
+@keyframes punto-halo {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50% { opacity: 0.7; transform: scale(1); }
+}
+@keyframes punto-onda {
+  0% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: scale(3.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punto-nucleo, .punto-halo, .punto-onda { animation: none !important; }
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   15%        { transform: translateX(-8px); }
