@@ -8,7 +8,7 @@
       "https://ideal-garbanzo-wv57j7jjxwxrc99v6-5173.app.github.dev",
       "http://localhost:5173"
     ],
-    "method": ["GET", "HEAD"],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE"],
     "responseHeader": ["Content-Type", "Authorization", "Content-Disposition"],
     "maxAgeSeconds": 3600
   }
