@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Calendar, Search, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X } from 'lucide-react';
+import { Calendar, Settings, FilterX, RefreshCw, ArrowLeft, Save, AlertTriangle, X } from 'lucide-react';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
+import { BuscadorConLimpiar } from '../../../../ui/BuscadorConLimpiar';
 import Spinner from '../../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './GestionesHemodinamiaDrawers';
 import { useGestionesHemodinamia } from './hooks/useGestionesHemodinamia';
@@ -235,15 +236,7 @@ const GestionHemodinamia = () => {
           {hasPermission(PATH_VISTA, "barra_busqueda") && (
             <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
 
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-1.5 text-gray-400 dark:text-gray-500" size={13} />
-                <input
-                  value={busqueda}
-                  onChange={e => setBusqueda(e.target.value)}
-                  className="w-full h-7 pl-7 pr-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] outline-none bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 focus:border-[#2383C2]"
-                  placeholder="Buscar por ID, nombre o empresa..."
-                />
-              </div>
+              <BuscadorConLimpiar value={busqueda} onChange={setBusqueda} placeholder="Buscar por ID, nombre o empresa..." />
 
               <div className="flex items-center gap-1.5">
                 <select
