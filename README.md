@@ -17,9 +17,9 @@ If you are developing a production application, we recommend using TypeScript wi
 
 ## Firebase Storage: CORS
 
-El dominio principal de la app es **https://workcraft.medra.cl** (también responde en `workcraft-491b7.web.app` y `workcraft-491b7.firebaseapp.com`).
+El dominio principal de la app es **https://app.medra.cl** (también responde en `workcraft-491b7.web.app` y `workcraft-491b7.firebaseapp.com`; el dominio anterior `workcraft.medra.cl` se mantiene durante la transición). El código no tiene el dominio escrito: la configuración de Firebase sale de las variables `VITE_*` de `.env` y los enlaces se arman con `window.location.origin`.
 
-Los PDF (Documentos de implantes y órdenes de compra) se suben y se abren desde el navegador directo contra Storage (`uploadBytesResumable`, `getBlob`), así que el bucket debe permitir esos orígenes. La configuración activa está en [`cors.json`](cors.json): el dominio principal, los dos de Hosting y `http://localhost:5173`. No incluye la URL del Codespace porque cambia.
+Los PDF (Documentos de implantes y órdenes de compra) se suben y se abren desde el navegador directo contra Storage (`uploadBytesResumable`, `getBlob`), así que el bucket debe permitir esos orígenes. La configuración activa está en [`cors.json`](cors.json): el dominio principal (y el anterior, mientras dure la transición), los dos de Hosting y `http://localhost:5173`. No incluye la URL del Codespace porque cambia.
 
 Para aplicarla después de cambiar `cors.json`:
 
