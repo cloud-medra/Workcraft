@@ -1,3 +1,5 @@
+import { columnas } from './columnas.js';
+
 // NOTA GENERAL DEL MÓDULO: ninguna de las 5 pantallas de administración usa
 // `hasPermission`/`useGranularPermission` hoy (a diferencia de laboratorio y
 // maestros). Todo lo de abajo es documentación de referencia para cuando se
@@ -215,6 +217,53 @@ export const administracionComponentMaps = {
             },
           },
         },
+      },
+    },
+  },
+  '/administracion/estadisticas': {
+    label: 'Estadísticas (Implantes, Consignación y Hemodinamia por período)',
+    sections: {
+      filtros: {
+        label: 'Sección: Período y Módulos',
+        elements: {
+          select_periodo: { label: 'Campo: Elegir otro período' },
+          opt_implantes: { label: 'Módulo: Implantes (también lo exigen las reglas de Firestore)' },
+          opt_consignacion: { label: 'Módulo: Consignación (también lo exigen las reglas de Firestore)' },
+          opt_hemodinamia: { label: 'Módulo: Hemodinamia (también lo exigen las reglas de Firestore)' },
+        },
+      },
+      pestanas: {
+        label: 'Sección: Pestañas',
+        elements: {
+          tab_medicos: { label: 'Pestaña: Médicos' },
+          tab_cirugias: { label: 'Pestaña: Cirugías' },
+          tab_empresas: { label: 'Pestaña: Empresas' },
+        },
+      },
+      acciones: {
+        label: 'Sección: Acciones',
+        elements: {
+          btn_exportar: { label: 'Acción: Exportar a Excel' },
+          btn_recalcular: { label: 'Acción: Recalcular período cerrado (además exige rol admin)' },
+        },
+      },
+      tabla: {
+        label: 'Sección: Tabla por médico / cirugía / empresa',
+        elements: columnas([
+          ['actual', 'Período'],
+          ['anterior', 'Período anterior'],
+          ['diferencia', 'Diferencia'],
+          ['variacion', 'Variación %'],
+          ['participacion', '% del total'],
+        ]),
+      },
+      detalle: {
+        label: 'Sección: Detalle (cruces)',
+        elements: columnas([
+          ['actual', 'Período'],
+          ['anterior', 'Período anterior'],
+          ['variacion', 'Variación %'],
+        ]),
       },
     },
   },

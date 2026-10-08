@@ -517,6 +517,20 @@ service cloud.firestore {
       allow delete: if request.auth != null && enArchivo('papelera', 'btn_eliminar_definitivo');
     }
 
+    // Administración → Estadísticas: documentos precalculados por módulo y
+    // período ({modulo}_{AAAA-MM}, sus partes {id}__pN y el índice _indice).
+    // Solo lectura, con la vista y el filtro del módulo del documento
+    // (opt_implantes, opt_consignacion, opt_hemodinamia). Solo escriben las
+    // Cloud Functions y el script inicial (Admin SDK, no pasan por reglas).
+    match /estadisticas/{docId} {
+      allow read: if request.auth != null && (esAdminODev()
+        || (tienePermiso('administracion')
+          && tieneItem('administracion', '/administracion/estadisticas')
+          && (docId == '_indice'
+            || accionPermitida('/administracion/estadisticas', 'filtros', 'opt_' + docId.split('_')[0]))));
+      allow write: if false;
+    }
+
     // =================================================================
     // HEMODINAMIA
     // =================================================================

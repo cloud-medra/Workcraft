@@ -33,3 +33,7 @@ setGlobalOptions({ maxInstances: 10 });
 
 exports.extraerGuiaDespacho = require("./extraerGuiaDespacho").extraerGuiaDespacho;
 exports.cerrarPeriodoImputacion = require("./cerrarPeriodoImputacion").cerrarPeriodoImputacion;
+
+// Estadísticas (Administración → Estadísticas): triggers, recálculo nocturno
+// y recálculo manual. Ver functions/estadisticas/index.js.
+Object.assign(exports, require("./estadisticas"));

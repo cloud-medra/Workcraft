@@ -23,6 +23,7 @@ import NotasAdmin from '../components/modulos/administracion/notasAdmin/NotasAdm
 import CrearUsuario from '../components/modulos/administracion/usuarios/CrearUsuario';
 import ListadoUsuario from '../components/modulos/administracion/usuarios/ListadoUsuario';
 import CargasConsolidado from '../components/modulos/administracion/cargasConsolidado/CargasConsolidado';
+import Estadisticas from '../components/modulos/administracion/estadisticas/Estadisticas';
 
 // --- LABORATORIO ---
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
@@ -213,6 +214,7 @@ const Dashboard = () => {
       />
     ),
     '/administracion/cargasConsolidado': <CargasConsolidado />,
+    '/administracion/estadisticas': <Estadisticas />,
 
     '/laboratorio/empresasLaboratorio': <EmpresasLaboratorio />,
     '/laboratorio/codigoLaboratorio': <CodigoLaboratorio />,

@@ -28,6 +28,7 @@ import {
   FolderKanban,
   GitCompareArrows,
   GitMerge,
+  BarChart3,
   Microscope,
   Handshake,
   Receipt,
@@ -82,7 +83,8 @@ export const MODULES = {
       { label: 'Notas Admin', path: '/administracion/notasAdmin', icon: <StickyNote size={14} /> },
       { label: 'Crear Usuario', path: '/administracion/crearUsuario', icon: <UserPlus size={14} /> },
       { label: 'Lista Usuario', path: '/administracion/listadoUsuario', icon: <Users size={14} /> },
-      { label: 'Cargas Consolidado', path: '/administracion/cargasConsolidado', icon: <GitMerge size={14} /> }
+      { label: 'Cargas Consolidado', path: '/administracion/cargasConsolidado', icon: <GitMerge size={14} /> },
+      { label: 'Estadísticas', path: '/administracion/estadisticas', icon: <BarChart3 size={14} /> }
     ]
   },
   laboratorio: {
