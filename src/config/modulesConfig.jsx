@@ -69,7 +69,7 @@ export const MODULES = {
   dashboard: {
     label: 'Dashboard',
     icon: <LayoutDashboard size={18} />,
-    path: '/dashboard'
+    path: '/plataforma'
   },
   administracion: {
     label: 'Administración',

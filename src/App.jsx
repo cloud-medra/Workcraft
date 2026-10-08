@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import LoginForm from './components/LoginForm';
 import Dashboard from './pages/Dashboard';
 import CambiarPassword from './pages/auth/CambiarPassword';
@@ -8,6 +8,14 @@ import { ToastProvider } from './context/ToastContext';
 import { ModalProvider } from './context/ModalContext';
 import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
+
+// La ruta principal tras iniciar sesión pasó de /dashboard a /plataforma.
+// Enlaces guardados o pestañas abiertas con /dashboard se redirigen,
+// conservando lo que venga después (ruta, query y hash).
+export function RedirigirDashboard() {
+  const { pathname, search, hash } = useLocation();
+  return <Navigate to={pathname.replace(/^\/dashboard/, '/plataforma') + search + hash} replace />;
+}
 
 function App() {
   return (
@@ -21,13 +29,14 @@ function App() {
                 <Route path="/cambiar-password" element={<CambiarPassword />} />
                 <Route path="/test-spinner" element={<TestPage />} />
                 <Route
-                  path="/dashboard/*"
+                  path="/plataforma/*"
                   element={
                     <ProtectedRoute>
                       <Dashboard />
                     </ProtectedRoute>
                   }
                 />
+                <Route path="/dashboard/*" element={<RedirigirDashboard />} />
               </Routes>
             </Router>
           </ModalProvider>

@@ -60,7 +60,7 @@ const LoginForm = () => {
   // con otro usuario), su getDoc caía sobre la instancia terminada y fallaba.
   useEffect(() => {
     if (cargandoUsuario || !userData) return;
-    navigate(userData.passwordChanged === false ? '/cambiar-password' : '/dashboard', { replace: true });
+    navigate(userData.passwordChanged === false ? '/cambiar-password' : '/plataforma', { replace: true });
   }, [cargandoUsuario, userData, navigate]);
 
   // Autenticado pero sin perfil utilizable: se cierra la sesión para que el

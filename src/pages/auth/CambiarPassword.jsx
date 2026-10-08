@@ -173,7 +173,7 @@ const CambiarPassword = () => {
       }).catch((err) => console.error('No se pudo registrar la aceptación de políticas:', err));
     }
 
-    navigate('/dashboard', { replace: true });
+    navigate('/plataforma', { replace: true });
   };
 
   const RequirementItem = ({ valid, text }) => (
