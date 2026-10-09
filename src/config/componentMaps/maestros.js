@@ -128,6 +128,28 @@ export const maestrosComponentMaps = {
     },
   },
 
+  '/maestros/descripcionesOcultas': {
+    label: 'Descripciones ocultas (DescripcionesOcultas.jsx) — descripciones de Reporte Info que no se muestran en Implantes / Documentos',
+    sections: {
+      barra_busqueda: {
+        label: 'Sección: Filtro y Búsqueda',
+        elements: {
+          input_buscar: { label: 'Campo: Buscar descripción' },
+          select_filtro: { label: 'Campo: Filtro Todas / Ocultas / Visibles' },
+        },
+      },
+      tabla_datos: {
+        label: 'Sección: Tabla de Descripciones',
+        elements: {
+          col_filas: { label: 'Columna: Cantidad de filas' },
+          col_ocultaImplantes: { label: 'Columna: Ocultar en Implantes' },
+          col_ocultaDocumentos: { label: 'Columna: Ocultar en Documentos' },
+          action_editar: { label: 'Acción: Cambiar los switches (ocultar / mostrar)' },
+        },
+      },
+    },
+  },
+
   '/maestros/centrosMaestros': {
     label: 'Registro de Centros (CentrosMaestros.jsx)',
     sections: {

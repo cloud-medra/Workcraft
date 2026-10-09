@@ -49,3 +49,7 @@ Object.assign(exports, require("./bodymap"));
 // Reporte Info → "Gestión implante": marca de admisiones gestionadas en
 // Implantes. Ver functions/admisiones/index.js.
 Object.assign(exports, require("./admisiones"));
+// Reporte Info → "Descripciones ocultas": Maestro de descripciones y campos
+// ocultaImplantes / ocultaDocumentos de cada fila. Ver
+// functions/descripcionesReporte/index.js.
+Object.assign(exports, require("./descripcionesReporte"));

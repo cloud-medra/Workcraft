@@ -21,6 +21,13 @@ export const mapaReportesInfo = {
         ['gestionImplante', 'Gestión implante (Pendiente / Gestionada / Cargada / Imputada)'],
       ]),
     },
+    filas_ocultas: {
+      label: 'Sección: Descripciones ocultas',
+      elements: {
+        switch_mostrarOcultas: { label: 'Acción: Switch "Mostrar ocultas" (ver las filas con descripción oculta)' },
+        action_ocultarDescripcion: { label: 'Acción: "Ocultar esta descripción" en la fila (solo en este módulo)' },
+      },
+    },
   },
 };
 

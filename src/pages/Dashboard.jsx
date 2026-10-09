@@ -26,6 +26,7 @@ import CargasConsolidado from '../components/modulos/administracion/cargasConsol
 import Estadisticas from '../components/modulos/administracion/estadisticas/Estadisticas';
 import PermisosPorCentro from '../components/modulos/administracion/permisosCentro/PermisosPorCentro';
 import ZonasDiagnostico from '../components/modulos/maestros/zonasDiagnostico/ZonasDiagnostico';
+import DescripcionesOcultas from '../components/modulos/maestros/descripcionesOcultas/DescripcionesOcultas';
 import { subItemsVisibles, puedeAbrirVista, esAdministrador } from '../config/accesoMenu';
 import PeriodoAbiertoBloque from '../components/layout/PeriodoAbiertoBloque';
 
@@ -311,6 +312,7 @@ const Dashboard = () => {
       />
     ),
     '/maestros/zonasDiagnostico': <ZonasDiagnostico key={busquedaZonas} busquedaInicial={busquedaZonas} />,
+    '/maestros/descripcionesOcultas': <DescripcionesOcultas />,
     '/implantes/cargaMasivaDocumentos': <CargaMasivaDocumentos />,
     '/implantes/respaldoDocumentos': <RespaldoDocumentos />,
     '/implantes/reportesInfo': <ReportesInfo pathVista="/implantes/reportesInfo" onAbrirGestionImplante={abrirGestionImplante} />,

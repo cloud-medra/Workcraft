@@ -132,3 +132,24 @@ describe('admisiones_gestionadas_implantes: solo la escribe el backend', () => {
     await expect(setDoc(doc(admin.db, 'admisiones_gestionadas_implantes', '123'), { estado: 'cargada' })).rejects.toMatchObject({ code: 'permission-denied' });
   });
 });
+
+describe('maestros_descripciones_reporte: switches desde el Maestro y acción rápida de Reporte Info', () => {
+  const ID = 'CESAREA';
+  it('el Maestro cambia los dos switches; Reporte Info solo oculta en su módulo; sin permiso, nada', async () => {
+    const editor = await sesion('editorDesc', { rol: 'operador', permisos: { maestros: ['/maestros/descripcionesOcultas'] }, permisosGranulares: { '/maestros/descripcionesOcultas': {} } });
+    const reporte = await sesion('reporteImpl', { rol: 'operador', permisos: { implantes: ['/implantes/reportesInfo'] }, permisosGranulares: { '/implantes/reportesInfo': {} } });
+    const sinAccion = await sesion('reporteSinAccion', { rol: 'operador', permisos: { implantes: ['/implantes/reportesInfo'] }, permisosGranulares: { '/implantes/reportesInfo': { filas_ocultas: { elements: { action_ocultarDescripcion: false } } } } });
+    await sembrar(`maestros_descripciones_reporte/${ID}`, { descripcion: 'CESAREA', filas: 3, ocultaImplantes: false, ocultaDocumentos: false });
+    const ref = (s) => doc(s.db, 'maestros_descripciones_reporte', ID);
+    expect((await getDoc(ref(operador))).data().filas).toBe(3);
+    await expect(updateDoc(ref(editor), { ocultaImplantes: true, ocultaDocumentos: true })).resolves.toBeUndefined();
+    await expect(updateDoc(ref(editor), { ocultaImplantes: false, ocultaDocumentos: false })).resolves.toBeUndefined();
+    await expect(updateDoc(ref(editor), { filas: 99 })).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(updateDoc(ref(reporte), { ocultaImplantes: true })).resolves.toBeUndefined();
+    await expect(updateDoc(ref(reporte), { ocultaImplantes: false })).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(updateDoc(ref(reporte), { ocultaDocumentos: true })).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(updateDoc(ref(sinAccion), { ocultaImplantes: true })).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(updateDoc(ref(operador), { ocultaDocumentos: true })).rejects.toMatchObject({ code: 'permission-denied' });
+    await expect(setDoc(doc(editor.db, 'maestros_descripciones_reporte', 'NUEVA'), { descripcion: 'NUEVA' })).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+});

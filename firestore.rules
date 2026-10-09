@@ -429,6 +429,33 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Reporte Info → Maestro "Descripciones ocultas": las entradas y el
+    // contador de filas los mantienen la Cloud Function y el script
+    // (functions/descripcionesReporte). Desde el Maestro se cambian los dos
+    // switches; desde Reporte Info, la acción rápida solo OCULTA en su módulo.
+    function editaDescripcionesOcultas() {
+      return accionEnVista('maestros', '/maestros/descripcionesOcultas', 'tabla_datos', 'action_editar');
+    }
+    function camposDescripcionCambiados() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+    function ocultaDesdeReporte(modulo, campo) {
+      return camposDescripcionCambiados().hasOnly([campo, 'actualizadoPor', 'actualizadoPorUid', 'actualizadoEl'])
+        && request.resource.data[campo] == true
+        && accionEnVista(modulo, '/' + modulo + '/reportesInfo', 'filas_ocultas', 'action_ocultarDescripcion');
+    }
+    match /maestros_descripciones_reporte/{descripcionId} {
+      allow read: if request.auth != null;
+      allow create, delete: if false;
+      allow update: if request.auth != null
+        && camposDescripcionCambiados().hasOnly(['ocultaImplantes', 'ocultaDocumentos', 'actualizadoPor', 'actualizadoPorUid', 'actualizadoEl'])
+        && request.resource.data.get('ocultaImplantes', false) is bool
+        && request.resource.data.get('ocultaDocumentos', false) is bool
+        && (editaDescripcionesOcultas()
+          || ocultaDesdeReporte('implantes', 'ocultaImplantes')
+          || ocultaDesdeReporte('documentos', 'ocultaDocumentos'));
+    }
+
     match /documentos_reportesInfo/{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos')

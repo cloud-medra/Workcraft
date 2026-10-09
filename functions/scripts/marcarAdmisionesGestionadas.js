@@ -34,7 +34,8 @@ const aplicar = process.argv.includes('--aplicar');
 
   // Admisiones de Reporte Info y cuántas quedan gestionadas / pendientes.
   const reporte = await db.collectionGroup('registros').select('Admisión').get();
-  const enReporte = new Set(reporte.docs.map((d) => d.get('Admisión')).filter((a) => a != null && a !== '').map((a) => String(Number(a))));
+  // collectionGroup('registros') incluye otras colecciones (consignación).
+  const enReporte = new Set(reporte.docs.filter((d) => d.ref.path.startsWith('documentos_reportesInfo/')).map((d) => d.get('Admisión')).filter((a) => a != null && a !== '').map((a) => String(Number(a))));
   const gestionadas = new Set(filas.map((f) => f.admision));
   const porEstado = filas.reduce((acc, f) => ({ ...acc, [f.estado]: (acc[f.estado] || 0) + 1 }), {});
 

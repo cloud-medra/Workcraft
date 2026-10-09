@@ -3,13 +3,13 @@ import {
     collection,
     doc,
     query,
-    orderBy,
     documentId,
     where,
     getDocs,
     writeBatch,
     updateDoc,
-    serverTimestamp
+    serverTimestamp,
+    getCountFromServer
 } from 'firebase/firestore';
 import { useDropzone } from 'react-dropzone';
 import * as XLSX from 'xlsx';
@@ -28,7 +28,9 @@ import {
     Building2,
     Loader2,
     Tag,
-    Download
+    Download,
+    EyeOff,
+    AlertTriangle
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
@@ -47,6 +49,9 @@ import BadgeGestionImplante from './BadgeGestionImplante';
 import {
     cargarMarcas, claveAdmision, estadoDe, destinoAbrir, OPCIONES_GESTION, ETIQUETAS_ESTADO, CLASE_GESTION,
 } from './gestionImplante';
+import {
+    CAMPO_OCULTA, NOMBRE_MODULO, moduloDeVista, normDeFila, cargarEntradas, conCampos, filasDeDescripcion, ocultarDescripcion,
+} from './descripcionesOcultas';
 
 // Estado de revisión de cada registro. Se guarda en el mismo documento del
 // registro (campo `revisado`); si no existe se considera "Pendiente", así que
@@ -63,6 +68,9 @@ const CLASE_REVISADO = {
     [REVISADO.PENDIENTE]: 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
     [REVISADO.NO_APLICA]: 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:border-slate-600'
 };
+// La consulta filtra por ocultaX (sin orderBy, para no requerir un índice
+// compuesto): el orden por fecha se hace en memoria.
+const porFechaDesc = (a, b) => String(b["Fecha"] ?? '').localeCompare(String(a["Fecha"] ?? ''));
 const getRevisado = (r) => (OPCIONES_REVISADO.includes(r.revisado) ? r.revisado : REVISADO.PENDIENTE);
 
 // `Fecha` se guarda como texto 'YYYY-MM-DD' (ver formatearFecha), así que el
@@ -97,6 +105,10 @@ const COLUMNAS = [
 // ruta del menú tiene su propia entrada de permisos.
 // `onAbrirGestionImplante({ admision, refPath? })` (del Dashboard): abre la
 // gestión en Implantes desde la columna "Gestión implante".
+// Descripciones ocultas (Maestros → Descripciones ocultas): se leen solo las
+// filas visibles del módulo (ocultaImplantes / ocultaDocumentos == false);
+// las ocultas se cuentan con un count() y se leen solo con "Mostrar ocultas".
+// No cuentan en los contadores ni requieren "Revisado".
 const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionImplante }) => {
     const [reportes, setReportes] = useState([]);
     // IDs del mes que está descargado COMPLETO en `reportes` ({ clave: 'anio/mes', ids: Set }).
@@ -122,6 +134,12 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     const [filtroGestion, setFiltroGestion] = useState('');
     const [pagina, setPagina] = useState(1);
     const [tamanoPagina, setTamanoPagina] = useState(25);
+    // Filas con descripción oculta en este módulo: cantidad del mes, filas
+    // ({ clave: 'anio/mes', filas }) leídas solo con "Mostrar ocultas".
+    const [nOcultas, setNOcultas] = useState(0);
+    const [ocultas, setOcultas] = useState(null);
+    const [mostrarOcultas, setMostrarOcultas] = useState(false);
+    const [confirmarOcultar, setConfirmarOcultar] = useState(null);
 
     const busquedaDebounced = useDebouncedValue(busqueda);
 
@@ -131,6 +149,10 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     const puedeVerGestiones = subItemsVisibles(userData, 'implantes').some(s => s.path === '/implantes/gestionImplantes');
 
     const PATH_VISTA = pathVista;
+    const modulo = moduloDeVista(pathVista);
+    const campoOculta = CAMPO_OCULTA[modulo];
+    const puedeMostrarOcultas = hasPermission(PATH_VISTA, "filas_ocultas", "switch_mostrarOcultas");
+    const puedeOcultar = hasPermission(PATH_VISTA, "filas_ocultas", "action_ocultarDescripcion");
     const { columnasVisibles, ver } = useColumnasPermitidas(pathVista, 'tabla_registros', COLUMNAS);
     const { anchos, handleResize, anchoTotalTabla } = useColumnResize(columnasVisibles);
     const COL_BASE = "documentos_reportesInfo";
@@ -188,10 +210,18 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
         setCargandoLista(true);
         idsMesCargadoRef.current = null;
         try {
-            const path = `${COL_BASE}/${anio}/meses/${mes}/registros`;
-            const snap = await getDocs(query(collection(db, path), orderBy("Fecha", "desc")));
-            setReportes(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-            idsMesCargadoRef.current = { clave: `${anio}/${mes}`, ids: new Set(snap.docs.map(d => d.id)) };
+            const col = collection(db, `${COL_BASE}/${anio}/meses/${mes}/registros`);
+            const [snap, cuentaOcultas] = await Promise.all([
+                getDocs(query(col, where(campoOculta, "==", false))),
+                getCountFromServer(query(col, where(campoOculta, "==", true))),
+            ]);
+            const n = cuentaOcultas.data().count;
+            setReportes(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort(porFechaDesc));
+            setNOcultas(n);
+            setOcultas(null);
+            // Solo si se tienen TODOS los IDs del mes (sin ocultas): si no, la
+            // importación consulta por lotes y no duplica las ocultas.
+            idsMesCargadoRef.current = n === 0 ? { clave: `${anio}/${mes}`, ids: new Set(snap.docs.map(d => d.id)) } : null;
             setPagina(1);
         } catch (err) {
             console.error("Error al cargar reportes:", err);
@@ -199,18 +229,35 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
         } finally {
             setCargandoLista(false);
         }
-    }, [filtroAnio, filtroMes, showToast]);
+    }, [filtroAnio, filtroMes, campoOculta, showToast]);
 
     useEffect(() => {
         cargarPrimeraPagina();
     }, [cargarPrimeraPagina]);
 
-    // Marcas "Gestión implante" de las admisiones del mes (lotes de 30, sin
-    // listener: se refrescan al recargar el mes). Depende solo del conjunto
-    // de admisiones: marcar "Revisado" cambia `reportes` pero no relee.
+    // "Mostrar ocultas": las filas ocultas del mes se leen solo al activarlo.
+    const claveMes = `${filtroAnio}/${filtroMes}`;
+    const necesitaOcultas = mostrarOcultas && nOcultas > 0 && Boolean(filtroAnio && filtroMes) && ocultas?.clave !== claveMes;
+    useEffect(() => {
+        if (!necesitaOcultas) return undefined;
+        let activo = true;
+        const col = collection(db, `${COL_BASE}/${filtroAnio}/meses/${filtroMes}/registros`);
+        getDocs(query(col, where(campoOculta, "==", true)))
+            .then(snap => { if (activo) setOcultas({ clave: `${filtroAnio}/${filtroMes}`, filas: snap.docs.map(d => ({ id: d.id, ...d.data(), _oculta: true })) }); })
+            .catch(err => { console.error("Error al cargar las filas ocultas:", err); showToast("No se pudieron cargar las filas ocultas", "error"); });
+        return () => { activo = false; };
+    }, [necesitaOcultas, filtroAnio, filtroMes, campoOculta, showToast]);
+    const filasPantalla = useMemo(() => {
+        if (!mostrarOcultas || ocultas?.clave !== claveMes) return reportes;
+        return [...reportes, ...ocultas.filas].sort(porFechaDesc);
+    }, [reportes, ocultas, mostrarOcultas, claveMes]);
+
+    // Marcas "Gestión implante" de las admisiones en pantalla (lotes de 30,
+    // sin listener: se refrescan al recargar el mes). Depende solo del
+    // conjunto de admisiones: marcar "Revisado" cambia `reportes` pero no relee.
     const admisionesMes = useMemo(
-        () => [...new Set(reportes.map(r => claveAdmision(r["Admisión"])).filter(Boolean))].sort().join(','),
-        [reportes]
+        () => [...new Set(filasPantalla.map(r => claveAdmision(r["Admisión"])).filter(Boolean))].sort().join(','),
+        [filasPantalla]
     );
     useEffect(() => {
         let activo = true;
@@ -328,10 +375,20 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                     const idsExistentes = await idsExistentesDelMes(y, m, idsUnicos);
 
                     // 2. Filtrar solo los registros que NO existen
-                    const itemsNuevos = items.filter(item => !idsExistentes.has(item.docId));
-                    totalOmitidos += (items.length - itemsNuevos.length);
+                    const sinCampos = items.filter(item => !idsExistentes.has(item.docId));
+                    totalOmitidos += (items.length - sinCampos.length);
 
-                    if (itemsNuevos.length === 0) continue;
+                    if (sinCampos.length === 0) continue;
+
+                    // Campos de "Descripciones ocultas" (descripcionNorm,
+                    // admisionClave, ocultaImplantes, ocultaDocumentos): la
+                    // pantalla consulta por ellos. Si faltaran, los completa
+                    // el trigger de fila.
+                    const [entradas, marcasImport] = await Promise.all([
+                        cargarEntradas(sinCampos.map(item => item.data["Descripción"])),
+                        cargarMarcas(sinCampos.map(item => item.data["Admisión"])),
+                    ]);
+                    const itemsNuevos = sinCampos.map(item => ({ ...item, data: conCampos(item.data, entradas, marcasImport) }));
 
                     // 3. Insertar nuevos registros en batches (máximo 500 operaciones por batch)
                     const CHUNK_SIZE = 450;
@@ -387,23 +444,23 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     });
 
     const opcionesArancel = useMemo(
-        () => [...new Set(reportes.map(getArancel))].sort((a, b) => a.localeCompare(b, 'es')),
-        [reportes]
+        () => [...new Set(filasPantalla.map(getArancel))].sort((a, b) => a.localeCompare(b, 'es')),
+        [filasPantalla]
     );
 
     // Solo los días con al menos un registro. Se calculan sobre el mes que ya
     // está descargado completo en `reportes` (0 lecturas extra; Firestore no
     // tiene DISTINCT, así que una consulta aparte leería el mes igual).
     const diasDisponibles = useMemo(
-        () => [...new Set(reportes.map(getDia).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
-        [reportes]
+        () => [...new Set(filasPantalla.map(getDia).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+        [filasPantalla]
     );
 
     const reportesFiltrados = useMemo(() => {
         const aranceles = new Set(filtroAranceles);
-        return reportes.filter(r => {
+        return filasPantalla.filter(r => {
             if (filtroDia && getDia(r) !== filtroDia) return false;
-            if (filtroRevisado && getRevisado(r) !== filtroRevisado) return false;
+            if (filtroRevisado && (r._oculta || getRevisado(r) !== filtroRevisado)) return false;
             if (aranceles.size > 0 && !aranceles.has(getArancel(r))) return false;
             if (filtroGestion && estadoDe(marcaDe(r)) !== filtroGestion) return false;
             return (
@@ -415,9 +472,10 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                 incluyeTexto(r["Arancel"], busquedaDebounced)
             );
         });
-    }, [reportes, filtroDia, filtroRevisado, filtroAranceles, filtroGestion, marcaDe, busquedaDebounced]);
+    }, [filasPantalla, filtroDia, filtroRevisado, filtroAranceles, filtroGestion, marcaDe, busquedaDebounced]);
 
-    // Admisiones distintas del mes por estado de gestión (contador del filtro).
+    // Admisiones distintas del mes por estado de gestión (contador del
+    // filtro). Solo filas visibles: las ocultas no cuentan.
     const conteoGestion = useMemo(() => {
         const porAdmision = new Map();
         reportes.forEach(r => {
@@ -442,12 +500,14 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
             if (ver('prevision')) { fila['Previsión'] = r["Previsión"] ?? ''; fila['Isapre'] = r["Isapre"] ?? ''; }
             if (ver('cirujano')) fila['1° Cirujano'] = r["1° Cirujano"] ?? '';
             if (ver('cantidad')) fila['Cant.Art.'] = r["Cant.Art."] ?? '';
-            if (ver('revisado')) fila['Revisado'] = getRevisado(r);
+            if (ver('revisado')) fila['Revisado'] = r._oculta ? 'No requiere' : getRevisado(r);
             if (ver('gestionImplante')) {
                 fila['Gestión implante'] = ETIQUETAS_ESTADO[estadoDe(marca)];
                 fila['Gestiones'] = marca?.cantidad ?? 0;
                 fila['Ítems pendientes'] = marca ? marca.itemsPendientes : '';
             }
+            // Las ocultas solo se exportan con "Mostrar ocultas" activo.
+            if (mostrarOcultas) fila['Oculta'] = r._oculta ? 'Sí' : '';
             return fila;
         });
         const hoja = XLSX.utils.json_to_sheet(filas);
@@ -470,6 +530,44 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     const reportesPagina = reportesFiltrados.slice((paginaActual - 1) * tamanoPagina, paginaActual * tamanoPagina);
 
     const conResetPagina = (setter) => (valor) => { setter(valor); setPagina(1); };
+
+    // "Ocultar esta descripción" (solo en este módulo). En Implantes, las
+    // filas cuya admisión tiene gestión siguen visibles, con aviso.
+    const seQuedaVisible = (r) => modulo === 'implantes' && Boolean(marcaDe(r));
+    const pedirOcultar = async (item) => {
+        const norm = normDeFila(item);
+        const delMes = reportes.filter(r => normDeFila(r) === norm);
+        setConfirmarOcultar({ norm, texto: item["Descripción"] || norm, mes: delMes.length, conGestion: delMes.filter(seQuedaVisible).length, total: undefined });
+        try {
+            const total = await filasDeDescripcion(norm);
+            setConfirmarOcultar(c => (c?.norm === norm ? { ...c, total } : c));
+        } catch (err) {
+            console.error("Error al leer la descripción:", err);
+            setConfirmarOcultar(c => (c?.norm === norm ? { ...c, total: null } : c));
+        }
+    };
+    const confirmarOcultacion = async () => {
+        const { norm } = confirmarOcultar;
+        setConfirmarOcultar(c => ({ ...c, guardando: true }));
+        try {
+            await ocultarDescripcion(norm, modulo, userData);
+            // Mientras el backend recalcula las filas, se reflejan acá.
+            const pasan = reportes.filter(r => normDeFila(r) === norm && !seQuedaVisible(r));
+            const ids = new Set(pasan.map(r => r.id));
+            setReportes(prev => prev
+                .filter(r => !ids.has(r.id))
+                .map(r => (normDeFila(r) === norm && modulo === 'implantes' ? { ...r, descripcionOcultaImplantes: true } : r)));
+            setNOcultas(n => n + pasan.length);
+            setOcultas(prev => (prev ? { ...prev, filas: [...prev.filas, ...pasan.map(r => ({ ...r, [campoOculta]: true, _oculta: true }))] } : prev));
+            idsMesCargadoRef.current = null;
+            showToast(`Descripción oculta en ${NOMBRE_MODULO[modulo]}: ${pasan.length} fila(s) de este mes.`, "success");
+            setConfirmarOcultar(null);
+        } catch (err) {
+            console.error("Error al ocultar la descripción:", err);
+            showToast("No se pudo ocultar la descripción", "error");
+            setConfirmarOcultar(c => ({ ...c, guardando: false }));
+        }
+    };
     // El día solo tiene sentido dentro del año/mes elegido: al cambiar
     // cualquiera de los dos vuelve a "Todos".
     const conResetDia = (setter) => (valor) => { setter(valor); setFiltroDia(''); setPagina(1); };
@@ -592,6 +690,14 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                     icono={<Tag size={12} className="shrink-0" />}
                     anchoMenu="w-80"
                 />
+
+                {puedeMostrarOcultas && (
+                    <label className={`h-6 ml-auto inline-flex items-center gap-1.5 px-2 rounded border text-[11px] cursor-pointer select-none ${mostrarOcultas ? 'border-[#2383C2] text-[#2383C2] bg-blue-50 dark:bg-blue-950/30 font-semibold' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-700 dark:text-gray-200'}`}
+                        title={`Filas con descripción oculta en ${NOMBRE_MODULO[modulo]} (Maestros → Descripciones ocultas). No cuentan en los contadores.`}>
+                        <input type="checkbox" role="switch" checked={mostrarOcultas} onChange={(e) => conResetPagina(setMostrarOcultas)(e.target.checked)} className="accent-[#2383C2]" />
+                        <EyeOff size={11} /> Mostrar ocultas ({nOcultas})
+                    </label>
+                )}
             </div>
 
             {/* Tabla Principal */}
@@ -625,10 +731,12 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                         ) : (
                             reportesPagina.map((item) => {
                                 const revisado = getRevisado(item);
+                                const avisoGestion = modulo === 'implantes' && item.descripcionOcultaImplantes === true && !item._oculta;
                                 return (
                                     <tr
                                         key={item.id}
-                                        className="hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-[#2383C2]"
+                                        data-oculta={item._oculta || undefined}
+                                        className={`group hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-[#2383C2] ${item._oculta ? 'opacity-55 bg-slate-50/70 dark:bg-gray-900/40' : ''}`}
                                     >
                                         {ver('fecha') && (
                                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate text-slate-600 dark:text-gray-400">
@@ -656,8 +764,23 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                                           </td>
                                         )}
                                         {ver('descripcion') && (
-                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300 truncate" title={item["Descripción"]}>
-                                              {item["Descripción"]}
+                                          <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 text-slate-700 dark:text-gray-300" title={item["Descripción"]}>
+                                              <span className="flex items-center gap-1 min-w-0">
+                                                  {item._oculta && <span className="shrink-0 px-1 rounded border border-slate-300 dark:border-gray-600 text-[9px] font-semibold uppercase text-slate-500 dark:text-gray-400">Oculta</span>}
+                                                  {avisoGestion && (
+                                                      <span className="shrink-0 inline-flex" data-aviso="gestion" title="Descripción oculta en Implantes, pero la admisión tiene gestión: se muestra igual.">
+                                                          <AlertTriangle size={11} className="text-amber-600" aria-label="Descripción oculta con gestión" />
+                                                      </span>
+                                                  )}
+                                                  <span className="truncate">{item["Descripción"]}</span>
+                                                  {puedeOcultar && !item._oculta && !avisoGestion && (
+                                                      <button type="button" onClick={() => pedirOcultar(item)}
+                                                          title={`Ocultar esta descripción en ${NOMBRE_MODULO[modulo]}`} aria-label="Ocultar esta descripción"
+                                                          className="ml-auto shrink-0 p-0.5 rounded text-slate-400 hover:text-[#2383C2] opacity-0 group-hover:opacity-100 focus:opacity-100 transition">
+                                                          <EyeOff size={11} />
+                                                      </button>
+                                                  )}
+                                              </span>
                                           </td>
                                         )}
                                         {ver('arancel') && (
@@ -685,6 +808,9 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                                         )}
                                         {ver('revisado') && (
                                           <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+                                              {item._oculta ? (
+                                                  <span className="text-[10px] text-slate-400 dark:text-gray-500">No requiere</span>
+                                              ) : (
                                               <select
                                                   value={revisado}
                                                   onChange={(e) => cambiarRevisado(item, e.target.value)}
@@ -693,6 +819,7 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                                               >
                                                   {OPCIONES_REVISADO.map(o => <option key={o} value={o}>{o}</option>)}
                                               </select>
+                                              )}
                                           </td>
                                         )}
                                         {ver('gestionImplante') && (() => {
@@ -728,7 +855,8 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
             <div className="bg-slate-100 dark:bg-gray-900 border-t border-slate-200 dark:border-gray-700 p-2 flex items-center justify-between">
                 <div className="text-[10px] text-slate-500 dark:text-gray-400">
                     Registros del mes: <strong className="text-slate-800 dark:text-gray-200 font-normal">{reportes.length}</strong>
-                    {totalFilas !== reportes.length && <> · Filtrados: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalFilas}</strong></>}
+                    {nOcultas > 0 && <> · Ocultas: <strong className="text-slate-800 dark:text-gray-200 font-normal">{nOcultas}</strong></>}
+                    {totalFilas !== filasPantalla.length && <> · Filtrados: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalFilas}</strong></>}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] flex-wrap justify-end">
                     {ver('gestionImplante') && OPCIONES_GESTION.map(o => (
@@ -743,6 +871,39 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                     ))}
                 </div>
             </div>
+
+            {/* Confirmar "Ocultar esta descripción" */}
+            {confirmarOcultar && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Ocultar descripción">
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-700">
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-gray-700 flex items-center gap-2 bg-slate-50/60 dark:bg-gray-900/40">
+                            <EyeOff size={15} className="text-[#2383C2] shrink-0" />
+                            <h3 className="text-[12px] font-bold text-slate-800 dark:text-gray-100">Ocultar descripción en {NOMBRE_MODULO[modulo]}</h3>
+                        </div>
+                        <div className="px-4 py-3 text-[11px] text-slate-600 dark:text-gray-300 flex flex-col gap-2">
+                            <p className="font-semibold text-slate-800 dark:text-gray-100 break-words">{confirmarOcultar.texto}</p>
+                            <p>
+                                Afecta <b>{confirmarOcultar.total === undefined ? '…' : (confirmarOcultar.total ?? confirmarOcultar.mes)}</b> fila(s) en total
+                                {' '}(<b>{confirmarOcultar.mes}</b> en este mes). Las filas se siguen guardando y se pueden ver con "Mostrar ocultas".
+                            </p>
+                            {confirmarOcultar.conGestion > 0 && (
+                                <p className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+                                    <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                                    {confirmarOcultar.conGestion} fila(s) de este mes tienen gestión en Implantes: seguirán visibles, con aviso.
+                                </p>
+                            )}
+                            <p className="text-slate-400 dark:text-gray-500">Se vuelve a mostrar en Maestros → Descripciones ocultas.</p>
+                        </div>
+                        <div className="px-4 py-3 bg-slate-50 dark:bg-gray-900/40 border-t border-slate-100 dark:border-gray-700 flex justify-end gap-2">
+                            <button type="button" onClick={() => setConfirmarOcultar(null)} className="h-7 px-3 text-[11px] text-slate-500 dark:text-gray-400 hover:text-slate-800 dark:hover:text-gray-200">Cancelar</button>
+                            <button type="button" onClick={confirmarOcultacion} disabled={confirmarOcultar.guardando}
+                                className="h-7 px-3 bg-[#2383C2] hover:bg-[#1d6fa5] text-white rounded text-[11px] font-semibold inline-flex items-center gap-1.5 disabled:opacity-50">
+                                {confirmarOcultar.guardando ? <Loader2 size={12} className="animate-spin" /> : <EyeOff size={12} />} Ocultar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal Importar */}
             {showModal && (

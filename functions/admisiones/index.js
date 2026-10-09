@@ -9,6 +9,7 @@ const logger = require('firebase-functions/logger');
 const { initializeApp, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { aplicarCambioGestion } = require('./servicio');
+const { recalcularAdmision } = require('../descripcionesReporte/servicio');
 
 if (!getApps().length) initializeApp();
 const db = getFirestore();
@@ -25,5 +26,10 @@ exports.admisionesGestionadasImplante = onDocumentWritten(
     const ruta = (event.data?.after?.ref || event.data?.before?.ref).path;
     const resultado = await aplicarCambioGestion(db, ruta, antes, despues);
     if (Object.values(resultado).some((r) => r !== 'sin cambios')) logger.info('admisiones gestionadas', { ruta, resultado });
+    // Reporte Info: una admisión que gana o pierde su gestión muestra u
+    // oculta en Implantes sus filas con descripción oculta.
+    for (const [admision, r] of Object.entries(resultado)) {
+      if (r === 'creada' || r === 'borrada') await recalcularAdmision(db, admision, r === 'creada');
+    }
   }
 );
