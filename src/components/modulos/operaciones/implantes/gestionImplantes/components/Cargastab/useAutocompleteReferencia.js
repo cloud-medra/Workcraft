@@ -29,7 +29,9 @@ export const esCodigoActivo = (item) =>
 // falta porque la caché se mantiene sola vía onSnapshot.
 export const invalidarCacheCodigosMaestros = () => {};
 
-export const useAutocompleteReferencia = (referenciaTexto) => {
+// `activo` (por defecto true): en false (CotizacionCard en modo lectura) no
+// se carga el catálogo de códigos.
+export const useAutocompleteReferencia = (referenciaTexto, activo = true) => {
   const [sugerencias, setSugerencias] = useState([]);
   const [buscando, setBuscando] = useState(false);
   const [mostrarSug, setMostrarSug] = useState(false);
@@ -43,8 +45,8 @@ export const useAutocompleteReferencia = (referenciaTexto) => {
   const ultimoTextoRef = useRef('');
 
   useEffect(() => {
-    cargarCatalogo('codigos').catch(() => {});
-  }, []);
+    if (activo) cargarCatalogo('codigos').catch(() => {});
+  }, [activo]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {

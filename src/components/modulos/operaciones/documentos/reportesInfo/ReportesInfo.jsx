@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import {
     collection,
     doc,
@@ -46,8 +46,10 @@ import { ordenarMeses } from '../../../../../utils/ordenarMeses';
 import { useUser } from '../../../../../context/UserContext';
 import { subItemsVisibles } from '../../../../../config/accesoMenu';
 import BadgeGestionImplante from './BadgeGestionImplante';
+import DetalleGestionReporte from './DetalleGestionReporte';
+import { leerURL, urlCon } from './urlDetalle';
 import {
-    cargarMarcas, claveAdmision, estadoDe, destinoAbrir, OPCIONES_GESTION, ETIQUETAS_ESTADO, CLASE_GESTION,
+    cargarMarcas, claveAdmision, estadoDe, OPCIONES_GESTION, ETIQUETAS_ESTADO, CLASE_GESTION,
 } from './gestionImplante';
 import {
     CAMPO_OCULTA, NOMBRE_MODULO, moduloDeVista, normDeFila, cargarEntradas, conCampos, filasDeDescripcion, ocultarDescripcion,
@@ -103,13 +105,22 @@ const COLUMNAS = [
 
 // `pathVista`: la misma pantalla se monta en Documentos y en Implantes; cada
 // ruta del menú tiene su propia entrada de permisos.
-// `onAbrirGestionImplante({ admision, refPath? })` (del Dashboard): abre la
-// gestión en Implantes desde la columna "Gestión implante".
+// Columna "Gestión implante": el ícono abre el detalle de la gestión DENTRO
+// de Reporte Info (DetalleGestionReporte); la tabla queda montada y oculta,
+// así al volver (botón, Escape o "atrás") sigue igual y sin releer. El
+// detalle va en la URL (?detalle=, ver urlDetalle.js) para "atrás" y recarga.
+// `onAbrirGestionImplante({ admision, refPath? })` (del Dashboard): enlace
+// secundario "Abrir en Gestiones" del detalle.
 // Descripciones ocultas (Maestros → Descripciones ocultas): se leen solo las
 // filas visibles del módulo (ocultaImplantes / ocultaDocumentos == false);
 // las ocultas se cuentan con un count() y se leen solo con "Mostrar ocultas".
 // No cuentan en los contadores ni requieren "Revisado".
 const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionImplante }) => {
+    // Detalle en la URL al montar (recarga con ?vista=<esta ruta>&detalle=…).
+    const [urlInicial] = useState(() => {
+        const u = leerURL();
+        return u.vista === pathVista && u.detalle ? u : null;
+    });
     const [reportes, setReportes] = useState([]);
     // IDs del mes que está descargado COMPLETO en `reportes` ({ clave: 'anio/mes', ids: Set }).
     // Lo usa idsExistentesDelMes() para no volver a consultar Firestore al
@@ -121,8 +132,8 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     const [mesesDisponibles, setMesesDisponibles] = useState([]);
     const [busqueda, setBusqueda] = useState('');
     const [showModal, setShowModal] = useState(false);
-    const [filtroAnio, setFiltroAnio] = useState('');
-    const [filtroMes, setFiltroMes] = useState('');
+    const [filtroAnio, setFiltroAnio] = useState(urlInicial?.anio || '');
+    const [filtroMes, setFiltroMes] = useState(urlInicial?.mes || '');
     const [filtroDia, setFiltroDia] = useState('');
     const [cargando, setCargando] = useState(false);
     const [cargandoLista, setCargandoLista] = useState(false);
@@ -147,6 +158,16 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     const { hasPermission } = useGranularPermission();
     const { userData } = useUser();
     const puedeVerGestiones = subItemsVisibles(userData, 'implantes').some(s => s.path === '/implantes/gestionImplantes');
+
+    // --- Detalle de la gestión (dentro de Reporte Info) ---
+    // { admision, fila }: fila = la de Reporte Info de donde se abrió (null
+    // si vino de la URL). filaOrigenId: la fila resaltada al volver.
+    const [detalle, setDetalle] = useState(() => (urlInicial && puedeVerGestiones ? { admision: urlInicial.detalle, fila: null } : null));
+    const [filaOrigenId, setFilaOrigenId] = useState(null);
+    const tablaScrollRef = useRef(null);
+    const scrollGuardadoRef = useRef(0);
+    // true si el detalle se abrió con pushState en esta carga: volver = "atrás".
+    const empujadoRef = useRef(false);
 
     const PATH_VISTA = pathVista;
     const modulo = moduloDeVista(pathVista);
@@ -268,6 +289,49 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
         return () => { activo = false; };
     }, [admisionesMes]);
     const marcaDe = useCallback((r) => marcas[claveAdmision(r["Admisión"])] || null, [marcas]);
+
+    const abrirDetalle = useCallback((item) => {
+        const admision = claveAdmision(item["Admisión"]);
+        scrollGuardadoRef.current = tablaScrollRef.current?.scrollTop || 0;
+        setFilaOrigenId(item.id);
+        setDetalle({ admision, fila: item });
+        window.history.pushState({ reporteInfoDetalle: admision }, '', urlCon({ vista: pathVista, detalle: admision, anio: filtroAnio, mes: filtroMes }));
+        empujadoRef.current = true;
+    }, [pathVista, filtroAnio, filtroMes]);
+    const cerrarDetalle = useCallback(() => {
+        if (empujadoRef.current) { window.history.back(); return; } // popstate cierra
+        window.history.replaceState(null, '', urlCon());
+        setDetalle(null);
+    }, []);
+    // "Atrás" / "adelante" del navegador: el detalle sigue a la URL.
+    useEffect(() => {
+        const alNavegar = () => {
+            const u = leerURL();
+            if (u.vista === pathVista && u.detalle && puedeVerGestiones) {
+                setDetalle(d => (d?.admision === u.detalle ? d : { admision: u.detalle, fila: null }));
+            } else {
+                empujadoRef.current = false;
+                setDetalle(null);
+            }
+        };
+        window.addEventListener('popstate', alNavegar);
+        return () => window.removeEventListener('popstate', alNavegar);
+    }, [pathVista, puedeVerGestiones]);
+    // Escape vuelve a la tabla.
+    useEffect(() => {
+        if (!detalle) return undefined;
+        const alTeclear = (e) => { if (e.key === 'Escape' && !e.defaultPrevented) cerrarDetalle(); };
+        window.addEventListener('keydown', alTeclear);
+        return () => window.removeEventListener('keydown', alTeclear);
+    }, [detalle, cerrarDetalle]);
+    // Al salir de Reporte Info (otra vista del menú) se limpia la URL.
+    useEffect(() => () => {
+        if (leerURL().vista === pathVista) window.history.replaceState(null, '', urlCon());
+    }, [pathVista]);
+    // Al volver: la tabla en la misma posición de scroll.
+    useLayoutEffect(() => {
+        if (!detalle && tablaScrollRef.current) tablaScrollRef.current.scrollTop = scrollGuardadoRef.current;
+    }, [detalle]);
 
     // Función para formatear fechas de Excel (Date objects, texto YYYY-MM-DD o seriales)
     const formatearFecha = (valorFecha) => {
@@ -600,6 +664,18 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                 </div>
             )}
 
+            {detalle && (
+                <DetalleGestionReporte
+                    key={detalle.admision}
+                    admision={detalle.admision}
+                    fila={detalle.fila}
+                    onVolver={cerrarDetalle}
+                    onAbrirEnGestiones={onAbrirGestionImplante ? (refPath) => onAbrirGestionImplante({ admision: detalle.admision, refPath }) : undefined}
+                />
+            )}
+            {/* La tabla queda montada (oculta) mientras se ve el detalle:
+                filtros, página, "Mostrar ocultas" y datos se conservan. */}
+            <div className={detalle ? 'hidden' : 'contents'}>
             <header className="bg-white dark:bg-gray-800 border-b border-slate-200 dark:border-gray-700 px-3 py-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <ClipboardList size={16} className="text-[#2383C2]" />
@@ -706,7 +782,7 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                     <Loader2 size={14} className="animate-spin" /> Cargando registros...
                 </div>
             ) : (
-            <div className="flex-grow overflow-auto">
+            <div ref={tablaScrollRef} className="flex-grow overflow-auto">
                 <table
                     className="text-left text-[11px] border-collapse"
                     style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: '100%' }}
@@ -736,7 +812,8 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                                     <tr
                                         key={item.id}
                                         data-oculta={item._oculta || undefined}
-                                        className={`group hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 border-l-transparent hover:border-l-[#2383C2] ${item._oculta ? 'opacity-55 bg-slate-50/70 dark:bg-gray-900/40' : ''}`}
+                                        data-origen={item.id === filaOrigenId || undefined}
+                                        className={`group hover:bg-slate-50 dark:hover:bg-gray-700/40 transition-all duration-150 border-l-2 hover:border-l-[#2383C2] ${item.id === filaOrigenId ? 'bg-blue-50/80 dark:bg-blue-950/30 border-l-[#2383C2]' : 'border-l-transparent'} ${item._oculta ? 'opacity-55 bg-slate-50/70 dark:bg-gray-900/40' : ''}`}
                                     >
                                         {ver('fecha') && (
                                           <td className="px-2 py-1 border-b border-r border-slate-200/60 dark:border-gray-700/70 truncate text-slate-600 dark:text-gray-400">
@@ -822,17 +899,11 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                                               )}
                                           </td>
                                         )}
-                                        {ver('gestionImplante') && (() => {
-                                            const marca = marcaDe(item);
-                                            const abrir = marca && puedeVerGestiones && onAbrirGestionImplante
-                                                ? () => onAbrirGestionImplante(destinoAbrir(claveAdmision(item["Admisión"]), marca))
-                                                : undefined;
-                                            return (
-                                              <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
-                                                  <BadgeGestionImplante marca={marca} onAbrir={abrir} />
-                                              </td>
-                                            );
-                                        })()}
+                                        {ver('gestionImplante') && (
+                                          <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+                                              <BadgeGestionImplante marca={marcaDe(item)} onAbrir={puedeVerGestiones ? () => abrirDetalle(item) : undefined} />
+                                          </td>
+                                        )}
                                     </tr>
                                 );
                             })
@@ -870,6 +941,8 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
                         </span>
                     ))}
                 </div>
+            </div>
+
             </div>
 
             {/* Confirmar "Ocultar esta descripción" */}

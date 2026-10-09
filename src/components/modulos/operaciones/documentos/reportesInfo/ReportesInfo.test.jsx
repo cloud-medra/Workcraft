@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // Reporte Info → columna "Gestión implante": badge por estado, filtro con
-// contador (admisiones distintas), exportación a Excel y enlace "Abrir" a
-// Implantes (una gestión → su detalle; varias → filtrado por admisión).
+// contador (admisiones distintas), exportación a Excel y detalle de la
+// gestión dentro de Reporte Info (abrir / volver con el estado conservado,
+// varias gestiones, no encontrada, URL y permisos).
 // Descripciones ocultas: consulta por módulo, "Mostrar ocultas", contadores,
 // exportación, acción rápida y excepción de admisiones con gestión.
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
@@ -13,6 +14,22 @@ const MARCAS = {
   200: { estado: 'gestionada', cantidad: 1, itemsPendientes: 2, gestiones: { [RUTA_200.replaceAll('/', '|')]: {} } },
   300: { estado: 'cargada', cantidad: 2, itemsPendientes: 0, gestiones: { 'a|1': {}, 'a|2': {} } },
   400: { estado: 'imputada', cantidad: 1, itemsPendientes: 0, gestiones: { 'b|1': {} } },
+};
+// Gestiones (por ruta) del detalle: 200 tiene una; 300 dos; la de 400 ya no existe.
+const item = (id, extra = {}) => ({ id, codigo: `C-${id}`, cantidad: 1, recargoEncontrado: true, estadoCarga: 'PENDIENTE', totalItem: 0, ...extra });
+const GESTIONES = {
+  [RUTA_200]: {
+    gestionId: '200', nombre: 'BETO PEREZ', medico: 'DR. GOMEZ', empresa: 'ACME', fecha: '2026-10-05', estado: 'AGENDADO',
+    descripcion: 'Osteosíntesis de clavícula', observacion: 'Traer set completo', solicitud: 'PENDIENTE',
+    cotizaciones: [{ id: 'c1', numCotizacion: 'COT-1', totalCotizacion: 300, items: [
+      item('i1', { referencia: 'TORNILLO', totalItem: 100, estadoCarga: 'CARGADO' }),
+      item('i2', { referencia: 'PLACA', totalItem: 200 }),
+      item('p1', { referencia: 'PAD TRAUMA', esPad: true }),
+      item('p1c', { referencia: 'CONTENIDO A', padPadreId: 'p1', cantidad: 2 }),
+    ] }],
+  },
+  'a/1': { gestionId: '300', nombre: 'CARLA', empresa: 'EMPRESA UNO', fecha: '2026-10-03', cotizaciones: [{ id: 'c', numCotizacion: 'COT-U', items: [item('u1', { referencia: 'UNO', estadoCarga: 'CARGADO' })] }] },
+  'a/2': { gestionId: '300', nombre: 'CARLA', empresa: 'EMPRESA DOS', fecha: '2026-10-04', solicitud: 'SOLICITADO', cotizaciones: [{ id: 'c', numCotizacion: 'COT-D', items: [item('d1', { referencia: 'DOS', estadoCarga: 'CARGADO' })] }] },
 };
 const VISIBLE = { ocultaImplantes: false, ocultaDocumentos: false, descripcionOcultaImplantes: false };
 // r2: CESAREA oculta en Implantes, pero su admisión tiene gestión (aviso).
@@ -30,6 +47,7 @@ const filtrar = (ref) => {
   return w ? REGISTROS.filter((r) => r[w.campo] === w.valor) : REGISTROS;
 };
 const consultasRegistros = [];
+const lecturasDetalle = [];
 const escrituras = [];
 const lecturasMarcas = [];
 const docs = (lista) => ({ docs: lista.map(({ id, ...d }) => ({ id, data: () => d })) });
@@ -41,7 +59,14 @@ vi.mock('firebase/firestore', () => ({
   documentId: () => '__id__',
   writeBatch: vi.fn(), serverTimestamp: () => 'ahora',
   updateDoc: async (ref, datos) => { escrituras.push({ ref, datos }); },
-  getDoc: async () => ({ exists: () => true, data: () => ({ filas: 7 }) }),
+  getDoc: async (ruta) => {
+    lecturasDetalle.push(ruta);
+    const [col, id] = ruta.split('/');
+    const datos = col === 'admisiones_gestionadas_implantes' ? MARCAS[id]
+      : col === 'maestros_descripciones_reporte' ? { filas: 7 }
+        : GESTIONES[ruta];
+    return { exists: () => Boolean(datos), data: () => datos };
+  },
   getCountFromServer: async (ref) => ({ data: () => ({ count: filtrar(ref).length }) }),
   getDocs: async (ref) => {
     const ruta = typeof ref === 'string' ? ref : ref.c;
@@ -83,7 +108,8 @@ const { default: ReportesInfo } = await import('./ReportesInfo');
 beforeEach(() => {
   lecturasMarcas.length = 0; excel.filas = null; excel.archivo = null;
   denegados = new Set(); columnasOcultas = new Set();
-  consultasRegistros.length = 0; escrituras.length = 0;
+  consultasRegistros.length = 0; escrituras.length = 0; lecturasDetalle.length = 0;
+  window.history.replaceState(null, '', '/');
   usuario = { uid: 'u1', rol: 'usuario', permisos: { implantes: ['/implantes/gestionImplantes', '/implantes/reportesInfo'] } };
 });
 afterEach(cleanup);
@@ -152,21 +178,15 @@ describe('Reporte Info → Gestión implante', () => {
     expect(screen.queryAllByRole('columnheader').map((h) => h.textContent)).not.toContain('Gestión implante');
   });
 
-  it('"Abrir": una gestión → su detalle; varias → filtrado por admisión', async () => {
-    const onAbrir = vi.fn();
-    await montar({ onAbrirGestionImplante: onAbrir });
-    const botones = screen.getAllByRole('button', { name: 'Abrir la gestión en Implantes' });
-    expect(botones).toHaveLength(4); // la pendiente no tiene enlace
-    fireEvent.click(botones[0]);
-    expect(onAbrir).toHaveBeenLastCalledWith({ admision: '200', refPath: RUTA_200 });
-    fireEvent.click(botones[1]);
-    expect(onAbrir).toHaveBeenLastCalledWith({ admision: '300' });
+  it('el ícono de detalle está en las filas con gestión (no en la pendiente)', async () => {
+    await montar();
+    expect(screen.getAllByRole('button', { name: 'Ver el detalle de la gestión' })).toHaveLength(4);
   });
 
   it('sin acceso a Gestiones no se muestra el enlace', async () => {
     usuario = { uid: 'u2', rol: 'usuario', permisos: { documentos: ['/documentos/reportesInfo'] } };
     await montar({ onAbrirGestionImplante: vi.fn() });
-    expect(screen.queryByRole('button', { name: 'Abrir la gestión en Implantes' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ver el detalle de la gestión' })).toBeNull();
   });
 });
 
@@ -242,5 +262,116 @@ describe('Reporte Info → Descripciones ocultas', () => {
     await montar();
     expect(screen.queryByRole('switch', { name: /Mostrar ocultas/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Ocultar esta descripción' })).toBeNull();
+  });
+});
+
+const abrirDe = (paciente) => fireEvent.click(within(fila(paciente)).getByRole('button', { name: 'Ver el detalle de la gestión' }));
+const enDetalle = () => screen.queryByLabelText('Detalle de la gestión');
+const tablaVisible = () => !screen.getByPlaceholderText(/Buscar por Admisión/).closest('.hidden');
+
+describe('Reporte Info → detalle de la gestión (sin salir de Reporte Info)', () => {
+  it('abre el detalle (lee solo esa gestión), muestra encabezado, resumen, notas e ítems en modo lectura', async () => {
+    const onAbrir = vi.fn();
+    await montar({ onAbrirGestionImplante: onAbrir });
+    lecturasDetalle.length = 0;
+    abrirDe('BETO');
+    const detalle = enDetalle();
+    expect(detalle).toBeInTheDocument();
+    expect(tablaVisible()).toBe(false);
+    expect(within(detalle).getByLabelText('Cargando gestión')).toBeInTheDocument();
+    await waitFor(() => expect(within(detalle).getByText('BETO PEREZ')).toBeInTheDocument());
+    expect(lecturasDetalle).toEqual(['admisiones_gestionadas_implantes/200', RUTA_200]);
+    expect(window.location.search).toContain('detalle=200');
+    expect(detalle).toHaveTextContent('Admisión 200');
+    expect(detalle).toHaveTextContent('DR. GOMEZ');
+    expect(detalle).toHaveTextContent('ACME');
+    expect(within(detalle).getByLabelText('Resumen de la carga')).toHaveTextContent(/Ítems3Cargados1Pendientes2Monto total\$300ImputadaNo/);
+    expect(detalle).toHaveTextContent('Osteosíntesis de clavícula');
+    expect(detalle).toHaveTextContent('Traer set completo');
+    // Tabla de Cargas en lectura: sin Acciones ni selects; PAD plegado.
+    const encabezados = within(detalle).getAllByRole('columnheader').map((h) => h.textContent);
+    expect(encabezados).toContain('Estado Carga');
+    expect(encabezados).not.toContain('Acciones');
+    expect(within(detalle).queryByRole('combobox')).toBeNull();
+    expect(within(detalle).queryByText('CONTENIDO A')).toBeNull();
+    fireEvent.click(within(detalle).getByRole('button', { name: 'Ver contenido del PAD PAD TRAUMA' }));
+    expect(within(detalle).getByText('CONTENIDO A')).toBeInTheDocument();
+    fireEvent.click(within(detalle).getByRole('button', { name: /Abrir en Gestiones/ }));
+    expect(onAbrir).toHaveBeenCalledWith({ admision: '200', refPath: RUTA_200 });
+  });
+
+  it('"Volver" deja la tabla exactamente como estaba, sin releer, con la fila resaltada', async () => {
+    await montar();
+    fireEvent.change(screen.getByPlaceholderText(/Buscar por Admisión/), { target: { value: 'CARLA' } });
+    await waitFor(() => expect(ids()).toEqual(['CARLA', 'CARLA']));
+    fireEvent.click(screen.getByRole('switch', { name: /Mostrar ocultas/ }));
+    const consultas = consultasRegistros.length;
+    abrirDe('CARLA');
+    await waitFor(() => expect(within(enDetalle()).getAllByRole('tab')).toHaveLength(2));
+    fireEvent.click(within(enDetalle()).getByRole('button', { name: /Volver a Reporte Info/ }));
+    await waitFor(() => expect(enDetalle()).toBeNull());
+    expect(tablaVisible()).toBe(true);
+    expect(screen.getByPlaceholderText(/Buscar por Admisión/)).toHaveValue('CARLA');
+    expect(screen.getByRole('switch', { name: /Mostrar ocultas/ })).toBeChecked();
+    expect(ids()).toEqual(['CARLA', 'CARLA']);
+    expect(document.querySelector('tr[data-origen]')).toHaveTextContent('CARLA');
+    expect(consultasRegistros.length).toBe(consultas);
+    expect(window.location.search).toBe('');
+  });
+
+  it('Escape y el "atrás" del navegador también vuelven a la tabla', async () => {
+    await montar();
+    abrirDe('BETO');
+    await waitFor(() => expect(within(enDetalle()).getByText('BETO PEREZ')).toBeInTheDocument());
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(enDetalle()).toBeNull());
+    abrirDe('BETO');
+    expect(enDetalle()).toBeInTheDocument();
+    window.history.back();
+    await waitFor(() => expect(enDetalle()).toBeNull());
+    expect(tablaVisible()).toBe(true);
+  });
+
+  it('varias gestiones: pestañas con empresa, fecha y estado; se cambia entre ellas', async () => {
+    await montar();
+    abrirDe('CARLA');
+    const detalle = enDetalle();
+    await waitFor(() => expect(within(detalle).getAllByRole('tab')).toHaveLength(2));
+    const [uno, dos] = within(detalle).getAllByRole('tab');
+    expect(uno).toHaveTextContent('EMPRESA UNO03-10-2026Cargada');
+    expect(dos).toHaveTextContent('EMPRESA DOS04-10-2026Imputada');
+    expect(uno).toHaveAttribute('aria-selected', 'true');
+    expect(within(detalle).getByText('UNO')).toBeInTheDocument();
+    fireEvent.click(dos);
+    expect(within(detalle).getByText('DOS')).toBeInTheDocument();
+    expect(within(detalle).getByLabelText('Resumen de la carga')).toHaveTextContent(/Imputada\s*Sí/);
+  });
+
+  it('gestión no encontrada (eliminada): mensaje claro', async () => {
+    await montar();
+    abrirDe('DANI');
+    await waitFor(() => expect(within(enDetalle()).getByRole('alert')).toHaveTextContent('Gestión no encontrada'));
+  });
+
+  it('al recargar con ?detalle= se abre el mismo detalle; sin permiso de Gestiones, no', async () => {
+    window.history.replaceState(null, '', '/?vista=%2Fimplantes%2FreportesInfo&detalle=200&anio=2026&mes=octubre');
+    render(<ReportesInfo pathVista="/implantes/reportesInfo" />);
+    await waitFor(() => expect(within(enDetalle()).getByText('BETO PEREZ')).toBeInTheDocument());
+    fireEvent.click(within(enDetalle()).getByRole('button', { name: /Volver a Reporte Info/ }));
+    await waitFor(() => expect(enDetalle()).toBeNull());
+    expect(window.location.search).toBe('');
+    await waitFor(() => expect(ids()).toHaveLength(5)); // el mes de la URL
+    cleanup();
+    usuario = { uid: 'u2', rol: 'usuario', permisos: { implantes: ['/implantes/reportesInfo'] } };
+    window.history.replaceState(null, '', '/?vista=%2Fimplantes%2FreportesInfo&detalle=200');
+    render(<ReportesInfo pathVista="/implantes/reportesInfo" />);
+    expect(enDetalle()).toBeNull();
+  });
+
+  it('funciona igual en Reporte Info de Documentos', async () => {
+    await montar({}, '/documentos/reportesInfo');
+    abrirDe('BETO');
+    await waitFor(() => expect(within(enDetalle()).getByText('BETO PEREZ')).toBeInTheDocument());
+    expect(window.location.search).toContain('vista=%2Fdocumentos%2FreportesInfo');
   });
 });

@@ -71,6 +71,7 @@ import InventarioPorCajas from '../components/modulos/inventario/inventarioCajas
 
 // --- DOCUMENTOS ---
 import ReportesInfo from '../components/modulos/operaciones/documentos/reportesInfo/ReportesInfo';
+import { vistaInicialDesdeURL } from '../components/modulos/operaciones/documentos/reportesInfo/urlDetalle';
 import ImportarDetallesOC from '../components/modulos/operaciones/documentos/importarDetallesOC/ImportarDetallesOC';
 import SeguimientoFacturasGuias from '../components/modulos/operaciones/documentos/seguimientoFacturasGuias/SeguimientoFacturasGuias';
 import IngresoOrdenes from '../components/modulos/operaciones/documentos/ingresoOrdenes/IngresoOrdenes';
@@ -118,8 +119,15 @@ import { puedeConfigurarAtajos } from '../config/atajosDashboard';
 const Dashboard = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeModule, setActiveModule] = useState(null);
-  const [activeView, setActiveView] = useState('dashboard');
+  // userData viene de UserContext (única copia en la app): así los cambios
+  // hechos desde Ajustes (datos personales, tema, nombre a mostrar) se ven al
+  // instante en el header y los saludos. ProtectedRoute garantiza que exista.
+  const { userData, setUserData } = useUser();
+  // Al recargar con el detalle de Reporte Info en la URL (?vista=…&detalle=…)
+  // se vuelve a abrir esa vista (ver reportesInfo/urlDetalle.js).
+  const [vistaURL] = useState(() => vistaInicialDesdeURL(userData));
+  const [activeModule, setActiveModule] = useState(vistaURL?.modulo ?? null);
+  const [activeView, setActiveView] = useState(vistaURL?.vista ?? 'dashboard');
   const [isAjustesMode, setIsAjustesMode] = useState(false);
   // Id del usuario cuya creación (wizard de 3 pasos) se quiere retomar desde
   // ListadoUsuario.jsx -> "Continuar creación". Se limpia una vez consumido
@@ -137,10 +145,6 @@ const Dashboard = () => {
 
   const menuRef = useRef(null);
 
-  // userData viene de UserContext (única copia en la app): así los cambios
-  // hechos desde Ajustes (datos personales, tema, nombre a mostrar) se ven al
-  // instante en el header y los saludos. ProtectedRoute garantiza que exista.
-  const { userData, setUserData } = useUser();
   const { oscuro, alternarOscuro } = useTheme();
   const nombreSaludo = obtenerNombreMostrar(userData, { mayusculas: true });
 

@@ -1,9 +1,10 @@
-import { Lock, ExternalLink } from 'lucide-react';
+import { Lock, FileSearch } from 'lucide-react';
 import { ESTADOS_ADMISION, ETIQUETAS_ESTADO, CLASE_GESTION, estadoDe, tooltipMarca } from './gestionImplante';
 
 // Badge de la columna "Gestión implante" de Reporte Info: Pendiente (gris),
 // Gestionada (azul), Cargada (verde), Imputada (verde oscuro, con candado).
-// `onAbrir` (solo si puede ver Gestiones) abre la gestión en Implantes.
+// `onAbrir` (solo si puede ver Gestiones) abre el detalle de la gestión
+// dentro de Reporte Info.
 
 const BadgeGestionImplante = ({ marca, onAbrir }) => {
   const estado = estadoDe(marca);
@@ -15,9 +16,9 @@ const BadgeGestionImplante = ({ marca, onAbrir }) => {
         {ETIQUETAS_ESTADO[estado]}
       </span>
       {marca && onAbrir && (
-        <button type="button" onClick={onAbrir} title="Abrir la gestión en Implantes" aria-label="Abrir la gestión en Implantes"
+        <button type="button" onClick={onAbrir} title="Ver el detalle de la gestión" aria-label="Ver el detalle de la gestión"
           className="shrink-0 p-0.5 rounded text-[#2383C2] hover:bg-blue-50 dark:hover:bg-blue-950/40">
-          <ExternalLink size={11} />
+          <FileSearch size={11} />
         </button>
       )}
     </span>

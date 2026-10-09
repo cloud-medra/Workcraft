@@ -61,6 +61,8 @@ const COLUMNAS_ITEMS = [
   { key: 'estadoCarga', label: 'Estado Carga', ancho: 100, min: 60 },
   { key: 'acciones', label: 'Acciones', ancho: 80, min: 65, align: 'center' }
 ];
+// Modo lectura (Reporte Info → detalle de la gestión): sin "Acciones".
+const COLUMNAS_LECTURA = COLUMNAS_ITEMS.filter(col => col.key !== 'acciones');
 
 const anchosItemsPorDefecto = () => COLUMNAS_ITEMS.reduce((acc, col) => ({ ...acc, [col.key]: col.ancho }), {});
 
@@ -119,9 +121,21 @@ export const CotizacionCard = ({
   defaultOpen = false,
   soloLectura = false,
   // Permiso "Agregar Contenido de PAD" (tabla_cotizaciones.formulario_contenido_pad).
-  puedeAgregarContenidoPad = true
+  puedeAgregarContenidoPad = true,
+  // Solo lectura de verdad (Reporte Info): sin acciones ni edición, el estado
+  // de carga como etiqueta, el contenido de cada PAD plegable y la tabla con
+  // encabezado fijo y scroll interno. No carga el catálogo de códigos.
+  modoLectura = false
 }) => {
+  const COLUMNAS = modoLectura ? COLUMNAS_LECTURA : COLUMNAS_ITEMS;
   const [abierto, setAbierto] = useState(defaultOpen);
+  // Modo lectura: PAD principales con su contenido desplegado.
+  const [padsAbiertos, setPadsAbiertos] = useState(() => new Set());
+  const alternarPad = (id) => setPadsAbiertos(prev => {
+    const s = new Set(prev);
+    if (s.has(id)) s.delete(id); else s.add(id);
+    return s;
+  });
   const [anchos, setAnchos] = useState(anchosItemsPorDefecto);
   // Ancho disponible del contenedor de la tabla (para repartir el espacio
   // sobrante; sin ResizeObserver, p. ej. en pruebas, no se reparte).
@@ -134,18 +148,18 @@ export const CotizacionCard = ({
     observador.observe(el);
     return () => observador.disconnect();
   }, [abierto]); // la tabla solo existe con la cotización desplegada
-  const anchoBase = COLUMNAS_ITEMS.reduce((suma, col) => suma + (anchos[col.key] ?? col.ancho), 0);
+  const anchoBase = COLUMNAS.reduce((suma, col) => suma + (anchos[col.key] ?? col.ancho), 0);
   const anchosVisibles = anchosConExtra(anchos, anchoDisponible - anchoBase - 2);
-  const anchoTotalTabla = COLUMNAS_ITEMS.reduce((suma, col) => suma + (anchosVisibles[col.key] ?? col.ancho), 0);
+  const anchoTotalTabla = COLUMNAS.reduce((suma, col) => suma + (anchosVisibles[col.key] ?? col.ancho), 0);
   // Al redimensionar a mano se parte de lo que se ve (con el reparto
   // incluido), así la columna sigue al mouse 1:1.
   const handleResize = useCallback((colKey, nuevoAncho) => {
     setAnchos(prev => {
-      const suma = COLUMNAS_ITEMS.reduce((t, col) => t + (prev[col.key] ?? col.ancho), 0);
+      const suma = COLUMNAS.reduce((t, col) => t + (prev[col.key] ?? col.ancho), 0);
       const base = anchosConExtra(prev, anchoDisponible - suma - 2);
       return base[colKey] === nuevoAncho ? base : { ...base, [colKey]: nuevoAncho };
     });
-  }, [anchoDisponible]);
+  }, [anchoDisponible, COLUMNAS]);
   const [editandoId, setEditandoId] = useState(null);
   const [borrador, setBorrador] = useState(BORRADOR_VACIO);
   const [edicionEsPad, setEdicionEsPad] = useState(false);
@@ -157,7 +171,7 @@ export const CotizacionCard = ({
 
   const {
     sugerencias, buscando, mostrarSug, setMostrarSug, containerRef, portalRef, skipNext
-  } = useAutocompleteReferencia(editandoId ? borrador.referencia : '');
+  } = useAutocompleteReferencia(editandoId ? borrador.referencia : '', !modoLectura);
 
   const items = cotizacion.items || [];
 
@@ -427,7 +441,7 @@ export const CotizacionCard = ({
           <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
             {tieneTotalIngresado ? `$${formatearPesos(cotizacion.totalCotizacion)}` : 'Sin total'}
           </span>
-          <button
+          {!modoLectura && <button
             type="button"
             onClick={() => onEliminarCotizacion(cotizacion.id)}
             disabled={soloLectura}
@@ -435,7 +449,7 @@ export const CotizacionCard = ({
             className="text-red-500 hover:text-red-700 transition p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
           >
             <Trash2 size={12} />
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -458,7 +472,7 @@ export const CotizacionCard = ({
               </div>
             ) : <span />}
 
-            <button
+            {!modoLectura && <button
               type="button"
               onClick={marcarTodosComoCargado}
               disabled={itemsElegiblesCargaMasiva.length === 0 || soloLectura}
@@ -466,10 +480,10 @@ export const CotizacionCard = ({
               className="flex items-center gap-1 h-6 px-2 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <CheckCircle2 size={11} /> Marcar todos como Cargado
-            </button>
+            </button>}
           </div>
 
-          <div ref={contenedorTablaRef} className="overflow-auto rounded border border-slate-200 dark:border-gray-700">
+          <div ref={contenedorTablaRef} className={`overflow-auto rounded border border-slate-200 dark:border-gray-700 ${modoLectura ? 'max-h-[55vh]' : ''}`}>
             <div className="flex justify-end px-1 py-0.5 bg-slate-50 dark:bg-gray-900/60 border-b border-slate-200 dark:border-gray-700">
               <button
                 type="button"
@@ -485,17 +499,17 @@ export const CotizacionCard = ({
               style={{ tableLayout: 'fixed', width: anchoTotalTabla, minWidth: anchoTotalTabla }}
             >
               <colgroup>
-                {COLUMNAS_ITEMS.map(col => (
+                {COLUMNAS.map(col => (
                   <col key={col.key} style={{ width: anchosVisibles[col.key] }} />
                 ))}
               </colgroup>
-              <thead className="bg-slate-50 dark:bg-gray-900/60">
+              <thead className={`bg-slate-50 dark:bg-gray-900 ${modoLectura ? 'sticky top-0 z-[1]' : ''}`}>
                 <tr className="text-slate-500 dark:text-gray-400 uppercase font-bold text-[9px]">
-                  {COLUMNAS_ITEMS.map((col, idx) => (
+                  {COLUMNAS.map((col, idx) => (
                     <th
                       key={col.key}
                       title={col.label}
-                      className={`relative ${col.px || 'px-2.5'} py-1.5 border-b border-slate-200 dark:border-gray-700 ${idx < COLUMNAS_ITEMS.length - 1 ? 'border-r' : ''} ${col.align === 'center' ? 'text-center' : ''}`}
+                      className={`relative ${col.px || 'px-2.5'} py-1.5 border-b border-slate-200 dark:border-gray-700 ${idx < COLUMNAS.length - 1 ? 'border-r' : ''} ${col.align === 'center' ? 'text-center' : ''}`}
                     >
                       <span className="block truncate">{col.label}</span>
                       <ManijaRedimension colKey={col.key} anchoActual={anchosVisibles[col.key]} anchoMin={col.min} onResize={handleResize} />
@@ -506,7 +520,7 @@ export const CotizacionCard = ({
               <tbody>
                 {itemsOrdenados.length === 0 ? (
                   <tr>
-                    <td colSpan={16} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
+                    <td colSpan={COLUMNAS.length} className="px-3 py-4 text-center text-slate-400 dark:text-gray-500">
                       Sin ítems en esta cotización
                     </td>
                   </tr>
@@ -521,6 +535,9 @@ export const CotizacionCard = ({
                     const esSateliteSinCosto = esContenidoPad || esLoteAdicional;
                     const sinContenidoAun = esPrincipalPad && !tieneContenidoPad(items, it.id);
                     const mostrandoFormularioContenido = agregandoContenidoDePadId === it.id;
+                    // Modo lectura: el contenido de un PAD solo con su PAD desplegado.
+                    if (modoLectura && esContenidoPad && !padsAbiertos.has(it.padPadreId)) return null;
+                    const cantidadContenidoPad = esPrincipalPad ? items.filter(x => x.padPadreId === it.id).length : 0;
 
                     // Preview en vivo de recargo/venta/total mientras se edita el precio
                     // (mismo cálculo que se usa al guardar, ver guardarEdicion).
@@ -757,6 +774,17 @@ export const CotizacionCard = ({
                                   <Package size={9} /> PAD
                                 </span>
                               )}
+                              {modoLectura && esPrincipalPad && cantidadContenidoPad > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => alternarPad(it.id)}
+                                  aria-expanded={padsAbiertos.has(it.id)}
+                                  aria-label={`${padsAbiertos.has(it.id) ? 'Ocultar' : 'Ver'} contenido del PAD ${it.referencia}`}
+                                  className="flex items-center gap-0.5 text-[8px] font-semibold text-fuchsia-600 dark:text-fuchsia-400 hover:underline shrink-0"
+                                >
+                                  {padsAbiertos.has(it.id) ? <ChevronUp size={9} /> : <ChevronDown size={9} />} Contenido ({cantidadContenidoPad})
+                                </button>
+                              )}
                               {esLoteAdicional && (
                                 <span className="flex items-center gap-0.5 text-[8px] px-1 rounded bg-sky-100 dark:bg-sky-950/40 text-sky-700 dark:text-sky-400 font-bold shrink-0">
                                   <Layers size={9} /> LOTE
@@ -803,6 +831,10 @@ export const CotizacionCard = ({
                               <span className="flex items-center gap-1 text-[9px] font-semibold text-red-600 dark:text-red-400">
                                 <AlertCircle size={10} /> Sin código
                               </span>
+                            ) : modoLectura ? (
+                              <span data-estado-carga={it.estadoCarga || 'PENDIENTE'} className={`inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded border ${estilo.bg} ${estilo.border} ${estilo.text}`}>
+                                {it.estadoCarga || 'PENDIENTE'}
+                              </span>
                             ) : (
                               <div className="flex flex-col gap-0.5">
                                 <select
@@ -833,7 +865,7 @@ export const CotizacionCard = ({
                               </span>
                             )}
                           </td>
-                          <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
+                          {!modoLectura && <td className="px-2.5 py-1.5 border-b border-slate-100 dark:border-gray-700/60 text-center">
                             <div className="flex items-center justify-center gap-1">
                               {esPrincipalPad && puedeAgregarContenidoPad && (
                                 <button
@@ -865,10 +897,10 @@ export const CotizacionCard = ({
                                 <Trash2 size={12} />
                               </button>
                             </div>
-                          </td>
+                          </td>}
                         </tr>
 
-                        {mostrandoFormularioContenido && (
+                        {mostrandoFormularioContenido && !modoLectura && (
                           <tr className="bg-fuchsia-50/40 dark:bg-fuchsia-950/10">
                             <td colSpan={16} className="p-2.5 border-b border-fuchsia-200 dark:border-fuchsia-900">
                               {!periodoAbierto ? (
@@ -938,7 +970,7 @@ export const CotizacionCard = ({
                     <td className={`px-1.5 py-1.5 border-t border-r border-slate-200 dark:border-gray-700 !overflow-visible ${totalCoincide ? 'text-emerald-700 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'}`}>
                       ${formatearPesos(totalItems)}
                     </td>
-                    <td colSpan={4} className="border-t border-slate-200 dark:border-gray-700"></td>
+                    <td colSpan={COLUMNAS.length - 12} className="border-t border-slate-200 dark:border-gray-700"></td>
                   </tr>
                 </tfoot>
               )}
