@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
+import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
@@ -25,5 +26,7 @@ export default defineConfig(({ mode }) => {
   const meterActivo = env.VITE_FIRESTORE_METER !== 'off' && !process.env.VITEST
   return {
     plugins: [react(), meterActivo && firestoreMeter()].filter(Boolean),
+    // Las pruebas de reglas y funciones necesitan el emulador: npm run test:emulador.
+    test: { exclude: [...configDefaults.exclude, 'tests/emulador/**'] },
   }
 })

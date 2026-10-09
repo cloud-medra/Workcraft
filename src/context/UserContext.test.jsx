@@ -6,6 +6,7 @@ import { render, screen, act } from '@testing-library/react';
 // otro usuario, borrarse y reinicializarse) ANTES de la primera lectura del
 // usuario que entra, y esa lectura debe usar la instancia nueva de `db`.
 const eventos = [];
+const escuchas = [];
 let notificarAuth = null;
 let dbActual = { instancia: 'A' };
 
@@ -14,9 +15,12 @@ vi.mock('firebase/auth', () => ({
 }));
 vi.mock('firebase/firestore', () => ({
   doc: (db, col, id) => ({ db, path: `${col}/${id}` }),
-  getDoc: async (ref) => {
-    eventos.push(`getDoc ${ref.path} en db ${ref.db.instancia}`);
-    return { exists: () => true, data: () => ({ nombre: ref.path }) };
+  onSnapshot: (ref, siguiente) => {
+    eventos.push(`escuchar ${ref.path} en db ${ref.db.instancia}`);
+    escuchas.push({ ref, siguiente, activa: true });
+    siguiente({ exists: () => true, data: () => ({ nombre: ref.path }) });
+    const escucha = escuchas[escuchas.length - 1];
+    return () => { escucha.activa = false; eventos.push(`dejar ${ref.path}`); };
   }
 }));
 vi.mock('../firebaseConfig', () => ({
@@ -42,6 +46,7 @@ const Mostrar = () => {
 
 beforeEach(() => {
   eventos.length = 0;
+  escuchas.length = 0;
   dbActual = { instancia: 'A' };
 });
 
@@ -59,11 +64,20 @@ describe('UserContext — cambio de usuario y caché local', () => {
 
     expect(eventos).toEqual([
       'preparar A',
-      'getDoc usuarios/A en db A',
+      'escuchar usuarios/A en db A',
+      'dejar usuarios/A',
       'preparar B',
       'db reinicializada',
-      'getDoc usuarios/B en db B'
+      'escuchar usuarios/B en db B'
     ]);
     expect(screen.getByText('usuarios/B')).toBeTruthy();
+  });
+
+  it('escucha el propio perfil: un cambio de permisos se aplica sin volver a entrar', async () => {
+    render(<UserProvider><Mostrar /></UserProvider>);
+    await act(async () => { await notificarAuth({ uid: 'A' }); });
+    const escucha = escuchas[0];
+    await act(async () => { escucha.siguiente({ exists: () => true, data: () => ({ nombre: 'A con permisos nuevos' }) }); });
+    expect(screen.getByText('A con permisos nuevos')).toBeTruthy();
   });
 });

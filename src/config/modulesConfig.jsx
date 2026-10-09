@@ -65,7 +65,8 @@ import {
   Home,
   FileText,
   FolderUp,
-  Zap
+  Zap,
+  KeyRound
 } from "lucide-react";
 
 export const MODULES = {
@@ -83,6 +84,8 @@ export const MODULES = {
       { label: 'Notas Admin', path: '/administracion/notasAdmin', icon: <StickyNote size={14} /> },
       { label: 'Crear Usuario', path: '/administracion/crearUsuario', icon: <UserPlus size={14} /> },
       { label: 'Lista Usuario', path: '/administracion/listadoUsuario', icon: <Users size={14} /> },
+      // Solo admin/dev (no se asigna por permisos): ver src/config/accesoMenu.js.
+      { label: 'Permisos por centro', path: '/administracion/permisosCentro', icon: <KeyRound size={14} />, soloAdministradores: true },
       { label: 'Cargas Consolidado', path: '/administracion/cargasConsolidado', icon: <GitMerge size={14} /> },
       { label: 'Estadísticas', path: '/administracion/estadisticas', icon: <BarChart3 size={14} /> }
     ]

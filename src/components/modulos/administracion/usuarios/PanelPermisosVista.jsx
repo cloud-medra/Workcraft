@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Columns3 } from 'lucide-react';
 import MarcarTodaLaVista from './MarcarTodaLaVista';
+import MarcaOrigen from './MarcaOrigen';
 import { estadoMarcadoVista, esColumna } from './permisosGranularesUtils';
 
 // Permisos de UNA vista o pestaña: "Marcar/desmarcar todo" y, por sección,
 // su casilla de visibilidad, las acciones en grilla y —si es una tabla— las
 // columnas (elementos col_*) en un sub-bloque aparte, cerrado por defecto.
-// Lo usa EditorPermisos (Crear Usuario y Editar usuario).
+// Lo usa EditorPermisos (Crear Usuario, Editar usuario y Plantillas por
+// centro de costo). `origen(seccionKey, elementoKey?)` (opcional) marca cada
+// casilla como heredada, agregada o quitada (ver MarcaOrigen).
 
-const Casilla = ({ checked, disabled, onChange, children }) => (
+const Casilla = ({ checked, disabled, onChange, origen, children }) => (
   <label
     className={`flex items-start gap-2 text-[11px] leading-snug px-2 py-1.5 rounded-md border transition-colors ${
       disabled
@@ -19,7 +22,8 @@ const Casilla = ({ checked, disabled, onChange, children }) => (
     }`}
   >
     <input type="checkbox" disabled={disabled} checked={checked} onChange={onChange} className="accent-[#2383C2] mt-0.5 shrink-0" />
-    <span className="min-w-0">{children}</span>
+    <span className="min-w-0 flex-1">{children}</span>
+    <MarcaOrigen origen={origen} compacta />
   </label>
 );
 
@@ -38,7 +42,7 @@ const BotonTexto = ({ onClick, disabled, children }) => (
 // del mapa: el bloque ya dice qué es.
 const limpiarLabel = (label) => String(label || '').replace(/^(Operaci[oó]n|Acci[oó]n|Campo|Columna|Permiso|Bloque):\s*/i, '');
 
-const BloqueColumnas = ({ columnas, seccionEstado, deshabilitada, onAlternar, onEstablecer }) => {
+const BloqueColumnas = ({ columnas, seccionEstado, deshabilitada, onAlternar, onEstablecer, origen }) => {
   const [abierto, setAbierto] = useState(false);
   const visibles = columnas.filter(([k]) => seccionEstado.elements[k] !== false).length;
   return (
@@ -67,7 +71,7 @@ const BloqueColumnas = ({ columnas, seccionEstado, deshabilitada, onAlternar, on
       {abierto && (
         <div className="grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-1.5 px-2.5 pb-2.5">
           {columnas.map(([elKey, el]) => (
-            <Casilla key={elKey} disabled={deshabilitada} checked={!!seccionEstado.elements[elKey]} onChange={() => onAlternar(elKey)}>
+            <Casilla key={elKey} disabled={deshabilitada} checked={!!seccionEstado.elements[elKey]} onChange={() => onAlternar(elKey)} origen={origen?.(elKey)}>
               {limpiarLabel(el.label)}
             </Casilla>
           ))}
@@ -84,6 +88,7 @@ const PanelPermisosVista = ({
   onAlternarElemento,
   onEstablecerElementos,
   onMarcarTodo,
+  origen,
 }) => {
   if (!config || !vistaPermisos) return null;
   const secciones = Object.entries(config.sections || {});
@@ -114,6 +119,7 @@ const PanelPermisosVista = ({
                 />
                 {limpiarLabel(section.label).replace(/^Secci[oó]n:\s*/i, '')}
                 {deshabilitada && <span className="text-[10px] font-normal text-gray-400 dark:text-gray-500">(oculta)</span>}
+                <MarcaOrigen origen={origen?.(sectionKey)} />
               </label>
 
               {acciones.length > 0 && (
@@ -124,6 +130,7 @@ const PanelPermisosVista = ({
                       disabled={deshabilitada}
                       checked={!!seccionEstado.elements[elKey]}
                       onChange={() => onAlternarElemento(sectionKey, elKey)}
+                      origen={origen?.(sectionKey, elKey)}
                     >
                       {limpiarLabel(el.label)}
                     </Casilla>
@@ -138,6 +145,7 @@ const PanelPermisosVista = ({
                   deshabilitada={deshabilitada}
                   onAlternar={(elKey) => onAlternarElemento(sectionKey, elKey)}
                   onEstablecer={(keys, valor) => onEstablecerElementos(sectionKey, keys, valor)}
+                  origen={origen && ((elKey) => origen(sectionKey, elKey))}
                 />
               )}
             </div>

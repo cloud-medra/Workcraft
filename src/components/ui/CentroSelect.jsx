@@ -7,13 +7,16 @@ import { ChevronDown, Check, Search } from 'lucide-react';
 // "maestros_centros" viene del catalogosStore: se lee una sola vez por
 // sesión y la comparten todas las pantallas. Se excluyen los inactivos y
 // los que no tienen nombre (el orderBy('nombre') original los omitía).
-const filtrarCentrosActivos = (datos) => datos
-  .filter(centro => centro.nombre && centro.estado !== 'INACTIVO')
+// Por defecto (gestiones de Implantes y Consignación) solo los marcados
+// "Usar en gestiones" (sin la marca = sí, como los centros anteriores a
+// ella); con `todos` (centro de costo de un usuario), todos los activos.
+const filtrarCentrosActivos = (datos, { todos = false } = {}) => datos
+  .filter(centro => centro.nombre && centro.estado !== 'INACTIVO' && (todos || centro.usarEnGestiones !== false))
   .sort(ordenarPor('nombre'));
 
-const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro...", disabled = false }) => {
+const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro...", disabled = false, todos = false }) => {
   const { datos: centrosCatalogo } = useCatalogo('centros');
-  const centros = useMemo(() => filtrarCentrosActivos(centrosCatalogo), [centrosCatalogo]);
+  const centros = useMemo(() => filtrarCentrosActivos(centrosCatalogo, { todos }), [centrosCatalogo, todos]);
   const [busqueda, setBusqueda] = useState('');
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
@@ -63,6 +66,12 @@ const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro...", 
   );
 
   const centroSeleccionado = centros.find(centro => centro.id === value || centro.nombre === value);
+  // Valor que ya no se ofrece (centro inactivo o sin "Usar en gestiones"):
+  // su nombre si sigue en el maestro; si no, lo guardado (las gestiones
+  // guardan el nombre).
+  const valorFueraDeLista = value
+    ? centrosCatalogo.find(centro => centro.id === value || centro.nombre === value)?.nombre || value
+    : '';
 
   const handleSelect = (centro) => {
     onChange(centro);
@@ -81,8 +90,10 @@ const CentroSelect = ({ value, onChange, placeholder = "Seleccionar centro...", 
         onClick={disabled ? undefined : handleToggle}
         className={`w-full h-7 px-2 border border-gray-300 dark:border-gray-600 rounded text-[11px] bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 flex items-center justify-between focus-within:border-[#2383C2] ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
       >
-        <span className={`truncate ${!centroSeleccionado ? 'text-gray-400' : ''}`}>
-          {centroSeleccionado ? centroSeleccionado.nombre : placeholder}
+        <span className={`truncate ${!centroSeleccionado && !value ? 'text-gray-400' : ''}`}>
+          {/* Una gestión antigua guarda el nombre: se sigue mostrando aunque ese
+              centro ya no se ofrezca (inactivo o sin "Usar en gestiones"). */}
+          {centroSeleccionado ? centroSeleccionado.nombre : (valorFueraDeLista || placeholder)}
         </span>
         <ChevronDown size={13} className="text-gray-400 shrink-0 ml-1" />
       </div>

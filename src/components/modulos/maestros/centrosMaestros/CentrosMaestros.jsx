@@ -24,13 +24,20 @@ import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import Spinner from '../../../ui/Spinner';
 import { DrawersOverlay, LogDrawer, ConfigDrawer } from './CentrosMaestrosDrawers';
 
+// "Usar en gestiones": el centro se ofrece en el selector de las gestiones
+// de Implantes y Consignación (CentroSelect). Sin la marca (centros
+// anteriores a ella) cuenta como sí. Todos los centros activos sirven como
+// centro de costo de un usuario (Administración → Usuarios).
+const FORM_VACIO = { nombre: '', comentario: '', estado: 'ACTIVO', usarEnGestiones: true };
+const usaEnGestiones = (c) => c?.usarEnGestiones !== false;
+
 const CentrosMaestros = () => {
   // Viene del catalogosStore (lectura única por sesión, compartida con los
   // selects/autocompletados). Las escrituras de esta pantalla se reflejan con
   // upsertLocal/removeLocal; "Actualizar" trae los cambios de otros usuarios.
   const { datos: centrosCatalogo, refrescar: refrescarCentros } = useCatalogo('centros');
   const centros = useMemo(() => [...centrosCatalogo].sort(ordenarPor('fechaRegistro')), [centrosCatalogo]);
-  const [formData, setFormData] = useState({ nombre: '', comentario: '', estado: 'ACTIVO' });
+  const [formData, setFormData] = useState(FORM_VACIO);
   const [busqueda, setBusqueda] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -115,7 +122,9 @@ const CentrosMaestros = () => {
           comentarioAnterior: centroExistente?.comentario,
           comentarioNuevo: formData.comentario,
           estadoAnterior: centroExistente?.estado,
-          estadoNuevo: formData.estado
+          estadoNuevo: formData.estado,
+          usarEnGestionesAnterior: usaEnGestiones(centroExistente),
+          usarEnGestionesNuevo: formData.usarEnGestiones
         });
 
         showToast("Centro actualizado correctamente", "success");
@@ -132,12 +141,13 @@ const CentrosMaestros = () => {
         await registrarLog(docRef.id, 'CREACION', {
           nombre: formData.nombre,
           comentario: formData.comentario,
-          estado: formData.estado
+          estado: formData.estado,
+          usarEnGestiones: formData.usarEnGestiones
         });
 
         showToast("Centro registrado correctamente", "success");
       }
-      setFormData({ nombre: '', comentario: '', estado: 'ACTIVO' });
+      setFormData(FORM_VACIO);
       setEditingId(null);
     } catch (error) {
       showToast("Error al guardar: " + error.message, "error");
@@ -174,13 +184,14 @@ const CentrosMaestros = () => {
     setFormData({
       nombre: c.nombre,
       comentario: c.comentario || '',
-      estado: c.estado || 'ACTIVO'
+      estado: c.estado || 'ACTIVO',
+      usarEnGestiones: usaEnGestiones(c)
     });
   };
 
   const cancelarEdicion = () => {
     setEditingId(null);
-    setFormData({ nombre: '', comentario: '', estado: 'ACTIVO' });
+    setFormData(FORM_VACIO);
   };
 
   const abrirHistorialLogs = async (centro) => {
@@ -214,7 +225,8 @@ const CentrosMaestros = () => {
     const dataExportar = centros.map(c => ({
       NOMBRE: c.nombre || '',
       COMENTARIO: c.comentario || '',
-      ESTADO: c.estado || 'ACTIVO'
+      ESTADO: c.estado || 'ACTIVO',
+      USAR_EN_GESTIONES: usaEnGestiones(c) ? 'SI' : 'NO'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataExportar);
@@ -342,9 +354,11 @@ const CentrosMaestros = () => {
       const comentario = String(getVal('COMENTARIO') || '').trim();
       const estadoRaw = String(getVal('ESTADO') || '').trim().toUpperCase();
       const estado = estadoRaw === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO';
+      // Columna opcional; vacía = sí.
+      const usarEnGestiones = !['NO', 'N', 'FALSE', '0'].includes(String(getVal('USAR_EN_GESTIONES') || '').trim().toUpperCase());
 
       if (nombre) {
-        mapeados.push({ nombre, comentario, estado });
+        mapeados.push({ nombre, comentario, estado, usarEnGestiones });
       }
     }
 
@@ -385,6 +399,7 @@ const CentrosMaestros = () => {
           nombre: item.nombre,
           comentario: item.comentario,
           estado: item.estado,
+          usarEnGestiones: item.usarEnGestiones,
           registradoPor: userData?.nombreCompleto || 'Importación Masiva',
           fechaRegistro: new Date()
         });
@@ -477,6 +492,11 @@ const CentrosMaestros = () => {
             </div>
           )}
 
+          <label className="h-7 flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" title="Si está marcado, el centro aparece en el selector de las gestiones de Implantes y Consignación. Como centro de costo de usuarios se pueden usar todos los centros activos.">
+            <input type="checkbox" checked={formData.usarEnGestiones} onChange={e => setFormData({ ...formData, usarEnGestiones: e.target.checked })} className="accent-[#2383C2]" />
+            Usar en gestiones
+          </label>
+
           {((!editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_registrar")) ||
             (editingId && hasPermission(PATH_VISTA, "formulario_registro", "btn_actualizar"))) && (
               <button type="submit" className={`h-7 px-3 rounded font-bold text-[11px] flex items-center gap-1.5 ${editingId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#2383C2] hover:bg-[#369BCE]'} text-white transition`}>
@@ -521,7 +541,10 @@ const CentrosMaestros = () => {
               {centrosFiltrados.map((c, index) => (
                 <tr key={c.id} className="border-l-2 border-transparent hover:border-[#2383C2] hover:bg-gray-50/80 dark:hover:bg-gray-700/40 transition-colors">
                   <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">{index + 1}</td>
-                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">{c.nombre}</td>}
+                  {hasPermission(PATH_VISTA, "tabla_datos", "col_nombre") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-700 dark:text-gray-200 font-medium">
+                    {c.nombre}
+                    {!usaEnGestiones(c) && <span title="No se ofrece en las gestiones de Implantes y Consignación (sí como centro de costo de usuarios)" className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">Solo usuarios</span>}
+                  </td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_comentario") && <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400">{c.comentario || '-'}</td>}
                   {hasPermission(PATH_VISTA, "tabla_datos", "col_estado") && (
                     <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">

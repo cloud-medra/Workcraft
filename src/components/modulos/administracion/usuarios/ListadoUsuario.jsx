@@ -6,7 +6,6 @@ import {
   onSnapshot,
   orderBy,
   query,
-  updateDoc,
 } from 'firebase/firestore';
 
 // ⚠️ Ajusta estas rutas según dónde ubiques finalmente este archivo dentro de
@@ -19,7 +18,12 @@ import { useToast } from '../../../../context/ToastContext';
 import { useModal } from '../../../../context/ModalContext';
 import Spinner from '../../../../components/ui/Spinner';
 import EditarUsuario from './EditarUsuario';
+import CentroSelect from '../../../ui/CentroSelect';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
 import { ROLES } from './roles';
+import {
+  excepcionesDe, contarExcepciones, tieneExcepciones, guardarPermisosUsuario, asignarCentroCostoMasivo, mensajeError,
+} from './permisosCentroCosto';
 import { vistasConfigurables, resumenRestricciones, completarVistasDelMenu } from './permisosGranularesUtils';
 
 import {
@@ -35,11 +39,14 @@ import {
   Trash2,
   Layers,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 
 // TODO: mantener sincronizado con la lista de roles de CrearUsuario.jsx.
 
-const ListadoUsuarios = ({ onContinuarCreacion }) => {
+// abrirUsuarioId (opcional): abre ese usuario en edición al cargar el
+// listado (viene de Permisos por centro → "Ver usuarios").
+const ListadoUsuarios = ({ onContinuarCreacion, abrirUsuarioId, onAbrirUsuarioConsumido, onIrAPermisosCentro }) => {
   const { showToast } = useToast();
   const { confirmAction } = useModal();
 
@@ -49,6 +56,12 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
   const [busqueda, setBusqueda] = useState('');
   const [filtroRol, setFiltroRol] = useState('todos');
   const [filtroEstado, setFiltroEstado] = useState('todos');
+  // 'todos' | 'sin' (sin centro de costo) | id del centro.
+  const [filtroCentro, setFiltroCentro] = useState('todos');
+  const [seleccionados, setSeleccionados] = useState(() => new Set());
+  const [asignando, setAsignando] = useState(false);
+  const { datos: centros } = useCatalogo('centros');
+  const nombreCentro = (id) => centros.find((c) => c.id === id)?.nombre || 'Centro eliminado';
 
   const [usuarioEditandoId, setUsuarioEditandoId] = useState(null);
 
@@ -73,6 +86,17 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
     return () => unsub();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Se aplica una sola vez por pedido, con el listado ya cargado (ajuste de
+  // estado durante el render, como en useColumnResize).
+  const [abrirAplicado, setAbrirAplicado] = useState(null);
+  if (abrirUsuarioId && !cargandoLista && abrirAplicado !== abrirUsuarioId) {
+    setAbrirAplicado(abrirUsuarioId);
+    if (usuarios.some((u) => u.id === abrirUsuarioId)) setUsuarioEditandoId(abrirUsuarioId);
+  }
+  useEffect(() => {
+    if (abrirUsuarioId && abrirAplicado === abrirUsuarioId) onAbrirUsuarioConsumido?.();
+  }, [abrirUsuarioId, abrirAplicado, onAbrirUsuarioConsumido]);
 
   const estaActivo = (usuario) => usuario.activo !== false;
 
@@ -109,24 +133,70 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
         (filtroEstado === 'activos' && estaActivo(u)) ||
         (filtroEstado === 'inactivos' && !estaActivo(u));
 
-      return coincideTexto && coincideRol && coincideEstado;
+      const coincideCentro =
+        filtroCentro === 'todos' ||
+        (filtroCentro === 'sin' && !u.centroCostoId) ||
+        u.centroCostoId === filtroCentro;
+
+      return coincideTexto && coincideRol && coincideEstado && coincideCentro;
     });
-  }, [usuarios, busqueda, filtroRol, filtroEstado]);
+  }, [usuarios, busqueda, filtroRol, filtroEstado, filtroCentro]);
+
+  // Centros con usuarios (para el filtro), por nombre.
+  const centrosConUsuarios = useMemo(
+    () => [...new Set(usuarios.map((u) => u.centroCostoId).filter(Boolean))]
+      .map((id) => ({ id, nombre: nombreCentro(id) }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [usuarios, centros]
+  );
+
+  // --- Selección y asignación masiva de centro de costo ---
+  const seleccionables = usuariosFiltrados.filter((u) => !creacionIncompleta(u));
+  const todosSeleccionados = seleccionables.length > 0 && seleccionables.every((u) => seleccionados.has(u.id));
+  const alternarSeleccion = (id) => setSeleccionados((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const alternarTodos = () => setSeleccionados(todosSeleccionados ? new Set() : new Set(seleccionables.map((u) => u.id)));
+
+  const asignarCentro = (centro) => {
+    const uids = [...seleccionados];
+    const destino = centro ? `el centro de costo ${centro.nombre}` : 'ningún centro de costo';
+    confirmAction(
+      'Asignar centro de costo',
+      `Se asignará ${destino} a ${uids.length} usuario(s). Heredarán ${centro ? 'su plantilla' : 'solo sus permisos propios'} y conservarán sus permisos personalizados.`,
+      async () => {
+        setAsignando(true);
+        try {
+          const { actualizados } = await asignarCentroCostoMasivo({ uids, centroCostoId: centro?.id ?? null });
+          setSeleccionados(new Set());
+          showToast(`Centro de costo asignado a ${actualizados} usuario(s).`, 'success');
+        } catch (error) {
+          console.error('Error en la asignación masiva:', error);
+          showToast(mensajeError(error, 'No se pudo asignar el centro de costo'), 'error');
+        } finally {
+          setAsignando(false);
+        }
+      },
+      { confirmText: 'Asignar', type: 'warning' }
+    );
+  };
 
   // --- Activar / Inactivar (acción rápida, sin entrar a modo edición) ---
   const toggleActivoUsuario = async (usuario) => {
     setActualizandoEstadoId(usuario.id);
     try {
-      await updateDoc(doc(db, 'usuarios', usuario.id), {
-        activo: !estaActivo(usuario),
-      });
+      // Por la función: no deja inactivar al último administrador.
+      await guardarPermisosUsuario({ uid: usuario.id, datos: { activo: !estaActivo(usuario) } });
       showToast(
         `Usuario "${usuario.nombreCompleto}" ${estaActivo(usuario) ? 'inactivado' : 'activado'}`,
         'success'
       );
     } catch (error) {
       console.error('Error al cambiar estado del usuario:', error);
-      showToast('No se pudo cambiar el estado del usuario', 'error');
+      showToast(mensajeError(error, 'No se pudo cambiar el estado del usuario'), 'error');
     } finally {
       setActualizandoEstadoId(null);
     }
@@ -197,7 +267,7 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
   // Edición a pantalla completa: reemplaza al listado (mismo patrón que las
   // vistas de detalle del sistema). `key` reinicia el estado al cambiar de usuario.
   if (usuarioEditando) {
-    return <EditarUsuario key={usuarioEditando.id} usuario={usuarioEditando} onVolver={() => setUsuarioEditandoId(null)} />;
+    return <EditarUsuario key={usuarioEditando.id} usuario={usuarioEditando} onVolver={() => setUsuarioEditandoId(null)} onIrAPermisosCentro={onIrAPermisosCentro} />;
   }
 
   return (
@@ -243,8 +313,38 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
             <option value="activos">Solo activos</option>
             <option value="inactivos">Solo inactivos</option>
           </select>
+
+          <select
+            value={filtroCentro}
+            onChange={(e) => setFiltroCentro(e.target.value)}
+            aria-label="Filtrar por centro de costo"
+            className="text-xs py-1.5 px-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-200 focus:outline-none focus:border-[#2383C2]"
+          >
+            <option value="todos">Todos los centros de costo</option>
+            <option value="sin">Sin centro de costo</option>
+            {centrosConUsuarios.map((c) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
         </div>
       </div>
+
+      {/* --- ASIGNACIÓN MASIVA --- */}
+      {seleccionados.size > 0 && (
+        <div className="bg-[#2383C2]/5 dark:bg-blue-950/30 border border-[#2383C2]/30 rounded-lg px-3 py-2 flex flex-wrap items-center gap-2 text-[11.5px]" role="region" aria-label="Asignación masiva">
+          <span className="font-semibold text-gray-700 dark:text-gray-200">{seleccionados.size} seleccionado(s)</span>
+          <span className="text-gray-500 dark:text-gray-400">· Asignar centro de costo:</span>
+          <div className="w-56"><CentroSelect todos value={null} onChange={asignarCentro} placeholder="Elegir centro…" disabled={asignando} /></div>
+          <button type="button" onClick={() => asignarCentro(null)} disabled={asignando}
+            className="h-7 px-2.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 font-semibold text-gray-600 dark:text-gray-300 hover:text-red-600 disabled:opacity-50">
+            Quitar centro
+          </button>
+          {asignando && <Spinner size="sm" />}
+          <button type="button" onClick={() => setSeleccionados(new Set())} className="ml-auto inline-flex items-center gap-1 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200">
+            <X size={13} /> Limpiar selección
+          </button>
+        </div>
+      )}
 
       {/* --- LISTADO --- */}
       {cargandoLista ? (
@@ -261,11 +361,15 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
             <table className="w-full text-left text-[11px] border-collapse">
               <thead className="bg-gray-100 dark:bg-gray-900 sticky top-0 z-10">
                 <tr className="text-gray-600 dark:text-gray-400 uppercase font-bold text-[10px]">
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8 text-center">
+                    <input type="checkbox" checked={todosSeleccionados} onChange={alternarTodos} aria-label="Seleccionar todos" className="accent-[#2383C2]" />
+                  </th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700 w-8 text-center">#</th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Nombre Completo</th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Usuario</th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Email</th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Rol</th>
+                  <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Centro de costo</th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Módulos asignados</th>
                   <th className="py-1.5 px-2 border-b border-r border-gray-200 dark:border-gray-700">Estado</th>
                   <th className="py-1.5 px-2 border-b border-gray-200 dark:border-gray-700 text-center">Acciones</th>
@@ -291,6 +395,12 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
                             }`
                       }`}
                     >
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-center" onClick={(e) => e.stopPropagation()}>
+                        {!incompleta && (
+                          <input type="checkbox" checked={seleccionados.has(usuario.id)} onChange={() => alternarSeleccion(usuario.id)}
+                            aria-label={`Seleccionar ${usuario.nombreCompleto || usuario.email}`} className="accent-[#2383C2]" />
+                        )}
+                      </td>
                       <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70 text-gray-500 dark:text-gray-400 font-bold text-center">
                         {index + 1}
                       </td>
@@ -317,6 +427,25 @@ const ListadoUsuarios = ({ onContinuarCreacion }) => {
                           <Shield size={10} className="text-[#2383C2]" />
                           {rolLabel}
                         </span>
+                      </td>
+
+                      <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">
+                        {usuario.centroCostoId ? (
+                          <span className="flex flex-wrap items-center gap-1">
+                            <span className="text-gray-700 dark:text-gray-200">{nombreCentro(usuario.centroCostoId)}</span>
+                            {tieneExcepciones(usuario.excepciones) && (() => {
+                              const n = contarExcepciones(excepcionesDe(usuario));
+                              return (
+                                <span title={`Permisos personalizados: ${n.agregados} agregado(s) y ${n.quitados} quitado(s) respecto de la plantilla`}
+                                  className="flex items-center gap-1 w-fit text-[9.5px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
+                                  <SlidersHorizontal size={10} /> Personalizado +{n.agregados}/−{n.quitados}
+                                </span>
+                              );
+                            })()}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500">Sin centro</span>
+                        )}
                       </td>
 
                       <td className="py-1 px-2 border-b border-r border-gray-200 dark:border-gray-700/70">

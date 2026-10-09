@@ -107,6 +107,14 @@ const TABLAS_PENDIENTES = new Set([
   'ui/TablaRedimensionable.jsx',
 ]);
 
+// Vistas de solo administradores (ítems `soloAdministradores` del menú, ver
+// src/config/accesoMenu.js): no se asignan por permisos, así que sus tablas
+// no tienen granularidad por columnas.
+const TABLAS_SOLO_ADMINISTRADORES = new Set([
+  'modulos/administracion/permisosCentro/PermisosPorCentro.jsx',
+  'modulos/administracion/permisosCentro/ConfigurarCentro.jsx',
+]);
+
 const usosColumnas = [];
 const tablasSinColumnas = [];
 recorrer(RAIZ).forEach((archivo) => {
@@ -115,7 +123,7 @@ recorrer(RAIZ).forEach((archivo) => {
   // Solo componentes .jsx (un .js puede contener '<table' como texto, ej. al leer HTML).
   const tieneTabla = relativo.endsWith('.jsx') && src.includes('<table');
   const declaraColumnas = /useColumnasPermitidas\(|hasPermission\([^)]*['"]col_/.test(src);
-  if (tieneTabla && !declaraColumnas && !TABLAS_PENDIENTES.has(relativo)) tablasSinColumnas.push(relativo);
+  if (tieneTabla && !declaraColumnas && !TABLAS_PENDIENTES.has(relativo) && !TABLAS_SOLO_ADMINISTRADORES.has(relativo)) tablasSinColumnas.push(relativo);
 
   const constantes = {};
   for (const m of src.matchAll(/const\s+([A-Za-z_]+)\s*=\s*['"](\/[^'"]+)['"]/g)) constantes[m[1]] = m[2];

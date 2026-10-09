@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Search, X, Layers, ShieldCheck } from 'lucide-react';
 import { MODULES } from '../../../../config/modulesConfig.jsx';
 import { COMPONENT_MAPS } from '../../../../config/componentMaps.jsx';
+import { subItemsAsignables } from '../../../../config/accesoMenu';
 import PanelPermisosVista from './PanelPermisosVista';
+import MarcaOrigen from './MarcaOrigen';
+import { claveMenu, claveVista, claveSeccion, claveElemento } from './permisosCentroCosto';
 import {
   alternarModuloCompleto,
   alternarVistaDelMenu,
@@ -29,8 +32,14 @@ import {
 //
 // Props opcionales por vista: insigniaVista(path) y pieVista(path) (ej. el
 // botón "Marcar como revisada" del asistente de creación), y onAbrirVista(path).
+// `origen(clave)` (opcional, usuarios con centro de costo): estado de cada
+// casilla respecto de la plantilla ('heredado' | 'agregado' | 'quitado'),
+// con las claves de functions/permisos/nucleo.mjs.
 
-const MODULOS = Object.entries(MODULES).filter(([, m]) => m.subItems?.length);
+// Sin los ítems "solo administradores" (no se asignan por permisos).
+const MODULOS = Object.entries(MODULES)
+  .map(([k, m]) => [k, { ...m, subItems: subItemsAsignables(m) }])
+  .filter(([, m]) => m.subItems.length);
 
 const Contador = ({ marcados, total, className = '' }) => {
   const completo = marcados === total;
@@ -50,7 +59,7 @@ const Contador = ({ marcados, total, className = '' }) => {
   );
 };
 
-const EditorPermisos = ({ estado, onCambiar, insigniaVista, pieVista, onAbrirVista, accesoTotalPorRol = false }) => {
+const EditorPermisos = ({ estado, onCambiar, insigniaVista, pieVista, onAbrirVista, accesoTotalPorRol = false, origen }) => {
   const [busqueda, setBusqueda] = useState('');
   const [moduloSel, setModuloSel] = useState(() => {
     const conPermisos = MODULOS.find(([k]) => (estado.permisos?.[k] || []).length > 0);
@@ -100,6 +109,7 @@ const EditorPermisos = ({ estado, onCambiar, insigniaVista, pieVista, onAbrirVis
       onAlternarElemento={(sk, el) => cambiarGranulares((g) => alternarElemento(g, path, sk, el))}
       onEstablecerElementos={(sk, els, v) => cambiarGranulares((g) => establecerElementos(g, path, sk, els, v))}
       onMarcarTodo={(v) => cambiarGranulares((g) => establecerTodaLaVistaEn(g, path, config, v))}
+      origen={origen && ((sk, el) => origen(el === undefined ? claveSeccion(path, sk) : claveElemento(path, sk, el)))}
     />
   );
 
@@ -232,6 +242,7 @@ const EditorPermisos = ({ estado, onCambiar, insigniaVista, pieVista, onAbrirVis
                           </span>
                         )}
                       </button>
+                      <MarcaOrigen origen={origen?.(claveMenu(moduloKey, path))} />
                       {incluida && insigniaVista?.(path)}
                       {configurable && <Contador marcados={cv.marcados} total={cv.total} />}
                       {!configurable && <span className="text-[10.5px] text-gray-400 dark:text-gray-500">Sin opciones adicionales</span>}
@@ -274,6 +285,7 @@ const EditorPermisos = ({ estado, onCambiar, insigniaVista, pieVista, onAbrirVis
                                     >
                                       {pConfig.label.replace(/^Pestaña:\s*/, '')}
                                     </button>
+                                    <MarcaOrigen origen={origen?.(claveVista(pPath))} />
                                     {pIncluida && insigniaVista?.(pPath)}
                                     {pTieneSecciones && pIncluida && (
                                       <button type="button" onClick={() => alternarAbierta(pPath)} aria-label={pAbierta ? 'Contraer' : 'Expandir'} className="text-gray-400 hover:text-[#2383C2]">

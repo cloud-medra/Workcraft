@@ -1,11 +1,9 @@
-// Roles de usuario (Crear Usuario, Editar usuario y Listado Usuario).
-// admin y dev tienen acceso total: no se les aplican permisos granulares.
-export const ROLES = [
-  { value: 'admin', label: 'Administrador' },
-  { value: 'dev', label: 'Desarrollador' },
-  { value: 'encargado', label: 'Encargado' },
-  { value: 'operador', label: 'Operador' },
-];
+// Roles de usuario (Crear Usuario, Editar usuario, Listado Usuario y
+// Permisos por centro). La lista vive en functions/permisos/nucleo.mjs
+// (la comparten las Cloud Functions). admin y dev (administradores del
+// sistema) tienen acceso total: no se les aplican permisos granulares ni
+// plantillas; encargado y operador reciben la plantilla de su centro + rol.
+import { ROLES as LISTA, ROLES_CON_PLANTILLA, esRolAccesoTotal, labelRol } from '../../../../../functions/permisos/nucleo.mjs';
 
-export const esRolAccesoTotal = (rol) => rol === 'admin' || rol === 'dev';
-export const labelRol = (rol) => ROLES.find((r) => r.value === rol)?.label || rol || 'Sin rol';
+export const ROLES = LISTA.map(({ value, label }) => ({ value, label }));
+export { ROLES_CON_PLANTILLA, esRolAccesoTotal, labelRol };

@@ -37,3 +37,7 @@ exports.cerrarPeriodoImputacion = require("./cerrarPeriodoImputacion").cerrarPer
 // Estadísticas (Administración → Estadísticas): triggers, recálculo nocturno
 // y recálculo manual. Ver functions/estadisticas/index.js.
 Object.assign(exports, require("./estadisticas"));
+
+// Permisos por centro de costo (Administración → Usuarios): permiso
+// efectivo, excepciones y plantillas. Ver functions/permisos/index.js.
+Object.assign(exports, require("./permisos"));

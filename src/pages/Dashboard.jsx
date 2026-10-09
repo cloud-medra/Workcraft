@@ -24,6 +24,8 @@ import CrearUsuario from '../components/modulos/administracion/usuarios/CrearUsu
 import ListadoUsuario from '../components/modulos/administracion/usuarios/ListadoUsuario';
 import CargasConsolidado from '../components/modulos/administracion/cargasConsolidado/CargasConsolidado';
 import Estadisticas from '../components/modulos/administracion/estadisticas/Estadisticas';
+import PermisosPorCentro from '../components/modulos/administracion/permisosCentro/PermisosPorCentro';
+import { subItemsVisibles, puedeAbrirVista } from '../config/accesoMenu';
 
 // --- LABORATORIO ---
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
@@ -120,6 +122,9 @@ const Dashboard = () => {
   // ListadoUsuario.jsx -> "Continuar creación". Se limpia una vez consumido
   // por CrearUsuario.jsx para no reabrirlo en visitas futuras a la vista.
   const [resumeUsuarioId, setResumeUsuarioId] = useState(null);
+  // Usuario a abrir en edición al llegar a Lista Usuario (desde Permisos por
+  // centro → "Ver usuarios").
+  const [editarUsuarioId, setEditarUsuarioId] = useState(null);
 
   const menuRef = useRef(null);
 
@@ -193,6 +198,7 @@ const Dashboard = () => {
   };
 
   const breadcrumb = getBreadcrumb();
+  const irAPermisosCentro = () => abrirVistaDeModulo('administracion', '/administracion/permisosCentro');
 
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} onAbrirAtajo={abrirVistaDeModulo} />,
@@ -203,6 +209,7 @@ const Dashboard = () => {
       <CrearUsuario
         resumeUsuarioId={resumeUsuarioId}
         onResumeConsumido={() => setResumeUsuarioId(null)}
+        onIrAPermisosCentro={irAPermisosCentro}
       />
     ),
     '/administracion/listadoUsuario': (
@@ -210,6 +217,17 @@ const Dashboard = () => {
         onContinuarCreacion={(uid) => {
           setResumeUsuarioId(uid);
           setActiveView('/administracion/crearUsuario');
+        }}
+        abrirUsuarioId={editarUsuarioId}
+        onAbrirUsuarioConsumido={() => setEditarUsuarioId(null)}
+        onIrAPermisosCentro={irAPermisosCentro}
+      />
+    ),
+    '/administracion/permisosCentro': (
+      <PermisosPorCentro
+        onEditarUsuario={(uid) => {
+          setEditarUsuarioId(uid);
+          abrirVistaDeModulo('administracion', '/administracion/listadoUsuario');
         }}
       />
     ),
@@ -292,8 +310,10 @@ const Dashboard = () => {
 
   // --- ORDEN DE MÓDULOS APLICADO (usa userData.ordenModulos si existe) ---
   const modulosPermitidos = (() => {
+    // Los ítems "solo administradores" cuentan para admin/dev aunque no
+    // estén en sus permisos (ver src/config/accesoMenu.js).
     const base = Object.keys(MODULES).filter(
-      (mKey) => (userData.permisos[mKey] || []).length > 0
+      (mKey) => (userData.permisos[mKey] || []).length > 0 || subItemsVisibles(userData, mKey).length > 0
     );
     const orden = userData.ordenModulos;
     if (!orden || !orden.length) return base;
@@ -304,9 +324,7 @@ const Dashboard = () => {
 
   // --- ORDEN DE SUBITEMS APLICADO (usa userData.ordenSubItems[modulo] si existe) ---
   const getSubItemsOrdenados = (moduleKey) => {
-    const subItems = MODULES[moduleKey]?.subItems || [];
-    const permitidosSub = userData.permisos[moduleKey] || [];
-    const visibles = subItems.filter((s) => permitidosSub.includes(s.path));
+    const visibles = subItemsVisibles(userData, moduleKey);
     const ordenGuardado = userData.ordenSubItems?.[moduleKey];
     if (!ordenGuardado || !ordenGuardado.length) return visibles;
     const ordenados = ordenGuardado
@@ -646,7 +664,12 @@ const Dashboard = () => {
 
         <main className="flex-grow p-3 overflow-y-auto">
           <div className="h-full">
-            {VIEW_MAP[activeView] || (
+            {/* Guard: las vistas de solo administradores no se abren con otro rol. */}
+            {!puedeAbrirVista(userData, activeView) ? (
+              <div className="text-center text-gray-500 dark:text-gray-400">
+                Solo un administrador puede abrir esta vista.
+              </div>
+            ) : VIEW_MAP[activeView] || (
               <div className="text-center text-gray-500 dark:text-gray-400">
                 Vista no configurada
               </div>

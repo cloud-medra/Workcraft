@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { User, AtSign, Mail, Lock, Shield, UserPlus, KeyRound, CheckCircle2, CircleDashed, RotateCcw } from 'lucide-react';
+import { User, AtSign, Mail, Lock, Shield, UserPlus, KeyRound, CheckCircle2, CircleDashed, RotateCcw, Building2 } from 'lucide-react';
 
 import { db, auth, firebaseConfig } from '../../../../firebaseConfig';
 import { COMPONENT_MAPS } from '../../../../config/componentMaps.jsx';
@@ -11,7 +11,16 @@ import { useToast } from '../../../../context/ToastContext';
 import Spinner from '../../../../components/ui/Spinner';
 import MarcoEdicionUsuario, { Chip, ConfirmarSalida } from './MarcoEdicionUsuario';
 import EditorPermisos from './EditorPermisos';
-import { Tarjeta, CampoTexto, CampoSelect } from './CamposFormulario';
+import { Tarjeta, Campo, CampoTexto, CampoSelect } from './CamposFormulario';
+import CentroSelect from '../../../ui/CentroSelect';
+import { useCatalogo } from '../../../../hooks/useCatalogo';
+import {
+  usePlantillasPermisos, calcularExcepciones, completar, efectivo, crearOrigen, contarExcepciones,
+  guardarPermisosUsuario, mensajeError, plantillaDeUsuario, SIN_PERMISOS as PERMISOS_VACIOS,
+} from './permisosCentroCosto';
+import BarraCentroCosto from './BarraCentroCosto';
+import AvisoCentroSinConfigurar from './AvisoCentroSinConfigurar';
+import { useModal } from '../../../../context/ModalContext';
 import { ROLES, esRolAccesoTotal, labelRol } from './roles';
 
 // Crear Usuario, con el mismo marco y el mismo editor de permisos que
@@ -23,6 +32,10 @@ import { ROLES, esRolAccesoTotal, labelRol } from './roles';
 //                    revisado la creación queda completa.
 // usuarios/{uid}.estadoCreacion se mantiene igual que antes: Listado Usuario
 // muestra las creaciones incompletas y permite retomarlas.
+// Centro de costo (opcional, en Datos generales): al crear la cuenta el
+// usuario hereda la plantilla de ese centro para su rol; en Permisos se
+// ajustan sus excepciones. Los permisos se guardan con la Cloud Function
+// guardarPermisosUsuario (solo las excepciones; ella calcula el efectivo).
 
 const ESTADO_INICIAL = {
   nombreCompleto: '',
@@ -31,6 +44,7 @@ const ESTADO_INICIAL = {
   password: '',
   confirmPassword: '',
   rol: 'operador',
+  centroCostoId: null,
 };
 
 const ESTADO_CREACION_INICIAL = {
@@ -42,8 +56,11 @@ const ESTADO_CREACION_INICIAL = {
 
 const SIN_PERMISOS = { permisos: {}, permisosGranulares: {} };
 
-const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
+const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido, onIrAPermisosCentro }) => {
   const { showToast } = useToast();
+  const { confirmAction } = useModal();
+  const { datos: centros } = useCatalogo('centros');
+  const { plantillas, cargadas: plantillasCargadas } = usePlantillasPermisos();
 
   const [tab, setTab] = useState('datos');
   const [usuarioId, setUsuarioId] = useState(null);
@@ -73,6 +90,20 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
     [usuarioId, permisos, permisosGranulares, guardado]
   );
   const hayCambios = datosSinGuardar || permisosSinGuardar;
+
+  // Plantilla del centro + rol elegidos y excepciones respecto de ella.
+  const plantillaElegida = plantillaDeUsuario(plantillas, formData.centroCostoId, formData.rol);
+  const plantilla = useMemo(() => completar(plantillaElegida || PERMISOS_VACIOS), [plantillaElegida]);
+  const excepciones = useMemo(() => calcularExcepciones(plantilla, { permisos, permisosGranulares }), [plantilla, permisos, permisosGranulares]);
+  const accesoTotalRol = esRolAccesoTotal(formData.rol);
+  const origen = useMemo(() => (formData.centroCostoId && !accesoTotalRol ? crearOrigen(plantilla, excepciones) : undefined), [formData.centroCostoId, accesoTotalRol, plantilla, excepciones]);
+  const nombreCentro = (id) => centros.find((c) => c.id === id)?.nombre || 'centro sin nombre';
+  const combinacion = formData.centroCostoId ? `${nombreCentro(formData.centroCostoId)} – ${labelRol(formData.rol)}` : null;
+  const centroSinConfigurar = Boolean(formData.centroCostoId) && !accesoTotalRol && plantillasCargadas && !plantillaElegida;
+  // Ir a Permisos por centro (con confirmación si hay cambios sin guardar).
+  const configurarCentro = onIrAPermisosCentro && (() => (hayCambios
+    ? confirmAction('Cambios sin guardar', 'Se descartará lo que no hayas guardado de este usuario.', onIrAPermisosCentro, { confirmText: 'Salir sin guardar', type: 'warning' })
+    : onIrAPermisosCentro()));
 
   useEffect(() => {
     if (!hayCambios) return undefined;
@@ -105,6 +136,7 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
           password: '',
           confirmPassword: '',
           rol: data.rol || 'operador',
+          centroCostoId: data.centroCostoId ?? null,
         });
         setPermisos(data.permisos || {});
         const granulares = completarPermisosGranulares(data.permisosGranulares || {}, COMPONENT_MAPS);
@@ -217,6 +249,16 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
 
       await signOut(authSecundaria);
 
+      // Con centro de costo: hereda su plantilla (la función calcula y
+      // guarda el permiso efectivo).
+      if (formData.centroCostoId) {
+        await guardarPermisosUsuario({ uid: nuevoUsuario.uid, centroCostoId: formData.centroCostoId, excepciones: { agregados: [], quitados: [] } });
+        const heredados = efectivo(plantillaElegida, null);
+        setPermisos(heredados.permisos);
+        setPermisosGranulares(heredados.permisosGranulares);
+        setGuardado(heredados);
+      }
+
       setUsuarioId(nuevoUsuario.uid);
       setEstadoCreacion(estadoInicial);
       showToast(`Usuario "${formData.nombreCompleto}" creado. Continúa con los permisos.`, 'success');
@@ -230,7 +272,7 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
       } else if (error.code === 'auth/weak-password') {
         showToast('La contraseña es demasiado débil', 'error');
       } else {
-        showToast('Ocurrió un error al crear el usuario', 'error');
+        showToast(mensajeError(error, 'Ocurrió un error al crear el usuario'), 'error');
       }
     } finally {
       await deleteApp(appSecundaria);
@@ -242,6 +284,10 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
   // opcionalmente marca una vista como revisada ("paso 3").
   const guardarPermisos = async (revisada) => {
     if (!usuarioId) return false;
+    if (!plantillasCargadas) {
+      showToast('Aún se están cargando las plantillas de permisos. Intenta de nuevo en un momento.', 'error');
+      return false;
+    }
     setCargando(true);
     try {
       const itemsFinalizados = revisada
@@ -253,18 +299,15 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
         itemsFinalizados,
         completo: calcularCompleto(itemsFinalizados, configurables),
       };
-      await updateDoc(doc(db, 'usuarios', usuarioId), {
-        permisos,
-        permisosGranulares,
-        estadoCreacion: nuevoEstado,
-      });
+      await guardarPermisosUsuario({ uid: usuarioId, centroCostoId: formData.centroCostoId ?? null, excepciones });
+      await updateDoc(doc(db, 'usuarios', usuarioId), { estadoCreacion: nuevoEstado });
       setEstadoCreacion(nuevoEstado);
       setGuardado({ permisos, permisosGranulares });
       showToast(revisada ? 'Vista marcada como revisada.' : 'Permisos guardados.', 'success');
       return true;
     } catch (error) {
       console.error('Error al guardar permisos:', error);
-      showToast('No se pudieron guardar los permisos', 'error');
+      showToast(mensajeError(error, 'No se pudieron guardar los permisos'), 'error');
       return false;
     } finally {
       setCargando(false);
@@ -306,7 +349,7 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
         migas={<><span className="uppercase tracking-wider font-semibold">Usuarios</span><span>/</span><span>Crear usuario</span></>}
         nombre={formData.nombreCompleto}
         detalle={formData.email}
-        chips={<><Chip tono="azul" icon={Shield}>{labelRol(formData.rol)}</Chip>{estadoChip}</>}
+        chips={<><Chip tono="azul" icon={Shield}>{labelRol(formData.rol)}</Chip>{formData.centroCostoId && <Chip icon={Building2}>{nombreCentro(formData.centroCostoId)}</Chip>}{estadoChip}</>}
         hayCambios={hayCambios}
         guardando={cargando}
         onCancelar={cancelar}
@@ -344,6 +387,17 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
                   <CampoTexto id="email" name="email" type="email" label="Correo" icon={Mail} value={formData.email} onChange={handleChange} placeholder="ejemplo@medra.cl" ayuda="Será el correo de ingreso al sistema." />
                   <CampoSelect id="rol" name="rol" label="Rol" icon={Shield} opciones={ROLES} value={formData.rol} onChange={handleChange}
                     ayuda={accesoTotal ? 'Acceso total: no se aplican los permisos granulares.' : 'Los permisos se asignan en la pestaña Permisos.'} />
+                  <Campo id="centroCosto" label="Centro de costo"
+                    ayuda={usuarioId
+                      ? 'Para cambiarlo, edita el usuario desde Listado Usuario.'
+                      : formData.centroCostoId
+                        ? (accesoTotalRol
+                          ? 'Su rol tiene acceso total: no usa la plantilla del centro.'
+                          : plantillaElegida ? `Heredará los permisos de ${combinacion}: queda configurado al crear la cuenta.` : undefined)
+                        : 'Opcional. Sin centro de costo, el usuario tendrá solo los permisos que le asignes.'}>
+                    <CentroSelect todos value={formData.centroCostoId} onChange={(c) => setFormData((prev) => ({ ...prev, centroCostoId: c.id }))}
+                      placeholder="Sin centro de costo" disabled={!!usuarioId || !plantillasCargadas} />
+                  </Campo>
                   {!usuarioId && (
                     <>
                       <CampoTexto id="password" name="password" type="password" label="Contraseña" icon={Lock} value={formData.password} onChange={handleChange} placeholder="Mínimo 6 caracteres" autoComplete="new-password" />
@@ -351,14 +405,30 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
                     </>
                   )}
                 </fieldset>
+                {centroSinConfigurar && (
+                  <div className="mt-4">
+                    <AvisoCentroSinConfigurar nombre={combinacion} onConfigurar={configurarCentro} />
+                  </div>
+                )}
                 {/* Enter en el formulario crea la cuenta (igual que el botón del encabezado). */}
                 <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
               </Tarjeta>
             </form>
           </div>
         ) : (
+          <div className="h-full min-h-0 flex flex-col gap-3">
+          <BarraCentroCosto
+            centro={combinacion}
+            conPlantilla={Boolean(plantillaElegida)}
+            accesoTotal={accesoTotalRol}
+            excepciones={contarExcepciones(excepciones)}
+            onRestablecer={() => { const p = efectivo(plantillaElegida, null); setPermisos(p.permisos); setPermisosGranulares(p.permisosGranulares); }}
+            onConfigurarCentro={configurarCentro}
+          />
+          <div className="flex-1 min-h-0">
           <EditorPermisos
             key={editorKey}
+            origen={origen}
             estado={{ permisos, permisosGranulares }}
             onCambiar={onCambiarPermisos}
             accesoTotalPorRol={accesoTotal}
@@ -380,6 +450,8 @@ const CrearUsuario = ({ resumeUsuarioId, onResumeConsumido }) => {
               </div>
             ) : null)}
           />
+          </div>
+          </div>
         )}
       </MarcoEdicionUsuario>
     </>

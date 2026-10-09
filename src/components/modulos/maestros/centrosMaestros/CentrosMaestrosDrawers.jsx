@@ -167,6 +167,16 @@ export const LogDrawer = ({
                         </div>
                       </li>
                     )}
+                    {log.detalles?.usarEnGestionesNuevo !== undefined && log.detalles?.usarEnGestionesAnterior !== log.detalles?.usarEnGestionesNuevo && (
+                      <li className="flex flex-col gap-0.5">
+                        <span className="text-gray-400 text-[9px] font-bold">Usar en gestiones</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="text-red-500 dark:text-red-400 font-medium">{log.detalles?.usarEnGestionesAnterior ? 'Sí' : 'No'}</span>
+                          <span className="text-gray-400">→</span>
+                          <span className="text-green-600 dark:text-green-400 font-medium">{log.detalles?.usarEnGestionesNuevo ? 'Sí' : 'No'}</span>
+                        </div>
+                      </li>
+                    )}
                   </ul>
                 )}
 
@@ -289,7 +299,7 @@ export const ConfigDrawer = ({
           <div className="p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded text-[9px] text-blue-800 dark:text-blue-300">
             <strong>Formato de columnas requerido:</strong>
             <div className="font-num mt-0.5 text-blue-600 dark:text-blue-400">
-              NOMBRE | COMENTARIO | ESTADO
+              NOMBRE | COMENTARIO | ESTADO | USAR_EN_GESTIONES (opcional: SI/NO, vacío = SI)
             </div>
           </div>
 
