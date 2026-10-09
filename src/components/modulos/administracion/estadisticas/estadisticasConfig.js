@@ -60,3 +60,23 @@ export const etiquetaPeriodo = (clave) => {
   const mes = MESES.find((m) => m.num === Number(mm));
   return mes ? `${mes.nombre} ${anio}` : clave;
 };
+
+// Períodos con estadísticas de `modulos` según el índice (más reciente
+// primero). Un período es definitivo solo si lo es en todos los módulos que
+// lo tienen.
+export const periodosDisponibles = (indice, modulos) => {
+  const mapa = new Map();
+  modulos.forEach((m) => {
+    Object.entries(indice?.periodos?.[m] || {}).forEach(([clave, info]) => {
+      const previo = mapa.get(clave) || { clave, definitivo: true };
+      mapa.set(clave, { clave, definitivo: previo.definitivo && Boolean(info.definitivo) });
+    });
+  });
+  return [...mapa.values()].sort((a, b) => b.clave.localeCompare(a.clave));
+};
+
+// Años con datos (más reciente primero) y meses con datos de un año
+// (más reciente primero), a partir de la lista de periodosDisponibles.
+export const aniosDe = (periodos) => [...new Set(periodos.map((p) => p.clave.slice(0, 4)))];
+export const mesesDe = (periodos, anio) => periodos.filter((p) => p.clave.startsWith(`${anio}-`));
+export const nombreMes = (clave) => MESES.find((m) => m.num === Number(String(clave).split('-')[1]))?.nombre || clave;

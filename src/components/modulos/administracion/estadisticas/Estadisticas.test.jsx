@@ -21,10 +21,13 @@ vi.mock('./exportarEstadisticas', () => ({ exportarEstadisticas: vi.fn(), filasP
 
 const ts = (s) => ({ toDate: () => new Date(s), toMillis: () => new Date(s).getTime() });
 const t = (a, m, c, e, extra) => ({ a, m, c, e, n: 1, ...extra });
-const nombres = { m: { m1: 'Juan Pérez', m2: 'Ana Soto' }, c: { c1: 'Artroscopía', c2: 'Prótesis cadera' }, e: { e1: 'Acme', e2: 'Beta' } };
+const nombres = { m: { m1: 'Juan Pérez', m2: 'Ana Soto', m3: 'Pedro Rojas' }, c: { c1: 'Artroscopía', c2: 'Prótesis cadera' }, e: { e1: 'Acme', e2: 'Beta' } };
 const DOCS = {
   'implantes_2026-10': { modulo: 'implantes', periodo: '2026-10', version: 2, definitivo: false, actualizadoEl: ts('2026-10-08T14:32:00'), nombres, t: { a: t('1', 'm1', 'c1', 'e1'), b: t('1', 'm1', 'c1', 'e2'), c: t('2', 'm2', 'c2', 'e1') } },
   'consignacion_2026-10': { modulo: 'consignacion', periodo: '2026-10', version: 2, definitivo: false, actualizadoEl: ts('2026-10-08T10:00:00'), nombres, t: { a: t('1', 'm1', 'c1', 'e1'), d: t('SINID-1', 'm1', 'c2', 'e2', { s: true }) } },
+  // Enero se compara con diciembre del año anterior.
+  'implantes_2026-01': { modulo: 'implantes', periodo: '2026-01', version: 1, definitivo: true, actualizadoEl: ts('2026-01-31T23:00:00'), nombres, t: { a: t('7', 'm1', 'c1', 'e1') } },
+  'implantes_2025-12': { modulo: 'implantes', periodo: '2025-12', version: 1, definitivo: true, actualizadoEl: ts('2025-12-31T23:00:00'), nombres, t: { a: t('8', 'm3', 'c1', 'e1') } },
   'implantes_2026-09': { modulo: 'implantes', periodo: '2026-09', version: 1, definitivo: true, cambiosTrasCierre: 3, actualizadoEl: ts('2026-09-30T23:00:00'), nombres, t: { a: t('5', 'm1', 'c1', 'e1') } },
   'implantes_2026-10__montos': { t: { a: { $: 1500000, sp: 0 }, b: { $: 500000, sp: 2 }, c: { $: 300000, sp: 0 } }, l: { l1: { $: 1500000, p: { 500000: 2, 600000: 1 } }, l2: { $: 300000, p: { 150000: 2 } } } },
   'consignacion_2026-10__montos': { t: { a: { $: 0, sp: 0 }, d: { $: 0, sp: 0 } }, l: {} },
@@ -37,7 +40,7 @@ const DOCS = {
 const leidos = [];
 const leer = (id) => { leidos.push(id); return DOCS[id] || null; };
 vi.mock('./estadisticasStore', () => ({
-  obtenerIndice: async () => ({ periodos: { implantes: { '2026-09': { definitivo: true }, '2026-10': { definitivo: false } }, consignacion: { '2026-10': { definitivo: false } } } }),
+  obtenerIndice: async () => ({ periodos: { implantes: { '2025-12': { definitivo: true }, '2026-01': { definitivo: true }, '2026-09': { definitivo: true }, '2026-10': { definitivo: false } }, consignacion: { '2026-10': { definitivo: false } } } }),
   obtenerPeriodo: async (modulo, clave) => { const d = leer(`${modulo}_${clave}`); return d ? { ...d, piezas: [d] } : null; },
   obtenerMontos: async (base) => { const d = leer(`${base.modulo}_${base.periodo}__montos`); return d ? { ...d, modulo: base.modulo, piezas: [d] } : null; },
   obtenerCodigos: async (base) => { const d = leer(`${base.modulo}_${base.periodo}__codigos`); return d ? { ...d, modulo: base.modulo, piezas: [d] } : null; },
@@ -54,7 +57,9 @@ const filas = () => screen.getAllByRole('row').slice(1, -1).map((r) => within(r)
 describe('Estadísticas', () => {
   it('abre en el período en curso con Todos: admisiones distintas entre módulos y comparación', async () => {
     render(<Estadisticas />);
-    expect(await screen.findByRole('option', { name: 'Octubre 2026 (en curso)' })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: 'Octubre (en curso)' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Mes' })).toHaveValue('2026-10');
+    expect(screen.getByRole('button', { name: 'Comparar con mes anterior' })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByRole('button', { name: 'Juan Pérez' })).toBeInTheDocument();
     // Admisiones: 1 (en ambos módulos, cuenta una), 2 y una sin ID = 3
     const tarjeta = screen.getByText('Admisiones', { selector: 'span' }).closest('div').parentElement;
@@ -83,7 +88,7 @@ describe('Estadísticas', () => {
   it('período cerrado con cambios: aviso y recalcular solo para admin', async () => {
     rol = 'admin';
     render(<Estadisticas />);
-    fireEvent.change(await screen.findByRole('combobox'), { target: { value: '2026-09' } });
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Mes' }), { target: { value: '2026-09' } });
     expect(await screen.findByText(/cambios posteriores/)).toHaveTextContent('Hay 3 cambios posteriores al cierre en Implantes');
     fireEvent.click(screen.getByRole('button', { name: /Recalcular período/ }));
     expect(confirmAction).toHaveBeenCalledWith('Recalcular período cerrado', expect.stringContaining('3 cambio(s)'), expect.any(Function), expect.objectContaining({ type: 'warning' }));
@@ -92,7 +97,7 @@ describe('Estadísticas', () => {
   it('sin rol admin no aparece Recalcular; sin permiso de un módulo no se ofrece ni se lee', async () => {
     denegados.add('filtros.opt_consignacion');
     render(<Estadisticas />);
-    fireEvent.change(await screen.findByRole('combobox'), { target: { value: '2026-09' } });
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Mes' }), { target: { value: '2026-09' } });
     await screen.findByText(/cambios posteriores/);
     expect(screen.queryByRole('button', { name: /Recalcular/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Consignación' })).not.toBeInTheDocument();
@@ -147,7 +152,100 @@ describe('Estadísticas: montos y códigos', () => {
 
   it('período en formato anterior: aviso para recalcular con --version-antigua', async () => {
     render(<Estadisticas />);
-    fireEvent.change(await screen.findByRole('combobox'), { target: { value: '2026-09' } });
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Mes' }), { target: { value: '2026-09' } });
     expect(await screen.findByText(/aún no tiene montos ni códigos/)).toBeInTheDocument();
+  });
+});
+
+describe('Estadísticas: panel de detalle redimensionable', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('el panel restaura el ancho guardado, lo cambia con el teclado y lo recuerda', async () => {
+    localStorage.setItem('workcraft:anchoPanel:anonimo:estadisticas', '500');
+    render(<Estadisticas />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Juan Pérez' }));
+    const manija = within(screen.getByRole('dialog')).getByRole('separator', { name: 'Ancho del panel' });
+    expect(manija).toHaveAttribute('aria-valuenow', '500');
+    fireEvent.keyDown(manija, { key: 'ArrowLeft' });
+    expect(manija).toHaveAttribute('aria-valuenow', '516');
+    expect(localStorage.getItem('workcraft:anchoPanel:anonimo:estadisticas')).toBe('516');
+  });
+
+  it('el detalle se abre aparte (el Top 10 sigue visible), con columnas redimensionables, y cierra con el fondo', async () => {
+    render(<Estadisticas />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Juan Pérez' }));
+    const panel = screen.getByRole('dialog');
+    expect(screen.getByText(/^Top 10/)).toBeInTheDocument();
+    expect(within(panel).queryByText(/^Top 10/)).not.toBeInTheDocument();
+    expect(within(panel).getAllByTitle(/Arrastra para redimensionar/).length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar detalle' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('Estadísticas: año, mes y modo', () => {
+  const opciones = (nombre) => within(screen.getByRole('combobox', { name: nombre })).getAllByRole('option').map((o) => o.textContent);
+  const encabezados = () => screen.getAllByRole('columnheader').map((h) => h.textContent);
+
+  it('solo ofrece años y meses con datos, según el filtro de módulo; al cambiar de año toma el mes más reciente', async () => {
+    render(<Estadisticas />);
+    await screen.findByRole('button', { name: 'Juan Pérez' });
+    expect(opciones('Año')).toEqual(['2026', '2025']);
+    expect(opciones('Mes')).toEqual(['Octubre (en curso)', 'Septiembre', 'Enero']);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Año' }), { target: { value: '2025' } });
+    expect(opciones('Mes')).toEqual(['Diciembre']);
+    expect(screen.getByRole('combobox', { name: 'Mes' })).toHaveValue('2025-12');
+    // Consignación solo tiene octubre 2026.
+    fireEvent.click(screen.getByRole('button', { name: 'Consignación' }));
+    expect(opciones('Año')).toEqual(['2026']);
+    expect(opciones('Mes')).toEqual(['Octubre (en curso)']);
+  });
+
+  it('enero se compara con diciembre del año anterior', async () => {
+    render(<Estadisticas />);
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Mes' }), { target: { value: '2026-01' } });
+    expect(await screen.findByRole('button', { name: 'Pedro Rojas' })).toBeInTheDocument();
+    expect(encabezados()).toEqual(expect.arrayContaining(['Enero 2026', 'Diciembre 2025']));
+    expect(filas()).toEqual([['Juan Pérez', '1', '0'], ['Pedro Rojas', '0', '1']]);
+    expect(leidos).toContain('implantes_2025-12');
+  });
+
+  it('"Solo un mes" quita lo comparativo y las filas en 0; volver a comparar y "Mes actual" lo restauran', async () => {
+    render(<Estadisticas />);
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Mes' }), { target: { value: '2026-01' } });
+    await screen.findByRole('button', { name: 'Pedro Rojas' });
+    fireEvent.click(screen.getByRole('columnheader', { name: /Diferencia/ }).querySelector('button'));
+    leidos.length = 0;
+    fireEvent.click(screen.getByRole('button', { name: 'Solo un mes' }));
+    await screen.findByRole('button', { name: 'Juan Pérez' });
+    expect(screen.queryByRole('button', { name: 'Pedro Rojas' })).not.toBeInTheDocument();
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['Diciembre 2025']));
+    expect(screen.queryByRole('columnheader', { name: /Diferencia|Variación|Monto anterior|Dif\. monto|Var\. monto/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /Enero 2026/ })).toHaveAttribute('aria-sort', 'descending');
+    expect(screen.queryByText(/Diciembre 2025:/)).not.toBeInTheDocument(); // línea "mes anterior" de las tarjetas
+    expect(screen.queryByText('Diciembre 2025')).not.toBeInTheDocument(); // leyenda del Top 10
+    expect(leidos).not.toContain('implantes_2025-12'); // sin comparación no se lee el mes anterior
+
+    fireEvent.click(screen.getByRole('button', { name: 'Comparar con mes anterior' }));
+    expect(await screen.findByRole('button', { name: 'Pedro Rojas' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /Diciembre 2025/ })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Mes' })).toHaveValue('2026-01');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Solo un mes' }));
+    fireEvent.click(screen.getByRole('button', { name: /Mes actual/ }));
+    expect(screen.getByRole('combobox', { name: 'Mes' })).toHaveValue('2026-10');
+    expect(screen.getByRole('button', { name: 'Comparar con mes anterior' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('columnheader', { name: /Septiembre 2026/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Mes actual/ })).toBeDisabled();
+  });
+
+  it('el detalle en "Solo un mes" no muestra comparación', async () => {
+    render(<Estadisticas />);
+    await screen.findByRole('button', { name: 'Juan Pérez' });
+    fireEvent.click(screen.getByRole('button', { name: 'Solo un mes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Juan Pérez' }));
+    const panel = screen.getByRole('dialog');
+    expect(within(panel).queryByText(/Septiembre 2026/)).not.toBeInTheDocument();
+    expect(within(panel).queryByRole('columnheader', { name: /Variación/ })).not.toBeInTheDocument();
   });
 });

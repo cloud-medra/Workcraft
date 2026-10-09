@@ -3,7 +3,7 @@ import { useColumnasPermitidas } from '../../../../../hooks/useColumnasPermitida
 import Variacion from './Variacion';
 import PrecioUnitario from './PrecioUnitario';
 import { formatoNumero, formatoMonto, colorDiferencia } from './formato';
-import { Encabezado, BarraBusqueda } from './TablaComun';
+import { Encabezado, BarraBusqueda, ContenedorTabla, ZonaScroll, CLASE_TABLA } from './TablaComun';
 import { usePaginacion } from './usePaginacion';
 
 const PATH_VISTA = '/administracion/estadisticas'; // = RUTA_VISTA_ESTADISTICAS
@@ -26,21 +26,23 @@ const COLUMNAS_CODIGOS = [
 ];
 
 const COLUMNAS_MONTO = ['precio', 'monto', 'montoAnterior', 'montoVariacion'];
+// Columnas que se ocultan en el modo "Solo un mes".
+const COLUMNAS_COMPARATIVAS = ['cantidadAnterior', 'diferencia', 'variacion', 'montoAnterior', 'montoVariacion'];
 
 // Códigos usados en el período: cantidad (los más usados primero por
 // defecto), admisiones, precio unitario promedio y monto, con su comparación.
-const TablaCodigos = ({ filas, total, conMontos, etiquetaActual, etiquetaAnterior, busqueda, onBuscar, orden, onOrdenar, seleccionada, onSeleccionar }) => {
+const TablaCodigos = ({ filas, total, conMontos, comparar = true, etiquetaActual, etiquetaAnterior, busqueda, onBuscar, orden, onOrdenar, seleccionada, onSeleccionar }) => {
   const { ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla_codigos', COLUMNAS_CODIGOS);
-  const ver = (key) => verColumna(key) && (conMontos || !COLUMNAS_MONTO.includes(key));
+  const ver = (key) => verColumna(key) && (conMontos || !COLUMNAS_MONTO.includes(key)) && (comparar || !COLUMNAS_COMPARATIVAS.includes(key));
   const { filasPagina, props: paginacion, mostrar: mostrarPaginacion } = usePaginacion(filas);
-  const celda = 'px-3 py-1 border-b border-gray-100 dark:border-gray-700/60 text-right tabular-nums whitespace-nowrap';
-  const pie = 'px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 text-right tabular-nums whitespace-nowrap';
+  const celda = 'px-3 py-1 border-b border-r last:border-r-0 border-gray-100 dark:border-gray-700/60 text-right tabular-nums whitespace-nowrap';
+  const pie = 'px-3 py-1.5 border-t border-r last:border-r-0 border-gray-200 dark:border-gray-700 text-right tabular-nums whitespace-nowrap';
   const columnasVisibles = COLUMNAS_CODIGOS.filter((c) => c.key === 'codigo' || ver(c.key)).length;
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col min-w-0">
+    <ContenedorTabla>
       <BarraBusqueda busqueda={busqueda} onBuscar={onBuscar} placeholder="Buscar código o descripción…" total={filas.length} />
-      <div className="overflow-x-auto">
-        <table className="w-full text-[11.5px] border-collapse">
+      <ZonaScroll>
+        <table className={CLASE_TABLA}>
           <thead className="bg-gray-50 dark:bg-gray-900 text-[10px] text-gray-500 dark:text-gray-400">
             <tr>
               <Encabezado columna="codigo" orden={orden} onOrdenar={onOrdenar} alinear="left">Código</Encabezado>
@@ -63,11 +65,11 @@ const TablaCodigos = ({ filas, total, conMontos, etiquetaActual, etiquetaAnterio
             {filasPagina.map((f) => (
               <tr key={f.clave} onClick={() => onSeleccionar(f)} aria-selected={seleccionada === f.clave}
                 className={`cursor-pointer ${seleccionada === f.clave ? 'bg-[#2383C2]/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}`}>
-                <td className="px-3 py-1 border-b border-gray-100 dark:border-gray-700/60 text-left whitespace-nowrap">
+                <td className="px-3 py-1 border-b border-r last:border-r-0 border-gray-100 dark:border-gray-700/60 text-left whitespace-nowrap">
                   <button type="button" onClick={(e) => { e.stopPropagation(); onSeleccionar(f); }}
                     className={`text-left font-semibold hover:text-[#2383C2] focus:outline-none focus-visible:underline ${f.sinCodigo ? 'text-amber-700 dark:text-amber-400 italic font-normal' : 'text-gray-800 dark:text-gray-100'}`}>{f.codigo}</button>
                 </td>
-                {ver('descripcion') && <td className="px-3 py-1 border-b border-gray-100 dark:border-gray-700/60 text-left text-gray-700 dark:text-gray-200 max-w-[300px] truncate" title={f.descripcion}>{f.descripcion || '—'}</td>}
+                {ver('descripcion') && <td className="px-3 py-1 border-b border-r last:border-r-0 border-gray-100 dark:border-gray-700/60 text-left text-gray-700 dark:text-gray-200 max-w-[300px] truncate" title={f.descripcion}>{f.descripcion || '—'}</td>}
                 {ver('cantidad') && <td className={`${celda} font-semibold text-gray-800 dark:text-gray-100`}>{formatoNumero(f.actual)}</td>}
                 {ver('cantidadAnterior') && <td className={`${celda} text-gray-500 dark:text-gray-400`}>{formatoNumero(f.anterior)}</td>}
                 {ver('diferencia') && <td className={`${celda} ${colorDiferencia(f.diferencia)}`}>{f.diferencia > 0 ? '+' : ''}{formatoNumero(f.diferencia)}</td>}
@@ -83,8 +85,8 @@ const TablaCodigos = ({ filas, total, conMontos, etiquetaActual, etiquetaAnterio
           {total && (
             <tfoot className="bg-gray-50 dark:bg-gray-900 font-semibold text-gray-800 dark:text-gray-100">
               <tr>
-                <td className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700">Total</td>
-                {ver('descripcion') && <td className="border-t border-gray-200 dark:border-gray-700" />}
+                <td className="px-3 py-1.5 border-t border-r last:border-r-0 border-gray-200 dark:border-gray-700">Total</td>
+                {ver('descripcion') && <td className="border-t border-r last:border-r-0 border-gray-200 dark:border-gray-700" />}
                 {ver('cantidad') && <td className={pie}>{formatoNumero(total.cantidad)}</td>}
                 {ver('cantidadAnterior') && <td className={`${pie} text-gray-500`}>{formatoNumero(total.cantidadAnterior)}</td>}
                 {ver('diferencia') && <td className={pie}>{formatoNumero(total.cantidad - total.cantidadAnterior)}</td>}
@@ -98,9 +100,9 @@ const TablaCodigos = ({ filas, total, conMontos, etiquetaActual, etiquetaAnterio
             </tfoot>
           )}
         </table>
-      </div>
+      </ZonaScroll>
       {mostrarPaginacion && <PaginacionSimple {...paginacion} />}
-    </div>
+    </ContenedorTabla>
   );
 };
 

@@ -2,7 +2,7 @@ import PaginacionSimple from '../../../../ui/PaginacionSimple';
 import { useColumnasPermitidas } from '../../../../../hooks/useColumnasPermitidas';
 import Variacion from './Variacion';
 import { formatoNumero, formatoMonto, colorDiferencia } from './formato';
-import { Encabezado, BarraBusqueda } from './TablaComun';
+import { Encabezado, BarraBusqueda, ContenedorTabla, ZonaScroll, CLASE_TABLA } from './TablaComun';
 import { usePaginacion } from './usePaginacion';
 
 const PATH_VISTA = '/administracion/estadisticas'; // = RUTA_VISTA_ESTADISTICAS
@@ -24,26 +24,28 @@ const COLUMNAS_TABLA = [
 ];
 
 const COLUMNAS_MONTO = ['monto', 'montoAnterior', 'montoDiferencia', 'montoVariacion'];
+// Columnas que se ocultan en el modo "Solo un mes".
+const COLUMNAS_COMPARATIVAS = ['anterior', 'diferencia', 'variacion', 'montoAnterior', 'montoDiferencia', 'montoVariacion'];
 
 // Tabla ordenable de una dimensión (médicos, cirugías o empresas): período
 // elegido vs. anterior, en admisiones y (con "Ver montos") en monto. La
 // búsqueda y el orden los guarda la pantalla para que "Exportar" saque
-// exactamente lo que se ve (todas las páginas). Sin scroll interno: se pagina
-// y la página completa se desplaza bajo la parte superior fija.
-const TablaDimension = ({ singular, filas, total, conMontos, etiquetaActual, etiquetaAnterior, busqueda, onBuscar, orden, onOrdenar, seleccionada, onSeleccionar }) => {
+// exactamente lo que se ve (todas las páginas). Se pagina y, desde 1024 px,
+// la página se desplaza dentro de la tabla con el encabezado fijo.
+const TablaDimension = ({ singular, filas, total, conMontos, comparar = true, etiquetaActual, etiquetaAnterior, busqueda, onBuscar, orden, onOrdenar, seleccionada, onSeleccionar }) => {
   const { ver: verColumna } = useColumnasPermitidas(PATH_VISTA, 'tabla', COLUMNAS_TABLA);
-  const ver = (key) => verColumna(key) && (conMontos || !COLUMNAS_MONTO.includes(key));
+  const ver = (key) => verColumna(key) && (conMontos || !COLUMNAS_MONTO.includes(key)) && (comparar || !COLUMNAS_COMPARATIVAS.includes(key));
   const { filasPagina, props: paginacion, mostrar: mostrarPaginacion } = usePaginacion(filas);
-  const celda = 'px-3 py-1 border-b border-gray-100 dark:border-gray-700/60 text-right tabular-nums whitespace-nowrap';
-  const pie = 'px-3 py-1.5 border-t border-gray-200 dark:border-gray-700 text-right tabular-nums whitespace-nowrap';
+  const celda = 'px-3 py-1 border-b border-r last:border-r-0 border-gray-100 dark:border-gray-700/60 text-right tabular-nums whitespace-nowrap';
+  const pie = 'px-3 py-1.5 border-t border-r last:border-r-0 border-gray-200 dark:border-gray-700 text-right tabular-nums whitespace-nowrap';
   const columnasVisibles = COLUMNAS_TABLA.filter((c) => c.key === 'nombre' || ver(c.key)).length;
   const dif = total ? total.actual - total.anterior : 0;
   const difMonto = total ? total.monto - total.montoAnterior : 0;
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden flex flex-col min-w-0">
+    <ContenedorTabla>
       <BarraBusqueda busqueda={busqueda} onBuscar={onBuscar} placeholder={`Buscar ${singular.toLowerCase()}…`} total={filas.length} />
-      <div className="overflow-x-auto">
-        <table className="w-full text-[11.5px] border-collapse">
+      <ZonaScroll>
+        <table className={CLASE_TABLA}>
           <thead className="bg-gray-50 dark:bg-gray-900 text-[10px] text-gray-500 dark:text-gray-400">
             <tr>
               <Encabezado columna="nombre" orden={orden} onOrdenar={onOrdenar} alinear="left">{singular}</Encabezado>
@@ -65,7 +67,7 @@ const TablaDimension = ({ singular, filas, total, conMontos, etiquetaActual, eti
             {filasPagina.map((f) => (
               <tr key={f.clave} onClick={() => onSeleccionar(f)} aria-selected={seleccionada === f.clave}
                 className={`cursor-pointer ${seleccionada === f.clave ? 'bg-[#2383C2]/10' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'}`}>
-                <td className="px-3 py-1 border-b border-gray-100 dark:border-gray-700/60 text-left text-gray-800 dark:text-gray-100 max-w-[320px] truncate" title={f.nombre}>
+                <td className="px-3 py-1 border-b border-r last:border-r-0 border-gray-100 dark:border-gray-700/60 text-left text-gray-800 dark:text-gray-100 max-w-[320px] truncate" title={f.nombre}>
                   <button type="button" className="text-left hover:text-[#2383C2] focus:outline-none focus-visible:underline" onClick={(e) => { e.stopPropagation(); onSeleccionar(f); }}>{f.nombre}</button>
                 </td>
                 {ver('actual') && <td className={`${celda} font-semibold text-gray-800 dark:text-gray-100`}>{formatoNumero(f.actual)}</td>}
@@ -83,7 +85,7 @@ const TablaDimension = ({ singular, filas, total, conMontos, etiquetaActual, eti
           {total && (
             <tfoot className="bg-gray-50 dark:bg-gray-900 font-semibold text-gray-800 dark:text-gray-100">
               <tr>
-                <td className="px-3 py-1.5 border-t border-gray-200 dark:border-gray-700" title="Admisiones distintas del período (una admisión con dos médicos, cirugías o empresas cuenta una vez)">Total admisiones</td>
+                <td className="px-3 py-1.5 border-t border-r last:border-r-0 border-gray-200 dark:border-gray-700" title="Admisiones distintas del período (una admisión con dos médicos, cirugías o empresas cuenta una vez)">Total admisiones</td>
                 {ver('actual') && <td className={pie}>{formatoNumero(total.actual)}</td>}
                 {ver('anterior') && <td className={`${pie} text-gray-500`}>{formatoNumero(total.anterior)}</td>}
                 {ver('diferencia') && <td className={pie}>{dif > 0 ? '+' : ''}{formatoNumero(dif)}</td>}
@@ -97,9 +99,9 @@ const TablaDimension = ({ singular, filas, total, conMontos, etiquetaActual, eti
             </tfoot>
           )}
         </table>
-      </div>
+      </ZonaScroll>
       {mostrarPaginacion && <PaginacionSimple {...paginacion} />}
-    </div>
+    </ContenedorTabla>
   );
 };
 

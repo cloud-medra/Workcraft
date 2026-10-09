@@ -8,21 +8,30 @@ const redondear = (v) => (v == null ? '' : Math.round(v * 10) / 10);
 const pesos = (v) => (v == null ? '' : Math.round(v));
 
 // Columnas de monto (solo con "Ver montos"; sin permiso no se exportan).
+// Sin `anterior` (modo "Solo un mes") van solo las del período.
 const columnasMonto = (f, { periodo, anterior }) => ({
   [`Monto ${etiquetaPeriodo(periodo)}`]: pesos(f.monto),
-  [`Monto ${etiquetaPeriodo(anterior)}`]: pesos(f.montoAnterior),
-  'Diferencia de monto': pesos(f.montoDiferencia),
-  'Variación % de monto': redondear(f.montoVariacion),
+  ...(anterior ? {
+    [`Monto ${etiquetaPeriodo(anterior)}`]: pesos(f.montoAnterior),
+    'Diferencia de monto': pesos(f.montoDiferencia),
+    'Variación % de monto': redondear(f.montoVariacion),
+  } : {}),
 });
 
-// Filas de una tabla comparada (médicos, cirugías, empresas o cruces) ->
-// objetos con encabezados legibles. `unidad`: 'Admisiones' o 'Cantidad'.
-export const filasParaExcel = (filas, { singular, periodo, anterior, conMontos = false, unidad = 'Admisiones' }) => filas.map((f) => ({
-  [singular]: f.nombre,
-  [`${unidad} ${etiquetaPeriodo(periodo)}`]: f.actual,
+// Columnas de comparación con el período anterior (si hay `anterior`).
+const columnasComparacion = (f, unidad, anterior) => (anterior ? {
   [`${unidad} ${etiquetaPeriodo(anterior)}`]: f.anterior,
   Diferencia: f.diferencia,
   'Variación %': redondear(f.variacion),
+} : {});
+
+// Filas de una tabla comparada (médicos, cirugías, empresas o cruces) ->
+// objetos con encabezados legibles. `unidad`: 'Admisiones' o 'Cantidad'.
+// Sin `anterior` (modo "Solo un mes") no lleva columnas comparativas.
+export const filasParaExcel = (filas, { singular, periodo, anterior, conMontos = false, unidad = 'Admisiones' }) => filas.map((f) => ({
+  [singular]: f.nombre,
+  [`${unidad} ${etiquetaPeriodo(periodo)}`]: f.actual,
+  ...columnasComparacion(f, unidad, anterior),
   ...(f.participacion != null ? { '% del total': redondear(f.participacion) } : {}),
   ...(f.admisiones != null && unidad !== 'Admisiones' ? { Admisiones: f.admisiones } : {}),
   ...(conMontos ? columnasMonto(f, { periodo, anterior }) : {}),
@@ -33,9 +42,7 @@ export const filasCodigosParaExcel = (filas, { periodo, anterior, conMontos = fa
   Código: f.codigo,
   Descripción: f.descripcion,
   [`Cantidad ${etiquetaPeriodo(periodo)}`]: f.actual,
-  [`Cantidad ${etiquetaPeriodo(anterior)}`]: f.anterior,
-  Diferencia: f.diferencia,
-  'Variación %': redondear(f.variacion),
+  ...columnasComparacion(f, 'Cantidad', anterior),
   Admisiones: f.admisiones,
   ...(conMontos ? {
     'Precio unitario (promedio)': pesos(f.precio),

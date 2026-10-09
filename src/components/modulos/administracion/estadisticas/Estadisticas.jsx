@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import {
   BarChart3, CalendarDays, Clock, FileSpreadsheet, Stethoscope, ClipboardList, Building2, Users,
-  AlertTriangle, RefreshCw, Loader2, Lock, Activity, Info, Barcode, Coins,
+  AlertTriangle, RefreshCw, Loader2, Lock, Activity, Info, Barcode, Coins, RotateCcw,
 } from 'lucide-react';
 import { functions } from '../../../../firebaseConfig';
 import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import { useUser } from '../../../../context/UserContext';
 import { useModal } from '../../../../context/ModalContext';
 import { useToast } from '../../../../context/ToastContext';
-import { BLOQUES, DIMENSIONES, CRUCES, VERSION_MONTOS, periodoAnterior, etiquetaPeriodo, desdeClave } from './estadisticasConfig';
+import {
+  BLOQUES, DIMENSIONES, CRUCES, VERSION_MONTOS, periodoAnterior, etiquetaPeriodo, desdeClave, periodosDisponibles, aniosDe, mesesDe, nombreMes,
+} from './estadisticasConfig';
 import { obtenerIndice, obtenerPeriodo, obtenerCodigos, obtenerMontos, invalidarPeriodo } from './estadisticasStore';
 import {
   unirDatos, unirCodigos, indicadores, filasComparadas, filasCruce, filasCodigos, filasCruceCodigo, codigosDe, filtrarFilas, ordenarFilas,
@@ -33,6 +35,14 @@ const PATH_VISTA = '/administracion/estadisticas'; // = RUTA_VISTA_ESTADISTICAS
 const BLOQUE = BLOQUES[0];
 const ICONOS = { m: Stethoscope, c: ClipboardList, e: Building2, k: Barcode };
 const CLAVES_TEXTO = ['nombre', 'codigo', 'descripcion'];
+// Columnas de orden que no existen en el modo "Solo un mes".
+const ORDEN_COMPARATIVO = ['anterior', 'diferencia', 'variacion', 'montoAnterior', 'montoDiferencia', 'montoVariacion'];
+const MODOS = [
+  { id: 'comparar', label: 'Comparar con mes anterior' },
+  { id: 'solo', label: 'Solo un mes' },
+];
+
+const CLASE_SELECT = 'h-7 px-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-[11.5px] font-normal text-gray-800 dark:text-gray-100 focus:outline-none focus:border-[#2383C2] disabled:opacity-60';
 
 const fechaHora = (ts) => {
   const d = ts?.toDate ? ts.toDate() : null;
@@ -58,7 +68,10 @@ const Estadisticas = () => {
 
   const [indice, setIndice] = useState(null);
   const [errorIndice, setErrorIndice] = useState(null);
+  // null = el período por defecto (en curso más reciente). Siempre se entra
+  // comparando el mes en curso con el anterior.
   const [periodo, setPeriodo] = useState(null);
+  const [modo, setModo] = useState('comparar');
   const [filtro, setFiltro] = useState('todos');
   const [tab, setTab] = useState(null);
   const [datos, setDatos] = useState({ clave: null, actual: [], anterior: [], montosActual: [], montosAnterior: [] });
@@ -70,6 +83,7 @@ const Estadisticas = () => {
   const [seleccion, setSeleccion] = useState(null);
   const [recalculando, setRecalculando] = useState(null);
   const [version, setVersion] = useState(0);
+  const cerrarDetalle = useCallback(() => setSeleccion(null), []);
 
   const idsPermitidos = modulosPermitidos.map((m) => m.id).join(',');
   const modulosVista = filtro === 'todos' ? idsPermitidos.split(',').filter(Boolean) : [filtro];
@@ -84,25 +98,24 @@ const Estadisticas = () => {
     return () => { activo = false; };
   }, [version]);
 
-  // Períodos con estadísticas de los módulos permitidos (más reciente primero).
-  const periodos = (() => {
-    if (!indice) return [];
-    const mapa = new Map();
-    idsPermitidos.split(',').filter(Boolean).forEach((m) => {
-      Object.entries(indice.periodos?.[m] || {}).forEach(([clave, info]) => {
-        const previo = mapa.get(clave) || { clave, definitivo: true };
-        mapa.set(clave, { clave, definitivo: previo.definitivo && Boolean(info.definitivo) });
-      });
-    });
-    return [...mapa.values()].sort((a, b) => b.clave.localeCompare(a.clave));
-  })();
+  // Períodos con estadísticas de los módulos a la vista (Todos o el filtro
+  // elegido), según el índice (más reciente primero): de ahí salen los años
+  // y meses de los selectores.
+  const periodos = indice ? periodosDisponibles(indice, modulosVista) : [];
 
   // Por defecto: el período en curso más reciente; si no hay, el último.
   const periodoVista = periodo && periodos.some((p) => p.clave === periodo)
     ? periodo
     : (periodos.find((p) => !p.definitivo) || periodos[0])?.clave || null;
-  const anterior = periodoVista ? periodoAnterior(periodoVista) : null;
-  const claveDatos = periodoVista ? `${periodoVista}|${modulosVista.join(',')}|${puede.verMontos}|${version}` : null;
+  const comparar = modo === 'comparar';
+  // Modo "Solo un mes": no hay período anterior (ni se lee).
+  const anterior = periodoVista && comparar ? periodoAnterior(periodoVista) : null;
+  const claveDatos = periodoVista ? `${periodoVista}|${anterior}|${modulosVista.join(',')}|${puede.verMontos}|${version}` : null;
+  const anioVista = periodoVista ? periodoVista.slice(0, 4) : '';
+  const anios = aniosDe(periodos);
+  const mesesAnio = mesesDe(periodos, anioVista);
+  const periodoPorDefecto = (periodos.find((p) => !p.definitivo) || periodos[0])?.clave || null;
+  const esEstadoInicial = comparar && periodoVista === periodoPorDefecto;
 
   // Documentos del período elegido y del anterior (caché de sesión): el
   // principal y, con "Ver montos", el de montos.
@@ -116,7 +129,8 @@ const Estadisticas = () => {
         : [];
       return { bases, montos };
     };
-    Promise.all([leer(periodoVista), leer(anterior)])
+    const sinAnterior = Promise.resolve({ bases: [], montos: [] });
+    Promise.all([leer(periodoVista), anterior ? leer(anterior) : sinAnterior])
       .then(([a, b]) => {
         if (activo) {
           setDatos({ clave: claveDatos, actual: a.bases, anterior: b.bases, montosActual: a.montos, montosAnterior: b.montos });
@@ -125,7 +139,7 @@ const Estadisticas = () => {
       })
       .catch((err) => { console.error('Error al leer estadísticas:', err); if (activo) { setDatos({ clave: claveDatos, actual: [], anterior: [], montosActual: [], montosAnterior: [] }); setError('No se pudieron cargar las estadísticas de este período.'); } });
     return () => { activo = false; };
-    // claveDatos resume período + módulos + permiso de montos + versión.
+    // claveDatos resume período + anterior (o ninguno) + módulos + permiso de montos + versión.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveDatos]);
 
@@ -161,7 +175,9 @@ const Estadisticas = () => {
   const etiquetaAnterior = anterior ? etiquetaPeriodo(anterior) : '';
 
   const esCodigos = dimension === 'k';
-  const filasTodas = !dimension ? [] : esCodigos ? (codigosListos ? filasCodigos(codActual, codPrevio) : []) : filasComparadas(dimension, actual, previo);
+  const filasBase = !dimension ? [] : esCodigos ? (codigosListos ? filasCodigos(codActual, codPrevio) : []) : filasComparadas(dimension, actual, previo);
+  // "Solo un mes": sin filas en 0 en el mes elegido.
+  const filasTodas = comparar ? filasBase : filasBase.filter((f) => f.actual > 0);
   const orden = ordenes[dimension] || { columna: 'actual', sentido: 'desc' };
   const busqueda = busquedas[dimension] || '';
   const filasVisibles = ordenarFilas(filtrarFilas(filasTodas, busqueda), orden.columna, orden.sentido);
@@ -201,10 +217,11 @@ const Estadisticas = () => {
   });
 
   const nombreFiltro = filtro === 'todos' ? 'Todos' : BLOQUE.modulos.find((m) => m.id === filtro)?.nombre;
-  const contexto = `Período: ${etiquetaActual} (vs. ${etiquetaAnterior}) · Módulo: ${nombreFiltro}${busqueda ? ` · Búsqueda: "${busqueda}"` : ''}`;
-  const sufijoArchivo = `${periodoVista}_${filtro}`;
+  const contexto = `Período: ${etiquetaActual} ${comparar ? `(vs. ${etiquetaAnterior})` : '(solo este mes)'} · Módulo: ${nombreFiltro}${busqueda ? ` · Búsqueda: "${busqueda}"` : ''}`;
+  const sufijoArchivo = `${periodoVista}_${comparar ? `vs_${anterior}` : 'solo'}_${filtro}`;
 
-  // Excel: lo que se ve, con montos solo si el usuario puede verlos.
+  // Excel: lo que se ve, con montos solo si el usuario puede verlos (sin
+  // `anterior`, en "Solo un mes", no lleva columnas comparativas).
   const opcionesExcel = { periodo: periodoVista, anterior, conMontos };
   const exportarTabla = () => exportarEstadisticas({
     archivo: `estadisticas_${DIMENSIONES[dimension].nombre.toLowerCase()}_${sufijoArchivo}`,
@@ -227,6 +244,24 @@ const Estadisticas = () => {
       ...(codigosDetalle ? [{ titulo: 'Códigos', filas: filasCodigosParaExcel(codigosDetalle, opcionesExcel) }] : []),
     ],
   });
+
+  const elegirPeriodo = (clave) => { setPeriodo(clave); setSeleccion(null); };
+  // Al cambiar de año se mantiene el mes si existe; si no, el más reciente de ese año.
+  const elegirAnio = (anio) => {
+    const meses = mesesDe(periodos, anio);
+    const mismoMes = meses.find((p) => p.clave.slice(5) === periodoVista?.slice(5));
+    elegirPeriodo((mismoMes || meses[0])?.clave || null);
+  };
+  const elegirModo = (nuevo) => {
+    if (nuevo === modo) return;
+    setModo(nuevo);
+    setSeleccion(null);
+    // Las columnas comparativas desaparecen: su orden vuelve al de por defecto.
+    if (nuevo === 'solo') {
+      setOrdenes((prev) => Object.fromEntries(Object.entries(prev).filter(([, o]) => !ORDEN_COMPARATIVO.includes(o.columna))));
+    }
+  };
+  const restablecer = () => { setPeriodo(null); setModo('comparar'); setSeleccion(null); };
 
   const recalcular = (doc) => {
     const p = desdeClave(periodoVista);
@@ -276,9 +311,12 @@ const Estadisticas = () => {
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden">
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* Desde 1024 px la página no se desplaza: la tabla y el Top 10
+          ocupan el alto que queda y hacen scroll por dentro. Si la ventana es
+          muy baja (menos del mínimo de la tabla), se desplaza el conjunto. */}
+      <div className="flex-1 min-h-0 overflow-y-auto lg:flex lg:flex-col">
         {/* Parte superior fija (desde 1024 px; en celular ocuparía media pantalla): encabezado, estado, indicadores y pestañas */}
-        <div className="lg:sticky lg:top-0 z-20 bg-white dark:bg-gray-800 px-4 pt-3 shadow-[0_1px_0_0_rgb(229_231_235)] dark:shadow-[0_1px_0_0_rgb(55_65_81)]">
+        <div className="lg:sticky lg:top-0 lg:shrink-0 z-20 bg-white dark:bg-gray-800 px-4 pt-3 shadow-[0_1px_0_0_rgb(229_231_235)] dark:shadow-[0_1px_0_0_rgb(55_65_81)]">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <span className="w-8 h-8 rounded-lg bg-[#2383C2] text-white flex items-center justify-center shrink-0"><BarChart3 size={16} /></span>
             <div className="min-w-0 mr-auto">
@@ -286,14 +324,34 @@ const Estadisticas = () => {
               <p className="text-[11px] text-gray-500 dark:text-gray-400">{BLOQUE.nombre} · admisiones distintas por período de imputación</p>
             </div>
 
-            <label className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold text-gray-600 dark:text-gray-300">
               <CalendarDays size={14} className="text-[#2383C2]" /> Período
-              <select value={periodoVista || ''} onChange={(e) => { setPeriodo(e.target.value); setSeleccion(null); }} disabled={!puede.elegirPeriodo || periodos.length === 0}
-                className="h-7 px-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-[11.5px] font-normal text-gray-800 dark:text-gray-100 focus:outline-none focus:border-[#2383C2] disabled:opacity-60">
-                {periodos.length === 0 && <option value="">Sin períodos</option>}
-                {periodos.map((p) => <option key={p.clave} value={p.clave}>{etiquetaPeriodo(p.clave)}{p.definitivo ? '' : ' (en curso)'}</option>)}
+              {/* Solo años y meses con estadísticas (índice de períodos) de los módulos a la vista */}
+              <select aria-label="Año" value={anioVista} onChange={(e) => elegirAnio(e.target.value)} disabled={!puede.elegirPeriodo || anios.length === 0}
+                className={CLASE_SELECT}>
+                {anios.length === 0 && <option value="">—</option>}
+                {anios.map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
-            </label>
+              <select aria-label="Mes" value={periodoVista || ''} onChange={(e) => elegirPeriodo(e.target.value)} disabled={!puede.elegirPeriodo || mesesAnio.length === 0}
+                className={CLASE_SELECT}>
+                {mesesAnio.length === 0 && <option value="">Sin períodos</option>}
+                {mesesAnio.map((p) => <option key={p.clave} value={p.clave}>{nombreMes(p.clave)}{p.definitivo ? '' : ' (en curso)'}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 sm:flex gap-px w-full sm:w-auto rounded-md overflow-hidden border border-gray-300 dark:border-gray-600 bg-gray-300 dark:bg-gray-600 text-[11.5px] font-semibold" role="group" aria-label="Modo de comparación">
+              {MODOS.map((m) => (
+                <button key={m.id} type="button" onClick={() => elegirModo(m.id)} aria-pressed={modo === m.id}
+                  className={`h-7 px-3 whitespace-nowrap ${modo === m.id ? 'bg-[#2383C2] text-white' : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 hover:text-[#2383C2]'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            <button type="button" onClick={restablecer} disabled={esEstadoInicial || !periodoPorDefecto} title="Volver al mes en curso comparado con el mes anterior"
+              className="h-7 px-2.5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-[11.5px] font-semibold text-gray-600 dark:text-gray-300 hover:border-[#2383C2] hover:text-[#2383C2] inline-flex items-center gap-1 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-600">
+              <RotateCcw size={12} /> Mes actual
+            </button>
 
             {modulosPermitidos.length > 0 && (
               <div className="grid grid-cols-2 sm:flex gap-px w-full sm:w-auto rounded-md overflow-hidden border border-gray-300 dark:border-gray-600 bg-gray-300 dark:bg-gray-600 text-[11.5px] font-semibold" role="group" aria-label="Filtrar por módulo">
@@ -316,13 +374,13 @@ const Estadisticas = () => {
 
           {hayContenido && (
             <div className={`mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5 ${conMontos ? 'lg:grid-cols-3 xl:grid-cols-5' : 'xl:grid-cols-4'}`}>
-              <TarjetaIndicador titulo="Admisiones" icono={Users} actual={kActual.admisiones} anterior={kPrevio.admisiones} etiquetaAnterior={etiquetaAnterior}
+              <TarjetaIndicador comparar={comparar} titulo="Admisiones" icono={Users} actual={kActual.admisiones} anterior={kPrevio.admisiones} etiquetaAnterior={etiquetaAnterior}
                 pie={kActual.sinId > 0 ? <span className="text-amber-700 dark:text-amber-400" title="Gestiones sin ID / N° de Admisión: cada una cuenta como una admisión (se identifican por paciente y fecha)">Sin ID: <b>{formatoNumero(kActual.sinId)}</b></span> : null} />
-              <TarjetaIndicador titulo="Médicos activos" icono={Stethoscope} actual={kActual.m} anterior={kPrevio.m} etiquetaAnterior={etiquetaAnterior} />
-              <TarjetaIndicador titulo="Cirugías distintas" icono={ClipboardList} actual={kActual.c} anterior={kPrevio.c} etiquetaAnterior={etiquetaAnterior} />
-              <TarjetaIndicador titulo="Empresas" icono={Building2} actual={kActual.e} anterior={kPrevio.e} etiquetaAnterior={etiquetaAnterior} />
+              <TarjetaIndicador comparar={comparar} titulo="Médicos activos" icono={Stethoscope} actual={kActual.m} anterior={kPrevio.m} etiquetaAnterior={etiquetaAnterior} />
+              <TarjetaIndicador comparar={comparar} titulo="Cirugías distintas" icono={ClipboardList} actual={kActual.c} anterior={kPrevio.c} etiquetaAnterior={etiquetaAnterior} />
+              <TarjetaIndicador comparar={comparar} titulo="Empresas" icono={Building2} actual={kActual.e} anterior={kPrevio.e} etiquetaAnterior={etiquetaAnterior} />
               {conMontos && (
-                <TarjetaIndicador titulo="Monto total" icono={Coins} actual={kActual.monto} anterior={kPrevio.monto} etiquetaAnterior={etiquetaAnterior} formato={formatoMonto}
+                <TarjetaIndicador comparar={comparar} titulo="Monto total" icono={Coins} actual={kActual.monto} anterior={kPrevio.monto} etiquetaAnterior={etiquetaAnterior} formato={formatoMonto}
                   pie={kActual.sinPrecio > 0 ? <span className="text-amber-700 dark:text-amber-400" title="Ítems con precio 0 o vacío: se cuentan en cantidades y admisiones, pero no suman monto">Sin precio: <b>{formatoNumero(kActual.sinPrecio)}</b></span> : null} />
               )}
             </div>
@@ -353,7 +411,7 @@ const Estadisticas = () => {
         </div>
 
         {/* Contenido */}
-        <div className="px-4 py-3 space-y-3">
+        <div className="px-4 py-3 flex flex-col gap-3 lg:flex-1 lg:min-h-[340px]">
           {conCambios.map((d) => (
             <div key={d.modulo} className="flex flex-wrap items-center gap-3 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:border-amber-800 dark:text-amber-200 text-[11.5px]" role="status">
               <AlertTriangle size={15} className="shrink-0" />
@@ -396,15 +454,16 @@ const Estadisticas = () => {
               {!conPestanas ? (
                 <p className="py-10 text-center text-[12px] text-gray-400">No tienes permiso para ver el detalle por médico, cirugía o empresa.</p>
               ) : (
-                <div className="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_340px] gap-3 items-start">
+                <div className="flex flex-col lg:flex-row gap-3 lg:flex-1 lg:min-h-0">
                   {esCodigos && !codigosListos ? (
-                    <div className="py-16 text-center text-gray-400 text-[12px] border border-gray-200 dark:border-gray-700 rounded-lg"><Loader2 size={16} className="inline animate-spin mr-2" />Cargando códigos…</div>
+                    <div className="flex-1 min-w-0 py-16 text-center text-gray-400 text-[12px] border border-gray-200 dark:border-gray-700 rounded-lg"><Loader2 size={16} className="inline animate-spin mr-2" />Cargando códigos…</div>
                   ) : esCodigos ? (
                     <TablaCodigos
                       key={`${periodoVista}|${filtro}|${busqueda}|${orden.columna}|${orden.sentido}`}
                       filas={filasVisibles}
                       total={totalCodigos}
                       conMontos={conMontos}
+                      comparar={comparar}
                       etiquetaActual={etiquetaActual}
                       etiquetaAnterior={etiquetaAnterior}
                       busqueda={busqueda}
@@ -421,6 +480,7 @@ const Estadisticas = () => {
                     filas={filasVisibles}
                     total={{ actual: kActual.admisiones, anterior: kPrevio.admisiones, monto: kActual.monto, montoAnterior: kPrevio.monto }}
                     conMontos={conMontos}
+                    comparar={comparar}
                     etiquetaActual={etiquetaActual}
                     etiquetaAnterior={etiquetaAnterior}
                     busqueda={busqueda}
@@ -431,12 +491,16 @@ const Estadisticas = () => {
                     onSeleccionar={(f) => setSeleccion({ dimension, clave: f.clave })}
                   />
                   )}
-                  <BarrasTop filas={filasTodas}
-                    titulo={`Top 10 ${DIMENSIONES[dimension].nombre.toLowerCase()} por ${opcionesMetrica.find((o) => o.id === metrica).label.toLowerCase()}`}
-                    etiquetaActual={etiquetaActual} etiquetaAnterior={etiquetaAnterior}
-                    metrica={metrica} opciones={opcionesMetrica} onMetrica={(m) => setMetricas((prev) => ({ ...prev, [dimension]: m }))}
-                    nombreDe={nombreTop}
-                    onSeleccionar={(f) => setSeleccion({ dimension, clave: f.clave })} />
+                  {/* Top 10: columna derecha de ancho fijo, con el alto de la tabla y su propio scroll */}
+                  <div className="min-w-0 lg:w-[340px] lg:shrink-0 lg:min-h-0 flex flex-col">
+                    <BarrasTop filas={filasTodas}
+                      titulo={`Top 10 ${DIMENSIONES[dimension].nombre.toLowerCase()} por ${opcionesMetrica.find((o) => o.id === metrica).label.toLowerCase()}`}
+                      etiquetaActual={etiquetaActual} etiquetaAnterior={etiquetaAnterior}
+                      metrica={metrica} opciones={opcionesMetrica} onMetrica={(m) => setMetricas((prev) => ({ ...prev, [dimension]: m }))}
+                      nombreDe={nombreTop}
+                      comparar={comparar}
+                      onSeleccionar={(f) => setSeleccion({ dimension, clave: f.clave })} />
+                  </div>
                 </div>
               )}
             </>
@@ -453,11 +517,12 @@ const Estadisticas = () => {
           codigos={codigosDetalle}
           cargandoCodigos={!esCodigos && !codigosListos}
           conMontos={conMontos}
+          comparar={comparar}
           etiquetaActual={etiquetaActual}
           etiquetaAnterior={etiquetaAnterior}
           puedeExportar={puede.exportar}
           onExportar={exportarDetalle}
-          onCerrar={() => setSeleccion(null)}
+          onCerrar={cerrarDetalle}
         />
       )}
     </div>

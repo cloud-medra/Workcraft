@@ -2,21 +2,23 @@ import { formatoNumero, formatoMonto } from './formato';
 
 // Top 10 del período elegido, por admisiones / cantidad o por monto
 // (`metrica`). La barra clara de fondo es el período anterior, para comparar
-// de un vistazo.
+// de un vistazo. Con `comparar` en false (modo "Solo un mes") hay una sola
+// serie y no hay leyenda del período anterior.
 const METRICAS = {
   actual: { anterior: 'anterior', formato: formatoNumero },
   monto: { anterior: 'montoAnterior', formato: formatoMonto },
 };
 
-const BarrasTop = ({ filas, titulo, etiquetaActual, etiquetaAnterior, onSeleccionar, metrica = 'actual', opciones, onMetrica, nombreDe = (f) => f.nombre }) => {
+const BarrasTop = ({ filas, titulo, etiquetaActual, etiquetaAnterior, onSeleccionar, metrica = 'actual', opciones, onMetrica, nombreDe = (f) => f.nombre, comparar = true }) => {
   const m = METRICAS[metrica];
+  const anteriorDe = (f) => (comparar ? f[m.anterior] || 0 : 0);
   const top = [...filas]
     .sort((a, b) => b[metrica] - a[metrica] || nombreDe(a).localeCompare(nombreDe(b), 'es'))
     .filter((f) => f[metrica] > 0)
     .slice(0, 10);
-  const maximo = Math.max(1, ...top.map((f) => Math.max(f[metrica], f[m.anterior] || 0)));
+  const maximo = Math.max(1, ...top.map((f) => Math.max(f[metrica], anteriorDe(f))));
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 min-w-0">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 min-w-0">
       <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
         <h3 className="text-[12px] font-semibold text-gray-800 dark:text-gray-100">{titulo}</h3>
         {opciones && opciones.length > 1 && (
@@ -32,7 +34,7 @@ const BarrasTop = ({ filas, titulo, etiquetaActual, etiquetaAnterior, onSeleccio
       </div>
       <div className="flex items-center gap-3 mb-2 text-[10px] text-gray-500 dark:text-gray-400">
         <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2] inline-block" />{etiquetaActual}</span>
-        <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2]/20 inline-block" />{etiquetaAnterior}</span>
+        {comparar && <span className="inline-flex items-center gap-1"><i className="w-2.5 h-2.5 rounded-sm bg-[#2383C2]/20 inline-block" />{etiquetaAnterior}</span>}
       </div>
       {top.length === 0 ? (
         <p className="text-[12px] text-gray-400 py-6 text-center">Sin datos en este período.</p>
@@ -40,13 +42,13 @@ const BarrasTop = ({ filas, titulo, etiquetaActual, etiquetaAnterior, onSeleccio
         <ol className="space-y-1.5">
           {top.map((f, i) => (
             <li key={f.clave}>
-              <button type="button" onClick={() => onSeleccionar?.(f)} className="w-full text-left group" title={`${nombreDe(f)}: ${m.formato(f[metrica])} (${etiquetaAnterior}: ${m.formato(f[m.anterior] || 0)})`}>
+              <button type="button" onClick={() => onSeleccionar?.(f)} className="w-full text-left group" title={`${nombreDe(f)}: ${m.formato(f[metrica])}${comparar ? ` (${etiquetaAnterior}: ${m.formato(anteriorDe(f))})` : ''}`}>
                 <div className="flex items-baseline justify-between gap-2 text-[11px]">
                   <span className="truncate text-gray-700 dark:text-gray-200 group-hover:text-[#2383C2]"><span className="text-gray-400 tabular-nums mr-1.5">{i + 1}.</span>{nombreDe(f)}</span>
                   <span className="font-semibold tabular-nums text-gray-800 dark:text-gray-100 whitespace-nowrap">{m.formato(f[metrica])}</span>
                 </div>
                 <div className="relative h-1.5 mt-0.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2]/20" style={{ width: `${((f[m.anterior] || 0) / maximo) * 100}%` }} />
+                  {comparar && <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2]/20" style={{ width: `${(anteriorDe(f) / maximo) * 100}%` }} />}
                   <div className="absolute inset-y-0 left-0 rounded-full bg-[#2383C2] transition-all" style={{ width: `${(f[metrica] / maximo) * 100}%`, height: '100%' }} />
                 </div>
               </button>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-// Paginación en memoria de las tablas de Estadísticas (sin scroll interno).
+// Paginación en memoria de las tablas de Estadísticas.
 export const TAMANO_PAGINA = 25;
 export const usePaginacion = (filas) => {
   const [pagina, setPagina] = useState(1);
