@@ -22,6 +22,7 @@ import { useAutocompleteReferencia } from './useAutocompleteReferencia';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import { CotizacionCard } from './CotizacionCard';
 import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
+import ContenidoPadRegistrado from './ContenidoPadRegistrado';
 import { construirItemLoteDesdeFila } from './loteAdicionalHelpers';
 import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 
@@ -270,6 +271,12 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
     setContenidoPad(prev => prev.filter(f => f.tempId !== tempId));
   };
 
+  // Edición de una línea ya registrada (ver ContenidoPadRegistrado).
+  const handleActualizarContenidoRegistrado = (tempId, fila) => {
+    if (bloqueado || !puedeAgregarContenidoPad) return;
+    setContenidoPad(prev => prev.map(f => (f.tempId === tempId ? { ...fila, tempId } : f)));
+  };
+
   const handleDraftLoteChange = (field, value) => {
     setDraftLote(prev => ({ ...prev, [field]: value }));
     if (errorDraftLote[field]) setErrorDraftLote(prev => ({ ...prev, [field]: false }));
@@ -473,7 +480,7 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
 
   if (!bloqueActivo) {
     return (
-      <div className="p-4 max-w-7xl mx-auto w-full">
+      <div className="px-4 lg:px-6 py-4 w-full max-w-[2200px] mx-auto">
         <div className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700/80 rounded-lg shadow-xs p-6 text-[10px] text-slate-500 dark:text-gray-400">
           Selecciona una empresa/fecha en el panel lateral para gestionar sus cargas.
         </div>
@@ -483,8 +490,10 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
 
   const sinPeriodoAbierto = !cargandoPeriodo && !periodoAbierto;
 
+  // Usa todo el ancho junto al panel "Empresas / Fechas" (antes max-w-7xl);
+  // en pantallas muy anchas se limita a 2200 px para no estirarse.
   return (
-    <div className="p-4 max-w-7xl mx-auto w-full space-y-3">
+    <div className="px-4 lg:px-6 py-4 w-full max-w-[2200px] mx-auto space-y-3">
 
       <div className="flex items-center justify-between gap-1.5 px-1">
         <div className="flex items-center gap-1.5">
@@ -846,51 +855,12 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
               </div>
 
               {contenidoPad.length > 0 && (
-                <div className="overflow-hidden rounded border border-fuchsia-200 dark:border-fuchsia-900/60">
-                  <table className="w-full text-left text-[10px] border-collapse">
-                    <thead className="bg-fuchsia-100/60 dark:bg-fuchsia-950/30">
-                      <tr className="text-fuchsia-700 dark:text-fuchsia-400 uppercase font-bold text-[9px]">
-                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60">Referencia</th>
-                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60 text-center">Cant.</th>
-                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60">Lote</th>
-                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60">Vencimiento</th>
-                        <th className="px-2 py-1 border-b border-fuchsia-200 dark:border-fuchsia-900/60 text-center">Quitar</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {contenidoPad.map(fila => (
-                        <tr key={fila.tempId} className="border-l-2 border-transparent hover:border-[#2383C2] bg-white dark:bg-gray-900/40 hover:bg-fuchsia-50/40 dark:hover:bg-fuchsia-950/10">
-                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 font-semibold text-slate-700 dark:text-gray-200 truncate max-w-[160px]" title={fila.referencia}>
-                            {fila.referencia}
-                          </td>
-                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-center text-slate-600 dark:text-gray-300">
-                            {fila.cantidad}
-                          </td>
-                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-slate-600 dark:text-gray-300">
-                            {fila.lote === 'Sin lote'
-                              ? <span className="italic text-slate-400 dark:text-gray-500">Sin lote</span>
-                              : fila.lote}
-                          </td>
-                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-slate-600 dark:text-gray-300">
-                            {fila.vencimiento === 'Sin fecha'
-                              ? <span className="italic text-slate-400 dark:text-gray-500">Sin fecha</span>
-                              : formatearFechaTabla(fila.vencimiento)}
-                          </td>
-                          <td className="px-2 py-1 border-b border-fuchsia-100 dark:border-fuchsia-900/40 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleEliminarContenidoRegistrado(fila.tempId)}
-                              className="text-red-500 hover:text-red-700 p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/30"
-                              title="Quitar esta línea"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ContenidoPadRegistrado
+                  filas={contenidoPad}
+                  onActualizar={handleActualizarContenidoRegistrado}
+                  onEliminar={handleEliminarContenidoRegistrado}
+                  deshabilitado={bloqueado || sinPeriodoAbierto || !puedeAgregarContenidoPad}
+                />
               )}
 
               <p className="text-[9px] text-fuchsia-600 dark:text-fuchsia-400 italic">

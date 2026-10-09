@@ -90,3 +90,14 @@ export const obtenerPeriodosDeItems = (items) => {
   });
   return [...mapa.values()];
 };
+
+// Si la tabla cabe con espacio de sobra (pantallas anchas), ese espacio se
+// reparte entre las columnas de texto que más se cortan con "…", en estas
+// proporciones; el scroll horizontal queda solo cuando realmente no cabe.
+const REPARTO_EXTRA = { descriptorAuto: 0.4, referencia: 0.24, clase: 0.18, tipo: 0.18 };
+export const anchosConExtra = (anchos, extra) => {
+  if (!(extra > 0)) return anchos;
+  const resultado = { ...anchos };
+  Object.entries(REPARTO_EXTRA).forEach(([k, peso]) => { resultado[k] = (anchos[k] || 0) + Math.floor(extra * peso); });
+  return resultado;
+};

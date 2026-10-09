@@ -97,6 +97,8 @@ const TABLAS_PENDIENTES = new Set([
   'modulos/operaciones/implantes/cargaMasivaDocumentos/CargaMasivaDocumentos.jsx',
   'modulos/operaciones/implantes/gestionImplantes/components/Cargastab/Cargastab.jsx',
   'modulos/operaciones/implantes/gestionImplantes/components/Cargastab/CotizacionCard.jsx',
+  // La tabla de contenido del PAD registrado (antes dentro de Cargastab.jsx).
+  'modulos/operaciones/implantes/gestionImplantes/components/Cargastab/ContenidoPadRegistrado.jsx',
   'modulos/operaciones/implantes/gestionImplantes/components/Documentostab/Documentostab.jsx',
   'modulos/operaciones/implantes/gestionImplantes/components/GestionesImplantesTable.jsx',
   'modulos/operaciones/implantes/gestionImplantes/components/Ordentab/OrdenTab.jsx',
