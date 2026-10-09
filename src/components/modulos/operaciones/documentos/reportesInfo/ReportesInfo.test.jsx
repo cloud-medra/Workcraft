@@ -96,6 +96,15 @@ describe('Reporte Info → Gestión implante', () => {
     expect(document.querySelector('tbody [data-estado="imputada"] svg')).toBeInTheDocument(); // candado
   });
 
+  it('marcar "Revisado" no vuelve a leer las marcas', async () => {
+    await montar();
+    const consultas = lecturasMarcas.length;
+    const fila = document.querySelector('tbody [data-estado="pendiente"]').closest('tr');
+    fireEvent.change(within(fila).getByRole('combobox'), { target: { value: 'Revisado' } });
+    await waitFor(() => expect(within(fila).getByRole('combobox')).toHaveValue('Revisado'));
+    expect(lecturasMarcas.length).toBe(consultas);
+  });
+
   it('filtra por estado con contador de admisiones distintas', async () => {
     await montar();
     const filtro = screen.getByLabelText('Filtrar por gestión implante');

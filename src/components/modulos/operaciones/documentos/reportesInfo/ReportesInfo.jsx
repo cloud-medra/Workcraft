@@ -206,15 +206,20 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionIm
     }, [cargarPrimeraPagina]);
 
     // Marcas "Gestión implante" de las admisiones del mes (lotes de 30, sin
-    // listener: se refrescan al recargar el mes).
+    // listener: se refrescan al recargar el mes). Depende solo del conjunto
+    // de admisiones: marcar "Revisado" cambia `reportes` pero no relee.
+    const admisionesMes = useMemo(
+        () => [...new Set(reportes.map(r => claveAdmision(r["Admisión"])).filter(Boolean))].sort().join(','),
+        [reportes]
+    );
     useEffect(() => {
         let activo = true;
-        // Sin reportes, cargarMarcas resuelve {} sin leer.
-        cargarMarcas(reportes.map(r => r["Admisión"]))
+        // Sin admisiones, cargarMarcas resuelve {} sin leer.
+        cargarMarcas(admisionesMes ? admisionesMes.split(',') : [])
             .then(m => { if (activo) setMarcas(m); })
             .catch(err => { console.error("Error al cargar la gestión de implantes:", err); if (activo) setMarcas({}); });
         return () => { activo = false; };
-    }, [reportes]);
+    }, [admisionesMes]);
     const marcaDe = useCallback((r) => marcas[claveAdmision(r["Admisión"])] || null, [marcas]);
 
     // Función para formatear fechas de Excel (Date objects, texto YYYY-MM-DD o seriales)
