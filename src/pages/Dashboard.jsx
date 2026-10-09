@@ -25,7 +25,8 @@ import ListadoUsuario from '../components/modulos/administracion/usuarios/Listad
 import CargasConsolidado from '../components/modulos/administracion/cargasConsolidado/CargasConsolidado';
 import Estadisticas from '../components/modulos/administracion/estadisticas/Estadisticas';
 import PermisosPorCentro from '../components/modulos/administracion/permisosCentro/PermisosPorCentro';
-import { subItemsVisibles, puedeAbrirVista } from '../config/accesoMenu';
+import { subItemsVisibles, puedeAbrirVista, esAdministrador } from '../config/accesoMenu';
+import PeriodoAbiertoBloque from '../components/layout/PeriodoAbiertoBloque';
 
 // --- LABORATORIO ---
 import EmpresasLaboratorio from '../components/modulos/gestiones/laboratorio/registros/EmpresasLaboratorio';
@@ -199,6 +200,10 @@ const Dashboard = () => {
 
   const breadcrumb = getBreadcrumb();
   const irAPermisosCentro = () => abrirVistaDeModulo('administracion', '/administracion/permisosCentro');
+  // Bloque "Período abierto": enlaza a Control Mensual solo para admin/dev.
+  const abrirControlMensual = esAdministrador(userData)
+    ? () => abrirVistaDeModulo('administracion', '/administracion/controlMensual')
+    : undefined;
 
   const VIEW_MAP = {
     'dashboard': <ResumenGeneral userData={userData} onAbrirAtajo={abrirVistaDeModulo} />,
@@ -511,6 +516,11 @@ const Dashboard = () => {
 
         </nav>
 
+        {/* PERÍODO ABIERTO (arriba del pie, separado de él) */}
+        <div className="mx-2 mt-2 flex-shrink-0">
+          <PeriodoAbiertoBloque colapsado={isSidebarCollapsed} onAbrir={abrirControlMensual} />
+        </div>
+
         {/* PIE DE PÁGINA LATERAL */}
         <div className="p-2 m-2 bg-white/5 dark:bg-black/20 rounded-xl border border-white/10 dark:border-gray-800 text-[10px] text-white/70 flex flex-col gap-2 backdrop-blur-sm overflow-hidden flex-shrink-0 transition-all duration-300">
           {!isSidebarCollapsed ? (
@@ -615,6 +625,10 @@ const Dashboard = () => {
 
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-2 z-50 text-gray-700 dark:text-gray-200">
+                {/* En móvil no hay sidebar: el período abierto va acá. */}
+                <div className="md:hidden px-3 pb-2 mb-1 border-b border-gray-100 dark:border-gray-700">
+                  <PeriodoAbiertoBloque variante="menu" onAbrir={abrirControlMensual && (() => { abrirControlMensual(); setIsMenuOpen(false); })} />
+                </div>
 
                 <button
                   onClick={() => { setIsAjustesMode(false); setActiveView('perfil'); setIsMenuOpen(false); }}

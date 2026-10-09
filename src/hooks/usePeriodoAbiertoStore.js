@@ -16,3 +16,13 @@ export function usePeriodoAbiertoStore(moduloId) {
   const periodo = useMemo(() => periodoAbiertoDe(estado.docs, moduloId), [estado.docs, moduloId]);
   return { periodo, cargando: estado.docs === null, error: estado.error };
 }
+
+/**
+ * Todos los períodos abiertos (ABIERTO/REABIERTO, de todos los módulos) del
+ * mismo listener compartido: { docs: [] | null, cargando, error }.
+ */
+export function usePeriodosAbiertos() {
+  const estado = useSyncExternalStore(suscribirPeriodos, obtenerEstadoPeriodos);
+  useEffect(() => retenerPeriodos(), []);
+  return { docs: estado.docs || [], cargando: estado.docs === null, error: estado.error };
+}
