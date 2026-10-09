@@ -822,6 +822,7 @@ const GestionesImplantesDetalleView = forwardRef(({
               periodoAbierto={periodoActivo}
               cargandoPeriodo={cargandoPeriodo}
               handleCopiarTexto={handleCopiarTexto}
+              onIrAInformacion={tabsPermitidas.some(t => t.id === 'informacion') ? () => setActiveTab('informacion') : undefined}
             />
           )}
 

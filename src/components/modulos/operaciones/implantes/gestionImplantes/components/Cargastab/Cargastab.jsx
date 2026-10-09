@@ -23,10 +23,12 @@ import { useGranularPermission } from '../../../../../../../hooks/useGranularPer
 import { CotizacionCard } from './CotizacionCard';
 import { construirItemContenidoPadDesdeFila } from './PadContenidoRow';
 import ContenidoPadRegistrado from './ContenidoPadRegistrado';
+import NotasAdmision from './NotasAdmision';
 import { construirItemLoteDesdeFila } from './loteAdicionalHelpers';
 import { formatearPesos } from '../../../../../../../utils/formatearMoneda';
 
 const PATH_VISTA = '/implantes/gestionImplantes/cargas';
+const PATH_INFORMACION = '/implantes/gestionImplantes/informacion';
 
 const INITIAL_ITEM = {
   numCotizacion: '',
@@ -59,7 +61,7 @@ const DRAFT_CONTENIDO_VACIO = {
 
 const DRAFT_LOTE_VACIO = { cantidad: '', lote: '', vencimiento: '' };
 
-export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem, periodoAbierto, cargandoPeriodo, handleCopiarTexto }, ref) => {
+export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarItem, onEliminarItem, onEliminarCotizacion, onActualizarEstadoItem, onEditarItem, periodoAbierto, cargandoPeriodo, handleCopiarTexto, onIrAInformacion }, ref) => {
   const bloqueActivo = formData?.bloques?.[bloqueActivoIndex];
   const cotizaciones = bloqueActivo?.cotizaciones || [];
 
@@ -71,8 +73,17 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
   const [desbloqueadoLocal, setDesbloqueadoLocal] = useState(false);
   const [verificandoCandado, setVerificandoCandado] = useState(false);
   const [errorCandado, setErrorCandado] = useState('');
-  const { hasPermission } = useGranularPermission();
+  const { hasPermission, hasAccesoProceso } = useGranularPermission();
   const puedeAgregarContenidoPad = hasPermission(PATH_VISTA, 'tabla_cotizaciones', 'formulario_contenido_pad');
+  // Notas de la admisión: visibles para quien ve Cargas; si tiene la
+  // pestaña Información, se respetan sus permisos por campo. "Editar en
+  // Información" solo si puede editarlos allí.
+  const tieneInformacion = hasAccesoProceso(PATH_INFORMACION);
+  const campoInformacion = (campo) => hasPermission(PATH_INFORMACION, 'formulario_observaciones', campo);
+  const verDescripcion = !tieneInformacion || campoInformacion('input_descripcion');
+  const verObservacion = !tieneInformacion || campoInformacion('input_observacion');
+  const puedeEditarNotas = Boolean(onIrAInformacion) && tieneInformacion
+    && (campoInformacion('input_descripcion') || campoInformacion('input_observacion'));
 
   const bloqueSolicitado = (bloqueActivo?.solicitud || '').toUpperCase() === 'SOLICITADO';
   const bloqueado = bloqueSolicitado && !desbloqueadoLocal;
@@ -559,6 +570,16 @@ export const CargasTab = forwardRef(({ formData, bloqueActivoIndex, onAgregarIte
           )}
         </div>
       </div>
+
+      {/* Fuera del fieldset: se ve (y se copia) también con el bloque imputado. */}
+      <NotasAdmision
+        descripcion={formData?.descripcion}
+        observacion={formData?.observacion}
+        onCopiar={handleCopiarTexto}
+        onEditar={puedeEditarNotas ? onIrAInformacion : undefined}
+        verDescripcion={verDescripcion}
+        verObservacion={verObservacion}
+      />
 
       {sinPeriodoAbierto && (
         <div className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg text-[11px] text-red-700 dark:text-red-400">
