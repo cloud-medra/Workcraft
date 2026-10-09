@@ -19,6 +19,7 @@ import CentroSelect from '../../../../../../ui/CentroSelect';
 import { verificarPeriodosBloque } from '../Cargastab/verificacionPeriodoBloque';
 import { useGranularPermission } from '../../../../../../../hooks/useGranularPermission';
 import { soloDigitos, nombreEnMayusculas, limpiarInputConservandoCursor } from '../../utils/camposPaciente';
+import { LADOS } from '../../../../../../../../functions/bodymap/nucleo.mjs';
 
 // Mismo permiso que el candado de Cargas: desbloquear un bloque imputado es
 // una sola acción para todo el bloque, no por pestaña.
@@ -400,6 +401,20 @@ export const InformacionTab = forwardRef(({
                 placeholder="Ingrese detalles técnicos..."
                 className="p-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none resize-none"
               />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label htmlFor="lado-gestion" className="font-semibold text-slate-600 dark:text-gray-300">Lado</label>
+              <select
+                id="lado-gestion"
+                name="lado"
+                value={formData.lado || 'no_especificado'}
+                onChange={handleGeneralChange}
+                className="h-7 px-2 text-[10px] border border-slate-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100 focus:ring-1 focus:ring-[#2383C2] outline-none"
+              >
+                {LADOS.map((l) => <option key={l.id} value={l.id}>{l.nombre}</option>)}
+              </select>
+              <span className="text-[9.5px] text-slate-400 dark:text-gray-500">Para el Bodymap: tiene prioridad sobre el lado del Maestro de zonas.</span>
             </div>
 
             <div className="flex flex-col gap-1">

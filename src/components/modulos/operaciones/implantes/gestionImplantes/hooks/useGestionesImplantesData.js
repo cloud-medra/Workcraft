@@ -679,6 +679,8 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
           prevision: paciente.prevision || 'P',
           medico: paciente.medico || 'P',
           descripcion: paciente.descripcion || 'P',
+          // Lado (Bodymap): solo viene si se cambió en Información.
+          ...(paciente.lado ? { lado: paciente.lado } : {}),
           observacion: (paciente.observacion || '').toString().trim(),
           centro: paciente.centro || 'PABELLON',
           atributo: paciente.atributo || 'IMPLANTES',
@@ -699,6 +701,9 @@ export const useGestionesImplantesData = ({ admision, refPath } = {}) => {
         });
         dataNormalizada.fechaInicioCarga = registro.fechaInicioCarga || original?.fechaInicioCarga || null;
         dataNormalizada.fechaCarga = registro.fechaCarga || original?.fechaCarga || null;
+        // Lado (Bodymap): si no se cambió, se conserva el del original
+        // (también cuando la gestión se mueve de ruta por fecha/empresa).
+        if (dataNormalizada.lado === undefined && original?.lado) dataNormalizada.lado = original.lado;
 
         // OC por ítem (Sincronizar OC): se toma del registro EN VIVO (no de la
         // foto del detalle) para no pisar una sincronización hecha mientras el

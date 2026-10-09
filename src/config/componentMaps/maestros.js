@@ -103,6 +103,31 @@ export const maestrosComponentMaps = {
     },
   },
 
+  '/maestros/zonasDiagnostico': {
+    label: 'Zonas por diagnóstico (ZonasDiagnostico.jsx) — zonas del cuerpo por descripción de las gestiones de Implantes (Bodymap)',
+    sections: {
+      barra_busqueda: {
+        label: 'Sección: Filtro y Búsqueda',
+        elements: {
+          input_buscar: { label: 'Campo: Buscar descripción' },
+          select_estado: { label: 'Campo: Filtro por estado' },
+        },
+      },
+      tabla_datos: {
+        label: 'Sección: Tabla de Descripciones',
+        elements: {
+          col_zonas: { label: 'Columna: Zona(s)' },
+          col_lado: { label: 'Columna: Lateralidad' },
+          col_estado: { label: 'Columna: Estado (Confirmada / Sugerida / Sin asignar)' },
+          col_gestiones: { label: 'Columna: Cantidad de gestiones' },
+          action_editar: { label: 'Acción: Asignar / corregir zonas y lado' },
+          action_confirmar: { label: 'Acción: Confirmar sugerencia' },
+          action_log: { label: 'Acción: Ver historial' },
+        },
+      },
+    },
+  },
+
   '/maestros/centrosMaestros': {
     label: 'Registro de Centros (CentrosMaestros.jsx)',
     sections: {

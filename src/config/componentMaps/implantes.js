@@ -138,6 +138,7 @@ export const implantesComponentMaps = {
             label: 'Sección: Observaciones y Detalles Clínicos',
             elements: {
               input_descripcion: { label: 'Campo: Descripción / Nota Operatoria' },
+              select_lado: { label: 'Campo: Lado (Derecho / Izquierdo / Bilateral) — para el Bodymap' },
               input_observacion: { label: 'Campo: Texto Libre / Notas Adicionales' },
             },
           },
@@ -193,6 +194,15 @@ export const implantesComponentMaps = {
         sections: {
           historial_logs: {
             label: 'Sección: Historial de Logs',
+            elements: {},
+          },
+        },
+      },
+      '/implantes/gestionImplantes/bodymap': {
+        label: 'Pestaña: Bodymap (BodymapTab.jsx) — zona del cuerpo según la descripción, solo lectura',
+        sections: {
+          mapa_cuerpo: {
+            label: 'Sección: Cuerpo completo y detalle de la zona',
             elements: {},
           },
         },

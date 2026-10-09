@@ -66,7 +66,8 @@ import {
   FileText,
   FolderUp,
   Zap,
-  KeyRound
+  KeyRound,
+  PersonStanding
 } from "lucide-react";
 
 export const MODULES = {
@@ -119,6 +120,7 @@ export const MODULES = {
       { label: 'Empresas', path: '/maestros/empresasMaestros', icon: <Factory size={14} /> },
       { label: 'Prestadores', path: '/maestros/prestadoresMaestros', icon: <UserRound size={14} /> },
       { label: 'Centros', path: '/maestros/centrosMaestros', icon: <Hospital size={14} /> },
+      { label: 'Zonas por diagnóstico', path: '/maestros/zonasDiagnostico', icon: <PersonStanding size={14} /> },
       { label: 'Previsiones', path: '/maestros/previsionesMaestros', icon: <ShieldCheck size={14} /> },
       { label: 'Convenios', path: '/maestros/conveniosMaestros', icon: <Handshake size={14} /> },
       { label: 'Recargos', path: '/maestros/recargosMaestros', icon: <Percent size={14} /> },

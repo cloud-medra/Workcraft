@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert, ClipboardList, Folder } from 'lucide-react';
+import { Info, ListFilter, UploadCloud, Unlock, Lock, History, ShieldAlert, ClipboardList, Folder, PersonStanding } from 'lucide-react';
 
 import { usePeriodoAbiertoStore } from '../../../../../../hooks/usePeriodoAbiertoStore';
 import { useGranularPermission } from '../../../../../../hooks/useGranularPermission';
@@ -20,6 +20,7 @@ import { HistorialLogsContenido } from '../GestionesImplanteDrawers';
 import { nombreParaGuardar } from '../utils/camposPaciente';
 import { ocsDeGestion } from '../../../shared/ocIndex/indiceOC';
 import { OrdenTab } from './Ordentab/OrdenTab';
+import { BodymapTab } from './Bodymaptab/BodymapTab';
 import { leerRegistroPdfOC } from '../../../shared/ordenesOC/registroPdfOC';
 
 const MODULO_ACTUAL = 'implantes';
@@ -36,6 +37,7 @@ const ALL_TABS = [
   { id: 'orden', label: 'Orden', Icon: ClipboardList, path: '/implantes/gestionImplantes/orden' },
   { id: 'documentos', label: 'Documentos', Icon: Folder, path: '/implantes/gestionImplantes/documentos' },
   { id: 'logs', label: 'Logs', Icon: History, path: '/implantes/gestionImplantes/logs' },
+  { id: 'bodymap', label: 'Bodymap', Icon: PersonStanding, path: '/implantes/gestionImplantes/bodymap' },
 ];
 
 const GestionesImplantesDetalleView = forwardRef(({
@@ -48,7 +50,10 @@ const GestionesImplantesDetalleView = forwardRef(({
   loadingLogs = false,
   cargarLogsDeImplante,
   formatearFecha,
-  handleCopiarTexto
+  handleCopiarTexto,
+  // (opcional) abre Maestros → Zonas por diagnóstico con esa descripción
+  // (enlace del Bodymap cuando la descripción no tiene zona).
+  onAbrirZonasDiagnostico
 }, ref) => {
 
   const { hasAccesoProceso } = useGranularPermission();
@@ -162,6 +167,8 @@ const GestionesImplantesDetalleView = forwardRef(({
       atributo: item?.atributo || '',
       centro: item?.centro || item?.centroMedico || '',
       descripcion: item?.descripcion || item?.observacion || '',
+      // Lado (Bodymap): las gestiones anteriores no lo tienen = No especificado.
+      lado: item?.lado || 'no_especificado',
       observacion: item?.observacion || item?.notaLibre || item?.notas || '',
       bloques: bloquesEmpresas
     };
@@ -485,7 +492,9 @@ const GestionesImplantesDetalleView = forwardRef(({
         atributo: formDataParaGuardar.atributo,
         centro: formDataParaGuardar.centro,
         descripcion: formDataParaGuardar.descripcion,
-        observacion: formDataParaGuardar.observacion
+        observacion: formDataParaGuardar.observacion,
+        // Solo si se cambió: así no se escribe en gestiones que no lo tocan.
+        ...(formDataParaGuardar.lado !== (item?.lado || 'no_especificado') ? { lado: formDataParaGuardar.lado } : {})
       },
       registrosActualizados: formDataParaGuardar.bloques.map((b, idx) => {
         const idsOriginales = idsItemsOriginalesRef.current[idx] || [];
@@ -830,6 +839,12 @@ const GestionesImplantesDetalleView = forwardRef(({
               onRecargar={handleRecargarDocumentos}
               onDocumentosSubidos={handleDocumentosSubidos}
             />
+          )}
+
+          {tabActual?.id === 'bodymap' && (
+            <div className="flex-grow overflow-y-auto p-3">
+              <BodymapTab descripcion={formData.descripcion} lado={formData.lado} onAbrirMaestro={onAbrirZonasDiagnostico} />
+            </div>
           )}
 
           {tabActual?.id === 'logs' && (

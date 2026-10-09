@@ -41,3 +41,7 @@ Object.assign(exports, require("./estadisticas"));
 // Permisos por centro de costo (Administración → Usuarios): permiso
 // efectivo, excepciones y plantillas. Ver functions/permisos/index.js.
 Object.assign(exports, require("./permisos"));
+
+// Bodymap: Maestro "Zonas por diagnóstico" (descripciones de las gestiones
+// de Implantes y su contador). Ver functions/bodymap/index.js.
+Object.assign(exports, require("./bodymap"));

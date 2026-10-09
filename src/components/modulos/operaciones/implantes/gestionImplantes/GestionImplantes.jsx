@@ -26,7 +26,9 @@ const NOMBRES_MESES = {
   "09": "Septiembre", "10": "Octubre", "11": "Noviembre", "12": "Diciembre"
 };
 
-const GestionesImplantes = () => {
+// onAbrirZonasDiagnostico (opcional, del Dashboard): enlace del Bodymap al
+// Maestro "Zonas por diagnóstico".
+const GestionesImplantes = ({ onAbrirZonasDiagnostico } = {}) => {
   const { hasPermission } = useGranularPermission();
   // Formulario de registro visible/oculto (siempre visible al entrar). Al
   // ocultarlo, la tabla (flex-grow) ocupa el espacio liberado.
@@ -265,6 +267,7 @@ const GestionesImplantes = () => {
           cargarLogsDeImplante={cargarLogsDeImplante}
           formatearFecha={formatearFecha}
           handleCopiarTexto={handleCopiarTexto}
+          onAbrirZonasDiagnostico={onAbrirZonasDiagnostico}
         />
       ) : (
         <>

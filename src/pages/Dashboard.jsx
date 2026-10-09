@@ -25,6 +25,7 @@ import ListadoUsuario from '../components/modulos/administracion/usuarios/Listad
 import CargasConsolidado from '../components/modulos/administracion/cargasConsolidado/CargasConsolidado';
 import Estadisticas from '../components/modulos/administracion/estadisticas/Estadisticas';
 import PermisosPorCentro from '../components/modulos/administracion/permisosCentro/PermisosPorCentro';
+import ZonasDiagnostico from '../components/modulos/maestros/zonasDiagnostico/ZonasDiagnostico';
 import { subItemsVisibles, puedeAbrirVista, esAdministrador } from '../config/accesoMenu';
 import PeriodoAbiertoBloque from '../components/layout/PeriodoAbiertoBloque';
 
@@ -126,6 +127,9 @@ const Dashboard = () => {
   // Usuario a abrir en edición al llegar a Lista Usuario (desde Permisos por
   // centro → "Ver usuarios").
   const [editarUsuarioId, setEditarUsuarioId] = useState(null);
+  // Búsqueda inicial de Maestros → Zonas por diagnóstico (desde el Bodymap
+  // de una gestión cuya descripción no tiene zona).
+  const [busquedaZonas, setBusquedaZonas] = useState('');
 
   const menuRef = useRef(null);
 
@@ -286,7 +290,15 @@ const Dashboard = () => {
     '/documentos/ingresoOrdenes': <IngresoOrdenes />,
     '/documentos/archivoDigital': <ArchivoDigital />,
 
-    '/implantes/gestionImplantes': <GestionImplantes />,
+    '/implantes/gestionImplantes': (
+      <GestionImplantes
+        onAbrirZonasDiagnostico={(descripcion) => {
+          setBusquedaZonas(descripcion);
+          abrirVistaDeModulo('maestros', '/maestros/zonasDiagnostico');
+        }}
+      />
+    ),
+    '/maestros/zonasDiagnostico': <ZonasDiagnostico key={busquedaZonas} busquedaInicial={busquedaZonas} />,
     '/implantes/cargaMasivaDocumentos': <CargaMasivaDocumentos />,
     '/implantes/respaldoDocumentos': <RespaldoDocumentos />,
     '/implantes/reportesInfo': <ReportesInfo pathVista="/implantes/reportesInfo" />,
