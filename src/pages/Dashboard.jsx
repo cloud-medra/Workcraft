@@ -130,6 +130,9 @@ const Dashboard = () => {
   // Búsqueda inicial de Maestros → Zonas por diagnóstico (desde el Bodymap
   // de una gestión cuya descripción no tiene zona).
   const [busquedaZonas, setBusquedaZonas] = useState('');
+  // Apertura de Implantes → Gestiones desde Reporte Info ("Gestión
+  // implante"): { admision, refPath?, n }. `n` remonta la vista en cada clic.
+  const [aperturaGestion, setAperturaGestion] = useState(null);
 
   const menuRef = useRef(null);
 
@@ -203,6 +206,11 @@ const Dashboard = () => {
   };
 
   const breadcrumb = getBreadcrumb();
+  const abrirGestionImplante = (destino) => {
+    setAperturaGestion(prev => ({ ...destino, n: (prev?.n || 0) + 1 }));
+    abrirVistaDeModulo('implantes', '/implantes/gestionImplantes');
+  };
+
   const irAPermisosCentro = () => abrirVistaDeModulo('administracion', '/administracion/permisosCentro');
   // Bloque "Período abierto": enlaza a Control Mensual solo para admin/dev.
   const abrirControlMensual = esAdministrador(userData)
@@ -286,7 +294,7 @@ const Dashboard = () => {
     '/inventario/escaneoInventario': <EscaneoInventario />,
     '/inventario/inventarioCajas': <InventarioPorCajas />,
 
-    '/documentos/reportesInfo': <ReportesInfo pathVista="/documentos/reportesInfo" />,
+    '/documentos/reportesInfo': <ReportesInfo pathVista="/documentos/reportesInfo" onAbrirGestionImplante={abrirGestionImplante} />,
     '/documentos/importarDetallesOC': <ImportarDetallesOC />,
     '/documentos/seguimientoFacturasGuias': <SeguimientoFacturasGuias />,
     '/documentos/ingresoOrdenes': <IngresoOrdenes />,
@@ -294,6 +302,8 @@ const Dashboard = () => {
 
     '/implantes/gestionImplantes': (
       <GestionImplantes
+        key={aperturaGestion?.n || 0}
+        apertura={aperturaGestion}
         onAbrirZonasDiagnostico={(descripcion) => {
           setBusquedaZonas(descripcion);
           abrirVistaDeModulo('maestros', '/maestros/zonasDiagnostico');
@@ -303,7 +313,7 @@ const Dashboard = () => {
     '/maestros/zonasDiagnostico': <ZonasDiagnostico key={busquedaZonas} busquedaInicial={busquedaZonas} />,
     '/implantes/cargaMasivaDocumentos': <CargaMasivaDocumentos />,
     '/implantes/respaldoDocumentos': <RespaldoDocumentos />,
-    '/implantes/reportesInfo': <ReportesInfo pathVista="/implantes/reportesInfo" />,
+    '/implantes/reportesInfo': <ReportesInfo pathVista="/implantes/reportesInfo" onAbrirGestionImplante={abrirGestionImplante} />,
     '/implantes/solicitudImplantes': <SolicitudImplantes />,
     '/implantes/resumenImplantes': <ResumenImplantes />,
     '/implantes/sincronizacionImputadas': <SincronizacionImputadas />,

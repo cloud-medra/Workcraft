@@ -422,6 +422,13 @@ service cloud.firestore {
     // Reportes Info es la misma pantalla en Documentos y en Implantes
     // (/implantes/reportesInfo): escribe (Revisado, importar Excel) quien
     // tenga Documentos o, en Implantes, específicamente ese ítem.
+    // Reporte Info → "Gestión implante": marca por número de admisión. Solo
+    // la escriben la Cloud Function y el script (functions/admisiones).
+    match /admisiones_gestionadas_implantes/{admision} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
     match /documentos_reportesInfo/{document=**} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && (esAdminODev() || tienePermiso('documentos')

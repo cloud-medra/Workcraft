@@ -27,7 +27,8 @@ import {
     Stethoscope,
     Building2,
     Loader2,
-    Tag
+    Tag,
+    Download
 } from 'lucide-react';
 import { useToast } from '../../../../../context/ToastContext';
 import { useGranularPermission } from '../../../../../hooks/useGranularPermission';
@@ -40,6 +41,12 @@ import { useColumnasPermitidas } from '../../../../../hooks/useColumnasPermitida
 import { useDebouncedValue } from '../../../../../hooks/useDebouncedValue';
 import { incluyeTexto } from '../../../../../utils/normalizarTexto';
 import { ordenarMeses } from '../../../../../utils/ordenarMeses';
+import { useUser } from '../../../../../context/UserContext';
+import { subItemsVisibles } from '../../../../../config/accesoMenu';
+import BadgeGestionImplante from './BadgeGestionImplante';
+import {
+    cargarMarcas, claveAdmision, estadoDe, destinoAbrir, OPCIONES_GESTION, ETIQUETAS_ESTADO, CLASE_GESTION,
+} from './gestionImplante';
 
 // Estado de revisión de cada registro. Se guarda en el mismo documento del
 // registro (campo `revisado`); si no existe se considera "Pendiente", así que
@@ -83,11 +90,14 @@ const COLUMNAS = [
     { key: 'cirujano', label: 'Cirujano', ancho: 170, min: 80 },
     { key: 'cantidad', label: 'Cant.', align: 'text-center', ancho: 60, min: 45 },
     { key: 'revisado', label: 'Revisado', align: 'text-center', ancho: 115, min: 95 },
+    { key: 'gestionImplante', label: 'Gestión implante', align: 'text-center', ancho: 125, min: 100 },
 ];
 
 // `pathVista`: la misma pantalla se monta en Documentos y en Implantes; cada
 // ruta del menú tiene su propia entrada de permisos.
-const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
+// `onAbrirGestionImplante({ admision, refPath? })` (del Dashboard): abre la
+// gestión en Implantes desde la columna "Gestión implante".
+const ReportesInfo = ({ pathVista = '/documentos/reportesInfo', onAbrirGestionImplante }) => {
     const [reportes, setReportes] = useState([]);
     // IDs del mes que está descargado COMPLETO en `reportes` ({ clave: 'anio/mes', ids: Set }).
     // Lo usa idsExistentesDelMes() para no volver a consultar Firestore al
@@ -106,6 +116,10 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
     const [cargandoLista, setCargandoLista] = useState(false);
     const [filtroRevisado, setFiltroRevisado] = useState('');
     const [filtroAranceles, setFiltroAranceles] = useState([]);
+    // "Gestión implante": marca por admisión (functions/admisiones) de las
+    // admisiones del mes en pantalla; '' = todas.
+    const [marcas, setMarcas] = useState({});
+    const [filtroGestion, setFiltroGestion] = useState('');
     const [pagina, setPagina] = useState(1);
     const [tamanoPagina, setTamanoPagina] = useState(25);
 
@@ -113,6 +127,8 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
 
     const { showToast } = useToast();
     const { hasPermission } = useGranularPermission();
+    const { userData } = useUser();
+    const puedeVerGestiones = subItemsVisibles(userData, 'implantes').some(s => s.path === '/implantes/gestionImplantes');
 
     const PATH_VISTA = pathVista;
     const { columnasVisibles, ver } = useColumnasPermitidas(pathVista, 'tabla_registros', COLUMNAS);
@@ -188,6 +204,18 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
     useEffect(() => {
         cargarPrimeraPagina();
     }, [cargarPrimeraPagina]);
+
+    // Marcas "Gestión implante" de las admisiones del mes (lotes de 30, sin
+    // listener: se refrescan al recargar el mes).
+    useEffect(() => {
+        let activo = true;
+        // Sin reportes, cargarMarcas resuelve {} sin leer.
+        cargarMarcas(reportes.map(r => r["Admisión"]))
+            .then(m => { if (activo) setMarcas(m); })
+            .catch(err => { console.error("Error al cargar la gestión de implantes:", err); if (activo) setMarcas({}); });
+        return () => { activo = false; };
+    }, [reportes]);
+    const marcaDe = useCallback((r) => marcas[claveAdmision(r["Admisión"])] || null, [marcas]);
 
     // Función para formatear fechas de Excel (Date objects, texto YYYY-MM-DD o seriales)
     const formatearFecha = (valorFecha) => {
@@ -372,6 +400,7 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
             if (filtroDia && getDia(r) !== filtroDia) return false;
             if (filtroRevisado && getRevisado(r) !== filtroRevisado) return false;
             if (aranceles.size > 0 && !aranceles.has(getArancel(r))) return false;
+            if (filtroGestion && estadoDe(marcaDe(r)) !== filtroGestion) return false;
             return (
                 incluyeTexto(r["Admisión"], busquedaDebounced) ||
                 incluyeTexto(r["Paciente"], busquedaDebounced) ||
@@ -381,7 +410,46 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
                 incluyeTexto(r["Arancel"], busquedaDebounced)
             );
         });
-    }, [reportes, filtroDia, filtroRevisado, filtroAranceles, busquedaDebounced]);
+    }, [reportes, filtroDia, filtroRevisado, filtroAranceles, filtroGestion, marcaDe, busquedaDebounced]);
+
+    // Admisiones distintas del mes por estado de gestión (contador del filtro).
+    const conteoGestion = useMemo(() => {
+        const porAdmision = new Map();
+        reportes.forEach(r => {
+            const clave = claveAdmision(r["Admisión"]);
+            if (clave) porAdmision.set(clave, estadoDe(marcas[clave]));
+        });
+        return [...porAdmision.values()].reduce((acc, e) => ({ ...acc, [e]: (acc[e] || 0) + 1 }), {});
+    }, [reportes, marcas]);
+
+    // Excel: lo filtrado (todas las páginas), con las columnas que el usuario ve.
+    const exportarExcel = () => {
+        const filas = reportesFiltrados.map(r => {
+            const marca = marcaDe(r);
+            const fila = {};
+            if (ver('fecha')) fila['Fecha'] = r["Fecha"] ?? '';
+            if (ver('admision')) fila['Admisión'] = r["Admisión"] ?? '';
+            if (ver('paciente')) fila['Paciente'] = r["Paciente"] ?? '';
+            if (ver('edad')) fila['Edad'] = r["Edad"] ?? '';
+            if (ver('codArt')) fila['Cod.Artículo'] = r["Cod.Artículo"] ?? '';
+            if (ver('descripcion')) fila['Descripción'] = r["Descripción"] ?? '';
+            if (ver('arancel')) { fila['Cód.Arancel'] = r["Cód.Arancel"] ?? ''; fila['Arancel'] = r["Arancel"] ?? ''; }
+            if (ver('prevision')) { fila['Previsión'] = r["Previsión"] ?? ''; fila['Isapre'] = r["Isapre"] ?? ''; }
+            if (ver('cirujano')) fila['1° Cirujano'] = r["1° Cirujano"] ?? '';
+            if (ver('cantidad')) fila['Cant.Art.'] = r["Cant.Art."] ?? '';
+            if (ver('revisado')) fila['Revisado'] = getRevisado(r);
+            if (ver('gestionImplante')) {
+                fila['Gestión implante'] = ETIQUETAS_ESTADO[estadoDe(marca)];
+                fila['Gestiones'] = marca?.cantidad ?? 0;
+                fila['Ítems pendientes'] = marca ? marca.itemsPendientes : '';
+            }
+            return fila;
+        });
+        const hoja = XLSX.utils.json_to_sheet(filas);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, 'Reportes Info');
+        XLSX.writeFile(libro, `reportes_info_${filtroAnio}_${filtroMes}.xlsx`);
+    };
 
     const conteoRevisado = useMemo(() => reportes.reduce((acc, r) => {
         const estado = getRevisado(r);
@@ -437,6 +505,16 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
                     </span>
                 </div>
 
+                <div className="flex items-center gap-1.5">
+                {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_exportar") && (
+                    <button
+                        onClick={exportarExcel}
+                        disabled={reportesFiltrados.length === 0}
+                        className="border border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 hover:border-[#2383C2] hover:text-[#2383C2] text-slate-700 dark:text-gray-200 px-2.5 py-1 rounded text-[10px] font-normal flex items-center gap-1.5 transition disabled:opacity-40"
+                    >
+                        <Download size={11} /> Exportar Excel
+                    </button>
+                )}
                 {hasPermission(PATH_VISTA, "cabecera_acciones", "btn_importar") && (
                     <button
                         onClick={() => setShowModal(true)}
@@ -445,6 +523,7 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
                         <Upload size={11} /> Importar Excel
                     </button>
                 )}
+                </div>
             </header>
 
             {/* Filtros */}
@@ -487,6 +566,18 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
                     <option value="">Revisado (Todos)</option>
                     {OPCIONES_REVISADO.map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
+
+                {ver('gestionImplante') && (
+                    <select
+                        value={filtroGestion}
+                        onChange={(e) => conResetPagina(setFiltroGestion)(e.target.value)}
+                        aria-label="Filtrar por gestión implante"
+                        className={`h-6 border rounded text-[11px] px-1.5 outline-none focus:border-[#2383C2] ${filtroGestion ? 'border-[#2383C2] text-[#2383C2] bg-blue-50 dark:bg-blue-950/30 font-semibold' : 'border-slate-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-slate-800 dark:text-gray-100'}`}
+                    >
+                        <option value="">Gestión implante (Todas)</option>
+                        {OPCIONES_GESTION.map(o => <option key={o} value={o}>{ETIQUETAS_ESTADO[o]} ({conteoGestion[o] || 0} adm.)</option>)}
+                    </select>
+                )}
 
                 <MultiSelectFiltro
                     opciones={opcionesArancel}
@@ -599,6 +690,17 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
                                               </select>
                                           </td>
                                         )}
+                                        {ver('gestionImplante') && (() => {
+                                            const marca = marcaDe(item);
+                                            const abrir = marca && puedeVerGestiones && onAbrirGestionImplante
+                                                ? () => onAbrirGestionImplante(destinoAbrir(claveAdmision(item["Admisión"]), marca))
+                                                : undefined;
+                                            return (
+                                              <td className="px-1.5 py-0.5 border-b border-slate-200/60 dark:border-gray-700/70 text-center">
+                                                  <BadgeGestionImplante marca={marca} onAbrir={abrir} />
+                                              </td>
+                                            );
+                                        })()}
                                     </tr>
                                 );
                             })
@@ -623,7 +725,12 @@ const ReportesInfo = ({ pathVista = '/documentos/reportesInfo' }) => {
                     Registros del mes: <strong className="text-slate-800 dark:text-gray-200 font-normal">{reportes.length}</strong>
                     {totalFilas !== reportes.length && <> · Filtrados: <strong className="text-slate-800 dark:text-gray-200 font-normal">{totalFilas}</strong></>}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px]">
+                <div className="flex items-center gap-1.5 text-[10px] flex-wrap justify-end">
+                    {ver('gestionImplante') && OPCIONES_GESTION.map(o => (
+                        <span key={o} className={`px-1.5 py-0.5 rounded-full border ${CLASE_GESTION[o]}`} title="Admisiones distintas del mes">
+                            {ETIQUETAS_ESTADO[o]}: {conteoGestion[o] || 0}
+                        </span>
+                    ))}
                     {OPCIONES_REVISADO.map(o => (
                         <span key={o} className={`px-1.5 py-0.5 rounded-full border ${CLASE_REVISADO[o]}`}>
                             {o}: {conteoRevisado[o] || 0}

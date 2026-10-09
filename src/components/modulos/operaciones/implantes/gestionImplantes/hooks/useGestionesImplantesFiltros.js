@@ -24,12 +24,13 @@ export const opcionesPeriodoGestiones = (implantes, { filtroAnio = '', filtroMes
   };
 };
 
-export const useGestionesImplantesFiltros = (implantes) => {
+// `sinPeriodo`: arranca sin año/mes ni "hasta hoy" (solo valor inicial).
+export const useGestionesImplantesFiltros = (implantes, { sinPeriodo = false } = {}) => {
   const [busqueda, setBusqueda] = useState('');
 
   const fechaHoy = new Date();
-  const [filtroAnio, setFiltroAnio] = useState(fechaHoy.getFullYear().toString());
-  const [filtroMes, setFiltroMes] = useState(String(fechaHoy.getMonth() + 1).padStart(2, '0'));
+  const [filtroAnio, setFiltroAnio] = useState(sinPeriodo ? '' : fechaHoy.getFullYear().toString());
+  const [filtroMes, setFiltroMes] = useState(sinPeriodo ? '' : String(fechaHoy.getMonth() + 1).padStart(2, '0'));
   const [filtrosDias, setFiltrosDias] = useState([]);
   const [filtrosEstados, setFiltrosEstados] = useState([]);
   const [pagina, setPagina] = useState(1);
@@ -38,7 +39,7 @@ export const useGestionesImplantesFiltros = (implantes) => {
   // estados: por defecto solo muestra hoy y días anteriores (el caso de uso
   // más frecuente al revisar/cargar), con opción de ver todos los días
   // (incluye fechas futuras).
-  const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(true);
+  const [filtroSoloHastaHoy, setFiltroSoloHastaHoy] = useState(!sinPeriodo);
 
   // Años/meses disponibles, desde las gestiones ya cargadas (0 lecturas):
   // solo períodos con datos, años del más reciente al más antiguo y meses

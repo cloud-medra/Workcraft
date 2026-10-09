@@ -17,6 +17,7 @@ import { SincronizarOCResumenModal } from './components/SincronizarOCResumenModa
 import { useSincronizarOC } from './hooks/useSincronizarOC';
 import { useMarcarOcPendiente } from './hooks/useMarcarOcPendiente';
 import { useUser } from '../../../../../context/UserContext';
+import DetalleGestionConHeader from '../../shared/DetalleGestionConHeader';
 
 const PATH_VISTA = "/implantes/gestionImplantes";
 
@@ -28,8 +29,15 @@ const NOMBRES_MESES = {
 
 // onAbrirZonasDiagnostico (opcional, del Dashboard): enlace del Bodymap al
 // Maestro "Zonas por diagnóstico".
-const GestionesImplantes = ({ onAbrirZonasDiagnostico } = {}) => {
+// apertura (opcional, del Dashboard, desde Reporte Info → "Gestión
+// implante"): { admision, refPath? }. Con refPath abre directo el detalle de
+// esa gestión; sin él, el listado filtrado por la admisión (todas sus
+// gestiones, sin la ventana de las más recientes). Solo valor inicial: el
+// Dashboard remonta la vista en cada apertura.
+const GestionesImplantes = ({ onAbrirZonasDiagnostico, apertura } = {}) => {
   const { hasPermission } = useGranularPermission();
+  const [refPathAbierto, setRefPathAbierto] = useState(apertura?.refPath || null);
+  const [admisionFiltrada, setAdmisionFiltrada] = useState(apertura && !apertura.refPath ? String(apertura.admision) : null);
   // Formulario de registro visible/oculto (siempre visible al entrar). Al
   // ocultarlo, la tabla (flex-grow) ocupa el espacio liberado.
   const [formularioVisible, setFormularioVisible] = useState(true);
@@ -89,7 +97,7 @@ const GestionesImplantes = ({ onAbrirZonasDiagnostico } = {}) => {
     handleExportarDatos,
     handleDescargarPlantilla,
     handleEjecutarImportacion
-  } = useGestionesImplantes();
+  } = useGestionesImplantes(admisionFiltrada ? { admision: admisionFiltrada } : undefined);
   const { sincronizandoOC, handleSincronizarOC, resumenOC, cerrarResumenOC } = useSincronizarOC();
   const { userData } = useUser();
   const esAdminODev = userData?.rol === 'admin' || userData?.rol === 'dev';
@@ -121,6 +129,31 @@ const GestionesImplantes = ({ onAbrirZonasDiagnostico } = {}) => {
     setShowConfirmSalir(false);
     setRegistroSeleccionado(null);
   };
+
+  // Quitar el filtro de admisión: vuelve al listado normal (mes en curso).
+  const quitarFiltroAdmision = () => {
+    const hoy = new Date();
+    setAdmisionFiltrada(null);
+    setFiltroAnio(hoy.getFullYear().toString());
+    setFiltroMes(String(hoy.getMonth() + 1).padStart(2, '0'));
+    setFiltroSoloHastaHoy(true);
+  };
+
+  if (refPathAbierto) {
+    return (
+      <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
+        <DetalleGestionConHeader
+          fila={{ refPath: refPathAbierto }}
+          onVolver={() => setRefPathAbierto(null)}
+          useGestiones={useGestionesImplantes}
+          DetalleView={GestionesImplantesDetalleView}
+          titulo="Detalle de Gestión de Implante"
+          formatearFechaFn={formatearFecha}
+          onAbrirZonasDiagnostico={onAbrirZonasDiagnostico}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full flex flex-col bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm overflow-hidden p-0 relative text-[11px]">
@@ -296,6 +329,16 @@ const GestionesImplantes = ({ onAbrirZonasDiagnostico } = {}) => {
             <div className="bg-gray-50 dark:bg-gray-800/50 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-gray-200 dark:border-gray-700">
 
               <BuscadorConLimpiar value={busqueda} onChange={setBusqueda} placeholder="Buscar por ID, nombre o empresa..." />
+
+              {admisionFiltrada && (
+                <span className="h-6 inline-flex items-center gap-1 pl-2 pr-1 rounded border border-[#2383C2] bg-blue-50 dark:bg-blue-950/30 text-[#2383C2] text-[11px] font-semibold">
+                  Admisión {admisionFiltrada}
+                  <button type="button" onClick={quitarFiltroAdmision} title="Quitar el filtro de admisión" aria-label="Quitar el filtro de admisión"
+                    className="p-0.5 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40">
+                    <X size={11} />
+                  </button>
+                </span>
+              )}
 
               <div className="flex items-center gap-1.5">
                 <select

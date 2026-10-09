@@ -124,3 +124,11 @@ describe('maestros_codigos: Maestros → Códigos o Implantes → Códigos', () 
     expect((await getDoc(doc(conOtroDeImplantes.db, 'maestros_codigos', 'c1'))).exists()).toBe(true);
   });
 });
+
+describe('admisiones_gestionadas_implantes: solo la escribe el backend', () => {
+  it('cualquiera autenticado la lee; nadie la escribe desde el navegador (ni admin)', async () => {
+    await sembrar('admisiones_gestionadas_implantes/123', { admision: 123, estado: 'gestionada' });
+    expect((await getDoc(doc(operador.db, 'admisiones_gestionadas_implantes', '123'))).data().estado).toBe('gestionada');
+    await expect(setDoc(doc(admin.db, 'admisiones_gestionadas_implantes', '123'), { estado: 'cargada' })).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+});

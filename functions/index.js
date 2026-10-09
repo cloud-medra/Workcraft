@@ -45,3 +45,7 @@ Object.assign(exports, require("./permisos"));
 // Bodymap: Maestro "Zonas por diagnóstico" (descripciones de las gestiones
 // de Implantes y su contador). Ver functions/bodymap/index.js.
 Object.assign(exports, require("./bodymap"));
+
+// Reporte Info → "Gestión implante": marca de admisiones gestionadas en
+// Implantes. Ver functions/admisiones/index.js.
+Object.assign(exports, require("./admisiones"));

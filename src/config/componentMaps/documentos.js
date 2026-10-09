@@ -9,6 +9,7 @@ export const mapaReportesInfo = {
       label: 'Sección: Encabezado',
       elements: {
         btn_importar: { label: 'Acción: Importar reporte' },
+        btn_exportar: { label: 'Acción: Exportar a Excel (lo filtrado, con "Gestión implante")' },
       },
     },
     tabla_registros: {
@@ -17,6 +18,7 @@ export const mapaReportesInfo = {
         ['fecha', 'Fecha'], ['admision', 'Admisión'], ['paciente', 'Paciente'], ['edad', 'Edad'],
         ['codArt', 'Cod.Art.'], ['descripcion', 'Descripción'], ['arancel', 'Arancel'],
         ['prevision', 'Previsión / Isapre'], ['cirujano', 'Cirujano'], ['cantidad', 'Cant.'], ['revisado', 'Revisado'],
+        ['gestionImplante', 'Gestión implante (Pendiente / Gestionada / Cargada / Imputada)'],
       ]),
     },
   },
