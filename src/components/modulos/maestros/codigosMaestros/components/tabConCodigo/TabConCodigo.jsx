@@ -60,7 +60,9 @@ const COLUMNAS = [
   { key: 'acciones', label: 'Acciones', ancho: 90, min: 70, align: 'center' }
 ];
 
-const TabConCodigo = () => {
+// `rutaVista`: la pestaña en Maestros → Códigos (por defecto) o en
+// Implantes → Códigos; los permisos granulares son los de esa ruta.
+const TabConCodigo = ({ rutaVista = '/maestros/codigosMaestros/conCodigo' } = {}) => {
   // Empresas desde el catalogosStore (lectura única por sesión, compartida).
   // Sin las que no tienen nombre, igual que el orderBy('nombre') original.
   const { datos: empresasCatalogo } = useCatalogo('empresas');
@@ -99,7 +101,7 @@ const TabConCodigo = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigosMaestros/conCodigo";
+  const PATH_VISTA = rutaVista;
 
   // Acciones (claves en componentMaps/maestros.js). Sin la acción, el botón
   // no se muestra y el handler no hace nada.

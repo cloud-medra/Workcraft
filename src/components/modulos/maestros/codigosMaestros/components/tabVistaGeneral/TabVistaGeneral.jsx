@@ -50,7 +50,9 @@ const COLUMNAS = [
   { key: 'acciones', label: 'Acciones', ancho: 90, min: 70, align: 'center' }
 ];
 
-const TabVistaGeneral = () => {
+// `rutaVista`: la pestaña en Maestros → Códigos (por defecto) o en
+// Implantes → Códigos; los permisos granulares son los de esa ruta.
+const TabVistaGeneral = ({ rutaVista = '/maestros/codigosMaestros/vistaGeneral' } = {}) => {
   const [cargandoAccion, setCargandoAccion] = useState(false);
 
   const [campoBusqueda, setCampoBusqueda] = useState('referencia');
@@ -73,7 +75,7 @@ const TabVistaGeneral = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigosMaestros/vistaGeneral";
+  const PATH_VISTA = rutaVista;
   const puedeModificar = hasPermission(PATH_VISTA, "tabla_datos", "action_modificar");
   const puedeVerLogs = hasPermission(PATH_VISTA, "tabla_datos", "action_log");
 

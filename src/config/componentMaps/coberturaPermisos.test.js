@@ -25,6 +25,21 @@ const recorrer = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((
   return /\.(jsx?|tsx?)$/.test(e.name) && !/\.test\./.test(e.name) ? [p] : [];
 });
 
+// Componentes compartidos que reciben la ruta por prop: se verifican
+// contra cada vista que los monta.
+const RUTAS_DINAMICAS = {
+  // Códigos: misma pantalla en Maestros y en Implantes (prop rutaVista).
+  'modulos/maestros/codigosMaestros/components/tabPendientes/TabPendientes.jsx': ['/maestros/codigosMaestros/pendientes', '/implantes/codigosImplantes/pendientes'],
+  'modulos/maestros/codigosMaestros/components/tabConCodigo/TabConCodigo.jsx': ['/maestros/codigosMaestros/conCodigo', '/implantes/codigosImplantes/conCodigo'],
+  'modulos/maestros/codigosMaestros/components/tabVistaGeneral/TabVistaGeneral.jsx': ['/maestros/codigosMaestros/vistaGeneral', '/implantes/codigosImplantes/vistaGeneral'],
+  'modulos/gestiones/shared/TablaOrdenes.jsx': ['/laboratorio/ordenLaboratorio', '/vacunatorio/ordenVacunatorio'],
+  'modulos/gestiones/shared/DetalleOrdenTabla.jsx': ['/laboratorio/ordenLaboratorio', '/vacunatorio/ordenVacunatorio'],
+  'modulos/gestiones/shared/TablaXmlDocumentos.jsx': ['/laboratorio/xmlDocLaboratorio', '/vacunatorio/xmlDocVacunatorio'],
+  'modulos/gestiones/laboratorio/vizualizador/XmlDetallesDoc.jsx': ['/laboratorio/xmlDocLaboratorio', '/laboratorio/archivosControlLaboratorio/documentosRecibidos'],
+  'modulos/gestiones/vacunatorio/vizualizador/XmlDetallesDoc.jsx': ['/vacunatorio/xmlDocVacunatorio', '/vacunatorio/archivosControlVacunatorio/documentosRecibidos'],
+  'modulos/operaciones/documentos/reportesInfo/ReportesInfo.jsx': ['/documentos/reportesInfo', '/implantes/reportesInfo'],
+};
+
 const usos = [];
 recorrer(RAIZ).forEach((archivo) => {
   const src = fs.readFileSync(archivo, 'utf8');
@@ -33,8 +48,11 @@ recorrer(RAIZ).forEach((archivo) => {
   for (const m of src.matchAll(/const\s+([A-Za-z_]+)\s*=\s*['"](\/[^'"]+)['"]/g)) constantes[m[1]] = m[2];
   for (const m of src.matchAll(/hasPermission\(\s*([A-Za-z_]+|['"][^'"]+['"])\s*,\s*['"]([^'"]+)['"](?:\s*,\s*['"]([^'"]+)['"])?/g)) {
     const ruta = m[1].startsWith("'") || m[1].startsWith('"') ? m[1].slice(1, -1) : constantes[m[1]];
-    if (!ruta) continue; // ruta dinámica (prop): no verificable estáticamente
-    usos.push({ archivo: path.relative(RAIZ, archivo), ruta, seccion: m[2], elemento: m[3] });
+    // Ruta por prop: se verifica contra cada vista que monta el componente
+    // (RUTAS_DINAMICAS); si no está declarada, no es verificable.
+    const relativo = path.relative(RAIZ, archivo).split(path.sep).join('/');
+    const rutas = ruta ? [ruta] : (RUTAS_DINAMICAS[relativo] || []);
+    rutas.forEach((r) => usos.push({ archivo: relativo, ruta: r, seccion: m[2], elemento: m[3] }));
   }
 });
 
@@ -42,16 +60,7 @@ recorrer(RAIZ).forEach((archivo) => {
 // useColumnasPermitidas(RUTA, 'seccion', LISTA): cada `key` de la `const
 // LISTA = [...]` del archivo (salvo `fija: true`) debe existir como
 // `col_<key>` en esa sección del mapa.
-// Componentes compartidos que reciben la ruta por prop: se verifican
-// contra cada vista que los monta.
-const RUTAS_DINAMICAS = {
-  'modulos/gestiones/shared/TablaOrdenes.jsx': ['/laboratorio/ordenLaboratorio', '/vacunatorio/ordenVacunatorio'],
-  'modulos/gestiones/shared/DetalleOrdenTabla.jsx': ['/laboratorio/ordenLaboratorio', '/vacunatorio/ordenVacunatorio'],
-  'modulos/gestiones/shared/TablaXmlDocumentos.jsx': ['/laboratorio/xmlDocLaboratorio', '/vacunatorio/xmlDocVacunatorio'],
-  'modulos/gestiones/laboratorio/vizualizador/XmlDetallesDoc.jsx': ['/laboratorio/xmlDocLaboratorio', '/laboratorio/archivosControlLaboratorio/documentosRecibidos'],
-  'modulos/gestiones/vacunatorio/vizualizador/XmlDetallesDoc.jsx': ['/vacunatorio/xmlDocVacunatorio', '/vacunatorio/archivosControlVacunatorio/documentosRecibidos'],
-  'modulos/operaciones/documentos/reportesInfo/ReportesInfo.jsx': ['/documentos/reportesInfo', '/implantes/reportesInfo'],
-};
+
 
 // Tablas que todavía no tienen granularidad por columnas: pendientes de la
 // segunda tanda. Una tabla NUEVA que no esté acá y no declare sus columnas

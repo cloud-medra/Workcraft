@@ -1,7 +1,26 @@
 import { columnas } from './columnas.js';
 import { mapaReportesInfo } from './documentos.js';
+import { maestrosComponentMaps } from './maestros.js';
+
+// Implantes → Códigos: la misma pantalla que Maestros → Códigos
+// (CodigosMaestros.jsx, colección maestros_codigos) con su propio ítem de
+// menú y sus propios permisos granulares. Se deriva del mapa de Maestros
+// (mismas secciones, acciones, columnas y pestañas) cambiando las rutas,
+// así ambos quedan siempre iguales pero se asignan por separado.
+const reubicarMapa = (config, de, a, label) => ({
+  ...config,
+  label,
+  procesos: Object.fromEntries(Object.entries(config.procesos || {}).map(([ruta, proceso]) => [ruta.replace(de, a), proceso])),
+});
 
 export const implantesComponentMaps = {
+  '/implantes/codigosImplantes': reubicarMapa(
+    maestrosComponentMaps['/maestros/codigosMaestros'],
+    '/maestros/codigosMaestros',
+    '/implantes/codigosImplantes',
+    'Códigos (Implantes) — misma pantalla y datos que Maestros → Códigos, con permisos propios',
+  ),
+
   // Bug corregido (v2): la visibilidad de las pestañas de la vista de
   // detalle (Detalles, Información, Cargas, Orden, Documentos, Logs) se movió de una sección
   // "navegacion" con un checkbox maestro compartido (que podía apagar las

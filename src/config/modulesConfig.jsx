@@ -181,6 +181,8 @@ export const MODULES = {
       { label: 'Sincronizar', path: '/implantes/sincronizacionImputadas', icon: <GitCompareArrows size={14} /> },
       { label: 'Reportes Info', path: '/implantes/reportesInfo', icon: <BarChart2 size={14} /> },
       { label: 'Respaldo de documentos', path: '/implantes/respaldoDocumentos', icon: <Archive size={14} /> },
+      // Misma pantalla y datos que Maestros → Codigos, con permisos propios.
+      { label: 'Códigos', path: '/implantes/codigosImplantes', icon: <ScanBarcode size={14} /> },
     ]
   },
   hemodinamia: {

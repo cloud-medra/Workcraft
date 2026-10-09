@@ -110,3 +110,17 @@ describe('plantillas y auditoría', () => {
     await expect(setDoc(doc(admin.db, 'plantillas_permisos', 'lab', 'logs', 'l1'), { accion: 'X' })).rejects.toMatchObject({ code: 'permission-denied' });
   });
 });
+
+describe('maestros_codigos: Maestros → Códigos o Implantes → Códigos', () => {
+  it('escribe quien tiene Maestros (como antes) o el ítem Implantes → Códigos; otro ítem de Implantes no', async () => {
+    const conImplantesCodigos = await sesion('implcod', { rol: 'operador', permisos: { implantes: ['/implantes/codigosImplantes'] }, permisosGranulares: {} });
+    const conOtroDeImplantes = await sesion('implges', { rol: 'operador', permisos: { implantes: ['/implantes/gestionImplantes'] }, permisosGranulares: {} });
+    const conMaestros = await sesion('maes', { rol: 'operador', permisos: { maestros: ['/maestros/codigosMaestros'] }, permisosGranulares: {} });
+    const codigo = { referencia: 'REF-1', codigo: 'C-1', empresa: 'ACME' };
+    await expect(setDoc(doc(conImplantesCodigos.db, 'maestros_codigos', 'c1'), codigo)).resolves.toBeUndefined();
+    await expect(setDoc(doc(conMaestros.db, 'maestros_codigos', 'c2'), codigo)).resolves.toBeUndefined();
+    await expect(setDoc(doc(conOtroDeImplantes.db, 'maestros_codigos', 'c3'), codigo)).rejects.toMatchObject({ code: 'permission-denied' });
+    // Leer: cualquiera autenticado (lo usan Cargas y Consignación).
+    expect((await getDoc(doc(conOtroDeImplantes.db, 'maestros_codigos', 'c1'))).exists()).toBe(true);
+  });
+});

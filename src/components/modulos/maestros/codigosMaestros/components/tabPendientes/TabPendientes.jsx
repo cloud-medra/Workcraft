@@ -49,7 +49,9 @@ const COLUMNAS = [
   { key: 'acciones', label: 'Acciones', ancho: 90, min: 70, align: 'center' }
 ];
 
-const TabPendientes = () => {
+// `rutaVista`: la pestaña en Maestros → Códigos (por defecto) o en
+// Implantes → Códigos; los permisos granulares son los de esa ruta.
+const TabPendientes = ({ rutaVista = '/maestros/codigosMaestros/pendientes' } = {}) => {
   // Pendientes = códigos sin `codigo`, filtrados en memoria desde el
   // catalogosStore (el mismo listener compartido de maestros_codigos que usan
   // Vista General y los autocompletados). Antes esta pestaña abría su propio
@@ -102,7 +104,7 @@ const TabPendientes = () => {
   const { userData } = useUser();
   const { hasPermission } = useGranularPermission();
 
-  const PATH_VISTA = "/maestros/codigosMaestros/pendientes";
+  const PATH_VISTA = rutaVista;
 
   // Acciones (claves en componentMaps/maestros.js). Sin la acción, el botón
   // no se muestra y el handler no hace nada.

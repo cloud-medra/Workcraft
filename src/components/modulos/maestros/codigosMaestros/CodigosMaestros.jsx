@@ -17,21 +17,26 @@ import { useGranularPermission } from '../../../../hooks/useGranularPermission';
 import TabPendientes from './components/tabPendientes/TabPendientes';
 import TabConCodigo from './components/tabConCodigo/TabConCodigo';
 import TabVistaGeneral from './components/tabVistaGeneral/TabVistaGeneral';
+import { RUTA_CODIGOS_MAESTROS } from './rutasCodigos';
 
 // Cada pestaña es un `proceso` propio (path independiente) del
 // componentMap de esta pantalla (ver
 // src/config/componentMaps/maestros.js) — su visibilidad se decide por
 // existencia con hasAccesoProceso(path), no por un checkbox maestro de
 // sección compartido entre las 3 (ver nota de useGranularPermission.js).
-const ALL_TABS = [
-  { id: 'pendientes', label: 'Sin Código / Pendientes', Icon: Clock, path: '/maestros/codigosMaestros/pendientes' },
-  { id: 'con_codigo', label: 'Con Código', Icon: CheckCircle2, path: '/maestros/codigosMaestros/conCodigo' },
-  { id: 'todos', label: 'Vista General', Icon: List, path: '/maestros/codigosMaestros/vistaGeneral' },
+//
+// La misma pantalla (y la misma colección maestros_codigos) se monta en
+// Maestros → Códigos y en Implantes → Códigos: `rutaBase` decide de qué
+// ítem del menú salen los permisos, así cada módulo se asigna por separado.
+const PESTANAS = [
+  { id: 'pendientes', label: 'Sin Código / Pendientes', Icon: Clock, sub: 'pendientes' },
+  { id: 'con_codigo', label: 'Con Código', Icon: CheckCircle2, sub: 'conCodigo' },
+  { id: 'todos', label: 'Vista General', Icon: List, sub: 'vistaGeneral' },
 ];
 
-const PATH_VISTA = "/maestros/codigosMaestros";
-
-const CodigosMaestros = () => {
+const CodigosMaestros = ({ rutaBase = RUTA_CODIGOS_MAESTROS } = {}) => {
+  const PATH_VISTA = rutaBase;
+  const ALL_TABS = useMemo(() => PESTANAS.map((t) => ({ ...t, path: `${rutaBase}/${t.sub}` })), [rutaBase]);
   const { hasAccesoProceso } = useGranularPermission();
   const [periodoAbierto, setPeriodoAbierto] = useState(null);
 
@@ -53,7 +58,7 @@ const CodigosMaestros = () => {
 
   const tabs = useMemo(() =>
     ALL_TABS.filter(t => hasAccesoProceso(t.path)),
-    [hasAccesoProceso]
+    [ALL_TABS, hasAccesoProceso]
   );
 
   const [activeTab, setActiveTab] = useState(() => tabs[0]?.id || '');
@@ -158,9 +163,9 @@ const CodigosMaestros = () => {
 
       {/* Renderizado de Componentes por Pestaña */}
       <div className="flex-grow min-h-0 p-4 overflow-auto">
-        {currentTabObj.id === 'pendientes' && <TabPendientes />}
-        {currentTabObj.id === 'con_codigo' && <TabConCodigo />}
-        {currentTabObj.id === 'todos' && <TabVistaGeneral />}
+        {currentTabObj.id === 'pendientes' && <TabPendientes rutaVista={currentTabObj.path} />}
+        {currentTabObj.id === 'con_codigo' && <TabConCodigo rutaVista={currentTabObj.path} />}
+        {currentTabObj.id === 'todos' && <TabVistaGeneral rutaVista={currentTabObj.path} />}
 
         {!['pendientes', 'con_codigo', 'todos'].includes(currentTabObj.id) && (
           <div className="w-full h-full min-h-[300px] bg-white dark:bg-gray-800 border border-slate-200/80 dark:border-gray-700 rounded-lg p-6 flex flex-col items-center justify-center text-center shadow-xs">

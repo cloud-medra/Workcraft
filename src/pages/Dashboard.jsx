@@ -263,7 +263,9 @@ const Dashboard = () => {
     '/maestros/conveniosMaestros': <ConveniosMaestros />,
     '/maestros/recargosMaestros': <RecargosMaestros />,
     '/maestros/calculadorMaestros': <CalculadorMaestros />,
-    '/maestros/codigosMaestros': <CodigosMaestros />,
+    // Misma pantalla en Maestros y en Implantes; la key separa su estado.
+    '/maestros/codigosMaestros': <CodigosMaestros key="maestros" />,
+    '/implantes/codigosImplantes': <CodigosMaestros key="implantes" rutaBase="/implantes/codigosImplantes" />,
     '/maestros/padMaestros': <PadMaestros />,
     '/maestros/actualizacionPreciosMaestros': <ActualizacionPreciosMaestros />,
     '/consignacion/ingresarGuiaDespacho': <IngresarGuiaDespacho />,
